@@ -1,0 +1,90 @@
+[
+  {
+    "id": "clfb001",
+    "scheduleId": "clsched0001",
+    "userId": "clu1w3p0a0002s8pdmy99c4f",
+    "type": "structured",
+    "content": {
+      "conflicts": [
+        {
+          "sectionId": "cls1sec004",
+          "issue": "Instructor overload on Monday"
+        }
+      ],
+      "recommendation": "Move section to Wednesday"
+    },
+    "createdAt": "2024-03-16T10:00:00Z"
+  },
+  {
+    "id": "clfb002",
+    "scheduleId": "clsched0001",
+    "userId": "clu1w3p0a0006s8pdybf04tb",
+    "type": "freeText",
+    "content": "Prefer SWE434 section later in the day.",
+    "createdAt": "2024-03-16T12:20:00Z"
+  },
+  {
+    "id": "clfb003",
+    "scheduleId": "clsched0002",
+    "userId": "clu1w3p0a0003s8pdh87e7gq",
+    "type": "structured",
+    "content": {
+      "availability": "Unavailable Tuesday 14:00-15:30",
+      "suggestedSwap": "cls1sec002"
+    },
+    "createdAt": "2024-03-21T08:45:00Z"
+  },
+  {
+    "id": "clfb004",
+    "scheduleId": "clsched0003",
+    "userId": "clu1w3p0a0001s8pd7hw5q0z",
+    "type": "structured",
+    "content": {
+      "summary": "All committee concerns resolved",
+      "approvals": [
+        "loadCommittee"
+      ]
+    },
+    "createdAt": "2024-03-26T09:10:00Z"
+  },
+  {
+    "id": "clfb005",
+    "scheduleId": "clsched0003",
+    "userId": "clu1w3p0a0010s8pdc1s4m0y",
+    "type": "freeText",
+    "content": "Approved for submission to Deanship.",
+    "createdAt": "2024-03-27T07:30:00Z"
+  },
+  {
+    "id": "clfb006",
+    "scheduleId": "clsched0004",
+    "userId": "clu1w3p0a0008s8pdbdxz42n",
+    "type": "structured",
+    "content": {
+      "dataRequested": [
+        "Updated irregular student list"
+      ],
+      "dueDate": "2024-03-05"
+    },
+    "createdAt": "2024-02-28T15:45:00Z"
+  },
+  {
+    "id": "clfb007",
+    "scheduleId": "clsched0005",
+    "userId": "clu1w3p0a0007s8pdajupvjr",
+    "type": "freeText",
+    "content": "Operating Systems section conflicts with internship hours.",
+    "createdAt": "2024-04-03T09:05:00Z"
+  },
+  {
+    "id": "clfb008",
+    "scheduleId": "clsched0005",
+    "userId": "clu1w3p0a0002s8pdmy99c4f",
+    "type": "structured",
+    "content": {
+      "loadIssue": "Dr. Farooq assigned to three sections same day",
+      "suggestedAction": "Reassign cls1sec005"
+    },
+    "createdAt": "2024-04-03T10:30:00Z"
+  }
+]

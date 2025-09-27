@@ -1,0 +1,165 @@
+// =========================
+// Prisma Schema
+// =========================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feedbacks Feedback[]
+  preferences Preference[]
+  auditLogs AuditLog[]
+
+  Section Section[]
+}
+
+enum Role {
+  SCHEDULING_COMMITTEE
+  LOAD_COMMITTEE
+  FACULTY
+  STUDENT
+  REGISTRAR
+  EXTERNAL_DEPARTMENT
+  DEANSHIP
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  MID1
+  MID2
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  users     User[]
+  courses   Course[]
+
+  Schedule Schedule[]
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  code        String
+  title       String
+  credits     Int
+  departmentId String
+  department  Department @relation(fields: [departmentId], references: [id])
+  sections    Section[]
+  prerequisites Course[] @relation("CoursePrerequisites")
+  prerequisiteFor Course[] @relation("CoursePrerequisites")
+
+  Exam Exam[]
+}
+
+model Section {
+  id        String   @id @default(cuid())
+  number    String
+  capacity  Int
+  courseId  String
+  instructorId String?
+  timeslotId   String?
+  course    Course   @relation(fields: [courseId], references: [id])
+  instructor User?   @relation(fields: [instructorId], references: [id])
+  timeslot  Timeslot? @relation(fields: [timeslotId], references: [id])
+  schedules Schedule[]
+}
+
+model Timeslot {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      // 0=Sunday ... 6=Saturday
+  startTime DateTime
+  endTime   DateTime
+  sections  Section[]
+  exams     Exam[]
+}
+
+model Schedule {
+  id          String   @id @default(cuid())
+  version     Int
+  status      ScheduleStatus
+  departmentId String
+  department  Department @relation(fields: [departmentId], references: [id])
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sections    Section[]
+  exams       Exam[]
+  feedbacks   Feedback[]
+}
+
+enum ScheduleStatus {
+  DRAFT
+  LOAD_REVIEW
+  STUDENT_REVIEW
+  FINAL
+}
+
+model Exam {
+  id         String   @id @default(cuid())
+  courseId   String
+  timeslotId String
+  scheduleId String
+  type       ExamType
+  course     Course   @relation(fields: [courseId], references: [id])
+  timeslot   Timeslot @relation(fields: [timeslotId], references: [id])
+  schedule   Schedule @relation(fields: [scheduleId], references: [id])
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  content     String
+  version     Int
+  userId      String
+  scheduleId  String
+  user        User     @relation(fields: [userId], references: [id])
+  schedule    Schedule @relation(fields: [scheduleId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Preference {
+  id        String   @id @default(cuid())
+  userId    String
+  preferredDays String?   // e.g. JSON encoded list of days off
+  preferredTimes String?  // e.g. JSON encoded ranges
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String
+  entity    String
+  entityId  String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}

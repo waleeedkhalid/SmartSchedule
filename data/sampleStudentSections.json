@@ -1,0 +1,36 @@
+[
+  {
+    "courseId": 1,
+    "courseCode": "MATH254",
+    "courseName": "Numerical Methods",
+    "section": "409",
+    "activity": "محاضرة",
+    "hours": "3",
+    "status": "Open",
+    "sectionTimes": [
+      { "day": "1 3 5", "time": "11:00 AM - 11:50 AM", "room": "A101" }
+    ],
+    "instructor": "Dr. Ali",
+    "examDay": "2",
+    "examTime": "01:00 PM - 04:00 PM",
+    "examDate": "1447-06-24",
+    "sectionAllocations": "25"
+  },
+  {
+    "courseId": 2,
+    "courseCode": "CS310",
+    "courseName": "Algorithms",
+    "section": "201",
+    "activity": "محاضرة",
+    "hours": "3",
+    "status": "Open",
+    "sectionTimes": [
+      { "day": "2 4", "time": "09:00 AM - 10:15 AM", "room": "B202" }
+    ],
+    "instructor": "Prof. Sara",
+    "examDay": "3",
+    "examTime": "08:00 AM - 10:00 AM",
+    "examDate": "1447-07-01",
+    "sectionAllocations": "30"
+  }
+]

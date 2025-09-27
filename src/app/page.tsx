@@ -1,3 +1,7 @@
-export default function Main() {
-  return <div>Main Page</div>;
+import { redirect } from "next/navigation";
+
+import { defaultRole, getDefaultPath } from "@/data/dashboard";
+
+export default function App() {
+  redirect(getDefaultPath(defaultRole));
 }

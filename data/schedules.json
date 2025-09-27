@@ -1,0 +1,80 @@
+[
+  {
+    "id": "clsched0001",
+    "version": 1,
+    "createdAt": "2024-03-15T09:30:00Z",
+    "status": "draft",
+    "sections": [
+      "cls1sec001",
+      "cls1sec003",
+      "cls1sec004",
+      "cls1sec006"
+    ],
+    "feedback": [
+      "clfb001",
+      "clfb002"
+    ]
+  },
+  {
+    "id": "clsched0002",
+    "version": 2,
+    "createdAt": "2024-03-20T13:15:00Z",
+    "status": "reviewed",
+    "sections": [
+      "cls1sec001",
+      "cls1sec002",
+      "cls1sec004",
+      "cls1sec005",
+      "cls1sec006"
+    ],
+    "feedback": [
+      "clfb003"
+    ]
+  },
+  {
+    "id": "clsched0003",
+    "version": 3,
+    "createdAt": "2024-03-25T16:45:00Z",
+    "status": "final",
+    "sections": [
+      "cls1sec002",
+      "cls1sec004",
+      "cls1sec005",
+      "cls1sec007"
+    ],
+    "feedback": [
+      "clfb004",
+      "clfb005"
+    ]
+  },
+  {
+    "id": "clsched0004",
+    "version": 1,
+    "createdAt": "2024-02-28T11:00:00Z",
+    "status": "draft",
+    "sections": [
+      "cls1sec001",
+      "cls1sec003",
+      "cls1sec005"
+    ],
+    "feedback": [
+      "clfb006"
+    ]
+  },
+  {
+    "id": "clsched0005",
+    "version": 2,
+    "createdAt": "2024-04-02T14:20:00Z",
+    "status": "reviewed",
+    "sections": [
+      "cls1sec002",
+      "cls1sec004",
+      "cls1sec006",
+      "cls1sec007"
+    ],
+    "feedback": [
+      "clfb007",
+      "clfb008"
+    ]
+  }
+]
