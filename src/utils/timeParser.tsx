@@ -124,7 +124,7 @@ export function hasExamConflict(
 export function minutesToTimeString(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  const ampm = hours >= 12 ? "م" : "ص";
+  const ampm = hours >= 12 ? "PM" : "AM";
   const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   return `${displayHours.toString().padStart(2, "0")}:${mins
     .toString()

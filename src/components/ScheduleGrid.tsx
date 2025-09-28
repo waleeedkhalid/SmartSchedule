@@ -36,6 +36,7 @@ interface CourseBlock {
   section: string;
   activity: string;
   instructor: string;
+  room: string;
   color: string | undefined;
   examDate: string;
 }
@@ -50,9 +51,9 @@ export function ScheduleGrid({
 }: ScheduleGridProps) {
   // Layout constants
   const START_HOUR = 8; // 8 AM
-  const END_HOUR = 18; // 5 PM
-  const INTERVAL_MINUTES = 30;
-  const SLOT_HEIGHT = 70; // increased for readability
+  const END_HOUR = 20; // 8 PM
+  const INTERVAL_MINUTES = 30; // each timeslot are 30 minutes long.
+  const SLOT_HEIGHT = 80; // increased for readability
   const daysToShow = useMemo(() => [1, 2, 3, 4, 5], []); // Sunday -> Thursday
 
   // Generate display time slots (memoized for performance & clarity)
@@ -121,6 +122,9 @@ export function ScheduleGrid({
           section: section.course.section,
           activity: section.course.activity,
           instructor: section.course.instructor,
+          room:
+            section.course.sectionTimes.find((t) => t.day === String(slot.day))
+              ?.room || "",
           color: assigned.get(key),
           examDate: section.course.examDate,
         });
@@ -451,6 +455,12 @@ export function ScheduleGrid({
                                   {showArabic ? "اليوم:" : "Day:"}
                                 </span>{" "}
                                 {getDayName(courseBlock.slot.day, showArabic)}
+                              </div>
+                              <div>
+                                <span className="font-semibold">
+                                  {showArabic ? "الغرفة:" : "Room:"}
+                                </span>{" "}
+                                {courseBlock.room}
                               </div>
                             </div>
                           </div>
