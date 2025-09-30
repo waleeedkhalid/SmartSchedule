@@ -1,10 +1,22 @@
-# Persona-Based Feature Implementation Plan
+# Persona-Based Feature Implementation Plan - SWE Department
 
 _Last updated: 2025-09-30_
+
+## 0. Critical Scope Note
+
+**⚠️ This system is exclusively for the Software Engineering (SWE) Department:**
+
+- ✅ **SWE Courses Only**: System manages scheduling for SWE courses (SWE211, SWE312, SWE314, SWE321, SWE333, SWE381, SWE434, SWE444, etc.)
+- ✅ **SWE Faculty**: Manages SWE faculty teaching assignments, loads, and availability
+- ✅ **SWE Students**: Handles SWE student preferences, schedules, and course registrations
+- ✅ **SWE Sections**: Creates and manages sections, meetings, and exams for SWE courses only
+- ❌ **Non-SWE Courses**: Cannot schedule or manage courses from other departments (CSC, MATH, PHY, etc.)
+- ℹ️ **External Courses**: Non-SWE courses appear in mockData as external course offerings that SWE students may take, but their scheduling is NOT managed by this system
 
 ## 1. Guiding Principles
 
 - **Phase 3 Scope Alignment**: Deliver persona workflows using the existing Next.js 15 App Router stack with TypeScript, Tailwind, shadcn/ui, mock authentication, and in-memory JSON persistence.
+- **SWE Department Focus**: All features are scoped to SWE department courses, faculty, and students only.
 - **Incremental Enablement**: Ship persona surfaces in thin vertical slices—UI skeleton ➜ mock data ➜ write interactions ➜ connect to APIs ➜ enforce business rules ➜ add validation/tests.
 - **Shared Foundations**: Reuse existing shared components (`src/components/shared`), ui primitives (`src/components/ui`), and mock data utilities (`src/data/mockData.ts`). Maintain consistent experience with the role switcher and notification system.
 - **Plan for Evolution**: Design APIs, business rules, and data access to be database-ready. Keep persistence abstractions in `src/lib` so we can replace in-memory stores with Prisma later.

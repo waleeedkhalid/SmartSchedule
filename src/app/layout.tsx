@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+import { seedData } from "@/lib/seed-data";
+
+// Seed data on app start
+if (typeof window === "undefined") {
+  seedData();
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

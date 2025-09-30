@@ -18,62 +18,92 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2 } from "lucide-react";
 
-// Per DEC-7: add advisorId (faculty id)
 export interface IrregularStudentRecord {
-  id: string;
-  studentId: string; // student ID number
-  studentName: string;
-  courseCode: string; // course they need
-  semester: string;
-  year: number;
-  reason: string; // "Repeat", "Make-up", etc.
-  advisorId?: string; // faculty ID for future advising view
-  advisorName?: string; // display name
-  notes?: string;
+  id: string; // student ID number
+  name: string;
+  requiredCourses: string[];
 }
 
 interface IrregularStudentFormListProps {
   irregularStudents: IrregularStudentRecord[];
-  onCreate?: (student: Omit<IrregularStudentRecord, "id">) => void;
-  // onUpdate will be added when inline editing is implemented
+  onCreate?: (student: Omit<IrregularStudentRecord, "">) => void;
+  onUpdate?: (id: string, student: Omit<IrregularStudentRecord, "">) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const IrregularStudentFormList: React.FC<
   IrregularStudentFormListProps
-> = ({ irregularStudents, onCreate }) => {
+> = ({ irregularStudents: initialStudents, onCreate, onUpdate, onDelete }) => {
+  const [students, setStudents] =
+    useState<IrregularStudentRecord[]>(initialStudents);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Omit<IrregularStudentRecord, "id">>({
-    studentId: "",
-    studentName: "",
-    courseCode: "",
-    semester: "Fall",
-    year: 2025,
-    reason: "",
-    advisorId: "",
-    advisorName: "",
-    notes: "",
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Omit<IrregularStudentRecord, "">>({
+    id: "",
+    name: "",
+    requiredCourses: [],
   });
 
   function reset() {
     setDraft({
-      studentId: "",
-      studentName: "",
-      courseCode: "",
-      semester: "Fall",
-      year: 2025,
-      reason: "",
-      advisorId: "",
-      advisorName: "",
-      notes: "",
+      id: "",
+      name: "",
+      requiredCourses: [],
     });
+    setEditingId(null);
+  }
+
+  function handleEdit(student: IrregularStudentRecord) {
+    setDraft({
+      id: student.id,
+      name: student.name,
+      requiredCourses: student.requiredCourses,
+    });
+    setEditingId(student.id);
+    setOpen(true);
+  }
+
+  function handleDelete(id: string, name: string) {
+    if (confirm(`Delete irregular student ${name}?`)) {
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      onDelete?.(id);
+      console.log("Deleting irregular student:", id);
+    }
   }
 
   function submit() {
-    if (!draft.studentId || !draft.studentName || !draft.courseCode) return;
-    onCreate?.(draft);
+    if (!draft.id || !draft.name || draft.requiredCourses.length === 0) return;
+
+    if (editingId) {
+      // Update existing student
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === editingId
+            ? {
+                id: draft.id,
+                name: draft.name,
+                requiredCourses: draft.requiredCourses,
+              }
+            : s
+        )
+      );
+      onUpdate?.(editingId, draft);
+      console.log("Updating irregular student:", editingId, draft);
+    } else {
+      // Add new student
+      const newStudent: IrregularStudentRecord = {
+        id: draft.id,
+        name: draft.name,
+        requiredCourses: draft.requiredCourses,
+      };
+      setStudents((prev) => [...prev, newStudent]);
+      onCreate?.(draft);
+      console.log("Adding irregular student:", newStudent);
+    }
+
     reset();
     setOpen(false);
   }
@@ -85,11 +115,23 @@ export const IrregularStudentFormList: React.FC<
           <CardTitle>Irregular Students</CardTitle>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">Add Student</Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  reset();
+                  setOpen(true);
+                }}
+              >
+                Add Student
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Add Irregular Student</DialogTitle>
+                <DialogTitle>
+                  {editingId
+                    ? "Edit Irregular Student"
+                    : "Add Irregular Student"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -98,9 +140,9 @@ export const IrregularStudentFormList: React.FC<
                       Student ID
                     </label>
                     <Input
-                      value={draft.studentId}
+                      value={draft.id}
                       onChange={(e) =>
-                        setDraft((d) => ({ ...d, studentId: e.target.value }))
+                        setDraft((d) => ({ ...d, id: e.target.value }))
                       }
                       placeholder="e.g. 2021001234"
                     />
@@ -110,9 +152,9 @@ export const IrregularStudentFormList: React.FC<
                       Student Name
                     </label>
                     <Input
-                      value={draft.studentName}
+                      value={draft.name}
                       onChange={(e) =>
-                        setDraft((d) => ({ ...d, studentName: e.target.value }))
+                        setDraft((d) => ({ ...d, name: e.target.value }))
                       }
                       placeholder="Full name"
                     />
@@ -124,91 +166,18 @@ export const IrregularStudentFormList: React.FC<
                       Course Code
                     </label>
                     <Input
-                      value={draft.courseCode}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, courseCode: e.target.value }))
-                      }
-                      placeholder="e.g. CSC212"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Semester
-                    </label>
-                    <Input
-                      value={draft.semester}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, semester: e.target.value }))
-                      }
-                      placeholder="Fall/Spring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Year
-                    </label>
-                    <Input
-                      type="number"
-                      value={draft.year}
+                      value={draft.requiredCourses.join(", ")}
                       onChange={(e) =>
                         setDraft((d) => ({
                           ...d,
-                          year: parseInt(e.target.value) || 2025,
+                          requiredCourses: e.target.value
+                            .split(",")
+                            .map((course) => course.trim()),
                         }))
                       }
+                      placeholder="e.g. SWE212, SWE213"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Reason
-                  </label>
-                  <Input
-                    value={draft.reason}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, reason: e.target.value }))
-                    }
-                    placeholder="e.g. Repeat, Make-up, Transfer Credit"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Advisor ID
-                    </label>
-                    <Input
-                      value={draft.advisorId}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, advisorId: e.target.value }))
-                      }
-                      placeholder="Faculty ID"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Advisor Name
-                    </label>
-                    <Input
-                      value={draft.advisorName}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, advisorName: e.target.value }))
-                      }
-                      placeholder="Faculty name"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Notes
-                  </label>
-                  <Textarea
-                    value={draft.notes}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, notes: e.target.value }))
-                    }
-                    placeholder="Additional notes"
-                    className="h-20"
-                  />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
@@ -223,12 +192,12 @@ export const IrregularStudentFormList: React.FC<
                   <Button
                     onClick={submit}
                     disabled={
-                      !draft.studentId ||
-                      !draft.studentName ||
-                      !draft.courseCode
+                      !draft.id ||
+                      !draft.name ||
+                      draft.requiredCourses.length === 0
                     }
                   >
-                    Add Student
+                    {editingId ? "Update Student" : "Add Student"}
                   </Button>
                 </div>
               </div>
@@ -242,55 +211,53 @@ export const IrregularStudentFormList: React.FC<
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Term</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Advisor</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead>Required Courses</TableHead>
+                <TableHead className="w-20">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {irregularStudents.map((student) => (
+              {students.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{student.studentName}</div>
+                      <div className="font-medium">{student.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {student.studentId}
+                        {student.id}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
-                      {student.courseCode}
+                      {student.requiredCourses.join(", ")}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs">
-                    {student.semester} {student.year}
-                  </TableCell>
-                  <TableCell className="text-xs">{student.reason}</TableCell>
                   <TableCell>
-                    {student.advisorName ? (
-                      <div className="text-xs">
-                        <div>{student.advisorName}</div>
-                        <div className="text-muted-foreground">
-                          {student.advisorId}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-32 truncate">
-                    {student.notes || "—"}
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEdit(student)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => handleDelete(student.id, student.name)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
-              {irregularStudents.length === 0 && (
+              {students.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
-                    className="text-center text-sm text-muted-foreground"
+                    colSpan={3}
+                    className="text-center text-sm text-muted-foreground py-8"
                   >
                     No irregular students recorded.
                   </TableCell>

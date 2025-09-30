@@ -3,51 +3,27 @@ import React from "react";
 import * as committee from "@/components/committee";
 import type { IrregularStudentRecord } from "@/components/committee/registrar/IrregularStudentFormList";
 
-const mockIrregularStudents = [
-  {
-    id: "ir1",
-    studentId: "2020001234",
-    studentName: "Ahmad Khalil",
-    courseCode: "CSC212",
-    semester: "Fall",
-    year: 2025,
-    reason: "Repeat - Failed previous attempt",
-    advisorId: "dr-sarah-id",
-    advisorName: "Dr. Sarah Al-Dossary",
-    notes: "Student struggled with algorithms section. Needs extra support.",
-  },
-  {
-    id: "ir2",
-    studentId: "2021005678",
-    studentName: "Fatima Al-Zahra",
-    courseCode: "MATH203",
-    semester: "Fall",
-    year: 2025,
-    reason: "Make-up - Medical leave during Spring 2025",
-    advisorId: "prof-omar-id",
-    advisorName: "Prof. Omar Badr",
-    notes: "Medical documentation on file. Good academic standing otherwise.",
-  },
-  {
-    id: "ir3",
-    studentId: "2019009876",
-    studentName: "Mohammed Ali",
-    courseCode: "CSC380",
-    semester: "Fall",
-    year: 2025,
-    reason: "Transfer Credit - Equivalent course from previous university",
-    advisorId: "dr-ahmad-id",
-    advisorName: "Dr. Ahmad Hassan",
-    notes: "Course content review completed. Approved for enrollment.",
-  },
-];
+import { mockSWEIrregularStudents } from "@/data/mockData";
 
 export default function Page(): React.ReactElement {
   const handleCreateIrregularStudent = (
-    studentData: Omit<IrregularStudentRecord, "id">
+    studentData: Omit<IrregularStudentRecord, "">
   ) => {
     console.log("Creating irregular student:", studentData);
     // TODO: Send to API endpoint POST /api/irregular
+  };
+
+  const handleUpdateIrregularStudent = (
+    id: string,
+    studentData: Omit<IrregularStudentRecord, "">
+  ) => {
+    console.log("Updating irregular student:", id, studentData);
+    // TODO: Send to API endpoint PATCH /api/irregular/:id
+  };
+
+  const handleDeleteIrregularStudent = (id: string) => {
+    console.log("Deleting irregular student:", id);
+    // TODO: Send to API endpoint DELETE /api/irregular/:id
   };
 
   return (
@@ -63,13 +39,12 @@ export default function Page(): React.ReactElement {
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Irregular Student Management</h2>
         <committee.registrar.IrregularStudentFormList
-          irregularStudents={mockIrregularStudents}
+          irregularStudents={mockSWEIrregularStudents}
           onCreate={handleCreateIrregularStudent}
+          onUpdate={handleUpdateIrregularStudent}
+          onDelete={handleDeleteIrregularStudent}
         />
       </div>
-
-      {/* Original component */}
-      <committee.registrar.RegistrarIrregularForm />
     </div>
   );
 }

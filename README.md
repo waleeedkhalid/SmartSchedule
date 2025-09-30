@@ -1,14 +1,27 @@
-# SmartSchedule - Course Scheduling System
+# SmartSchedule - SWE Department Course Scheduling System
 
-SmartSchedule is a modern web application for managing course schedules, faculty assignments, and student preferences in an academic institution. This application is built with Next.js 15, TypeScript, and TailwindCSS.
+SmartSchedule is a modern web application for managing course schedules, faculty assignments, and student preferences **specifically for the Software Engineering (SWE) Department**. This application is built with Next.js 15, TypeScript, and TailwindCSS.
+
+## Important Scope Note
+
+**This system is designed exclusively for the Software Engineering (SWE) department:**
+
+- ✅ Manages SWE courses only (SWE211, SWE312, SWE314, etc.)
+- ✅ Handles SWE faculty assignments and teaching loads
+- ✅ Manages SWE student preferences and schedules
+- ❌ Cannot schedule or manage courses from other departments (CSC, MATH, etc.)
+- ❌ Non-SWE courses are treated as external dependencies only
+
+For non-SWE courses, the system only tracks them as external course offerings that SWE students may take, but does not manage their scheduling.
 
 ## Features
 
-- **Role-based Access Control**: Three main user roles - Students, Faculty, and Committee Members
-- **Student Portal**: View schedules and submit course preferences
-- **Faculty Portal**: Manage availability and view teaching assignments
-- **Committee Portal**: Schedule courses and manage academic terms
-- **AI-Powered Recommendations**: Get smart scheduling suggestions
+- **Role-based Access Control**: Five main user roles - Scheduling Committee, Teaching Load Committee, Faculty, Students, and Registrar
+- **Student Portal**: View schedules and submit SWE elective preferences
+- **Faculty Portal**: Manage availability and view SWE teaching assignments
+- **Committee Portal**: Schedule SWE courses and manage academic terms
+- **Teaching Load Management**: Monitor SWE faculty teaching loads and conflicts
+- **Registrar Tools**: Manage irregular students requiring SWE courses
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## Tech Stack
@@ -30,17 +43,20 @@ SmartSchedule is a modern web application for managing course schedules, faculty
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/your-username/semester-scheduler.git
    cd semester-scheduler
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start the development server:
+
    ```bash
    npm run dev
    ```

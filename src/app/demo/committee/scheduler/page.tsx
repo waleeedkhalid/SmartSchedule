@@ -2,93 +2,9 @@
 import React from "react";
 import * as committee from "@/components/committee";
 import { CommentPanel } from "@/components/shared";
-import { mockStudentCounts } from "@/data/mockData";
+import { mockCourseOfferings, mockStudentCounts } from "@/data/mockData";
 import type { ExamRecord } from "@/components/committee/scheduler/ExamTable";
-
-// Mock data for new components
-const mockSections = [
-  {
-    id: "CSC212-01",
-    courseCode: "CSC212",
-    title: "Data Structures",
-    instructor: "Dr. Sarah Al-Dossary",
-    room: "42 01",
-    meetings: [
-      {
-        id: "m1",
-        sectionId: "CSC212-01",
-        day: "Sunday",
-        startTime: "10:00",
-        endTime: "11:50",
-        room: "42 01",
-      },
-      {
-        id: "m2",
-        sectionId: "CSC212-01",
-        day: "Tuesday",
-        startTime: "10:00",
-        endTime: "11:50",
-        room: "42 01",
-      },
-    ],
-  },
-  {
-    id: "MATH203-01",
-    courseCode: "MATH203",
-    title: "Linear Algebra",
-    instructor: "Prof. Omar Badr",
-    room: "12 05",
-    meetings: [
-      {
-        id: "m3",
-        sectionId: "MATH203-01",
-        day: "Monday",
-        startTime: "08:00",
-        endTime: "08:50",
-        room: "12 05",
-      },
-      {
-        id: "m4",
-        sectionId: "MATH203-01",
-        day: "Wednesday",
-        startTime: "08:00",
-        endTime: "08:50",
-        room: "12 05",
-      },
-      {
-        id: "m5",
-        sectionId: "MATH203-01",
-        day: "Thursday",
-        startTime: "08:00",
-        endTime: "08:50",
-        room: "12 05",
-      },
-    ],
-  },
-];
-
-const mockExams = [
-  {
-    id: "e1",
-    courseCode: "CSC212",
-    sectionIds: ["CSC212-01", "CSC212-02"],
-    category: "midterm" as const,
-    date: "2025-03-31",
-    time: "10:00",
-    duration: 90,
-    room: "Main Hall",
-  },
-  {
-    id: "e2",
-    courseCode: "MATH203",
-    sectionIds: ["MATH203-01"],
-    category: "final" as const,
-    date: "2025-05-25",
-    time: "09:00",
-    duration: 120,
-    room: "Hall A",
-  },
-];
+import { getExams, getSectionsLookup } from "@/lib/committee-data-helpers";
 
 const mockVersions = [
   {
@@ -118,29 +34,20 @@ const mockVersions = [
   },
 ];
 
-const mockComments = [
-  {
-    id: "c1",
-    persona: "STUDENT",
-    createdAt: "2025-09-30T12:00:00Z",
-    author: "Ahmad S.",
-    body: "The CSC212 timing conflicts with MATH203 for some students.",
-    versionId: "v3",
-  },
-  {
-    id: "c2",
-    persona: "FACULTY",
-    createdAt: "2025-09-30T13:30:00Z",
-    author: "Dr. Sarah",
-    body: "Room 42 01 needs projector equipment check before semester starts.",
-    versionId: "v3",
-  },
-];
-
 export default function Page(): React.ReactElement {
   const handleExamCreate = (examData: Omit<ExamRecord, "id">) => {
     console.log("Creating exam:", examData);
     // TODO: Send to API endpoint POST /api/exams
+  };
+
+  const handleExamUpdate = (id: string, examData: Omit<ExamRecord, "id">) => {
+    console.log("Updating exam:", id, examData);
+    // TODO: Send to API endpoint PATCH /api/exams/:id
+  };
+
+  const handleExamDelete = (id: string) => {
+    console.log("Deleting exam:", id);
+    // TODO: Send to API endpoint DELETE /api/exams/:id
   };
 
   const handleVersionSelect = (versionId: string) => {
@@ -153,6 +60,10 @@ export default function Page(): React.ReactElement {
     // TODO: Send to API endpoint POST /api/comments
   };
 
+  // Use helper functions to transform mockCourseOfferings
+  const mockExams = getExams(mockCourseOfferings);
+  const sectionsLookup = getSectionsLookup(mockCourseOfferings);
+
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-4">
@@ -162,47 +73,25 @@ export default function Page(): React.ReactElement {
         </p>
       </div>
 
-      {/* Schedule Grid */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Schedule Overview</h2>
-        <committee.scheduler.ScheduleGrid
-          sections={mockSections}
-          showConflicts={true}
-          conflicts={[]}
-        />
-      </div>
-
       {/* Exams Table */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Exam Management</h2>
         <committee.scheduler.ExamTable
           exams={mockExams}
           onCreate={handleExamCreate}
-          sectionsLookup={[
-            { sectionId: "CSC212-01", courseCode: "CSC212" },
-            { sectionId: "CSC212-02", courseCode: "CSC212" },
-            { sectionId: "MATH203-01", courseCode: "MATH203" },
-          ]}
+          onUpdate={handleExamUpdate}
+          onDelete={handleExamDelete}
+          sectionsLookup={sectionsLookup}
         />
       </div>
 
-      {/* Version Timeline & Comments side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Version Timeline */}
+      <div className="grid grid-cols-1 gap-6">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Version History</h2>
           <committee.scheduler.VersionTimeline
             versions={mockVersions}
             onSelect={handleVersionSelect}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Comments</h2>
-          <CommentPanel
-            comments={mockComments}
-            persona="COMMITTEE"
-            onAdd={handleCommentAdd}
-            filterVersionId="v3"
           />
         </div>
       </div>
@@ -214,7 +103,7 @@ export default function Page(): React.ReactElement {
         studentCounts={mockStudentCounts}
       />
 
-      <committee.scheduler.externalDepartments.ExternalCoursesEditor />
+      <committee.scheduler.coursesEditor.CoursesEditor />
 
       <committee.scheduler.irregularStudents.IrregularStudentsViewer />
     </div>

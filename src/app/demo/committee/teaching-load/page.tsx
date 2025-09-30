@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import * as committee from "@/components/committee";
-import { CommentPanel } from "@/components/shared";
 
 const mockInstructorLoads = [
   {
@@ -72,34 +71,7 @@ const mockConflicts = [
   },
 ];
 
-const mockLoadComments = [
-  {
-    id: "lc1",
-    persona: "TEACHING_LOAD",
-    createdAt: "2025-09-30T15:00:00Z",
-    author: "Load Committee",
-    body: "Prof. Omar's overload needs immediate attention. Suggest redistributing GRAD-SEMINAR to another faculty member.",
-    versionId: "v3",
-  },
-  {
-    id: "lc2",
-    persona: "COMMITTEE",
-    createdAt: "2025-09-30T15:30:00Z",
-    author: "Scheduler",
-    body: "Acknowledged. Will reassign graduate seminar to Dr. Ahmad who has capacity.",
-    versionId: "v3",
-  },
-];
-
 export default function Page(): React.ReactElement {
-  const handleCommentAdd = (commentBody: string) => {
-    console.log("Adding teaching load comment:", {
-      body: commentBody,
-      persona: "TEACHING_LOAD",
-    });
-    // TODO: Send to API endpoint POST /api/comments
-  };
-
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-4">
@@ -122,17 +94,6 @@ export default function Page(): React.ReactElement {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Load Conflicts</h2>
           <committee.teachingLoad.ConflictList conflicts={mockConflicts} />
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Load Review Comments</h2>
-          <CommentPanel
-            comments={mockLoadComments}
-            persona="TEACHING_LOAD"
-            onAdd={handleCommentAdd}
-            filterVersionId="v3"
-            compact={true}
-          />
         </div>
       </div>
 

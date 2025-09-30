@@ -1,6 +1,16 @@
-# Phase 3: Core Requirements - SmartSchedule
+# Phase 3: Core Requirements - SmartSchedule (SWE Department)
 
-## Scope
+## Department Scope
+
+**CRITICAL: This system is exclusively for the Software Engineering (SWE) Department**
+
+- ✅ **SWE Courses Only**: The system manages scheduling for SWE courses (SWE211, SWE312, SWE314, etc.)
+- ✅ **SWE Faculty**: Manages SWE faculty teaching assignments and loads
+- ✅ **SWE Students**: Handles SWE student preferences and schedules
+- ❌ **Non-SWE Courses**: Cannot schedule or manage courses from other departments (CSC, MATH, PHY, etc.)
+- ℹ️ **External Courses**: Non-SWE courses are tracked as external dependencies only (students may take them, but scheduling is not managed by this system)
+
+## Feature Scope
 
 This document outlines the scope for Phase 3 of the SmartSchedule project, focusing on delivering core functionality with a clean, modular architecture.
 
@@ -35,19 +45,30 @@ This document outlines the scope for Phase 3 of the SmartSchedule project, focus
 
 ### Personas
 
-1. **Students**
+1. **Students (SWE Students)**
 
-   - View and update course preferences
-   - View their schedule
+   - View and update SWE elective preferences
+   - View their schedule (including external non-SWE courses they're enrolled in)
 
-2. **Faculty**
+2. **Faculty (SWE Faculty)**
 
-   - Set availability
-   - Set course preferences
-   - View teaching assignments
+   - Set availability for teaching SWE courses
+   - Set SWE course preferences
+   - View teaching assignments for SWE courses
 
-3. **Committee Members**
-   - Schedule courses
+3. **Scheduling Committee**
+
+   - Schedule SWE courses only
+   - Manage SWE sections, meetings, and exams
+   - Track external course slots (non-SWE courses) as reference only
+
+4. **Teaching Load Committee**
+
+   - Monitor SWE faculty teaching loads
+   - Identify conflicts in SWE course assignments
+
+5. **Registrar**
+   - Manage irregular students who need SWE courses
    - Import data
    - View scheduling conflicts
 
