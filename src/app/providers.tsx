@@ -2,9 +2,9 @@
 
 import { SWRConfig } from "swr";
 import { jsonFetcher } from "@/lib/fetcher";
-import { ToastProvider } from "@/components/ui/toast-provider";
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeProvider } from "../components/ui/theme-provider";
+import { ToastProvider } from "../components/ui/toast-provider";
+import { Toaster } from "../components/ui/toaster";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

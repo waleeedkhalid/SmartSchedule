@@ -1,42 +1,97 @@
+# SmartSchedule - Course Scheduling System
+
+SmartSchedule is a modern web application for managing course schedules, faculty assignments, and student preferences in an academic institution. This application is built with Next.js 15, TypeScript, and TailwindCSS.
+
+## Features
+
+- **Role-based Access Control**: Three main user roles - Students, Faculty, and Committee Members
+- **Student Portal**: View schedules and submit course preferences
+- **Faculty Portal**: Manage availability and view teaching assignments
+- **Committee Portal**: Schedule courses and manage academic terms
+- **AI-Powered Recommendations**: Get smart scheduling suggestions
+- **Responsive Design**: Works on desktop and mobile devices
+
+## Tech Stack
+
+- **Frontend**: Next.js 15 with App Router
+- **Styling**: TailwindCSS with shadcn/ui components
+- **State Management**: React Context API
+- **Form Handling**: React Hook Form with Zod validation
+- **Type Safety**: TypeScript
+- **Build Tool**: Turbopack
+
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
+- Node.js 18+ and npm
+- Git
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/semester-scheduler.git
+   cd semester-scheduler
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# Application
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Authentication (for future use)
+# NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+/app
+  /api                  # API routes
+  /student             # Student portal
+  /faculty             # Faculty portal
+  /committee           # Committee portal
+  /_components         # Reusable UI components
+  /_lib                # Shared utilities and hooks
+  /styles              # Global styles
+  layout.tsx           # Root layout
+  page.tsx             # Home page with role selection
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Available Scripts
 
-## Learn More
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
 
-To learn more about Next.js, take a look at the following resources:
+## Contributing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Branching Strategy
 
-# Contributing Guidelines
+- `main` - Production-ready code
+- `feature/*` - New features
+- `bugfix/*` - Bug fixes
+- `docs/*` - Documentation updates
 
-## Branching
-
-- Main branch = `master`
-- Feature branches: `feature/<task-name>`
-- Bugfix branches: `bugfix/<short-desc>`
-- Docs branches: `docs/<topic>`
-
-## Workflow
-
-1. Fork the repo.
-2. Create a branch for each task.
-3. Commit small, focused changes.
-4. Open a Pull Request to `master`.
-5. At least **2 team members** must review before merge.
-
-## Commit Message Format
+### Commit Message Format
 
 - `feat: <new feature>`
 - `fix: <bug fix>`
@@ -44,9 +99,25 @@ To learn more about Next.js, take a look at the following resources:
 - `refactor: <code cleanup>`
 - `test: <unit or integration tests>`
 
-# Requirements
+### Workflow
 
-## Core Deliverables
+1. Create a new branch for your changes
+2. Make your changes with clear, focused commits
+3. Open a Pull Request
+4. Get at least one approval before merging
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Future Enhancements
+
+- [ ] Implement real authentication
+- [ ] Add database persistence
+- [ ] Enhance AI recommendations
+- [ ] Add real-time collaboration
+- [ ] Implement versioning for schedules
+- [ ] Add comprehensive test coverage
 
 - Multi-user interfaces: student, faculty, committee, load committee
 - Scheduling workflows
