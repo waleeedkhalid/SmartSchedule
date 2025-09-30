@@ -78,7 +78,6 @@ export const ExamTable: React.FC<ExamTableProps> = ({
 
   function submit() {
     if (!draft.courseCode || !draft.date || !draft.time) return;
-    console.log("Exam data for API:", draft); // Log input data
     onCreate?.(draft);
     reset();
     setOpen(false);
