@@ -20,6 +20,7 @@ export interface ElectiveCourse {
   code: string;
   name: string;
   credits: number;
+  prerequisites?: string[]; // course codes
 }
 
 export interface ElectivePackage {
@@ -61,8 +62,9 @@ export interface Section {
   id: string; // "MATH203-01"
   courseCode: string; // "MATH203"
   instructor: string; // "Dr. Omar"
-  room: string; // "12 05"
   times: SectionTime[];
+  room: string; // "4"
+  capacity?: number; // optional
 }
 
 export interface CourseOffering {
@@ -72,6 +74,7 @@ export interface CourseOffering {
   department: string; // "Mathematics", "SWE", etc.
   level: number; // 2, 3, 4...
   type: "REQUIRED" | "ELECTIVE";
+  prerequisites: string[]; // course codes
   exams: {
     midterm?: ExamInfo;
     midterm2?: ExamInfo;
@@ -130,4 +133,75 @@ export interface Conflict {
   message: string;
   affected: { id: string; label: string }[];
   detectedAt: string;
+}
+
+// ============================================================================
+// SCHEDULE GENERATION
+// ============================================================================
+
+export interface TimeSlot {
+  day: string; // "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"
+  startTime: string; // "08:00"
+  endTime: string; // "08:50"
+}
+
+export interface FacultyAvailability {
+  instructorId: string;
+  instructorName: string;
+  department: string; // "SWE"
+  availableSlots: TimeSlot[];
+  maxTeachingHours: number; // per week
+  preferences?: string[]; // preferred course codes
+}
+
+export interface SWEStudent {
+  id: string;
+  name: string;
+  level: number; // 4, 5, 6, 7, 8
+  electivePreferences: string[]; // course codes, ranked by priority
+  isIrregular?: boolean;
+  irregularCourses?: string[]; // only if irregular
+}
+
+export interface SWECurriculumLevel {
+  level: number;
+  requiredSWECourses: string[]; // e.g., ["SWE211", "SWE226"]
+  externalCourses: string[]; // e.g., ["MATH203", "PHY104"]
+  totalCredits: number;
+  electiveSlots: number; // how many elective courses this level can take
+}
+
+export interface ScheduleGenerationRequest {
+  semester: string; // "Fall 2025"
+  levels: number[]; // [4, 5, 6, 7, 8]
+  considerIrregularStudents: boolean;
+  optimizationGoals?: (
+    | "minimize-conflicts"
+    | "balance-load"
+    | "prefer-morning"
+  )[];
+}
+
+export interface GeneratedSchedule {
+  id: string;
+  semester: string;
+  generatedAt: string; // ISO date
+  levels: LevelSchedule[];
+  conflicts: Conflict[];
+  metadata: ScheduleMetadata;
+}
+
+export interface LevelSchedule {
+  level: number;
+  studentCount: number;
+  courses: CourseOffering[]; // SWE courses with generated sections
+  externalCourses: CourseOffering[]; // External courses (read-only reference)
+  conflicts: Conflict[];
+}
+
+export interface ScheduleMetadata {
+  totalSections: number;
+  totalExams: number;
+  facultyUtilization: number; // percentage 0-100
+  roomUtilization: number; // percentage 0-100
 }

@@ -56,11 +56,15 @@ export type ScheduleSection = {
 
 /**
  * Extract all exams from course offerings
+ * Only includes SWE department courses
  */
 export function getExams(courseOfferings: CourseOffering[]): ExamRecord[] {
   const exams: ExamRecord[] = [];
 
   courseOfferings.forEach((course) => {
+    // Only include SWE department courses
+    if (course.department !== "SWE") return;
+
     Object.entries(course.exams).forEach(([type, examData]) => {
       if (!examData) return; // Skip if exam is undefined
       exams.push({

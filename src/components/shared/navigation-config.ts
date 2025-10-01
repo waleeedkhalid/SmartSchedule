@@ -89,12 +89,6 @@ export const registrarNavItems: NavItem[] = [
     icon: UserCog,
     description: "Manage irregular student course requirements",
   },
-  {
-    label: "Student Counts",
-    href: "/demo/committee/registrar/counts",
-    icon: BarChart3,
-    description: "View and update student enrollment counts",
-  },
 ];
 
 // ============================================================================

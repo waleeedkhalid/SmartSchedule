@@ -21,8 +21,6 @@ export default function Page(): React.ReactElement {
       >
         <div className="space-y-8">
           <faculty.personalSchedule.PersonalSchedule />
-
-          <faculty.availability.FacultyAvailabilityForm />
         </div>
       </PageContainer>
     </>

@@ -114,7 +114,52 @@ Legend: | ID | Persona/Area | Description | Status | Notes |
 | FAC-4  | Faculty | API: `GET /api/faculty/assignments`        | DONE   | Returns faculty sections with meetings     |
 | FAC-5  | Faculty | Comments integration (faculty scope)       | DONE   | Comments API ready                         |
 
-### 2.5 Polish & QA Sprint (Sprint 5)
+### 2.5 Schedule Generation System (Sprint 6)
+
+| ID       | Area                | Description                                       | Status | Notes                                                                   |
+| -------- | ------------------- | ------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
+| SCHED-1  | Phase 1: Foundation | Type definitions for schedule generation          | DONE   | Added 8 interfaces to types.ts                                          |
+| SCHED-2  | Phase 1: Foundation | SWE curriculum data (level→courses mapping)       | DONE   | Created mockSWECurriculum.ts with 5 levels                              |
+| SCHED-3  | Phase 1: Foundation | SWE students data (275 students with preferences) | DONE   | Created mockSWEStudents.ts with 75/65/55/45/35 distribution             |
+| SCHED-4  | Phase 1: Foundation | SWE faculty data (15 instructors)                 | DONE   | Created mockSWEFaculty.ts with 5 profs, 5 assoc, 5 asst (186 hrs total) |
+| SCHED-5  | Phase 1: Foundation | Add prerequisites to elective packages            | DONE   | Added prerequisites to all 32 elective courses in mockData.ts           |
+| SCHED-6  | Phase 1: Foundation | Export schedule generation data                   | DONE   | Added exports section to mockData.ts with all helper functions          |
+| SCHED-7  | Phase 1: Foundation | Test suite for Phase 1 data verification          | DONE   | Created test-phase1-data.ts with 6 comprehensive tests                  |
+| SCHED-8  | Phase 1: Foundation | Demo page for running Phase 1 tests               | DONE   | Created /demo/schedule-test page                                        |
+| SCHED-9  | Phase 2: Services   | ScheduleDataCollector class                       | DONE   | Created class with data collection, validation, and helper methods      |
+| SCHED-10 | Phase 2: Services   | TimeSlotManager class                             | DONE   | Created class with time slot overlap detection and faculty availability |
+| SCHED-11 | Phase 2: Services   | Test suite for Phase 2 data services              | DONE   | Created test-phase2-data.ts with comprehensive testing                  |
+| SCHED-12 | Phase 2: Services   | Demo page for Phase 2 testing                     | DONE   | Created /demo/schedule-test-phase2 page                                 |
+| SCHED-13 | Phase 3: Detection  | ConflictChecker class                             | DONE   | Created class with time, exam, faculty, room, capacity conflict checks  |
+| SCHED-14 | Phase 3: Detection  | Test suite for Phase 3 conflict detection         | DONE   | Created test-phase3-data.ts with 7 comprehensive conflict tests         |
+| SCHED-15 | Phase 3: Detection  | Demo page for Phase 3 testing                     | DONE   | Created /demo/schedule-test-phase3 page                                 |
+| SCHED-16 | Phase 4: Generation | ScheduleGenerator main class                      | DONE   | Created with level-by-level generation, section/faculty/room assignment |
+| SCHED-17 | Phase 4: Generation | Section assignment algorithm                      | DONE   | Integrated - creates sections based on student count (~30 per section)  |
+| SCHED-18 | Phase 4: Generation | Exam scheduling algorithm                         | DONE   | Integrated - schedules midterm and final exams for all courses          |
+| SCHED-19 | Phase 4: Generation | Test suite for Phase 4 generation                 | DONE   | Created test-phase4-data.ts with 5 comprehensive generation tests       |
+| SCHED-20 | Phase 4: Generation | Demo page for Phase 4 testing                     | DONE   | Created /demo/schedule-test-phase4 page with detailed output            |
+| SCHED-21 | Phase 5: API/UI     | POST /api/schedule/generate endpoint              | DONE   | Created route.ts with request validation and ScheduleGenerator call     |
+| SCHED-22 | Phase 5: API/UI     | POST /api/schedule/validate endpoint              | DONE   | Created route.ts with conflict detection and categorization             |
+| SCHED-23 | Phase 5: API/UI     | GenerateScheduleDialog component                  | DONE   | Created dialog with level selection, optimization goals, async API call |
+| SCHED-24 | Phase 5: API/UI     | GeneratedScheduleResults component                | DONE   | Created results view with metadata, conflicts, sections by level        |
+
+### 2.6 Color System (Sprint 6)
+
+| ID       | Area         | Description                                                              | Status | Notes                                                            |
+| -------- | ------------ | ------------------------------------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| COLOR-1  | Foundation   | Create color palette library with 3 story-driven themes                  | DONE   | colors.ts with academicTwilight, desertDawn, emeraldLibrary      |
+| COLOR-2  | Foundation   | Implement utility functions for color access and CSS variable generation | DONE   | getColor(), getPaletteCSSVariables(), hexToRgb(), getRgbString() |
+| COLOR-3  | UI Component | Build interactive ColorPaletteShowcase component                         | DONE   | Palette switching, color copying, CSS export, theme previews     |
+| COLOR-4  | UI Component | Create demo page at /demo/color-system                                   | DONE   | Route established with full showcase component                   |
+| COLOR-5  | Docs         | Document color system with usage guidelines and implementation examples  | DONE   | COLOR_SYSTEM.md with contrast ratios, best practices, roadmap    |
+| COLOR-6  | Integration  | Integrate palettes with shadcn/ui CSS variables (OKLCH format)           | DONE   | globals.css with 3 theme classes, light & dark modes             |
+| COLOR-7  | UI Component | Build ThemeSwitcher component with localStorage persistence              | DONE   | ThemeSwitcher with applyTheme(), getThemeClassName() utilities   |
+| COLOR-8  | UI Component | Create theme demo page at /demo/themes                                   | DONE   | Full theming demonstration with live component previews          |
+| COLOR-9  | Docs         | Document theming system integration and usage patterns                   | DONE   | THEMING_SYSTEM.md with technical details, usage guide            |
+| COLOR-10 | Integration  | Apply themed colors to entire project as default                         | DONE   | Updated :root styles + layout.tsx with Academic Twilight default |
+| COLOR-11 | Theme Design | Create KSU Royal theme with university identity colors                   | DONE   | Added 4th theme: KSU Royal with #002147 blue, #C5A46D gold       |
+
+### 2.7 Polish & QA Sprint (Sprint 7)
 
 | ID   | Area          | Description                            | Status | Notes |
 | ---- | ------------- | -------------------------------------- | ------ | ----- |
@@ -139,20 +184,43 @@ Legend: | ID | Persona/Area | Description | Status | Notes |
 | 2025-09-30 | Implemented complete backend infrastructure: types, data-store, rules-engine, seed data, all APIs | system | FND-2, FND-3, FND-5, FND-6, FND-9, FND-11, FND-12, COM-3, COM-5..8, COM-10..11, STU-3..7, REG-3..4, LOAD-4, FAC-4 |
 | 2025-10-01 | Migrated ElectiveSurvey to use mockElectivePackages (SWE plan); added category badges             | system | STU-2, DEC-8                                                                                                      |
 | 2025-10-01 | Added category filters to ElectiveSurvey with smart counters and clear filter button              | system | STU-2                                                                                                             |
+| 2025-10-01 | Updated Section/SectionTime types: room moved from Section to SectionTime for flexibility         | system | FND-3                                                                                                             |
+| 2025-10-01 | Completed Schedule Generation planning: created comprehensive implementation plan & documentation | system | COM-15, NEW: SCHED-\*                                                                                             |
+| 2025-10-01 | Implemented Phase 1 Foundation for Schedule Generation: types, data, prerequisites, test suite    | system | SCHED-1 to SCHED-8 (all DONE)                                                                                     |
+| 2025-10-01 | Implemented Phase 2 Data Services: ScheduleDataCollector and TimeSlotManager classes with tests   | system | SCHED-9 to SCHED-12 (all DONE)                                                                                    |
+| 2025-10-01 | Implemented Phase 3 Conflict Detection: ConflictChecker class with 6 conflict types and tests     | system | SCHED-13 to SCHED-15 (all DONE)                                                                                   |
+| 2025-10-01 | Implemented Phase 4 Core Generation: ScheduleGenerator with full generation algorithm and tests   | system | SCHED-16 to SCHED-20 (all DONE)                                                                                   |
+| 2025-10-01 | Implemented Phase 5 API & UI: API endpoints, dialog component, results component, demo page       | system | SCHED-21 to SCHED-24 (all DONE) - Schedule Generation System COMPLETE                                             |
+| 2025-10-01 | Updated conflict detection: time conflicts only ERROR when same room, WARNING for different rooms | system | ConflictChecker.ts - More nuanced conflict severity                                                               |
+| 2025-10-01 | Filtered Teaching Load & Exam Table to SWE courses only (department scope enforcement)            | system | committee-data-helpers.ts, teaching-load demo page                                                                |
+| 2025-10-01 | Implemented story-driven color system: 3 themed palettes with showcase component and demo         | system | NEW: colors.ts, ColorPaletteShowcase, /demo/color-system                                                          |
+| 2025-10-01 | Integrated color palettes with shadcn/ui theming system using CSS variables in OKLCH format       | system | NEW: ThemeSwitcher, /demo/themes - Full theming system complete                                                   |
+| 2025-10-01 | Applied Academic Twilight theme as default across entire project; added ThemeSwitcher to homepage | system | COLOR-10: Updated globals.css :root + layout.tsx + page.tsx for full theme integration                            |
+| 2025-10-01 | Created KSU Royal theme with King Saud University identity colors and academic prestige design    | system | COLOR-11: Added 4th theme with royal blue #002147, golden beige #C5A46D, full light/dark modes                    |
+| 2025-10-01 | Updated KSU Royal with balanced contrast for reduced eye strain while maintaining WCAG AA+        | system | COLOR-11: Softened whites to #FAFAFA, text to #1F2937 (~8.1:1), moderated blues, semantic tones                   |
+| 2025-10-01 | Changed default theme from Academic Twilight to KSU Royal across entire application               | system | COLOR-12: Updated :root in globals.css + className in layout.tsx to use KSU Royal by default                      |
+| 2025-10-01 | Implemented Footer component with team member links; integrated into root layout                  | system | NEW: Footer.tsx with GitHub/LinkedIn links, added to layout.tsx with flex-col min-h-screen                        |
+| 2025-10-01 | Added ScheduleTestCard to homepage; documented 1-component-per-page architecture for all personas | system | NEW: ScheduleTestCard.tsx, PERSONA_PAGES_MAPPING.md - Simple, nice design with clear component mapping            |
 
 ## 4. Decisions Log
 
-| ID    | Decision                                                                                  | Date       | Rationale                            | Impact                            |
-| ----- | ----------------------------------------------------------------------------------------- | ---------- | ------------------------------------ | --------------------------------- |
-| DEC-1 | Use in-memory store until post-Phase 3                                                    | 2025-09-30 | Scope constraint                     | Simplifies early iteration        |
-| DEC-2 | Defer real-time collab to later phase                                                     | 2025-09-30 | Out-of-scope per requirements        | Reduces complexity                |
-| DEC-3 | Preference cap fixed at 6 (dynamic later via DB)                                          | 2025-09-30 | Align with stakeholder answer        | Drives validation logic early     |
-| DEC-4 | Instructor load limits sourced from DB later; hard-coded constants now                    | 2025-09-30 | Clarification of interim approach    | Enables early load computations   |
-| DEC-5 | Exam categories: support `midterm`, optional `midterm2`, and `final`                      | 2025-09-30 | Mirrors external-departments dataset | Simplifies exam model             |
-| DEC-6 | External slot minimal fields locked (id,label,day,startTime,endTime,room?,reason?)        | 2025-09-30 | Prevent scope creep                  | Unblocks ExternalSlotForm         |
-| DEC-7 | Irregular student adds `advisorId` (faculty id) + future advising view                    | 2025-09-30 | Data requirement confirmed           | Future faculty advising page      |
-| DEC-8 | Use functional data transformation pattern: mockCourseOfferings → helpers → UI components | 2025-09-30 | User requirement for mockData as DB  | Clean separation of data/UI       |
-| DEC-9 | System scope limited to SWE department courses only; non-SWE courses are external refs    | 2025-09-30 | Core business requirement            | Prevents scope creep, clear focus |
+| ID     | Decision                                                                                           | Date       | Rationale                            | Impact                                 |
+| ------ | -------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------ | -------------------------------------- |
+| DEC-1  | Use in-memory store until post-Phase 3                                                             | 2025-09-30 | Scope constraint                     | Simplifies early iteration             |
+| DEC-2  | Defer real-time collab to later phase                                                              | 2025-09-30 | Out-of-scope per requirements        | Reduces complexity                     |
+| DEC-3  | Preference cap fixed at 6 (dynamic later via DB)                                                   | 2025-09-30 | Align with stakeholder answer        | Drives validation logic early          |
+| DEC-4  | Instructor load limits sourced from DB later; hard-coded constants now                             | 2025-09-30 | Clarification of interim approach    | Enables early load computations        |
+| DEC-5  | Exam categories: support `midterm`, optional `midterm2`, and `final`                               | 2025-09-30 | Mirrors external-departments dataset | Simplifies exam model                  |
+| DEC-6  | External slot minimal fields locked (id,label,day,startTime,endTime,room?,reason?)                 | 2025-09-30 | Prevent scope creep                  | Unblocks ExternalSlotForm              |
+| DEC-7  | Irregular student adds `advisorId` (faculty id) + future advising view                             | 2025-09-30 | Data requirement confirmed           | Future faculty advising page           |
+| DEC-8  | Use functional data transformation pattern: mockCourseOfferings → helpers → UI components          | 2025-09-30 | User requirement for mockData as DB  | Clean separation of data/UI            |
+| DEC-9  | System scope limited to SWE department courses only; non-SWE courses are external refs             | 2025-09-30 | Core business requirement            | Prevents scope creep, clear focus      |
+| DEC-10 | Schedule generation uses level-based approach (not individual student scheduling)                  | 2025-10-01 | User confirmed correct approach      | Simplifies algorithm, realistic        |
+| DEC-11 | Student distribution: 75/65/55/45/35 per level (275 total, max 75 to reflect attrition)            | 2025-10-01 | User requested realistic counts      | Accurate section sizing                |
+| DEC-12 | SWE faculty structure: 5 professors, 5 associate, 5 assistant (15 total, 186 hrs/week)             | 2025-10-01 | User requested comprehensive faculty | Sufficient teaching capacity           |
+| DEC-13 | Story-driven color system with 3 themed palettes (Academic Twilight, Desert Dawn, Emerald Library) | 2025-10-01 | User requested aesthetic enhancement | WCAG AA compliant, narrative depth     |
+| DEC-14 | shadcn/ui integration using CSS classes with OKLCH color format for all theme variables            | 2025-10-01 | Performance & SSR compatibility      | Zero-config, auto-adapting components  |
+| DEC-15 | KSU Royal set as default theme to align with university branding and official identity             | 2025-10-01 | KSU institutional project            | Professional appearance, brand aligned |
 
 ## 5. Risks & Mitigations
 

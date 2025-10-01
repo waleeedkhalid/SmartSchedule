@@ -3,4 +3,7 @@ export * as irregularStudents from "./irregular-students";
 export * as coursesEditor from "./courses-editor";
 export * as rules from "./rules";
 export { ExamTable } from "./ExamTable";
+export { ExamTable as ExamTableViewOnly } from "./ExamTableViewOnly";
 export { VersionTimeline } from "./VersionTimeline";
+export { GenerateScheduleDialog } from "./GenerateScheduleDialog";
+export { GeneratedScheduleResults } from "./GeneratedScheduleResults";

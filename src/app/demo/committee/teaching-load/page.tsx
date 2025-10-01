@@ -7,6 +7,7 @@ import {
   teachingLoadNavItems,
 } from "@/components/shared";
 
+// Teaching Load Committee only manages SWE department courses
 const mockInstructorLoads = [
   {
     instructorId: "dr-sarah",
@@ -14,10 +15,10 @@ const mockInstructorLoads = [
     assignedHours: 12,
     maxHours: 15,
     sections: [
-      { sectionId: "CSC212-01", courseCode: "CSC212", hours: 4 },
-      { sectionId: "CSC380-01", courseCode: "CSC380", hours: 3 },
-      { sectionId: "CSC484-01", courseCode: "CSC484", hours: 3 },
-      { sectionId: "CSC212-LAB", courseCode: "CSC212", hours: 2 },
+      { sectionId: "SWE211-01", courseCode: "SWE211", hours: 3 },
+      { sectionId: "SWE226-01", courseCode: "SWE226", hours: 3 },
+      { sectionId: "SWE363-01", courseCode: "SWE363", hours: 3 },
+      { sectionId: "SWE211-LAB", courseCode: "SWE211", hours: 3 },
     ],
   },
   {
@@ -26,12 +27,12 @@ const mockInstructorLoads = [
     assignedHours: 18,
     maxHours: 15, // overloaded
     sections: [
-      { sectionId: "MATH203-01", courseCode: "MATH203", hours: 3 },
-      { sectionId: "MATH203-02", courseCode: "MATH203", hours: 3 },
-      { sectionId: "MATH311-01", courseCode: "MATH311", hours: 3 },
-      { sectionId: "MATH151-01", courseCode: "MATH151", hours: 3 },
-      { sectionId: "MATH244-01", courseCode: "MATH244", hours: 3 },
-      { sectionId: "GRAD-SEMINAR", courseCode: "GRAD598", hours: 3 },
+      { sectionId: "SWE312-01", courseCode: "SWE312", hours: 3 },
+      { sectionId: "SWE312-02", courseCode: "SWE312", hours: 3 },
+      { sectionId: "SWE316-01", courseCode: "SWE316", hours: 3 },
+      { sectionId: "SWE314-01", courseCode: "SWE314", hours: 3 },
+      { sectionId: "SWE444-01", courseCode: "SWE444", hours: 3 },
+      { sectionId: "SWE485-01", courseCode: "SWE485", hours: 3 },
     ],
   },
   {
@@ -40,9 +41,9 @@ const mockInstructorLoads = [
     assignedHours: 9,
     maxHours: 15,
     sections: [
-      { sectionId: "CEN303-01", courseCode: "CEN303", hours: 3 },
-      { sectionId: "CEN415-01", courseCode: "CEN415", hours: 3 },
-      { sectionId: "CEN303-LAB", courseCode: "CEN303", hours: 3 },
+      { sectionId: "SWE418-01", courseCode: "SWE418", hours: 3 },
+      { sectionId: "SWE417-01", courseCode: "SWE417", hours: 3 },
+      { sectionId: "SWE418-LAB", courseCode: "SWE418", hours: 3 },
     ],
   },
 ];
@@ -57,12 +58,12 @@ const mockConflicts = [
       "Instructor assigned 18 hours, exceeding maximum limit of 15 hours",
     severity: "HIGH" as const,
     affectedSections: [
-      "MATH203-01",
-      "MATH203-02",
-      "MATH311-01",
-      "MATH151-01",
-      "MATH244-01",
-      "GRAD-SEMINAR",
+      "SWE312-01",
+      "SWE312-02",
+      "SWE316-01",
+      "SWE314-01",
+      "SWE444-01",
+      "SWE485-01",
     ],
   },
   {
@@ -70,9 +71,9 @@ const mockConflicts = [
     type: "TIME_OVERLAP" as const,
     instructorId: "dr-sarah",
     instructorName: "Dr. Sarah Al-Dossary",
-    message: "CSC212-01 and CSC212-LAB have overlapping time slots on Tuesday",
+    message: "SWE211-01 and SWE211-LAB have overlapping time slots on Tuesday",
     severity: "MEDIUM" as const,
-    affectedSections: ["CSC212-01", "CSC212-LAB"],
+    affectedSections: ["SWE211-01", "SWE211-LAB"],
   },
 ];
 
@@ -95,12 +96,7 @@ export default function Page(): React.ReactElement {
           />
 
           {/* Conflicts & Original Load Review */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Load Conflicts</h2>
-              <committee.teachingLoad.ConflictList conflicts={mockConflicts} />
-            </div>
-
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Alternative View</h2>
               <committee.teachingLoad.LoadReviewTable />

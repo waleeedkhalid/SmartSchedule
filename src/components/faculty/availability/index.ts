@@ -1,3 +1,1 @@
-export { FacultyAvailabilityForm } from "./FacultyAvailabilityForm";
-
-
+export { FacultyAvailability } from "./FacultyAvailabilityForm";

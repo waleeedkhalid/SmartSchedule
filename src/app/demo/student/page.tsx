@@ -21,11 +21,6 @@ export default function Page(): React.ReactElement {
       >
         <div className="space-y-8">
           <student.schedule.StudentScheduleGrid />
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <student.electives.ElectiveSurvey />
-            <student.feedback.FeedbackForm />
-          </div>
         </div>
       </PageContainer>
     </>

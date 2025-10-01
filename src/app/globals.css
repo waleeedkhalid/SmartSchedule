@@ -43,73 +43,372 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Default theme: KSU Royal - King Saud University Identity (Clean Neutrals) */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --background: oklch(1 0 0); /* Pure White (Replaced Cream/Soft White) */
+  --foreground: oklch(0 0 0); /* Official KSU Black for text */
+  --card: oklch(0.98 0 0); /* Near White for cards */
+  --card-foreground: oklch(0 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0.55 0.17 250); /* Official KSU Blue #0084BD */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.57 0.04 250); /* Official KSU Grey #748995 */
+  --secondary-foreground: oklch(0.15 0.03 250);
+  --muted: oklch(0.95 0 0); /* Light Grey for muted (Replaced Cream-based) */
+  --muted-foreground: oklch(0.4 0 0); /* Muted Dark Grey */
+  --accent: oklch(0.57 0.04 250); /* Official KSU Grey for accents */
+  --accent-foreground: oklch(0.15 0.03 250);
+  --destructive: oklch(
+    0.5 0.15 25
+  ); /* Destructive Red (Retained standard semantic) */
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.9 0 0); /* Light Grey Border */
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.55 0.17 250); /* KSU Blue for ring */
+
+  /* Chart Colors (Updated secondary/accent to KSU Grey) */
+  --chart-1: oklch(0.55 0.17 250); /* KSU Blue */
+  --chart-2: oklch(0.57 0.04 250); /* KSU Grey */
+  --chart-3: oklch(0.45 0.15 135); /* Success Green */
+  --chart-4: oklch(0.5 0.11 55); /* Warning Orange */
+  --chart-5: oklch(0.65 0.16 230); /* Info Blue */
+
+  /* Sidebar Colors (Updated based on new neutrals and primary/secondary) */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0 0 0);
+  --sidebar-primary: oklch(0.55 0.17 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.57 0.04 250);
+  --sidebar-accent-foreground: oklch(0.15 0.03 250);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: oklch(0.55 0.17 250);
 }
 
+/* Dark theme: KSU Royal - King Saud University Identity (No Golden/Cream Tones) */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: oklch(0.13 0.03 250); /* Dark Background (Retained) */
+  --foreground: oklch(0.9 0.02 250); /* Light Text (Retained) */
+  --card: oklch(0.2 0.04 250); /* Dark Card (Retained) */
+  --card-foreground: oklch(0.9 0.02 250);
+  --popover: oklch(0.2 0.04 250);
+  --popover-foreground: oklch(0.9 0.02 250);
+  --primary: oklch(0.4 0.15 250); /* Darkened KSU Blue for primary action */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.57 0.04 250); /* Official KSU Grey #748995 */
+  --secondary-foreground: oklch(0.9 0.02 250); /* Light text on KSU Grey */
+  --muted: oklch(0.25 0.05 250);
+  --muted-foreground: oklch(0.83 0.02 250);
+  --accent: oklch(0.57 0.04 250); /* Official KSU Grey for accents */
+  --accent-foreground: oklch(0.9 0.02 250); /* Light text on KSU Grey */
+  --destructive: oklch(0.68 0.18 25); /* Destructive Red (Retained) */
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.55 0.17 250); /* KSU Blue for ring */
+  --chart-1: oklch(0.55 0.17 250); /* Official KSU Blue */
+  --chart-2: oklch(0.57 0.04 250); /* Official KSU Grey */
+  --chart-3: oklch(0.68 0.15 135); /* Success Green (Retained) */
+  --chart-4: oklch(0.72 0.15 45); /* Warning Orange (Retained) */
+  --chart-5: oklch(0.7 0.16 230); /* Info Blue (Retained) */
+  --sidebar: oklch(0.2 0.04 250);
+  --sidebar-foreground: oklch(0.9 0.02 250);
+  --sidebar-primary: oklch(0.55 0.17 250); /* KSU Blue */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.57 0.04 250); /* KSU Grey */
+  --sidebar-accent-foreground: oklch(0.9 0.02 250);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.55 0.17 250);
+}
+/* ============================================================================
+   CUSTOM COLOR PALETTES - SmartSchedule Themed Colors
+   ============================================================================ */
+
+/* Theme 1: Academic Twilight - The Scholar's Evening */
+.theme-academic-twilight {
+  --background: oklch(0.96 0.01 65); /* parchment #f4f1e8 */
+  --foreground: oklch(0.18 0.02 270); /* textPrimary #2d2d3a */
+  --card: oklch(0.91 0.02 65); /* manuscript #e8e3d3 */
+  --card-foreground: oklch(0.18 0.02 270);
+  --popover: oklch(0.96 0.01 65);
+  --popover-foreground: oklch(0.18 0.02 270);
+  --primary: oklch(0.27 0.08 265); /* scholarBlue #2d3561 */
+  --primary-foreground: oklch(0.96 0.01 65);
+  --secondary: oklch(0.35 0.08 260); /* inkwell #3d4a7a */
+  --secondary-foreground: oklch(0.96 0.01 65);
+  --muted: oklch(0.91 0.02 65);
+  --muted-foreground: oklch(0.38 0.02 265);
+  --accent: oklch(0.71 0.08 60); /* amberGlow #d4a574 */
+  --accent-foreground: oklch(0.12 0.02 270);
+  --destructive: oklch(0.52 0.12 15); /* error #a65959 */
+  --destructive-foreground: oklch(0.96 0.01 65);
+  --border: oklch(0.91 0.02 65);
+  --input: oklch(0.91 0.02 65);
+  --ring: oklch(0.5 0.1 290); /* twilightViolet #6b5b95 */
+  --chart-1: oklch(0.27 0.08 265);
+  --chart-2: oklch(0.71 0.08 60);
+  --chart-3: oklch(0.6 0.1 130); /* success #7ba05b */
+  --chart-4: oklch(0.5 0.1 290);
+  --chart-5: oklch(0.55 0.08 230); /* info #5b8ba6 */
+  --sidebar: oklch(0.91 0.02 65);
+  --sidebar-foreground: oklch(0.18 0.02 270);
+  --sidebar-primary: oklch(0.27 0.08 265);
+  --sidebar-primary-foreground: oklch(0.96 0.01 65);
+  --sidebar-accent: oklch(0.35 0.08 260);
+  --sidebar-accent-foreground: oklch(0.96 0.01 65);
+  --sidebar-border: oklch(0.91 0.02 65);
+  --sidebar-ring: oklch(0.5 0.1 290);
+}
+
+.theme-academic-twilight.dark {
+  --background: oklch(0.12 0.02 270); /* midnight #1a1f3a */
+  --foreground: oklch(0.96 0.01 65);
+  --card: oklch(0.27 0.08 265);
+  --card-foreground: oklch(0.96 0.01 65);
+  --popover: oklch(0.27 0.08 265);
+  --popover-foreground: oklch(0.96 0.01 65);
+  --primary: oklch(0.71 0.08 60);
+  --primary-foreground: oklch(0.12 0.02 270);
+  --secondary: oklch(0.35 0.08 260);
+  --secondary-foreground: oklch(0.96 0.01 65);
+  --muted: oklch(0.35 0.08 260);
+  --muted-foreground: oklch(0.55 0.02 265);
+  --accent: oklch(0.5 0.1 290);
+  --accent-foreground: oklch(0.96 0.01 65);
+  --destructive: oklch(0.52 0.12 15);
+  --destructive-foreground: oklch(0.96 0.01 65);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.68 0.08 50);
+  --chart-1: oklch(0.5 0.1 290);
+  --chart-2: oklch(0.71 0.08 60);
+  --chart-3: oklch(0.6 0.1 130);
+  --chart-4: oklch(0.71 0.08 60);
+  --chart-5: oklch(0.55 0.08 230);
+  --sidebar: oklch(0.27 0.08 265);
+  --sidebar-foreground: oklch(0.96 0.01 65);
+  --sidebar-primary: oklch(0.71 0.08 60);
+  --sidebar-primary-foreground: oklch(0.12 0.02 270);
+  --sidebar-accent: oklch(0.35 0.08 260);
+  --sidebar-accent-foreground: oklch(0.96 0.01 65);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.68 0.08 50);
+}
+
+/* Theme 2: Desert Dawn - The Early Morning Campus */
+.theme-desert-dawn {
+  --background: oklch(0.97 0.01 60); /* morningMist #f9f5ef */
+  --foreground: oklch(0.2 0.03 40); /* textPrimary #3a2f2a */
+  --card: oklch(0.88 0.05 60); /* sandstone #e8d5b5 */
+  --card-foreground: oklch(0.2 0.03 40);
+  --popover: oklch(0.97 0.01 60);
+  --popover-foreground: oklch(0.2 0.03 40);
+  --primary: oklch(0.57 0.15 35); /* terracotta #c65d3b */
+  --primary-foreground: oklch(0.97 0.01 60);
+  --secondary: oklch(0.72 0.08 50); /* sunbaked #d4a276 */
+  --secondary-foreground: oklch(0.43 0.08 35);
+  --muted: oklch(0.88 0.05 60);
+  --muted-foreground: oklch(0.42 0.03 40);
+  --accent: oklch(0.79 0.12 55); /* sunriseGold #e6b35c */
+  --accent-foreground: oklch(0.43 0.08 35);
+  --destructive: oklch(0.57 0.15 35);
+  --destructive-foreground: oklch(0.97 0.01 60);
+  --border: oklch(0.88 0.05 60);
+  --input: oklch(0.88 0.05 60);
+  --ring: oklch(0.64 0.08 230); /* skyBloom #7ba8c9 */
+  --chart-1: oklch(0.57 0.15 35);
+  --chart-2: oklch(0.79 0.12 55);
+  --chart-3: oklch(0.62 0.1 120); /* desertSage #8b9e7d */
+  --chart-4: oklch(0.64 0.08 230);
+  --chart-5: oklch(0.72 0.08 50);
+  --sidebar: oklch(0.88 0.05 60);
+  --sidebar-foreground: oklch(0.2 0.03 40);
+  --sidebar-primary: oklch(0.57 0.15 35);
+  --sidebar-primary-foreground: oklch(0.97 0.01 60);
+  --sidebar-accent: oklch(0.72 0.08 50);
+  --sidebar-accent-foreground: oklch(0.43 0.08 35);
+  --sidebar-border: oklch(0.88 0.05 60);
+  --sidebar-ring: oklch(0.64 0.08 230);
+}
+
+.theme-desert-dawn.dark {
+  --background: oklch(0.43 0.08 35); /* clayPot #9c5d3f */
+  --foreground: oklch(0.97 0.01 60);
+  --card: oklch(0.57 0.15 35);
+  --card-foreground: oklch(0.97 0.01 60);
+  --popover: oklch(0.57 0.15 35);
+  --popover-foreground: oklch(0.97 0.01 60);
+  --primary: oklch(0.79 0.12 55);
+  --primary-foreground: oklch(0.43 0.08 35);
+  --secondary: oklch(0.72 0.08 50);
+  --secondary-foreground: oklch(0.97 0.01 60);
+  --muted: oklch(0.72 0.08 50);
+  --muted-foreground: oklch(0.6 0.03 40);
+  --accent: oklch(0.62 0.1 120);
+  --accent-foreground: oklch(0.97 0.01 60);
+  --destructive: oklch(0.57 0.15 35);
+  --destructive-foreground: oklch(0.97 0.01 60);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.64 0.08 230);
+  --chart-1: oklch(0.64 0.08 230);
+  --chart-2: oklch(0.79 0.12 55);
+  --chart-3: oklch(0.62 0.1 120);
+  --chart-4: oklch(0.79 0.12 55);
+  --chart-5: oklch(0.64 0.08 230);
+  --sidebar: oklch(0.57 0.15 35);
+  --sidebar-foreground: oklch(0.97 0.01 60);
+  --sidebar-primary: oklch(0.79 0.12 55);
+  --sidebar-primary-foreground: oklch(0.43 0.08 35);
+  --sidebar-accent: oklch(0.72 0.08 50);
+  --sidebar-accent-foreground: oklch(0.97 0.01 60);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.64 0.08 230);
+}
+
+/* Theme 3: Emerald Library - The Timeless Archive */
+.theme-emerald-library {
+  --background: oklch(0.95 0.01 75); /* ivoryPage #f5f2e8 */
+  --foreground: oklch(0.15 0.02 40); /* textPrimary #2d2318 */
+  --card: oklch(0.95 0.01 75);
+  --card-foreground: oklch(0.15 0.02 40);
+  --popover: oklch(0.95 0.01 75);
+  --popover-foreground: oklch(0.15 0.02 40);
+  --primary: oklch(0.45 0.08 160); /* emerald #3d6e5c */
+  --primary-foreground: oklch(0.95 0.01 75);
+  --secondary: oklch(0.58 0.06 145); /* mossGreen #6b8e7a */
+  --secondary-foreground: oklch(0.95 0.01 75);
+  --muted: oklch(0.95 0.01 75);
+  --muted-foreground: oklch(0.35 0.02 40);
+  --accent: oklch(0.65 0.08 65); /* brassFixture #b89968 */
+  --accent-foreground: oklch(0.15 0.02 40);
+  --destructive: oklch(0.42 0.1 15); /* burgundyLeather #854442 */
+  --destructive-foreground: oklch(0.95 0.01 75);
+  --border: oklch(0.38 0.04 45); /* oakPanel #5c4a3a */
+  --input: oklch(0.38 0.04 45);
+  --ring: oklch(0.45 0.08 160);
+  --chart-1: oklch(0.45 0.08 160);
+  --chart-2: oklch(0.65 0.08 65);
+  --chart-3: oklch(0.58 0.06 145);
+  --chart-4: oklch(0.42 0.1 15);
+  --chart-5: oklch(0.5 0.06 220); /* info #5a7a8c */
+  --sidebar: oklch(0.95 0.01 75);
+  --sidebar-foreground: oklch(0.15 0.02 40);
+  --sidebar-primary: oklch(0.45 0.08 160);
+  --sidebar-primary-foreground: oklch(0.95 0.01 75);
+  --sidebar-accent: oklch(0.58 0.06 145);
+  --sidebar-accent-foreground: oklch(0.95 0.01 75);
+  --sidebar-border: oklch(0.38 0.04 45);
+  --sidebar-ring: oklch(0.45 0.08 160);
+}
+
+.theme-emerald-library.dark {
+  --background: oklch(0.23 0.04 155); /* forestDeep #1c3a2e */
+  --foreground: oklch(0.95 0.01 75);
+  --card: oklch(0.45 0.08 160);
+  --card-foreground: oklch(0.95 0.01 75);
+  --popover: oklch(0.45 0.08 160);
+  --popover-foreground: oklch(0.95 0.01 75);
+  --primary: oklch(0.65 0.08 65);
+  --primary-foreground: oklch(0.23 0.04 155);
+  --secondary: oklch(0.38 0.04 45);
+  --secondary-foreground: oklch(0.95 0.01 75);
+  --muted: oklch(0.38 0.04 45);
+  --muted-foreground: oklch(0.48 0.02 40);
+  --accent: oklch(0.58 0.06 145);
+  --accent-foreground: oklch(0.95 0.01 75);
+  --destructive: oklch(0.42 0.1 15);
+  --destructive-foreground: oklch(0.95 0.01 75);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.65 0.08 65);
+  --chart-1: oklch(0.58 0.06 145);
+  --chart-2: oklch(0.65 0.08 65);
+  --chart-3: oklch(0.58 0.06 145);
+  --chart-4: oklch(0.65 0.08 65);
+  --chart-5: oklch(0.5 0.06 220);
+  --sidebar: oklch(0.45 0.08 160);
+  --sidebar-foreground: oklch(0.95 0.01 75);
+  --sidebar-primary: oklch(0.65 0.08 65);
+  --sidebar-primary-foreground: oklch(0.23 0.04 155);
+  --sidebar-accent: oklch(0.38 0.04 45);
+  --sidebar-accent-foreground: oklch(0.95 0.01 75);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.65 0.08 65);
+}
+
+/* Theme 4: KSU Royal - Balanced Contrast, Identity-Aligned */
+.theme-ksu-royal {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0); /* Pure White */
+  --foreground: oklch(0 0 0);
+  --card: oklch(0.98 0 0);
+  --card-foreground: oklch(0 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0.55 0.17 250); /* Official KSU Blue #0084BD */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.85 0.05 250); /* Light Blue Accent (Replaced Grey) */
+  --secondary-foreground: oklch(0.15 0.03 250);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.4 0 0);
+  --accent: oklch(0.85 0.05 250); /* Light Blue Accent (Replaced Grey) */
+  --accent-foreground: oklch(0.15 0.03 250);
+  --destructive: oklch(0.5 0.15 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.55 0.17 250);
+  --chart-1: oklch(0.55 0.17 250); /* KSU Blue */
+  --chart-2: oklch(0.85 0.05 250); /* Light Blue Accent */
+  --chart-3: oklch(0.45 0.15 135);
+  --chart-4: oklch(0.5 0.11 55);
+  --chart-5: oklch(0.65 0.16 230);
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0 0 0);
+  --sidebar-primary: oklch(0.55 0.17 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.85 0.05 250); /* Light Blue Accent */
+  --sidebar-accent-foreground: oklch(0.15 0.03 250);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: oklch(0.55 0.17 250);
+}
+
+/* Dark Theme: KSU Royal - King Saud University Identity (Blue-Focused Accent) */
+.theme-ksu-royal.dark {
+  --background: oklch(0.13 0.03 250);
+  --foreground: oklch(0.9 0.02 250);
+  --card: oklch(0.2 0.04 250);
+  --card-foreground: oklch(0.9 0.02 250);
+  --popover: oklch(0.2 0.04 250);
+  --popover-foreground: oklch(0.9 0.02 250);
+  --primary: oklch(0.4 0.15 250); /* Darkened KSU Blue */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.35 0.07 250); /* Muted Blue Accent (Replaced Grey) */
+  --secondary-foreground: oklch(0.9 0.02 250);
+  --muted: oklch(0.25 0.05 250);
+  --muted-foreground: oklch(0.83 0.02 250);
+  --accent: oklch(0.35 0.07 250); /* Muted Blue Accent (Replaced Grey) */
+  --accent-foreground: oklch(0.9 0.02 250);
+  --destructive: oklch(0.68 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.55 0.17 250);
+  --chart-1: oklch(0.55 0.17 250); /* Official KSU Blue */
+  --chart-2: oklch(0.35 0.07 250); /* Muted Blue Accent */
+  --chart-3: oklch(0.68 0.15 135);
+  --chart-4: oklch(0.72 0.15 45);
+  --chart-5: oklch(0.7 0.16 230);
+  --sidebar: oklch(0.2 0.04 250);
+  --sidebar-foreground: oklch(0.9 0.02 250);
+  --sidebar-primary: oklch(0.55 0.17 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.35 0.07 250); /* Muted Blue Accent */
+  --sidebar-accent-foreground: oklch(0.9 0.02 250);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.55 0.17 250);
 }
 
 @layer base {

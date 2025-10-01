@@ -6,15 +6,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Home,
-  Calendar,
-  Users,
-  ClipboardList,
-  FileText,
-  Bell,
-} from "lucide-react";
+import { Home } from "lucide-react";
+import { NotificationsDropdown } from "../NotificationsDropdown";
 
 export interface NavItem {
   label: string;
@@ -53,33 +46,34 @@ export function PersonaNavigation({
             <h1 className="text-lg font-semibold">{personaName}</h1>
           </div>
 
-          {/* Notifications Bell (placeholder) */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
-          </Button>
+          {/* Notifications dropdown (replaces placeholder button) */}
+          <NotificationsDropdown />
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex gap-2 overflow-x-auto pb-2">
+        <nav
+          className="relative flex gap-1 overflow-x-auto pb-2 scrollbar-hide"
+          role="navigation"
+          aria-label="Main navigation"
+        >
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive = pathname === item.href;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 rounded-t-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap",
+                  "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground border-transparent hover:border-muted"
                 )}
+                aria-current={isActive ? "page" : undefined}
               >
-                {Icon && <Icon className="h-4 w-4" />}
-                {item.label}
+                {Icon && <Icon className="h-4 w-4 flex-shrink-0" />}
+                <span>{item.label}</span>
               </Link>
             );
           })}

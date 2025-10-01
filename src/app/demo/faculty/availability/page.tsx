@@ -8,9 +8,24 @@ import {
 } from "@/components/shared";
 
 export default function Page(): React.ReactElement {
-  const handleSubmitAvailability = (availability: unknown) => {
+  const handleSubmitAvailability = async (availability: unknown) => {
     console.log("Submitting faculty availability:", availability);
-    // TODO: Send to API endpoint POST /api/faculty/availability
+
+    try {
+      const response = await fetch("/api/faculty/availability", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(availability),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to submit availability", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error submitting availability", error);
+    }
   };
 
   return (
@@ -25,9 +40,7 @@ export default function Page(): React.ReactElement {
         description="Set your preferred and unavailable time slots for teaching"
       >
         <div className="max-w-4xl">
-          <faculty.availability.FacultyAvailabilityForm
-            onSubmit={handleSubmitAvailability}
-          />
+          <faculty.availability.FacultyAvailability />
         </div>
       </PageContainer>
     </>

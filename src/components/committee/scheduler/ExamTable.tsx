@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -10,14 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,9 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import TimePickerLite from "@/components/ui/time-picker-lite";
+import { Calendar, Clock, Pencil, Trash2 } from "lucide-react";
 
 export type ExamType = "midterm" | "midterm2" | "final";
 
@@ -46,47 +46,80 @@ export interface ExamRecord {
 
 interface ExamTableProps {
   exams: ExamRecord[];
+  sectionsLookup: Array<{ sectionId: string; courseCode: string }>;
   onCreate?: (exam: Omit<ExamRecord, "id">) => void;
   onUpdate?: (id: string, exam: Omit<ExamRecord, "id">) => void;
   onDelete?: (id: string) => void;
-  sectionsLookup?: { sectionId: string; courseCode: string }[];
 }
+
+type ExamDraft = Omit<ExamRecord, "id">;
+
+const DEFAULT_DRAFT: ExamDraft = {
+  courseCode: "",
+  courseName: "",
+  type: "midterm",
+  date: "",
+  time: "",
+  duration: 90,
+  room: "",
+  sectionIds: [],
+};
 
 export const ExamTable: React.FC<ExamTableProps> = ({
   exams,
+  sectionsLookup,
   onCreate,
   onUpdate,
   onDelete,
-  sectionsLookup = [],
 }) => {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Omit<ExamRecord, "id">>({
-    courseCode: "",
-    courseName: "",
-    type: "midterm",
-    date: "",
-    time: "",
-    duration: 90,
-    room: "",
-    sectionIds: [],
-  });
+  const [draft, setDraft] = useState<ExamDraft>(DEFAULT_DRAFT);
 
-  function reset() {
-    setDraft({
-      courseCode: "",
-      courseName: "",
-      type: "midterm",
-      date: "",
-      time: "",
-      duration: 90,
-      room: "",
-      sectionIds: [],
+  const sectionIdsForCourse = useMemo(() => {
+    if (!draft.courseCode) return [] as string[];
+    return sectionsLookup
+      .filter((section) => section.courseCode === draft.courseCode)
+      .map((section) => section.sectionId);
+  }, [draft.courseCode, sectionsLookup]);
+
+  const courseNameFromExisting = useMemo(() => {
+    if (!draft.courseCode) return "";
+    const existingExam = exams.find(
+      (exam) => exam.courseCode.toLowerCase() === draft.courseCode.toLowerCase()
+    );
+    return existingExam?.courseName ?? "";
+  }, [draft.courseCode, exams]);
+
+  const formatDate = (date: string) => {
+    if (!date) return "—";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return parsed.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
-    setEditingId(null);
-  }
+  };
 
-  function handleEdit(exam: ExamRecord) {
+  const formatTime = (time: string) => {
+    if (!time) return "—";
+    const [hours, minutes] = time.split(":");
+    const hour = Number.parseInt(hours ?? "", 10);
+    if (Number.isNaN(hour) || !minutes) return time;
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const reset = () => {
+    setEditingId(null);
+    setDraft(DEFAULT_DRAFT);
+  };
+
+  const handleEdit = (exam: ExamRecord) => {
+    setEditingId(exam.id);
     setDraft({
       courseCode: exam.courseCode,
       courseName: exam.courseName,
@@ -94,45 +127,62 @@ export const ExamTable: React.FC<ExamTableProps> = ({
       date: exam.date,
       time: exam.time,
       duration: exam.duration,
-      room: exam.room || "",
+      room: exam.room ?? "",
       sectionIds: exam.sectionIds,
     });
-    setEditingId(exam.id);
     setOpen(true);
-  }
+  };
 
-  function handleDelete(id: string, courseCode: string) {
+  const handleDelete = (id: string, courseCode: string) => {
+    if (!onDelete) return;
     if (confirm(`Delete exam for ${courseCode}?`)) {
-      onDelete?.(id);
+      onDelete(id);
       console.log("Deleting exam:", id);
     }
-  }
+  };
 
-  function submit() {
+  const handleSubmit = () => {
     if (!draft.courseCode || !draft.date || !draft.time) return;
 
+    const payload: ExamDraft = {
+      ...draft,
+      courseName:
+        draft.courseName || courseNameFromExisting || draft.courseCode,
+      sectionIds:
+        sectionIdsForCourse.length > 0
+          ? sectionIdsForCourse
+          : draft.sectionIds,
+    };
+
     if (editingId) {
-      onUpdate?.(editingId, draft);
-      console.log("Updating exam:", editingId, draft);
+      onUpdate?.(editingId, payload);
+      console.log("Updating exam:", editingId, payload);
     } else {
-      onCreate?.(draft);
-      console.log("Creating exam:", draft);
+      onCreate?.(payload);
+      console.log("Creating exam:", payload);
     }
 
     reset();
     setOpen(false);
-  }
+  };
 
-  const sectionIdsForCourse = sectionsLookup
-    .filter((s) => s.courseCode === draft.courseCode)
-    .map((s) => s.sectionId);
+  const examTypeLabel: Record<ExamType, string> = {
+    midterm: "Midterm",
+    midterm2: "Midterm 2",
+    final: "Final",
+  };
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Exam Schedule</CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg">Exam Schedule</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Manage midterm and final exam assignments
+            </p>
+          </div>
+          <Dialog open={open} onOpenChange={(value) => (value ? setOpen(true) : setOpen(false))}>
             <DialogTrigger asChild>
               <Button
                 size="sm"
@@ -158,9 +208,20 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </label>
                     <Input
                       value={draft.courseCode}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, courseCode: e.target.value }))
-                      }
+                      onChange={(event) => {
+                        const nextCode = event.target.value.toUpperCase();
+                        setDraft((prev) => ({
+                          ...prev,
+                          courseCode: nextCode,
+                          sectionIds: sectionsLookup
+                            .filter(
+                              (section) =>
+                                section.courseCode.toLowerCase() ===
+                                nextCode.toLowerCase()
+                            )
+                            .map((section) => section.sectionId),
+                        }));
+                      }}
                       placeholder="e.g. SWE455"
                     />
                   </div>
@@ -170,12 +231,12 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </label>
                     <Select
                       value={draft.type}
-                      onValueChange={(v: ExamType) =>
-                        setDraft((d) => ({ ...d, type: v }))
+                      onValueChange={(value: ExamType) =>
+                        setDraft((prev) => ({ ...prev, type: value }))
                       }
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="midterm">Midterm</SelectItem>
@@ -185,6 +246,21 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </Select>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">
+                    Course Name (optional)
+                  </label>
+                  <Input
+                    value={draft.courseName}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        courseName: event.target.value,
+                      }))
+                    }
+                    placeholder={courseNameFromExisting || "Enter course title"}
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <label className="block text-xs font-medium mb-1">
@@ -193,8 +269,11 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     <Input
                       type="date"
                       value={draft.date}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, date: e.target.value }))
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          date: event.target.value,
+                        }))
                       }
                     />
                   </div>
@@ -204,7 +283,12 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </label>
                     <TimePickerLite
                       value={draft.time}
-                      onChange={(time) => setDraft((d) => ({ ...d, time }))}
+                      onChange={(time) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          time,
+                        }))
+                      }
                       minuteStep={15}
                       use12Hours={false}
                       placeholder="Select time"
@@ -219,11 +303,15 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </label>
                     <Input
                       type="number"
+                      min={30}
+                      step={5}
                       value={draft.duration}
-                      onChange={(e) =>
-                        setDraft((d) => ({
-                          ...d,
-                          duration: parseInt(e.target.value) || 90,
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          duration:
+                            Number.parseInt(event.target.value, 10) ||
+                            DEFAULT_DRAFT.duration,
                         }))
                       }
                     />
@@ -233,9 +321,12 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                       Room
                     </label>
                     <Input
-                      value={draft.room}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, room: e.target.value }))
+                      value={draft.room ?? ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          room: event.target.value,
+                        }))
                       }
                       placeholder="Optional"
                     />
@@ -261,7 +352,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                   <Button
                     type="button"
                     size="sm"
-                    onClick={submit}
+                    onClick={handleSubmit}
                     disabled={!draft.courseCode || !draft.date || !draft.time}
                   >
                     {editingId ? "Update" : "Create"}
@@ -279,11 +370,11 @@ export const ExamTable: React.FC<ExamTableProps> = ({
               <TableRow>
                 <TableHead className="w-32">Course</TableHead>
                 <TableHead className="w-24">Type</TableHead>
-                <TableHead className="w-30">Date</TableHead>
-                <TableHead className="w-20">Time(24h)</TableHead>
+                <TableHead className="w-40">Date</TableHead>
+                <TableHead className="w-32">Time</TableHead>
                 <TableHead className="w-24">Duration</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead className="w-32">Room</TableHead>
+                <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -294,24 +385,33 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                       <div className="font-medium text-sm">
                         {exam.courseCode}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                      <div className="text-xs text-muted-foreground truncate max-w-[140px]">
                         {exam.courseName}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] uppercase"
-                    >
-                      {exam.type}
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {examTypeLabel[exam.type]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{exam.date}</TableCell>
-                  <TableCell className="text-sm">{exam.time}</TableCell>
-                  <TableCell className="text-sm">{exam.duration}m</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatDate(exam.date)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatTime(exam.time)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm">{exam.duration} min</TableCell>
                   <TableCell className="text-sm">
-                    {exam.room || (
+                    {exam.room ? (
+                      exam.room
+                    ) : (
                       <span className="text-muted-foreground text-xs">TBD</span>
                     )}
                   </TableCell>

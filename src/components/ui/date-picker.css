@@ -1,0 +1,333 @@
+/* ============================================================================
+   ANT DESIGN DATE PICKER STYLES
+   Recreated from scratch to match Ant Design's visual design
+   ============================================================================ */
+
+/* Base DatePicker Container */
+.ant-datepicker {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-width: 280px;
+}
+
+.ant-datepicker.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ant-rangepicker {
+  max-width: 380px;
+}
+
+/* Input Container */
+.ant-datepicker-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 11px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 6px);
+  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.ant-datepicker-input:hover:not(
+    .ant-datepicker.disabled .ant-datepicker-input
+  ) {
+  border-color: var(--primary);
+}
+
+.ant-datepicker-input:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(var(--primary), 0.1);
+  outline: none;
+}
+
+/* Input Field */
+.ant-datepicker-input-field {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.5715;
+  padding: 0;
+  min-width: 0;
+}
+
+.ant-datepicker-input-field::placeholder {
+  color: var(--muted-foreground);
+}
+
+.ant-datepicker-input-field:disabled {
+  cursor: not-allowed;
+  color: var(--muted-foreground);
+}
+
+/* Range Separator */
+.ant-datepicker-separator {
+  padding: 0 8px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+/* Suffix Icons */
+.ant-datepicker-suffix {
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--muted-foreground);
+}
+
+.ant-datepicker-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  transition: color 0.2s;
+}
+
+.ant-datepicker-clear-btn:hover {
+  color: var(--foreground);
+}
+
+/* Dropdown Container */
+.ant-datepicker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1050;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
+    0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  animation: antSlideUpIn 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes antSlideUpIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Calendar Component */
+.ant-datepicker-calendar {
+  padding: 8px;
+  min-width: 280px;
+}
+
+/* Calendar Header */
+.ant-datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.ant-datepicker-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: all 0.2s;
+}
+
+.ant-datepicker-header-btn:hover {
+  background: var(--muted);
+  color: var(--primary);
+}
+
+.ant-datepicker-header-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--foreground);
+  user-select: none;
+}
+
+/* Weekdays */
+.ant-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.ant-datepicker-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  padding: 4px 0;
+  user-select: none;
+}
+
+/* Days Grid */
+.ant-datepicker-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.ant-datepicker-day-empty {
+  height: 32px;
+}
+
+.ant-datepicker-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.ant-datepicker-day:hover:not(:disabled) {
+  background: var(--muted);
+}
+
+.ant-datepicker-day.today {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ant-datepicker-day.today::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.ant-datepicker-day.selected {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.ant-datepicker-day.selected:hover {
+  background: var(--primary);
+}
+
+.ant-datepicker-day.disabled {
+  color: var(--muted-foreground);
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ant-datepicker-day.disabled:hover {
+  background: transparent;
+}
+
+/* Range Picker Specific Styles */
+.ant-datepicker-day.in-range {
+  background: oklch(from var(--primary) l c h / 0.1);
+  border-radius: 0;
+}
+
+.ant-datepicker-day.range-start {
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm, 4px) 0 0 var(--radius-sm, 4px);
+}
+
+.ant-datepicker-day.range-end {
+  background: var(--primary);
+  color: white;
+  border-radius: 0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0;
+}
+
+.ant-datepicker-day.range-start.range-end {
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .ant-datepicker {
+    max-width: 100%;
+  }
+
+  .ant-rangepicker {
+    max-width: 100%;
+  }
+
+  .ant-datepicker-dropdown {
+    position: fixed;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+    max-width: calc(100vw - 32px);
+  }
+
+  .ant-datepicker-calendar {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .ant-datepicker-day {
+    height: 36px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .ant-datepicker-dropdown {
+    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.48),
+      0 6px 16px 0 rgba(0, 0, 0, 0.32), 0 9px 28px 8px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Focus Styles for Accessibility */
+.ant-datepicker-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.ant-datepicker-header-btn:focus-visible,
+.ant-datepicker-day:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Keyboard Navigation Indicator */
+.ant-datepicker-day:focus {
+  box-shadow: 0 0 0 2px var(--ring) inset;
+}
