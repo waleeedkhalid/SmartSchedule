@@ -29,10 +29,7 @@ export interface ScheduleGenerationResult {
  */
 function parseDays(dayStr: string): string[] {
   if (!dayStr) return [];
-  return dayStr
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  return dayStr.trim().split(/\s+/).filter(Boolean);
 }
 
 /**
