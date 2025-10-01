@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Filter } from "lucide-react";
 import { mockElectivePackages } from "@/data/mockData";
 
 interface SelectedCourse {
@@ -33,6 +33,7 @@ export function ElectiveSurvey({
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
 
   // Get all elective courses from SWE plan (mockElectivePackages)
   const electiveCourses = mockElectivePackages.flatMap((pkg) =>
@@ -42,6 +43,11 @@ export function ElectiveSurvey({
       category: pkg.label,
       credits: course.credits,
     }))
+  );
+
+  // Get unique categories for filters
+  const categories = Array.from(
+    new Set(electiveCourses.map((c) => c.category))
   );
 
   const handleCourseSelect = (code: string) => {
@@ -67,10 +73,15 @@ export function ElectiveSurvey({
     setSelectedCourses(updatedCourses);
   };
 
-  const availableCourses = electiveCourses.filter(
-    (course) =>
-      !selectedCourses.find((selected) => selected.code === course.code)
-  );
+  // Filter available courses based on active filter
+  const availableCourses = electiveCourses
+    .filter(
+      (course) =>
+        !selectedCourses.find((selected) => selected.code === course.code)
+    )
+    .filter((course) =>
+      activeFilter === "all" ? true : course.category === activeFilter
+    );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -122,6 +133,56 @@ export function ElectiveSurvey({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Category Filters */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label className="text-xs font-medium text-muted-foreground">
+                Filter by category
+              </Label>
+              {activeFilter !== "all" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-2 text-xs"
+                  onClick={() => setActiveFilter("all")}
+                >
+                  Clear filter
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant={activeFilter === "all" ? "default" : "outline"}
+                className="cursor-pointer hover:bg-accent transition-colors"
+                onClick={() => setActiveFilter("all")}
+              >
+                All Courses ({electiveCourses.length})
+              </Badge>
+              {categories.map((category) => {
+                const count = electiveCourses.filter(
+                  (c) => c.category === category
+                ).length;
+                const availableCount = electiveCourses.filter(
+                  (c) =>
+                    c.category === category &&
+                    !selectedCourses.find((s) => s.code === c.code)
+                ).length;
+                return (
+                  <Badge
+                    key={category}
+                    variant={activeFilter === category ? "default" : "outline"}
+                    className="cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => setActiveFilter(category)}
+                  >
+                    {category} ({availableCount}/{count})
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="select-course">Choose courses in order</Label>
             <Select
@@ -135,8 +196,12 @@ export function ElectiveSurvey({
                     availableCourses.length > 0
                       ? selectedCourses.length >= maxChoices
                         ? `Maximum ${maxChoices} courses selected`
-                        : "Select a course..."
-                      : "All courses selected"
+                        : activeFilter === "all"
+                        ? "Select a course..."
+                        : `Select from ${activeFilter}...`
+                      : activeFilter === "all"
+                      ? "All courses selected"
+                      : `All ${activeFilter} courses selected`
                   }
                 />
               </SelectTrigger>

@@ -137,6 +137,8 @@ Legend: | ID | Persona/Area | Description | Status | Notes |
 | 2025-09-30 | Enhanced IrregularStudentFormList with local state + full CRUD (create/edit/delete)               | system | REG-2                                                                                                             |
 | 2025-09-30 | Clarified system scope: SWE department only; updated all major docs with scope limitation         | system | DEC-9, README, PHASE3_SCOPE, plan.md, copilot-instructions, persona_feature_plan                                  |
 | 2025-09-30 | Implemented complete backend infrastructure: types, data-store, rules-engine, seed data, all APIs | system | FND-2, FND-3, FND-5, FND-6, FND-9, FND-11, FND-12, COM-3, COM-5..8, COM-10..11, STU-3..7, REG-3..4, LOAD-4, FAC-4 |
+| 2025-10-01 | Migrated ElectiveSurvey to use mockElectivePackages (SWE plan); added category badges             | system | STU-2, DEC-8                                                                                                      |
+| 2025-10-01 | Added category filters to ElectiveSurvey with smart counters and clear filter button              | system | STU-2                                                                                                             |
 
 ## 4. Decisions Log
 
