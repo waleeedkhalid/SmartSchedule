@@ -8,6 +8,11 @@ import {
 } from "@/components/shared";
 
 export default function Page(): React.ReactElement {
+  const handleSubmitFeedback = (feedback: unknown) => {
+    console.log("Submitting schedule feedback:", feedback);
+    // TODO: Send to API endpoint POST /api/student/feedback
+  };
+
   return (
     <>
       <PersonaNavigation
@@ -16,16 +21,11 @@ export default function Page(): React.ReactElement {
       />
 
       <PageContainer
-        title="My Schedule"
-        description="View your course schedule and exam dates"
+        title="Schedule Feedback"
+        description="Provide feedback on your course schedule and exam times"
       >
-        <div className="space-y-8">
-          <student.schedule.StudentScheduleGrid />
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <student.electives.ElectiveSurvey />
-            <student.feedback.FeedbackForm />
-          </div>
+        <div className="max-w-3xl">
+          <student.feedback.FeedbackForm onSubmit={handleSubmitFeedback} />
         </div>
       </PageContainer>
     </>

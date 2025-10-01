@@ -28,7 +28,7 @@ export type ExamRecord = {
   id: string;
   courseCode: string;
   courseName: string;
-  category: "midterm" | "midterm2" | "final";
+  type: "midterm" | "midterm2" | "final";
   date: string;
   time: string;
   duration: number;
@@ -61,13 +61,13 @@ export function getExams(courseOfferings: CourseOffering[]): ExamRecord[] {
   const exams: ExamRecord[] = [];
 
   courseOfferings.forEach((course) => {
-    Object.entries(course.exams).forEach(([category, examData]) => {
+    Object.entries(course.exams).forEach(([type, examData]) => {
       if (!examData) return; // Skip if exam is undefined
       exams.push({
-        id: `${course.code}-${category}`,
+        id: `${course.code}-${type}`,
         courseCode: course.code,
         courseName: course.name,
-        category: category as "midterm" | "midterm2" | "final",
+        type: type as "midterm" | "midterm2" | "final",
         date: examData.date,
         time: examData.time,
         duration: examData.duration,

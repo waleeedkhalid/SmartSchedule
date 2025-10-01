@@ -1,6 +1,11 @@
 "use client";
 import React from "react";
 import * as committee from "@/components/committee";
+import {
+  PersonaNavigation,
+  PageContainer,
+  teachingLoadNavItems,
+} from "@/components/shared";
 
 const mockInstructorLoads = [
   {
@@ -73,32 +78,36 @@ const mockConflicts = [
 
 export default function Page(): React.ReactElement {
   return (
-    <div className="p-6 space-y-8">
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Teaching Load Demo</h1>
-        <p className="text-sm text-muted-foreground">
-          Preview of teaching load review components
-        </p>
-      </div>
+    <>
+      <PersonaNavigation
+        personaName="Teaching Load Committee"
+        navItems={teachingLoadNavItems}
+      />
 
-      {/* Instructor Load Overview */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Instructor Load Overview</h2>
-        <committee.teachingLoad.InstructorLoadTable
-          instructorLoads={mockInstructorLoads}
-        />
-      </div>
+      <PageContainer
+        title="Instructor Load Overview"
+        description="Review teaching loads and identify conflicts"
+      >
+        <div className="space-y-8">
+          {/* Instructor Load Overview */}
+          <committee.teachingLoad.InstructorLoadTable
+            instructorLoads={mockInstructorLoads}
+          />
 
-      {/* Conflicts & Comments side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Load Conflicts</h2>
-          <committee.teachingLoad.ConflictList conflicts={mockConflicts} />
+          {/* Conflicts & Original Load Review */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Load Conflicts</h2>
+              <committee.teachingLoad.ConflictList conflicts={mockConflicts} />
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Alternative View</h2>
+              <committee.teachingLoad.LoadReviewTable />
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Original component */}
-      <committee.teachingLoad.LoadReviewTable />
-    </div>
+      </PageContainer>
+    </>
   );
 }

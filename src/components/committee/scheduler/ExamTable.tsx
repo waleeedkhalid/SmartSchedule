@@ -28,14 +28,15 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
+import TimePickerLite from "@/components/ui/time-picker-lite";
 
-export type ExamCategory = "midterm" | "midterm2" | "final";
+export type ExamType = "midterm" | "midterm2" | "final";
 
 export interface ExamRecord {
   id: string;
   courseCode: string;
   courseName: string;
-  category: ExamCategory;
+  type: ExamType;
   date: string;
   time: string;
   duration: number;
@@ -63,7 +64,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
   const [draft, setDraft] = useState<Omit<ExamRecord, "id">>({
     courseCode: "",
     courseName: "",
-    category: "midterm",
+    type: "midterm",
     date: "",
     time: "",
     duration: 90,
@@ -75,7 +76,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
     setDraft({
       courseCode: "",
       courseName: "",
-      category: "midterm",
+      type: "midterm",
       date: "",
       time: "",
       duration: 90,
@@ -89,7 +90,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
     setDraft({
       courseCode: exam.courseCode,
       courseName: exam.courseName,
-      category: exam.category,
+      type: exam.type,
       date: exam.date,
       time: exam.time,
       duration: exam.duration,
@@ -160,17 +161,17 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                       onChange={(e) =>
                         setDraft((d) => ({ ...d, courseCode: e.target.value }))
                       }
-                      placeholder="e.g. CSC212"
+                      placeholder="e.g. SWE455"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Category
+                      Type
                     </label>
                     <Select
-                      value={draft.category}
-                      onValueChange={(v: ExamCategory) =>
-                        setDraft((d) => ({ ...d, category: v }))
+                      value={draft.type}
+                      onValueChange={(v: ExamType) =>
+                        setDraft((d) => ({ ...d, type: v }))
                       }
                     >
                       <SelectTrigger>
@@ -199,14 +200,15 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Time
+                      Time (24h)
                     </label>
-                    <Input
-                      type="time"
+                    <TimePickerLite
                       value={draft.time}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, time: e.target.value }))
-                      }
+                      onChange={(time) => setDraft((d) => ({ ...d, time }))}
+                      minuteStep={15}
+                      use12Hours={false}
+                      placeholder="Select time"
+                      width={130}
                     />
                   </div>
                 </div>
@@ -277,8 +279,8 @@ export const ExamTable: React.FC<ExamTableProps> = ({
               <TableRow>
                 <TableHead className="w-32">Course</TableHead>
                 <TableHead className="w-24">Type</TableHead>
-                <TableHead className="w-28">Date</TableHead>
-                <TableHead className="w-20">Time</TableHead>
+                <TableHead className="w-30">Date</TableHead>
+                <TableHead className="w-20">Time(24h)</TableHead>
                 <TableHead className="w-24">Duration</TableHead>
                 <TableHead>Room</TableHead>
                 <TableHead className="w-20">Actions</TableHead>
@@ -302,7 +304,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                       variant="secondary"
                       className="text-[10px] uppercase"
                     >
-                      {exam.category}
+                      {exam.type}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{exam.date}</TableCell>

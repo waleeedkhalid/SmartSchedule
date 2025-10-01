@@ -1,145 +1,233 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { mockElectivePackages } from "@/data/mockData";
 
-export type ElectiveOption = {
-	code: string;
-	name: string;
-	group?: string;
-};
+interface SelectedCourse {
+  code: string;
+  name: string;
+  category: string;
+  order: number;
+}
 
 export type ElectiveSurveyProps = {
-	options?: ElectiveOption[];
-	numChoices?: number;
-	title?: string;
-	subtitle?: string;
-	onSubmitChoices?: (rankedCodes: string[]) => Promise<void> | void;
+  maxChoices?: number;
+  onSubmitChoices?: (rankedCodes: string[]) => Promise<void> | void;
 };
 
-const DEFAULT_OPTIONS: ElectiveOption[] = [
-	{ code: "CS401", name: "Machine Learning", group: "CS" },
-	{ code: "CS402", name: "Computer Vision", group: "CS" },
-	{ code: "IT328", name: "Database Systems", group: "IT" },
-	{ code: "IT350", name: "Cloud Computing", group: "IT" },
-	{ code: "MATH350", name: "Discrete Mathematics", group: "MATH" },
-	{ code: "STAT320", name: "Applied Statistics", group: "STAT" },
-];
-
 export function ElectiveSurvey({
-	options = DEFAULT_OPTIONS,
-	numChoices = 3,
-	title = "Elective Preferences",
-	subtitle = "Rank your preferred electives in order",
-	onSubmitChoices,
+  maxChoices = 6,
+  onSubmitChoices,
 }: ElectiveSurveyProps): React.ReactElement {
-	const [selected, setSelected] = useState<string[]>(Array.from({ length: numChoices }, () => ""));
-	const [submitting, setSubmitting] = useState(false);
-	const [submitted, setSubmitted] = useState(false);
+  const [selectedCourses, setSelectedCourses] = useState<SelectedCourse[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-	const codeToOption = useMemo(() => {
-		const map = new Map<string, ElectiveOption>();
-		options.forEach((opt) => map.set(opt.code, opt));
-		return map;
-	}, [options]);
+  // Get all elective courses from SWE plan (mockElectivePackages)
+  const electiveCourses = mockElectivePackages.flatMap((pkg) =>
+    pkg.courses.map((course) => ({
+      code: course.code,
+      name: course.name,
+      category: pkg.label,
+      credits: course.credits,
+    }))
+  );
 
-	function updateChoice(index: number, value: string) {
-		setSelected((prev) => {
-			const next = [...prev];
-			next[index] = value;
-			return next;
-		});
-	}
+  const handleCourseSelect = (code: string) => {
+    const course = electiveCourses.find((c) => c.code === code);
+    if (course && !selectedCourses.find((selected) => selected.code === code)) {
+      if (selectedCourses.length >= maxChoices) {
+        return; // Max choices reached
+      }
+      const newCourse: SelectedCourse = {
+        code: course.code,
+        name: course.name,
+        category: course.category,
+        order: selectedCourses.length + 1,
+      };
+      setSelectedCourses([...selectedCourses, newCourse]);
+    }
+  };
 
-	const validationError = useMemo(() => {
-		if (selected.some((c) => !c)) return "Please select all ranks.";
-		const dedup = new Set(selected);
-		if (dedup.size !== selected.length) return "Each elective must be unique.";
-		return "";
-	}, [selected]);
+  const removeCourse = (codeToRemove: string) => {
+    const updatedCourses = selectedCourses
+      .filter((course) => course.code !== codeToRemove)
+      .map((course, index) => ({ ...course, order: index + 1 }));
+    setSelectedCourses(updatedCourses);
+  };
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (validationError) return;
-		try {
-			setSubmitting(true);
-			await onSubmitChoices?.(selected);
-			setSubmitted(true);
-		} finally {
-			setSubmitting(false);
-		}
-	}
+  const availableCourses = electiveCourses.filter(
+    (course) =>
+      !selectedCourses.find((selected) => selected.code === course.code)
+  );
 
-	if (submitted) {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Thank you!</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm text-muted-foreground">
-						Your elective preferences have been recorded.
-					</p>
-				</CardContent>
-			</Card>
-		);
-	}
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (selectedCourses.length === 0) return;
 
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>{title}</CardTitle>
-				{subtitle ? (
-					<p className="text-sm text-muted-foreground">{subtitle}</p>
-				) : null}
-			</CardHeader>
-			<CardContent>
-				<form onSubmit={handleSubmit} className="space-y-6">
-					{Array.from({ length: numChoices }, (_, idx) => {
-						const rank = idx + 1;
-						const otherSelected = new Set(selected.filter((c, i) => i !== idx && c));
-						return (
-							<div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-								<Label className="md:col-span-1">Rank {rank}</Label>
-								<div className="md:col-span-2">
-									<Select value={selected[idx]} onValueChange={(v) => updateChoice(idx, v)}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select elective" />
-										</SelectTrigger>
-										<SelectContent>
-											{options.map((opt) => (
-												<SelectItem key={opt.code} value={opt.code} disabled={otherSelected.has(opt.code)}>
-													<span className={cn("flex items-center gap-2", otherSelected.has(opt.code) && "opacity-50")}>
-														<span className="font-medium">{opt.code}</span>
-														<span className="text-muted-foreground">{opt.name}</span>
-													</span>
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-						);
-					})}
+    try {
+      setSubmitting(true);
+      const rankedCodes = selectedCourses.map((c) => c.code);
+      await onSubmitChoices?.(rankedCodes);
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-					{validationError ? (
-						<p className="text-sm text-red-600">{validationError}</p>
-					) : null}
+  if (submitted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>✓ Preferences Submitted!</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Your elective preferences have been recorded successfully.
+          </p>
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Your ranked choices:
+            </p>
+            {selectedCourses.map((course) => (
+              <div key={course.code} className="text-sm">
+                <span className="font-medium">#{course.order}</span>{" "}
+                {course.code} - {course.name}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-					<div className="flex justify-end">
-						<Button type="submit" disabled={!!validationError || submitting}>
-							{submitting ? "Submitting..." : "Submit Preferences"}
-						</Button>
-					</div>
-				</form>
-			</CardContent>
-		</Card>
-	);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Elective Course Preferences</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Select up to {maxChoices} elective courses in order of preference
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="select-course">Choose courses in order</Label>
+            <Select
+              key={selectedCourses.length}
+              onValueChange={handleCourseSelect}
+              disabled={selectedCourses.length >= maxChoices}
+            >
+              <SelectTrigger id="select-course" className="w-full">
+                <SelectValue
+                  placeholder={
+                    availableCourses.length > 0
+                      ? selectedCourses.length >= maxChoices
+                        ? `Maximum ${maxChoices} courses selected`
+                        : "Select a course..."
+                      : "All courses selected"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {availableCourses.map((course) => (
+                  <SelectItem key={course.code} value={course.code}>
+                    <div className="flex flex-col items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{course.code}</span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1 py-0"
+                        >
+                          {course.category}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {course.name}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {selectedCourses.length} of {maxChoices} courses selected
+            </p>
+          </div>
+
+          {/* Selected Courses Display */}
+          {selectedCourses.length > 0 && (
+            <div className="space-y-3">
+              <Label>Your course preferences (in order):</Label>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {selectedCourses.map((course) => (
+                  <div
+                    key={course.code}
+                    className="flex items-center gap-3 p-3 bg-accent rounded-lg border"
+                  >
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0 font-semibold"
+                    >
+                      #{course.order}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {course.code}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {course.category}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {course.name}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeCourse(course.code)}
+                      className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={selectedCourses.length === 0 || submitting}
+          >
+            {submitting
+              ? "Submitting..."
+              : `Submit Preferences (${selectedCourses.length} course${
+                  selectedCourses.length !== 1 ? "s" : ""
+                })`}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default ElectiveSurvey;
-
-

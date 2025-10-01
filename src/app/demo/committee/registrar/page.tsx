@@ -2,6 +2,11 @@
 import React from "react";
 import * as committee from "@/components/committee";
 import type { IrregularStudentRecord } from "@/components/committee/registrar/IrregularStudentFormList";
+import {
+  PersonaNavigation,
+  PageContainer,
+  registrarNavItems,
+} from "@/components/shared";
 
 import { mockSWEIrregularStudents } from "@/data/mockData";
 
@@ -27,24 +32,23 @@ export default function Page(): React.ReactElement {
   };
 
   return (
-    <div className="p-6 space-y-8">
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Registrar Demo</h1>
-        <p className="text-sm text-muted-foreground">
-          Preview of registrar components
-        </p>
-      </div>
+    <>
+      <PersonaNavigation
+        personaName="Registrar Dashboard"
+        navItems={registrarNavItems}
+      />
 
-      {/* New component showing irregular student management */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Irregular Student Management</h2>
+      <PageContainer
+        title="Irregular Student Management"
+        description="Manage irregular students and their course requirements"
+      >
         <committee.registrar.IrregularStudentFormList
           irregularStudents={mockSWEIrregularStudents}
           onCreate={handleCreateIrregularStudent}
           onUpdate={handleUpdateIrregularStudent}
           onDelete={handleDeleteIrregularStudent}
         />
-      </div>
-    </div>
+      </PageContainer>
+    </>
   );
 }

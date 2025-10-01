@@ -1,20 +1,30 @@
 "use client";
 import React from "react";
 import * as faculty from "@/components/faculty";
+import {
+  PersonaNavigation,
+  PageContainer,
+  facultyNavItems,
+} from "@/components/shared";
 
 export default function Page(): React.ReactElement {
   return (
-    <div className="p-6 space-y-8">
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Faculty Demo</h1>
-        <p className="text-sm text-muted-foreground">Preview of faculty persona components</p>
-      </div>
+    <>
+      <PersonaNavigation
+        personaName="Faculty Portal"
+        navItems={facultyNavItems}
+      />
 
-      <faculty.availability.FacultyAvailabilityForm />
+      <PageContainer
+        title="My Teaching Assignments"
+        description="View your course assignments and schedule"
+      >
+        <div className="space-y-8">
+          <faculty.personalSchedule.PersonalSchedule />
 
-      <faculty.personalSchedule.PersonalSchedule />
-    </div>
+          <faculty.availability.FacultyAvailabilityForm />
+        </div>
+      </PageContainer>
+    </>
   );
 }
-
-

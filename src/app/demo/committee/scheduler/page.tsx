@@ -1,7 +1,11 @@
 "use client";
 import React from "react";
 import * as committee from "@/components/committee";
-import { CommentPanel } from "@/components/shared";
+import {
+  PersonaNavigation,
+  PageContainer,
+  committeeNavItems,
+} from "@/components/shared";
 import { mockCourseOfferings, mockStudentCounts } from "@/data/mockData";
 import type { ExamRecord } from "@/components/committee/scheduler/ExamTable";
 import { getExams, getSectionsLookup } from "@/lib/committee-data-helpers";
@@ -55,57 +59,57 @@ export default function Page(): React.ReactElement {
     // TODO: Load schedule data for selected version
   };
 
-  const handleCommentAdd = (commentBody: string) => {
-    console.log("Adding comment:", { body: commentBody, persona: "COMMITTEE" });
-    // TODO: Send to API endpoint POST /api/comments
-  };
-
   // Use helper functions to transform mockCourseOfferings
   const mockExams = getExams(mockCourseOfferings);
   const sectionsLookup = getSectionsLookup(mockCourseOfferings);
 
   return (
-    <div className="p-6 space-y-8">
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Committee Scheduler Demo</h1>
-        <p className="text-sm text-muted-foreground">
-          Preview of scheduling committee components
-        </p>
-      </div>
-
-      {/* Exams Table */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Exam Management</h2>
-        <committee.scheduler.ExamTable
-          exams={mockExams}
-          onCreate={handleExamCreate}
-          onUpdate={handleExamUpdate}
-          onDelete={handleExamDelete}
-          sectionsLookup={sectionsLookup}
-        />
-      </div>
-
-      {/* Version Timeline */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Version History</h2>
-          <committee.scheduler.VersionTimeline
-            versions={mockVersions}
-            onSelect={handleVersionSelect}
-          />
-        </div>
-      </div>
-
-      {/* Existing components */}
-      <committee.scheduler.rules.RulesTable />
-
-      <committee.scheduler.studentCounts.StudentCountsTable
-        studentCounts={mockStudentCounts}
+    <>
+      <PersonaNavigation
+        personaName="Scheduling Committee"
+        navItems={committeeNavItems}
       />
 
-      <committee.scheduler.coursesEditor.CoursesEditor />
+      <PageContainer
+        title="Schedule Grid"
+        description="Manage course sections, meetings, and time slots"
+      >
+        <div className="space-y-8">
+          {/* Exams Table */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Exam Management</h2>
+            <committee.scheduler.ExamTable
+              exams={mockExams}
+              onCreate={handleExamCreate}
+              onUpdate={handleExamUpdate}
+              onDelete={handleExamDelete}
+              sectionsLookup={sectionsLookup}
+            />
+          </div>
 
-      <committee.scheduler.irregularStudents.IrregularStudentsViewer />
-    </div>
+          {/* Version Timeline */}
+          <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Version History</h2>
+              <committee.scheduler.VersionTimeline
+                versions={mockVersions}
+                onSelect={handleVersionSelect}
+              />
+            </div>
+          </div>
+
+          {/* Existing components */}
+          <committee.scheduler.rules.RulesTable />
+
+          <committee.scheduler.studentCounts.StudentCountsTable
+            studentCounts={mockStudentCounts}
+          />
+
+          <committee.scheduler.coursesEditor.CoursesEditor />
+
+          <committee.scheduler.irregularStudents.IrregularStudentsViewer />
+        </div>
+      </PageContainer>
+    </>
   );
 }
