@@ -1,6 +1,7 @@
 # ElectiveSurvey - Category Filters Feature
 
 ## Overview
+
 Added interactive category filters to help students quickly find and select elective courses by requirement type.
 
 **Date:** October 1, 2025  
@@ -9,6 +10,7 @@ Added interactive category filters to help students quickly find and select elec
 ## Feature Summary
 
 ### What Was Added
+
 - **Category Filter Chips** - Clickable badges to filter courses by category
 - **Smart Counters** - Shows available/total courses per category
 - **Active Filter Indicator** - Visual feedback for selected filter
@@ -32,11 +34,13 @@ Added interactive category filters to help students quickly find and select elec
 ### Filter States
 
 **1. All Courses (Default)**
+
 - Badge: Solid/filled style (default variant)
 - Shows: All 12 elective courses
 - Counter: Total course count
 
 **2. Category Selected**
+
 - Active badge: Solid/filled style
 - Inactive badges: Outline style
 - Shows: Only courses from selected category
@@ -51,6 +55,7 @@ Added interactive category filters to help students quickly find and select elec
 - **Total** = All courses in category
 
 **Examples:**
+
 - `Islamic Studies (3/3)` - All 3 courses available
 - `Math/Statistics (1/3)` - 1 available, 2 already selected
 - `Department Electives (0/3)` - All selected
@@ -60,11 +65,13 @@ Added interactive category filters to help students quickly find and select elec
 The dropdown placeholder updates based on filter state:
 
 **No Filter:**
+
 - Available: "Select a course..."
 - Max reached: "Maximum 6 courses selected"
 - All selected: "All courses selected"
 
 **Filter Active:**
+
 - Available: "Select from Islamic Studies..."
 - All category selected: "All Islamic Studies courses selected"
 
@@ -77,6 +84,7 @@ const [activeFilter, setActiveFilter] = useState<string>("all");
 ```
 
 **Values:**
+
 - `"all"` - Show all courses (default)
 - `<category name>` - Show specific category only
 
@@ -84,14 +92,13 @@ const [activeFilter, setActiveFilter] = useState<string>("all");
 
 ```typescript
 // Extract unique categories from courses
-const categories = Array.from(
-  new Set(electiveCourses.map((c) => c.category))
-);
+const categories = Array.from(new Set(electiveCourses.map((c) => c.category)));
 
 // Apply filter to available courses
 const availableCourses = electiveCourses
-  .filter((course) => 
-    !selectedCourses.find((selected) => selected.code === course.code)
+  .filter(
+    (course) =>
+      !selectedCourses.find((selected) => selected.code === course.code)
   )
   .filter((course) =>
     activeFilter === "all" ? true : course.category === activeFilter
@@ -101,6 +108,7 @@ const availableCourses = electiveCourses
 ### UI Components
 
 **Filter Section:**
+
 ```tsx
 <div className="space-y-2">
   <div className="flex items-center gap-2">
@@ -120,13 +128,12 @@ const availableCourses = electiveCourses
       </Button>
     )}
   </div>
-  <div className="flex flex-wrap gap-2">
-    {/* Filter badges */}
-  </div>
+  <div className="flex flex-wrap gap-2">{/* Filter badges */}</div>
 </div>
 ```
 
 **Filter Badges:**
+
 ```tsx
 <Badge
   variant={activeFilter === category ? "default" : "outline"}
@@ -142,14 +149,17 @@ const availableCourses = electiveCourses
 ### For Students
 
 1. **Faster Course Discovery**
+
    - Quickly narrow down to specific requirement types
    - No need to scroll through all 12 courses
 
 2. **Better Organization**
+
    - See courses grouped by academic requirements
    - Understand which requirement each course fulfills
 
 3. **Visual Progress**
+
    - Counters show how many courses selected per category
    - Easy to balance selections across requirements
 
@@ -160,10 +170,12 @@ const availableCourses = electiveCourses
 ### For Academic Planning
 
 1. **Requirement Awareness**
+
    - Students see electives organized by SWE plan structure
    - Encourages balanced course selection
 
 2. **Informed Choices**
+
    - Category context helps students understand requirements
    - Can strategically select across different areas
 
@@ -174,6 +186,7 @@ const availableCourses = electiveCourses
 ## Usage Scenarios
 
 ### Scenario 1: Browsing All Courses
+
 ```
 1. Student opens preference form
 2. Default view shows "All Courses (12)"
@@ -182,6 +195,7 @@ const availableCourses = electiveCourses
 ```
 
 ### Scenario 2: Focused Selection
+
 ```
 1. Student wants Islamic Studies course
 2. Clicks "Islamic Studies (3/3)" filter
@@ -192,6 +206,7 @@ const availableCourses = electiveCourses
 ```
 
 ### Scenario 3: Category Completion
+
 ```
 1. Student selects all 3 Math/Statistics courses
 2. Filter shows "Math/Statistics (0/3)"
@@ -200,6 +215,7 @@ const availableCourses = electiveCourses
 ```
 
 ### Scenario 4: Quick Reset
+
 ```
 1. Student has "General Science" filter active
 2. Wants to see all courses again
@@ -210,6 +226,7 @@ const availableCourses = electiveCourses
 ## Technical Specifications
 
 ### Filter Badge Styling
+
 - **Active:** `variant="default"` (solid background)
 - **Inactive:** `variant="outline"` (border only)
 - **Hover:** `hover:bg-accent` (subtle highlight)
@@ -217,19 +234,18 @@ const availableCourses = electiveCourses
 - **Cursor:** `cursor-pointer` (indicates clickability)
 
 ### Counter Calculation
+
 ```typescript
-const count = electiveCourses.filter(
-  (c) => c.category === category
-).length;
+const count = electiveCourses.filter((c) => c.category === category).length;
 
 const availableCount = electiveCourses.filter(
   (c) =>
-    c.category === category &&
-    !selectedCourses.find((s) => s.code === c.code)
+    c.category === category && !selectedCourses.find((s) => s.code === c.code)
 ).length;
 ```
 
 ### Accessibility
+
 - Semantic HTML with proper `<Label>` elements
 - Keyboard navigation supported via Button/Badge components
 - Clear visual indicators for active/inactive states
@@ -238,51 +254,63 @@ const availableCount = electiveCourses.filter(
 ## Future Enhancements
 
 ### 1. Credit Hours Display
+
 Show credit hour totals per category:
+
 ```
 Islamic Studies (2/3) • 2/4 hours
 ```
 
 ### 2. Requirement Progress Bar
+
 Visual indicator of category requirements:
+
 ```
 Islamic Studies ████████░░ 2/4 hours (2 of 3 courses)
 ```
 
 ### 3. Smart Recommendations
+
 Highlight categories needing more selections:
+
 ```
 ⚠️ Math/Statistics (3/3) • Select 0-6 hours required
 ```
 
 ### 4. Multi-Select Filters
+
 Allow filtering by multiple categories simultaneously:
+
 ```
 [Islamic Studies ✓]  [Math/Statistics ✓]  [Apply]
 ```
 
 ### 5. Search Within Filters
+
 Combine category filter with text search:
+
 ```
 [Islamic Studies ▼]  [Search: "culture"]
 ```
 
 ### 6. Saved Filter Preferences
+
 Remember last used filter:
+
 ```typescript
-localStorage.setItem('lastElectiveFilter', category);
+localStorage.setItem("lastElectiveFilter", category);
 ```
 
 ## Category Configuration
 
 Current categories from `mockElectivePackages`:
 
-| Category | Courses | Hours | Requirements |
-|----------|---------|-------|--------------|
-| Islamic Studies | 3 | 2-4 | Required minimum 2 hours |
-| Math/Statistics | 3 | 0-6 | Optional up to 6 hours |
-| General Science | 3 | 0-3 | Optional up to 3 hours |
-| Department Electives | 3 | 0-9 | Optional up to 9 hours |
+| Category             | Courses | Hours | Requirements             |
+| -------------------- | ------- | ----- | ------------------------ |
+| Islamic Studies      | 3       | 2-4   | Required minimum 2 hours |
+| Math/Statistics      | 3       | 0-6   | Optional up to 6 hours   |
+| General Science      | 3       | 0-3   | Optional up to 3 hours   |
+| Department Electives | 3       | 0-9   | Optional up to 9 hours   |
 
 **Total:** 12 courses across 4 categories
 
@@ -302,21 +330,25 @@ Current categories from `mockElectivePackages`:
 ## Integration Notes
 
 ### No Breaking Changes
+
 - Component props unchanged
 - External API remains the same
 - State management isolated to component
 
 ### Performance
+
 - Category array computed once (memoization candidate)
 - Filter operation on small dataset (12 courses)
 - No additional API calls needed
 
 ### Compatibility
+
 - Works with existing `mockElectivePackages` structure
 - Compatible with current selection logic
 - Integrates seamlessly with ranking system
 
 ## Related Documentation
+
 - `docs/elective-survey-redesign.md` - Original redesign documentation
 - `docs/elective-survey-swe-plan.md` - SWE plan data integration
 - `docs/navigation-implementation.md` - Navigation system overview
@@ -324,24 +356,28 @@ Current categories from `mockElectivePackages`:
 ## Design Decisions
 
 ### Why Badge Components?
+
 - Consistent with existing UI (category badges in dropdown/list)
 - Familiar interaction pattern (clickable chips)
 - Clean, modern appearance
 - Built-in hover/active states
 
 ### Why "all" Instead of null?
+
 - Explicit state management
 - Easier to check filter status
 - Prevents undefined comparison issues
 - Clear intent in code
 
 ### Why Show Counters?
+
 - Provides context about category size
 - Shows progress (available vs. total)
 - Helps students balance selections
 - Indicates when category fully selected
 
 ### Why Clear Button vs. Clicking "All"?
+
 - Provides both options for flexibility
 - "All Courses" badge for explicit selection
 - "Clear filter" for quick reset
@@ -350,6 +386,7 @@ Current categories from `mockElectivePackages`:
 ## User Feedback Considerations
 
 **Potential improvements based on usage:**
+
 1. Add course code prefixes to filters (e.g., "ISL - Islamic Studies")
 2. Show credit hours in filter badges
 3. Add tooltips with category descriptions
