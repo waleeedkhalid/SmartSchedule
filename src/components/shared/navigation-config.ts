@@ -22,10 +22,10 @@ import { NavItem } from "./PersonaNavigation";
 
 export const committeeNavItems: NavItem[] = [
   {
-    label: "Schedule Grid",
+    label: "Students Counts",
     href: "/demo/committee/scheduler",
     icon: Calendar,
-    description: "Manage course sections, meetings, and time slots",
+    description: "View and manage student counts for each course",
   },
   {
     label: "Exams",

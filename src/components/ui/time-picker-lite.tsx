@@ -176,7 +176,21 @@ export default function TimePickerLite({
               toLabel={(h) =>
                 use12Hours ? String(h) : String(h).padStart(2, "0")
               }
-              onPick={(h) => setHour(h)}
+              onPick={(h) => {
+                setHour(h);
+                // If minute is already selected, commit immediately
+                if (minute != null) {
+                  const mm = String(minute).padStart(2, "0");
+                  const hh = use12Hours
+                    ? String(h)
+                    : String(h).padStart(2, "0");
+                  const out = use12Hours
+                    ? `${h}:${mm} ${(period ?? "am").toUpperCase()}`
+                    : `${hh}:${mm}`;
+                  onChange?.(out);
+                  setOpen(false);
+                }
+              }}
             />
             <Column
               title="Minute"
@@ -198,7 +212,13 @@ export default function TimePickerLite({
                 toLabel={(p) => p.toUpperCase()}
                 onPick={(p) => {
                   setPeriod(p);
-                  // if hour+minute already set and user toggles AM/PM, commit immediately after minute is chosen next
+                  // If hour and minute are already set, commit immediately
+                  if (hour != null && minute != null) {
+                    const mm = String(minute).padStart(2, "0");
+                    const out = `${hour}:${mm} ${p.toUpperCase()}`;
+                    onChange?.(out);
+                    setOpen(false);
+                  }
                 }}
               />
             )}

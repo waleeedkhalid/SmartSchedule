@@ -8,38 +8,38 @@ import { SWECurriculumLevel } from "@/lib/types";
 export const mockSWECurriculum: SWECurriculumLevel[] = [
   {
     level: 4,
-    requiredSWECourses: ["SWE211", "SWE226"],
-    externalCourses: ["MATH203", "PHY104", "ISL101", "ENG214"],
-    totalCredits: 18,
-    electiveSlots: 0, // Level 4 has no electives
+    requiredSWECourses: ["CEN303", "SWE211"],
+    externalCourses: ["MATH244", "PHY104", "CSC113"],
+    totalCredits: 17,
+    electiveSlots: 1,
   },
   {
     level: 5,
-    requiredSWECourses: ["SWE312", "SWE314", "SWE321"],
-    externalCourses: ["MATH260", "STAT201", "ISL102"],
-    totalCredits: 18,
-    electiveSlots: 0,
+    requiredSWECourses: ["SWE312", "SWE314"],
+    externalCourses: ["CSC212", "CSC220"],
+    totalCredits: 12,
+    electiveSlots: 3,
   },
   {
     level: 6,
-    requiredSWECourses: ["SWE333", "SWE363", "SWE381"],
-    externalCourses: ["MATH301"],
-    totalCredits: 18,
-    electiveSlots: 1, // Can take 1 elective course
+    requiredSWECourses: ["SWE333", "SWE321", "SWE381"],
+    externalCourses: ["IS230", "CSC227"],
+    totalCredits: 14,
+    electiveSlots: 3, // Can take 3 elective courses
   },
   {
     level: 7,
-    requiredSWECourses: ["SWE434", "SWE444"],
-    externalCourses: [],
-    totalCredits: 15,
+    requiredSWECourses: ["SWE434", "SWE444", "SWE482", "SWE477"],
+    externalCourses: ["IC107"],
+    totalCredits: 12,
     electiveSlots: 2, // Can take 2 elective courses
   },
   {
     level: 8,
-    requiredSWECourses: ["SWE497"], // Capstone project
-    externalCourses: [],
-    totalCredits: 12,
-    electiveSlots: 3, // Can take 3 elective courses
+    requiredSWECourses: ["SWE455", "SWE466"], // Capstone project
+    externalCourses: ["IC108"],
+    totalCredits: 7,
+    electiveSlots: 4, // Can take 4 elective courses
   },
 ];
 

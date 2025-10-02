@@ -76,6 +76,39 @@ export const ExamTable: React.FC<ExamTableProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ExamDraft>(DEFAULT_DRAFT);
 
+  // Debug log to see draft state
+  console.log("Current draft state:", draft);
+
+  // Get unique courses from sectionsLookup for dropdown
+  const availableCourses = useMemo(() => {
+    const uniqueCourses = new Map<string, string>();
+
+    // Add courses from sections lookup
+    sectionsLookup.forEach((section) => {
+      if (!uniqueCourses.has(section.courseCode)) {
+        // Try to get course name from existing exams
+        const existingExam = exams.find(
+          (e) => e.courseCode === section.courseCode
+        );
+        uniqueCourses.set(
+          section.courseCode,
+          existingExam?.courseName || section.courseCode
+        );
+      }
+    });
+
+    // Add courses from existing exams (in case some don't have sections yet)
+    exams.forEach((exam) => {
+      if (!uniqueCourses.has(exam.courseCode)) {
+        uniqueCourses.set(exam.courseCode, exam.courseName);
+      }
+    });
+
+    return Array.from(uniqueCourses.entries())
+      .map(([code, name]) => ({ code, name }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [exams, sectionsLookup]);
+
   const sectionIdsForCourse = useMemo(() => {
     if (!draft.courseCode) return [] as string[];
     return sectionsLookup
@@ -118,6 +151,37 @@ export const ExamTable: React.FC<ExamTableProps> = ({
     setDraft(DEFAULT_DRAFT);
   };
 
+  // Optional manual time entry fallback (some users had trouble with picker)
+  const [manualTimeEntry, setManualTimeEntry] = useState(false);
+
+  // Derived validation state
+  const validation = useMemo(() => {
+    const timeValid = !!draft.time && /^(\d{2}):(\d{2})$/.test(draft.time);
+    return {
+      courseCode: !!draft.courseCode,
+      date: !!draft.date,
+      time: timeValid,
+    };
+  }, [draft.courseCode, draft.date, draft.time]);
+
+  const missingFields = useMemo(
+    () =>
+      Object.entries(validation)
+        .filter(([, ok]) => !ok)
+        .map(([k]) =>
+          k === "courseCode"
+            ? "Course"
+            : k === "date"
+            ? "Date"
+            : k === "time"
+            ? "Time"
+            : k
+        ),
+    [validation]
+  );
+
+  const isDisabled = missingFields.length > 0;
+
   const handleEdit = (exam: ExamRecord) => {
     setEditingId(exam.id);
     setDraft({
@@ -149,9 +213,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
       courseName:
         draft.courseName || courseNameFromExisting || draft.courseCode,
       sectionIds:
-        sectionIdsForCourse.length > 0
-          ? sectionIdsForCourse
-          : draft.sectionIds,
+        sectionIdsForCourse.length > 0 ? sectionIdsForCourse : draft.sectionIds,
     };
 
     if (editingId) {
@@ -182,7 +244,10 @@ export const ExamTable: React.FC<ExamTableProps> = ({
               Manage midterm and final exam assignments
             </p>
           </div>
-          <Dialog open={open} onOpenChange={(value) => (value ? setOpen(true) : setOpen(false))}>
+          <Dialog
+            open={open}
+            onOpenChange={(value) => (value ? setOpen(true) : setOpen(false))}
+          >
             <DialogTrigger asChild>
               <Button
                 size="sm"
@@ -204,30 +269,45 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Course Code
+                      Course Code <span className="text-red-500">*</span>
                     </label>
-                    <Input
+                    <Select
                       value={draft.courseCode}
-                      onChange={(event) => {
-                        const nextCode = event.target.value.toUpperCase();
+                      onValueChange={(value) => {
+                        const course = availableCourses.find(
+                          (c) => c.code === value
+                        );
                         setDraft((prev) => ({
                           ...prev,
-                          courseCode: nextCode,
+                          courseCode: value,
+                          courseName: course?.name || "",
                           sectionIds: sectionsLookup
-                            .filter(
-                              (section) =>
-                                section.courseCode.toLowerCase() ===
-                                nextCode.toLowerCase()
-                            )
+                            .filter((section) => section.courseCode === value)
                             .map((section) => section.sectionId),
                         }));
                       }}
-                      placeholder="e.g. SWE455"
-                    />
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select course" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCourses.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground">
+                            No courses available
+                          </div>
+                        ) : (
+                          availableCourses.map((course) => (
+                            <SelectItem key={course.code} value={course.code}>
+                              {course.code}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Type
+                      Type <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={draft.type}
@@ -264,7 +344,7 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <label className="block text-xs font-medium mb-1">
-                      Date
+                      Date <span className="text-red-500">*</span>
                     </label>
                     <Input
                       type="date"
@@ -279,21 +359,62 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Time (24h)
+                      Time (24h) <span className="text-red-500">*</span>
                     </label>
-                    <TimePickerLite
-                      value={draft.time}
-                      onChange={(time) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          time,
-                        }))
-                      }
-                      minuteStep={15}
-                      use12Hours={false}
-                      placeholder="Select time"
-                      width={130}
-                    />
+                    {!manualTimeEntry ? (
+                      <div className="flex items-center gap-2">
+                        <TimePickerLite
+                          value={draft.time}
+                          onChange={(time) =>
+                            setDraft((prev) => ({
+                              ...prev,
+                              time,
+                            }))
+                          }
+                          minuteStep={15}
+                          use12Hours={false}
+                          placeholder="Select time"
+                          width={130}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => setManualTimeEntry(true)}
+                        >
+                          Manual
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={draft.time}
+                          onChange={(e) =>
+                            setDraft((prev) => ({
+                              ...prev,
+                              time: e.target.value,
+                            }))
+                          }
+                          className="h-9"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => setManualTimeEntry(false)}
+                        >
+                          Picker
+                        </Button>
+                      </div>
+                    )}
+                    {!validation.time && (
+                      <p className="mt-1 text-[10px] text-red-500">
+                        Select or enter a valid time (HH:MM)
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -353,11 +474,25 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     type="button"
                     size="sm"
                     onClick={handleSubmit}
-                    disabled={!draft.courseCode || !draft.date || !draft.time}
+                    disabled={isDisabled}
+                    aria-disabled={isDisabled}
                   >
                     {editingId ? "Update" : "Create"}
                   </Button>
                 </div>
+                {isDisabled && (
+                  <div className="pt-1">
+                    <p className="text-[11px] text-red-600 flex flex-wrap gap-1">
+                      Missing:
+                      {missingFields.map((f, i) => (
+                        <span key={f} className="font-medium">
+                          {f}
+                          {i < missingFields.length - 1 && ","}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
@@ -391,7 +526,10 @@ export const ExamTable: React.FC<ExamTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="text-[10px] uppercase">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] uppercase"
+                    >
                       {examTypeLabel[exam.type]}
                     </Badge>
                   </TableCell>

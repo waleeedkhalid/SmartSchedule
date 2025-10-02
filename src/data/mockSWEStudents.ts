@@ -35,39 +35,34 @@ function generateStudentsForLevel(
  */
 export const mockSWEStudents: SWEStudent[] = [
   // Level 4: 75 students (largest cohort - new admissions)
-  ...generateStudentsForLevel(4, 75, []),
+  ...generateStudentsForLevel(4, 75, ["PHY101", "IC100", "IC102", "IC105"]),
 
   // Level 5: 65 students
-  ...generateStudentsForLevel(5, 65, []),
+  ...generateStudentsForLevel(5, 65, [
+    "MATH254",
+    "PHY101",
+    "IC100",
+    "IC102",
+    "IC105",
+  ]),
 
   // Level 6: 55 students, can take 1 elective
   ...generateStudentsForLevel(6, 55, [
-    "CS201", // Data Structures
-    "ISL102", // Quranic Studies
-    "MATH202", // Calculus II
-    "PHYS102", // Physics II
-    "BIOL101", // Biology I
+    "QRAN100", // Quranic Studies
+    "PHY101", // Biology I
   ]),
 
   // Level 7: 45 students, can take 2 electives
   ...generateStudentsForLevel(7, 45, [
-    "CS301", // Algorithms
-    "CS201", // Data Structures
-    "ISL103", // Islamic History
-    "STAT201", // Probability
-    "BIOL101", // Biology I
-    "CHEM102", // Chemistry II
+    "CS311", // Algorithms
+    "OPER122", // OR
+    "MATH254",
+    "SWE481",
+    "SWE483",
   ]),
 
   // Level 8: 35 students, can take 3 electives
-  ...generateStudentsForLevel(8, 35, [
-    "CS401", // Machine Learning
-    "CS301", // Algorithms
-    "MATH301", // Linear Algebra
-    "PHYS102", // Physics II
-    "BIOL101", // Biology I
-    "CHEM102", // Chemistry II
-  ]),
+  ...generateStudentsForLevel(8, 35, ["SWE486", "SWE485", "SWE481", "SWE483"]),
 ];
 
 /**

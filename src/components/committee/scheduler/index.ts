@@ -7,3 +7,5 @@ export { ExamTable as ExamTableViewOnly } from "./ExamTableViewOnly";
 export { VersionTimeline } from "./VersionTimeline";
 export { GenerateScheduleDialog } from "./GenerateScheduleDialog";
 export { GeneratedScheduleResults } from "./GeneratedScheduleResults";
+export { CourseEditor } from "./CourseEditor";
+export { SchedulePreviewer } from "./SchedulePreviewer";
