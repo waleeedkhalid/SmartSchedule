@@ -205,3 +205,110 @@ export interface ScheduleMetadata {
   facultyUtilization: number; // percentage 0-100
   roomUtilization: number; // percentage 0-100
 }
+
+export interface SectionTime {
+  day: string; // e.g., "1 3 5" (Sunday, Tuesday, Thursday)
+  time: string; // e.g., "11:00 ص - 11:50 ص"
+  room?: string;
+}
+
+export interface Course {
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  section: string;
+  activity: string; // 'محاضرة' (LEC), 'تمارين' (TUT), 'عملي' (LAB)
+  hours: string;
+  status: string;
+  sectionTimes: SectionTime[];
+  instructor: string;
+  examDay: string;
+  examTime: string;
+  examDate: string; // Hijri date
+  sectionAllocations: string;
+  parentLectureId?: number; // For TUT/LAB sections, references the lecture courseId
+  linkedSectionId?: number; // For LEC sections, references linked TUT/LAB courseId
+}
+
+export interface NormalizedTimeSlot {
+  day: number; // 1-5 (Sunday-Thursday)
+  startMinutes: number; // Minutes from midnight
+  endMinutes: number;
+  room?: string;
+}
+
+export interface CourseSection {
+  course: Course;
+  normalizedSlots: NormalizedTimeSlot[];
+  examSlot?: {
+    day: number;
+    startMinutes: number;
+    endMinutes: number;
+    date: string; // Hijri date
+  };
+}
+
+export interface CourseStructure {
+  courseCode: string;
+  courseName: string;
+  hasLecture: boolean;
+  hasTutorial: boolean;
+  hasLab: boolean;
+  lectureRequired: boolean;
+  tutorialRequired: boolean;
+  labRequired: boolean;
+  sections: Course[];
+  lectureToTutorials: Map<number, Course[]>; // lectureId -> tutorials
+  lectureToLabs: Map<number, Course[]>; // lectureId -> labs
+  standaloneActivities: Course[]; // For courses without lectures (Lab-only)
+}
+
+export interface CourseSelectionValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  missingRequiredSections: string[];
+  duplicateLectures: string[];
+  orphanedSections: string[]; // TUT/LAB without selected lecture
+}
+
+export interface Schedule {
+  id: string;
+  sections: CourseSection[];
+  score: number;
+  conflicts: string[];
+  metadata: {
+    totalHours: number;
+    daysUsed: number[];
+    earliestStart: number;
+    latestEnd: number;
+    totalGaps: number;
+  };
+}
+
+export interface Constraint {
+  id: string;
+  name: string;
+  type: "required" | "preferred" | "forbidden";
+  description: string;
+  weight: number; // 1-10 for scoring
+  validator: (schedule: Schedule) => boolean;
+}
+
+export interface UserPreferences {
+  maxSolutionsToGenerate: number;
+  avoidMorningClasses: boolean; // Before 9 AM
+  avoidEveningClasses: boolean; // After 1:50 PM
+  preferCompactSchedule: boolean;
+  minimizeDays: boolean;
+  requiredSections: string[]; // Section IDs that must be included
+  forbiddenTimeSlots: NormalizedTimeSlot[];
+}
+
+export interface RegistrationState {
+  selectedCourses: Map<string, Course[]>; // courseCode -> selected sections
+  constraints: Constraint[];
+  preferences: UserPreferences;
+  favoriteSchedules: string[];
+  disabledCourses: Set<string>; // courseCode -> disabled for generation
+}
