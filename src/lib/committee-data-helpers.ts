@@ -1,30 +1,9 @@
-// Utility functions to transform mockCourseOfferings data for different UI components
+// Utility functions to transform mockCourseOfferings data for committee components.
+// Domain types MUST come from central definitions in src/lib/types.ts (DEC-Types-01).
+import type { CourseOffering } from "@/lib/types";
 
-// Helper utilities to transform mockCourseOfferings data for committee components
-
-export interface CourseOffering {
-  code: string;
-  name: string;
-  credits: number;
-  department: string;
-  level: number;
-  type: string;
-  exams: {
-    midterm?: { date: string; time: string; duration: number };
-    midterm2?: { date: string; time: string; duration: number };
-    final?: { date: string; time: string; duration: number };
-    [key: string]: { date: string; time: string; duration: number } | undefined;
-  };
-  sections: {
-    id: string;
-    courseCode: string;
-    instructor: string;
-    room: string;
-    times: { day: string; start: string; end: string }[];
-  }[];
-}
-
-export type ExamRecord = {
+// Flattened view of nested exam objects for table rendering.
+export type FlattenedExamRecord = {
   id: string;
   courseCode: string;
   courseName: string;
@@ -58,8 +37,10 @@ export type ScheduleSection = {
  * Extract all exams from course offerings
  * Only includes SWE department courses
  */
-export function getExams(courseOfferings: CourseOffering[]): ExamRecord[] {
-  const exams: ExamRecord[] = [];
+export function getExams(
+  courseOfferings: CourseOffering[]
+): FlattenedExamRecord[] {
+  const exams: FlattenedExamRecord[] = [];
 
   courseOfferings.forEach((course) => {
     // Only include SWE department courses
@@ -100,15 +81,18 @@ export function getSectionsByCourseCode(
     instructor: section.instructor,
     room: section.room,
     credits: course.credits,
-    meetings: section.times.map((time, idx) => ({
-      id: `${section.id}-meeting-${idx}`,
-      sectionId: section.id,
-      day: time.day,
-      startTime: time.start,
-      endTime: time.end,
-      room: section.room,
-      instructor: section.instructor,
-    })),
+    // Backward compatibility: if section has already a 'meetings' array (transition phase)
+    meetings: hasMeetings(section)
+      ? section.meetings
+      : section.times.map((time, idx) => ({
+          id: `${section.id}-meeting-${idx}`,
+          sectionId: section.id,
+          day: time.day,
+          startTime: time.start,
+          endTime: time.end,
+          room: section.room,
+          instructor: section.instructor,
+        })),
   }));
 }
 
@@ -129,20 +113,30 @@ export function getAllSections(
         instructor: section.instructor,
         room: section.room,
         credits: course.credits,
-        meetings: section.times.map((time, idx) => ({
-          id: `${section.id}-meeting-${idx}`,
-          sectionId: section.id,
-          day: time.day,
-          startTime: time.start,
-          endTime: time.end,
-          room: section.room,
-          instructor: section.instructor,
-        })),
+        meetings: hasMeetings(section)
+          ? section.meetings
+          : section.times.map((time, idx) => ({
+              id: `${section.id}-meeting-${idx}`,
+              sectionId: section.id,
+              day: time.day,
+              startTime: time.start,
+              endTime: time.end,
+              room: section.room,
+              instructor: section.instructor,
+            })),
       });
     });
   });
 
   return sections;
+}
+
+// --- Transition helper ---
+function hasMeetings(
+  section: unknown
+): section is { meetings: ScheduleSection["meetings"] } {
+  if (!section || typeof section !== "object") return false;
+  return Array.isArray((section as { meetings?: unknown }).meetings);
 }
 
 /**

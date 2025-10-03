@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Check, X } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-interface Notification {
+// UI-only notification shape (avoid collision with domain Notification in types.ts)
+interface UINotificationItem {
   id: string;
   title: string;
   message: string;
@@ -21,7 +22,7 @@ interface Notification {
 }
 
 export function NotificationsDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>([
+  const [notifications, setNotifications] = useState<UINotificationItem[]>([
     {
       id: "1",
       title: "Schedule Update",
@@ -64,7 +65,7 @@ export function NotificationsDropdown() {
     setNotifications([]);
   };
 
-  const getTypeStyles = (type: Notification["type"]) => {
+  const getTypeStyles = (type: UINotificationItem["type"]) => {
     switch (type) {
       case "warning":
         return "bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-400";

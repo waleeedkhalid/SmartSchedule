@@ -3,15 +3,15 @@
 
 import { CourseOffering, Section } from "./types";
 
-export interface ScheduleOption {
+export interface CandidateSchedule {
   courseCode: string;
   courseName: string;
   sections: Section[]; // Paired sections (lecture + lab/tutorial) or single section
 }
 
-export interface GeneratedSchedule {
+export interface GeneratedScheduleResult {
   id: string;
-  options: ScheduleOption[];
+  options: CandidateSchedule[];
   totalCredits: number;
 }
 
@@ -20,7 +20,7 @@ export interface ScheduleGenerationResult {
   validCount: number;
   generationMs: number;
   coursesCount: number;
-  schedules: GeneratedSchedule[];
+  schedules: GeneratedScheduleResult[];
 }
 
 /**
@@ -84,7 +84,7 @@ function sectionsConflict(sectionA: Section, sectionB: Section): boolean {
 /**
  * Check if a schedule has any conflicts
  */
-function scheduleHasConflict(schedule: ScheduleOption[]): boolean {
+function scheduleHasConflict(schedule: CandidateSchedule[]): boolean {
   for (let i = 0; i < schedule.length; i++) {
     for (let j = i + 1; j < schedule.length; j++) {
       const optionA = schedule[i];
@@ -109,11 +109,11 @@ function scheduleHasConflict(schedule: ScheduleOption[]): boolean {
  */
 function groupCourseOptions(
   courseOfferings: CourseOffering[]
-): Map<string, ScheduleOption[]> {
-  const optionsMap = new Map<string, ScheduleOption[]>();
+): Map<string, CandidateSchedule[]> {
+  const optionsMap = new Map<string, CandidateSchedule[]>();
 
   for (const course of courseOfferings) {
-    const options: ScheduleOption[] = [];
+    const options: CandidateSchedule[] = [];
 
     // For now, treat each section as a standalone option
     // In Phase 4+, we might need to pair lectures with labs/tutorials
@@ -167,7 +167,7 @@ export function generateSchedules(
 
   // Generate all possible combinations
   const allCombinations = cartesianProduct(optionsList);
-  const valid: GeneratedSchedule[] = [];
+  const valid: GeneratedScheduleResult[] = [];
 
   // Filter out schedules with conflicts
   for (const combo of allCombinations) {
@@ -209,12 +209,12 @@ export function generateSchedulesBacktracking(
 
   const optionsMap = groupCourseOptions(courseOfferings);
   const optionsList = Array.from(optionsMap.values());
-  const valid: GeneratedSchedule[] = [];
+  const valid: GeneratedScheduleResult[] = [];
   let explored = 0;
 
   function conflictsWithCurrent(
-    current: ScheduleOption[],
-    option: ScheduleOption
+    current: CandidateSchedule[],
+    option: CandidateSchedule
   ): boolean {
     for (const chosen of current) {
       for (const secA of chosen.sections) {
@@ -226,7 +226,7 @@ export function generateSchedulesBacktracking(
     return false;
   }
 
-  function dfs(idx: number, current: ScheduleOption[]) {
+  function dfs(idx: number, current: CandidateSchedule[]) {
     if (options?.limit && valid.length >= options.limit) return;
 
     if (idx === optionsList.length) {

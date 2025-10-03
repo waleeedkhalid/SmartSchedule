@@ -39,15 +39,17 @@ export default function Page(): React.ReactElement {
       />
 
       <PageContainer
-        title="Irregular Student Management"
-        description="Manage irregular students and their course requirements"
+        title="Registrar Operations"
+        description="Manage irregular students, adjust section capacity buffers (5%-15%), and approve enrollment requests"
       >
+        <committee.registrar.RegistrarEnrollmentApproval />
         <committee.registrar.IrregularStudentFormList
           irregularStudents={mockSWEIrregularStudents}
           onCreate={handleCreateIrregularStudent}
           onUpdate={handleUpdateIrregularStudent}
           onDelete={handleDeleteIrregularStudent}
         />
+        <committee.registrar.RegistrarCapacityManager />
       </PageContainer>
     </>
   );

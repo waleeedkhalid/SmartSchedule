@@ -52,19 +52,24 @@ export interface ExamInfo {
   duration: number; // minutes
 }
 
-export interface SectionTime {
-  day: string; // "Sunday"
-  start: string; // "08:00"
-  end: string; // "08:50"
+// Normalized meeting time (numeric) replacing previous duplicated SectionTime definitions (DECISION: 1C)
+export interface SectionMeeting {
+  day: number; // 1-5 (Sunday-Thursday)
+  startMinutes: number;
+  endMinutes: number;
+  room?: string;
 }
 
 export interface Section {
-  id: string; // "MATH203-01"
-  courseCode: string; // "MATH203"
-  instructor: string; // "Dr. Omar"
-  times: SectionTime[];
-  room: string; // "4"
-  capacity?: number; // optional
+  id: string;
+  courseCode: string;
+  instructor: string;
+  // Legacy field kept for committee & generation logic
+  times: { day: string; start: string; end: string }[];
+  room: string;
+  capacity?: number;
+  // Optional normalized meetings if student layer enriches
+  meetings?: SectionMeeting[];
 }
 
 export interface CourseOffering {
@@ -206,12 +211,6 @@ export interface ScheduleMetadata {
   roomUtilization: number; // percentage 0-100
 }
 
-export interface SectionTime {
-  day: string; // e.g., "1 3 5" (Sunday, Tuesday, Thursday)
-  time: string; // e.g., "11:00 ص - 11:50 ص"
-  room?: string;
-}
-
 export interface Course {
   courseId: number;
   courseCode: string;
@@ -220,11 +219,11 @@ export interface Course {
   activity: string; // 'محاضرة' (LEC), 'تمارين' (TUT), 'عملي' (LAB)
   hours: string;
   status: string;
-  sectionTimes: SectionTime[];
+  sectionMeetings: SectionMeeting[]; // student registration usage only
   instructor: string;
   examDay: string;
   examTime: string;
-  examDate: string; // Hijri date
+  examDate: string; // ISO date (student view may format to Hijri later)
   sectionAllocations: string;
   parentLectureId?: number; // For TUT/LAB sections, references the lecture courseId
   linkedSectionId?: number; // For LEC sections, references linked TUT/LAB courseId
@@ -244,7 +243,7 @@ export interface CourseSection {
     day: number;
     startMinutes: number;
     endMinutes: number;
-    date: string; // Hijri date
+    date: string; // ISO date
   };
 }
 

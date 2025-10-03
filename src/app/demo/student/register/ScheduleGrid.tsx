@@ -25,6 +25,7 @@ interface ScheduleGridProps {
   tutorialDarker?: boolean; // darken non-lecture blocks
   onCourseClick?: (courseCode: string) => void;
 }
+// highlightMap keys can be either courseCode or courseCode-section-activity for finer granularity
 
 type HighlightType = "add" | "remove" | "swapA" | "swapB" | "update";
 
@@ -221,7 +222,11 @@ export function ScheduleGrid({
   );
 
   const highlightClass = useCallback(
-    (code: string): string | undefined => {
+    (
+      courseCode: string,
+      section: string,
+      activity: string
+    ): string | undefined => {
       if (!highlightMap) return;
       const map: Record<HighlightType, string> = {
         add: "ring-4 ring-green-400 shadow-green-300",
@@ -230,7 +235,8 @@ export function ScheduleGrid({
         swapB: "ring-4 ring-indigo-400",
         update: "ring-4 ring-fuchsia-400",
       };
-      const key = highlightMap[code];
+      const k1 = `${courseCode}-${section}-${activity}`;
+      const key = highlightMap[k1] || highlightMap[courseCode];
       return key ? map[key] : undefined;
     },
     [highlightMap]
@@ -370,7 +376,11 @@ export function ScheduleGrid({
                             className={cn(
                               "absolute rounded-lg p-1.5 md:p-2 border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm ring-1 ring-black/5 dark:ring-white/5",
                               appliedColor,
-                              highlightClass(courseBlock.courseCode),
+                              highlightClass(
+                                courseBlock.courseCode,
+                                courseBlock.section,
+                                courseBlock.activity
+                              ),
                               isShort && "text-[11px] md:text-xs leading-tight"
                             )}
                             style={style}

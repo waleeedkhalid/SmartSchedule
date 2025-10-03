@@ -2,36 +2,25 @@
 
 // Student Registration Page with interactive add/remove of course sections using ScheduleGrid
 import React, { useState, useCallback, useMemo } from "react";
-import type {
-  Schedule,
-  CourseSection,
-  Course,
-  NormalizedTimeSlot,
-} from "@/lib/types";
+import type { CourseSection } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ScheduleGrid from "./ScheduleGrid";
+import {
+  activityToCourseSection,
+  buildScheduleFromSelections,
+  detectSectionConflicts,
+  buildHighlightMapForConflicts,
+  sectionKey,
+  CatalogCourseInput,
+} from "@/lib/student-schedule-helpers";
 import { cn } from "@/lib/utils";
 
 // Mock catalog (SWE only per scope) - minimal example; in real app derive from data helpers
-interface CatalogCourse {
-  courseCode: string;
-  courseName: string;
-  activities: Array<{
-    section: string;
-    activity: string; // محاضرة / تمارين / عملي
-    instructor: string;
-    day: number; // 1-5
-    startMinutes: number;
-    endMinutes: number;
-    examDate?: string; // Only for lectures
-  }>;
-}
-
-const CATALOG: CatalogCourse[] = [
+const CATALOG: CatalogCourseInput[] = [
   {
     courseCode: "SWE211",
     courseName: "Intro to Software Eng.",
@@ -43,7 +32,7 @@ const CATALOG: CatalogCourse[] = [
         day: 1,
         startMinutes: 8 * 60,
         endMinutes: 9 * 60,
-        examDate: "05-08",
+        examDateISO: "2025-05-08",
       },
       {
         section: "T01",
@@ -66,7 +55,7 @@ const CATALOG: CatalogCourse[] = [
         day: 2,
         startMinutes: 11 * 60,
         endMinutes: 12 * 60,
-        examDate: "06-02",
+        examDateISO: "2025-06-02",
       },
       {
         section: "L02",
@@ -75,7 +64,7 @@ const CATALOG: CatalogCourse[] = [
         day: 4,
         startMinutes: 14 * 60,
         endMinutes: 15 * 60,
-        examDate: "06-02",
+        examDateISO: "2025-06-02",
       },
     ],
   },
@@ -90,7 +79,7 @@ const CATALOG: CatalogCourse[] = [
         day: 1,
         startMinutes: 9 * 60 + 30,
         endMinutes: 10 * 60 + 30,
-        examDate: "06-15",
+        examDateISO: "2025-06-15",
       },
       {
         section: "L02",
@@ -99,91 +88,27 @@ const CATALOG: CatalogCourse[] = [
         day: 3,
         startMinutes: 13 * 60,
         endMinutes: 14 * 60,
-        examDate: "06-15",
+        examDateISO: "2025-06-15",
       },
     ],
   },
 ];
 
-// Convert internal selection into Schedule type for ScheduleGrid
-function buildSchedule(selections: CourseSection[]): Schedule {
-  return {
-    id: "student-current",
-    sections: selections,
-    score: 0,
-    conflicts: [],
-    metadata: {
-      totalHours: selections.reduce(
-        (acc, s) =>
-          acc +
-          s.normalizedSlots.reduce(
-            (m, slot) => m + (slot.endMinutes - slot.startMinutes) / 60,
-            0
-          ),
-        0
-      ),
-      daysUsed: Array.from(
-        new Set(
-          selections.flatMap((s) => s.normalizedSlots.map((sl) => sl.day))
-        )
-      ),
-      earliestStart: Math.min(
-        ...selections.flatMap((s) =>
-          s.normalizedSlots.map((sl) => sl.startMinutes)
-        )
-      ),
-      latestEnd: Math.max(
-        ...selections.flatMap((s) =>
-          s.normalizedSlots.map((sl) => sl.endMinutes)
-        )
-      ),
-      totalGaps: 0,
-    },
-  };
-}
-
-// Helper to make a CourseSection from catalog activity
-function createCourseSection(
-  course: CatalogCourse,
-  act: CatalogCourse["activities"][number]
-): CourseSection {
-  const baseCourse: Course = {
-    courseId: Math.floor(Math.random() * 100000),
-    courseCode: course.courseCode,
-    courseName: course.courseName,
-    section: act.section,
-    activity: act.activity,
-    hours: `${(act.endMinutes - act.startMinutes) / 60}`,
-    status: "ENROLLED",
-    // SectionTime in core types expects string day+time format (legacy shape). Provide placeholders.
-    sectionTimes: [
-      {
-        day: `${act.day}`,
-        time: "",
-        room: "",
-      } as unknown as Course["sectionTimes"][number],
-    ],
-    instructor: act.instructor,
-    examDay: "---",
-    examTime: "---",
-    examDate: act.examDate || "---",
-    sectionAllocations: "",
-  };
-  const normalizedSlots: NormalizedTimeSlot[] = [
-    {
-      day: act.day,
-      startMinutes: act.startMinutes,
-      endMinutes: act.endMinutes,
-    },
-  ];
-  return { course: baseCourse, normalizedSlots };
-}
+// Tutorials/labs remain bound to their lecture (not independently selectable) – enforced by adding/removing whole course grouping.
 
 export default function StudentRegisterPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CourseSection[]>([]);
 
-  const schedule = useMemo(() => buildSchedule(selected), [selected]);
+  const schedule = useMemo(
+    () => buildScheduleFromSelections(selected),
+    [selected]
+  );
+  const conflicts = useMemo(() => detectSectionConflicts(selected), [selected]);
+  const highlightMap = useMemo(
+    () => buildHighlightMapForConflicts(conflicts),
+    [conflicts]
+  );
 
   const filteredCatalog = useMemo(
     () =>
@@ -200,7 +125,7 @@ export default function StudentRegisterPage() {
     [selected]
   );
 
-  const toggleAddCourse = useCallback((course: CatalogCourse) => {
+  const toggleAddCourse = useCallback((course: CatalogCourseInput) => {
     setSelected((prev) => {
       const exists = prev.filter(
         (s) => s.course.courseCode === course.courseCode
@@ -211,7 +136,7 @@ export default function StudentRegisterPage() {
       }
       // Add default (all activities for simplicity). Could refine to choose specific sections
       const newSections = course.activities.map((a) =>
-        createCourseSection(course, a)
+        activityToCourseSection(course, a)
       );
       return [...prev, ...newSections];
     });
@@ -310,6 +235,7 @@ export default function StudentRegisterPage() {
                 showLegend
                 onCourseClick={handleCourseBlockClick}
                 tutorialDarker
+                highlightMap={highlightMap}
               />
               <div className="border rounded-md p-3 bg-muted/30 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div>
@@ -331,6 +257,16 @@ export default function StudentRegisterPage() {
                 <div>
                   <span className="font-semibold block">Days Used</span>
                   {schedule.metadata.daysUsed.length}
+                </div>
+                <div className="col-span-2 md:col-span-4">
+                  <span className="font-semibold mr-1">Conflicts:</span>
+                  {conflicts.length === 0 ? (
+                    <span className="text-green-600 text-xs">None</span>
+                  ) : (
+                    <span className="text-red-600 text-xs">
+                      {conflicts.length} overlap{conflicts.length > 1 && "s"}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -354,6 +290,12 @@ export default function StudentRegisterPage() {
                         code: s.course.courseCode,
                         section: s.course.section,
                         activity: s.course.activity,
+                        id: sectionKey(s),
+                      })),
+                      conflicts: conflicts.map((c) => ({
+                        a: sectionKey(c.a),
+                        b: sectionKey(c.b),
+                        overlapMinutes: c.overlapMinutes,
                       })),
                     });
                   }}

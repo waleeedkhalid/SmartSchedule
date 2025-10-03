@@ -2,10 +2,10 @@ import {
   TimeSlot,
   CourseOffering,
   Section,
-  SectionTime,
   SWEStudent,
   FacultyAvailability,
   Conflict,
+  SectionMeeting,
 } from "@/lib/types";
 import { TimeSlotManager } from "./TimeSlotManager";
 
@@ -37,21 +37,16 @@ export class ConflictChecker {
     section2: Section
   ): Conflict | null {
     // Get meeting times for both sections
-    const times1 = section1.times || [];
-    const times2 = section2.times || [];
+    // Prefer normalized meetings if present, else derive from legacy times
+    const times1: SectionMeeting[] =
+      section1.meetings || legacyTimesToMeetings(section1.times);
+    const times2: SectionMeeting[] =
+      section2.meetings || legacyTimesToMeetings(section2.times);
 
     for (const time1 of times1) {
       for (const time2 of times2) {
-        const slot1: TimeSlot = {
-          day: time1.day,
-          startTime: time1.start,
-          endTime: time1.end,
-        };
-        const slot2: TimeSlot = {
-          day: time2.day,
-          startTime: time2.start,
-          endTime: time2.end,
-        };
+        const slot1: TimeSlot = normalizeMeetingToDisplay(time1);
+        const slot2: TimeSlot = normalizeMeetingToDisplay(time2);
 
         if (this.timeManager.doTimeSlotsOverlap(slot1, slot2)) {
           // Check if same room - only ERROR if both time AND room conflict
@@ -197,13 +192,9 @@ export class ConflictChecker {
 
     // Check if faculty is available for assigned sections
     for (const section of facultySections) {
-      const times = section.times || [];
+      const times = section.meetings || legacyTimesToMeetings(section.times);
       for (const time of times) {
-        const slot: TimeSlot = {
-          day: time.day,
-          startTime: time.start,
-          endTime: time.end,
-        };
+        const slot: TimeSlot = normalizeMeetingToDisplay(time);
 
         if (!this.timeManager.isFacultyAvailable(faculty, slot)) {
           conflicts.push({
@@ -231,12 +222,12 @@ export class ConflictChecker {
     const conflicts: Conflict[] = [];
     const roomBookings: Map<
       string,
-      Array<{ section: Section; time: SectionTime }>
+      Array<{ section: Section; time: SectionMeeting }>
     > = new Map();
 
     // Collect all room bookings
     for (const section of sections) {
-      const times = section.times || [];
+      const times = section.meetings || legacyTimesToMeetings(section.times);
       const room = section.room;
 
       for (const time of times) {
@@ -256,16 +247,8 @@ export class ConflictChecker {
           const booking1 = bookings[i];
           const booking2 = bookings[j];
 
-          const slot1: TimeSlot = {
-            day: booking1.time.day,
-            startTime: booking1.time.start,
-            endTime: booking1.time.end,
-          };
-          const slot2: TimeSlot = {
-            day: booking2.time.day,
-            startTime: booking2.time.start,
-            endTime: booking2.time.end,
-          };
+          const slot1: TimeSlot = normalizeMeetingToDisplay(booking1.time);
+          const slot2: TimeSlot = normalizeMeetingToDisplay(booking2.time);
 
           if (this.timeManager.doTimeSlotsOverlap(slot1, slot2)) {
             conflicts.push({
@@ -433,4 +416,59 @@ export class ConflictChecker {
       critical,
     };
   }
+}
+
+// --- Helpers for new normalized model ---
+function minutesToString(m: number): string {
+  const h = Math.floor(m / 60)
+    .toString()
+    .padStart(2, "0");
+  const mm = (m % 60).toString().padStart(2, "0");
+  return `${h}:${mm}`;
+}
+
+const DAY_MAP: Record<number, string> = {
+  1: "Sunday",
+  2: "Monday",
+  3: "Tuesday",
+  4: "Wednesday",
+  5: "Thursday",
+};
+
+function dayNumberToName(day: number): string {
+  return DAY_MAP[day] || "Sunday";
+}
+
+function normalizeMeetingToDisplay(m: SectionMeeting): TimeSlot {
+  return {
+    day: dayNumberToName(m.day),
+    startTime: minutesToString(m.startMinutes),
+    endTime: minutesToString(m.endMinutes),
+  };
+}
+
+function legacyTimesToMeetings(
+  times: { day: string; start: string; end: string }[]
+): SectionMeeting[] {
+  return times.map((t) => ({
+    day: nameToDayNumber(t.day),
+    startMinutes: stringToMinutes(t.start),
+    endMinutes: stringToMinutes(t.end),
+  }));
+}
+
+function stringToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function nameToDayNumber(name: string): number {
+  const map: Record<string, number> = {
+    Sunday: 1,
+    Monday: 2,
+    Tuesday: 3,
+    Wednesday: 4,
+    Thursday: 5,
+  };
+  return map[name] || 1;
 }

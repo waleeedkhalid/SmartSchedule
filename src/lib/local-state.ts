@@ -226,11 +226,149 @@ export function deleteStudentCount(code: string): boolean {
 }
 
 // ============================================================================
+// ENROLLMENT REQUESTS & OVERRIDES STATE MANAGEMENT
+// ============================================================================
+
+export type EnrollmentRequest = {
+  id: string;
+  sectionId: string;
+  courseCode: string;
+  studentId: string;
+  studentName: string;
+  timestamp: string;
+  status: "pending" | "approved" | "denied";
+  reason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+};
+
+export type EnrollmentOverride = {
+  sectionId: string;
+  courseCode: string;
+  studentId: string;
+  addedBy: "committee" | "registrar";
+  addedAt: string;
+};
+
+let enrollmentRequestsState: EnrollmentRequest[] = [];
+let enrollmentOverridesState: EnrollmentOverride[] = [];
+
+export function getAllEnrollmentRequests(): EnrollmentRequest[] {
+  return enrollmentRequestsState;
+}
+
+export function getPendingEnrollmentRequests(): EnrollmentRequest[] {
+  return enrollmentRequestsState.filter((r) => r.status === "pending");
+}
+
+export function createEnrollmentRequest(
+  sectionId: string,
+  courseCode: string,
+  studentId: string,
+  studentName: string
+): EnrollmentRequest {
+  const id = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const request: EnrollmentRequest = {
+    id,
+    sectionId,
+    courseCode,
+    studentId,
+    studentName,
+    timestamp: new Date().toISOString(),
+    status: "pending",
+  };
+  enrollmentRequestsState.push(request);
+  console.log("📝 Created enrollment request:", request);
+  return request;
+}
+
+export function approveEnrollmentRequest(
+  requestId: string,
+  reviewedBy: string
+): boolean {
+  const request = enrollmentRequestsState.find((r) => r.id === requestId);
+  if (!request || request.status !== "pending") return false;
+
+  request.status = "approved";
+  request.reviewedBy = reviewedBy;
+  request.reviewedAt = new Date().toISOString();
+
+  // Add to overrides
+  enrollmentOverridesState.push({
+    sectionId: request.sectionId,
+    courseCode: request.courseCode,
+    studentId: request.studentId,
+    addedBy: "registrar",
+    addedAt: request.reviewedAt,
+  });
+
+  console.log("✅ Approved enrollment request:", request);
+  return true;
+}
+
+export function denyEnrollmentRequest(
+  requestId: string,
+  reviewedBy: string,
+  reason: string
+): boolean {
+  const request = enrollmentRequestsState.find((r) => r.id === requestId);
+  if (!request || request.status !== "pending") return false;
+
+  request.status = "denied";
+  request.reviewedBy = reviewedBy;
+  request.reviewedAt = new Date().toISOString();
+  request.reason = reason;
+
+  console.log("❌ Denied enrollment request:", request);
+  return true;
+}
+
+export function addEnrollmentOverride(
+  sectionId: string,
+  courseCode: string,
+  studentId: string,
+  addedBy: "committee" | "registrar"
+): EnrollmentOverride {
+  const override: EnrollmentOverride = {
+    sectionId,
+    courseCode,
+    studentId,
+    addedBy,
+    addedAt: new Date().toISOString(),
+  };
+  enrollmentOverridesState.push(override);
+  console.log("➕ Added enrollment override:", override);
+  return override;
+}
+
+export function getEnrollmentOverridesForSection(
+  sectionId: string
+): EnrollmentOverride[] {
+  return enrollmentOverridesState.filter((o) => o.sectionId === sectionId);
+}
+
+export function removeEnrollmentOverride(
+  sectionId: string,
+  studentId: string
+): boolean {
+  const index = enrollmentOverridesState.findIndex(
+    (o) => o.sectionId === sectionId && o.studentId === studentId
+  );
+  if (index === -1) return false;
+
+  const removed = enrollmentOverridesState.splice(index, 1);
+  console.log("➖ Removed enrollment override:", removed[0]);
+  return true;
+}
+
+// ============================================================================
 // RESET FUNCTION (for testing)
 // ============================================================================
 
 export function resetToMockData(): void {
   coursesState = JSON.parse(JSON.stringify(mockCourseOfferings));
   studentCountsState = JSON.parse(JSON.stringify(mockStudentCounts));
+  enrollmentRequestsState = [];
+  enrollmentOverridesState = [];
   console.log("Reset to mock data");
 }
