@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import * as committee from "@/components/committee";
-import type { IrregularStudentRecord } from "@/components/committee/registrar/IrregularStudentFormList";
+import type { IrregularStudent } from "@/lib/types";
 import {
   PersonaNavigation,
   PageContainer,
@@ -11,16 +11,14 @@ import {
 import { mockSWEIrregularStudents } from "@/data/mockData";
 
 export default function Page(): React.ReactElement {
-  const handleCreateIrregularStudent = (
-    studentData: Omit<IrregularStudentRecord, "">
-  ) => {
+  const handleCreateIrregularStudent = (studentData: IrregularStudent) => {
     console.log("Creating irregular student:", studentData);
     // TODO: Send to API endpoint POST /api/irregular
   };
 
   const handleUpdateIrregularStudent = (
     id: string,
-    studentData: Omit<IrregularStudentRecord, "">
+    studentData: IrregularStudent
   ) => {
     console.log("Updating irregular student:", id, studentData);
     // TODO: Send to API endpoint PATCH /api/irregular/:id

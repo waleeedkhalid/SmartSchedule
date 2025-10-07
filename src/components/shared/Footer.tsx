@@ -1,5 +1,6 @@
 import { Github, Linkedin } from "lucide-react";
 
+// UI-only: team member display info (exclude from domain model)
 export interface TeamMember {
   name: string;
   github: string;

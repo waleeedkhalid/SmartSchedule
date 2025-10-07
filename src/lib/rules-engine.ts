@@ -73,21 +73,22 @@ export function checkBreakTimeRule(): Conflict[] {
 // RULE 2: Room Conflicts
 // ============================================================================
 
+// Internal normalized scheduled slot representation reused across rules
+interface _ScheduledTimeSlot {
+  course: CourseOffering;
+  sectionId: string;
+  day: string;
+  start: string;
+  end: string;
+  room?: string;
+  instructor?: string;
+}
+
 export function checkRoomConflicts(): Conflict[] {
   const conflicts: Conflict[] = [];
   const allCourses = courseOfferingService.findAll();
 
-  // Build a list of all scheduled times
-  interface ScheduledTime {
-    course: CourseOffering;
-    sectionId: string;
-    day: string;
-    start: string;
-    end: string;
-    room: string;
-  }
-
-  const scheduledTimes: ScheduledTime[] = [];
+  const scheduledTimes: _ScheduledTimeSlot[] = [];
 
   for (const course of allCourses) {
     for (const section of course.sections || []) {
@@ -144,17 +145,7 @@ export function checkInstructorConflicts(): Conflict[] {
   const conflicts: Conflict[] = [];
   const allCourses = courseOfferingService.findAll();
 
-  // Build a list of all scheduled times
-  interface ScheduledTime {
-    course: CourseOffering;
-    sectionId: string;
-    day: string;
-    start: string;
-    end: string;
-    instructor: string;
-  }
-
-  const scheduledTimes: ScheduledTime[] = [];
+  const scheduledTimes: _ScheduledTimeSlot[] = [];
 
   for (const course of allCourses) {
     for (const section of course.sections || []) {

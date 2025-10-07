@@ -52,6 +52,13 @@ export interface ExamInfo {
   duration: number; // minutes
 }
 
+// Patch-style update object for modifying an exam in place (centralized from local-state)
+export interface ExamUpdate {
+  date?: string;
+  time?: string;
+  duration?: number;
+}
+
 // Normalized meeting time (numeric) replacing previous duplicated SectionTime definitions (DECISION: 1C)
 export interface SectionMeeting {
   day: number; // 1-5 (Sunday-Thursday)

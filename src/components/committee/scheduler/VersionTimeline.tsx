@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+// UI-only: schedule version timeline entry (not persisted)
 export interface VersionEntry {
   id: string;
   version: number;

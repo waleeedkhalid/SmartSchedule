@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Home } from "lucide-react";
 import { NotificationsDropdown } from "../NotificationsDropdown";
 
+// UI-only: navigation metadata (not a domain type)
 export interface NavItem {
   label: string;
   href: string;

@@ -69,11 +69,7 @@ export function deleteCourse(code: string): boolean {
 // EXAM STATE MANAGEMENT
 // ============================================================================
 
-export interface ExamUpdate {
-  date?: string;
-  time?: string;
-  duration?: number;
-}
+import type { ExamUpdate } from "./types";
 
 export function updateExam(
   courseCode: string,

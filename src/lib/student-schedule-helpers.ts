@@ -118,7 +118,7 @@ export function buildScheduleFromSelections(
   };
 }
 
-export interface SectionConflict {
+export interface SectionConflictDetail {
   a: CourseSection;
   b: CourseSection;
   overlapMinutes: number;
@@ -126,8 +126,8 @@ export interface SectionConflict {
 
 export function detectSectionConflicts(
   selections: CourseSection[]
-): SectionConflict[] {
-  const conflicts: SectionConflict[] = [];
+): SectionConflictDetail[] {
+  const conflicts: SectionConflictDetail[] = [];
   for (let i = 0; i < selections.length; i++) {
     for (let j = i + 1; j < selections.length; j++) {
       const A = selections[i];
@@ -149,7 +149,7 @@ export function detectSectionConflicts(
 }
 
 export function buildHighlightMapForConflicts(
-  conflicts: SectionConflict[]
+  conflicts: SectionConflictDetail[]
 ): Record<string, "remove" | "update"> {
   const map: Record<string, "remove" | "update"> = {};
   for (const c of conflicts) {

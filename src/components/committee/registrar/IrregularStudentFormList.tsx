@@ -20,28 +20,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
-
-export interface IrregularStudentRecord {
-  id: string; // student ID number
-  name: string;
-  requiredCourses: string[];
-}
+import type { IrregularStudent } from "@/lib/types";
 
 interface IrregularStudentFormListProps {
-  irregularStudents: IrregularStudentRecord[];
-  onCreate?: (student: Omit<IrregularStudentRecord, "">) => void;
-  onUpdate?: (id: string, student: Omit<IrregularStudentRecord, "">) => void;
+  irregularStudents: IrregularStudent[];
+  onCreate?: (student: IrregularStudent) => void;
+  onUpdate?: (id: string, student: IrregularStudent) => void;
   onDelete?: (id: string) => void;
 }
 
 export const IrregularStudentFormList: React.FC<
   IrregularStudentFormListProps
 > = ({ irregularStudents: initialStudents, onCreate, onUpdate, onDelete }) => {
-  const [students, setStudents] =
-    useState<IrregularStudentRecord[]>(initialStudents);
+  const [students, setStudents] = useState<IrregularStudent[]>(initialStudents);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Omit<IrregularStudentRecord, "">>({
+  const [draft, setDraft] = useState<IrregularStudent>({
     id: "",
     name: "",
     requiredCourses: [],
@@ -56,7 +50,7 @@ export const IrregularStudentFormList: React.FC<
     setEditingId(null);
   }
 
-  function handleEdit(student: IrregularStudentRecord) {
+  function handleEdit(student: IrregularStudent) {
     setDraft({
       id: student.id,
       name: student.name,
@@ -94,7 +88,7 @@ export const IrregularStudentFormList: React.FC<
       console.log("Updating irregular student:", editingId, draft);
     } else {
       // Add new student
-      const newStudent: IrregularStudentRecord = {
+      const newStudent: IrregularStudent = {
         id: draft.id,
         name: draft.name,
         requiredCourses: draft.requiredCourses,
