@@ -84,7 +84,7 @@ export const mockSWEPlan = [
     prerequisites: ["CSC111", "MATH151"],
   },
   {
-    code: "CSC303",
+    code: "CENX303",
     name: "Computer Networks and Communications",
     credits: 3,
     level: 4,
@@ -170,6 +170,18 @@ export const mockSWEPlan = [
 ];
 
 export const mockElectivePackages = [
+  /*
+  IC 101
+Principles of Islamic Culture	  IC 103
+Economic System in Islam	  IC 105
+Human Rights	  IC 106
+Medical Jurisprudence	  QURN 100
+Quran Kareem	  IC 109
+Development Role of Women	  IC 102
+Family in Islam	  IC 100
+Studies in the Prophet Biography	  IC 104
+Islamic Political System
+  */
   {
     id: "universityRequirements",
     label: "University Requirements (4-0 hours)",
@@ -177,50 +189,54 @@ export const mockElectivePackages = [
     minHours: 4,
     maxHours: 4,
     courses: [
-      { code: "QRAN100", name: "Holy Quran", credits: 2, prerequisites: [] },
+      {
+        code: "QURN100",
+        name: "Quran Kareem",
+        credits: 2,
+        prerequisites: [],
+      },
       {
         code: "IC100",
-        name: "Studies in the Prophet's Biography",
+        name: "Studies in the Prophet Biography",
         credits: 2,
         prerequisites: [],
       },
       {
         code: "IC101",
-        name: "Fundamentals of Islamic Culture",
+        name: "Principles of Islamic Culture",
         credits: 2,
         prerequisites: [],
       },
       {
         code: "IC102",
-        name: "The Family in Islam",
+        name: "Family in Islam",
         credits: 2,
-        prerequisites: ["IC101"],
+        prerequisites: [],
       },
       {
         code: "IC103",
-        name: "The Islamic Economic System",
+        name: "Economic System in Islam",
         credits: 2,
-        prerequisites: ["IC101"],
+        prerequisites: [],
       },
       {
         code: "IC104",
-        name: "The Islamic Political System",
+        name: "Islamic Political System",
         credits: 2,
-        prerequisites: ["IC101"],
+        prerequisites: [],
       },
       {
         code: "IC105",
-        name: "Women and Their Developmental Role",
+        name: "Human Rights",
         credits: 2,
         prerequisites: [],
       },
       {
         code: "IC106",
-        name: "Medical Jurisprudence (Fiqh)",
+        name: "Medical Jurisprudence",
         credits: 2,
-        prerequisites: ["IC101"],
+        prerequisites: [],
       },
-      { code: "IC109", name: "Human Rights", credits: 2, prerequisites: [] },
     ],
   },
   {
@@ -231,25 +247,31 @@ export const mockElectivePackages = [
     maxHours: 6,
     courses: [
       {
-        code: "MATH203",
+        code: "MATH254",
         name: "Numerical Methods",
         credits: 3,
-        prerequisites: ["MATH151"],
+        prerequisites: ["MATH244"],
       },
       {
-        code: "MATH254",
-        name: "Calculus Guarantee",
+        code: "MATH203",
+        name: "DIFFERENTIAL & INTEGRAL CALCULUS",
         credits: 3,
-        prerequisites: ["MATH151", "MATH152"],
+        prerequisites: ["MATH106"],
       },
       {
         code: "OPER122",
         name: "Introduction to Operations Research",
         credits: 3,
-        prerequisites: ["MATH151"],
+        prerequisites: [],
       },
     ],
   },
+  //     Elective  3 - 3	  MBI 140
+  // General Microbiology	  GPH 201
+  // Principles of Geophysics	  ZOOL145
+  // Biology	  PHYS201
+  // Mathematical Physics (1)	  BCH 101
+  // GENERAL BIOCHEMISTRY
   {
     id: "generalScience",
     label: "General Science Requirements (3-0 hours)",
@@ -257,21 +279,56 @@ export const mockElectivePackages = [
     minHours: 3,
     maxHours: 3,
     courses: [
-      { code: "BIO145", name: "Biology", credits: 3, prerequisites: [] },
       {
-        code: "BIO140",
-        name: "Microbiology",
+        code: "MBI140",
+        name: "General Microbiology",
         credits: 3,
-        prerequisites: ["BIO145"],
+        prerequisites: [],
       },
       {
-        code: "CHEM101",
+        code: "GPH201",
+        name: "Principles of Geophysics",
+        credits: 3,
+        prerequisites: [],
+      },
+      {
+        code: "BCH101",
         name: "General Biochemistry",
+        credits: 4,
+        prerequisites: [],
+      },
+      {
+        code: "PHYS201",
+        name: "Mathematical Physics (1)",
+        credits: 3,
+        prerequisites: [],
+      },
+      {
+        code: "ZOOL145",
+        name: "Biology",
         credits: 3,
         prerequisites: [],
       },
     ],
   },
+  //     Elective  9 - 0	  SWE 484
+  // Multimedia Computing	  CSC 215
+  // Procedural Programming With C	  CENX445
+  // NETWORK PROTOCOLS & ALGORITHMS	  SWE 486
+  // Cloud Computing & Big Data	  SWE 488
+  // Complex Systems Engineering	  CENX 318
+  // Embedded Systems Design	  CSC 311
+  // DESIGN & ANALYSIS OF ALGORITHEMS	  IS 485
+  // Enterprise Resource Planning Systems Lab	  CENX316
+  // Computer Architecture & Assembly Languages	  SWE 485
+  // Selected Topics in Software Engineering	  CSC 478
+  // Digital Image Processing and Analysis	  CSC 476
+  // Computer Graphics	  IS 385
+  // Enterprise Resource Planning Systems	  CSC 361
+  // ARTIFICIAL INTELLIGENCE	  SWE 481
+  // Advanced Web Applications Engineering	  SWE 483
+  // Mobile Application Development	  SWE 483
+
   {
     id: "departmentElectives",
     label: "Department Electives (9-0 hours)",
@@ -280,94 +337,100 @@ export const mockElectivePackages = [
     maxHours: 9,
     courses: [
       {
-        code: "CSC215",
-        name: "Procedural Programming Language (e.g., C++)",
-        credits: 3,
-        prerequisites: ["CSC111"],
-      },
-      {
-        code: "CSC311",
-        name: "Design and Analysis of Algorithms",
-        credits: 3,
-        prerequisites: ["CSC113"],
-      },
-      {
-        code: "CEN316",
-        name: "Computer Architecture and Assembly Languages",
-        credits: 3,
-        prerequisites: ["CSC111"],
-      },
-      {
-        code: "CEN318",
-        name: "Embedded Systems",
-        credits: 4,
-        prerequisites: ["CEN316"],
-      },
-      {
-        code: "CSC361",
-        name: "Artificial Intelligence",
-        credits: 3,
-        prerequisites: ["CSC311"],
-      },
-      {
-        code: "IS385",
-        name: "Enterprise Resource Planning Systems",
-        credits: 3,
-        prerequisites: ["SWE211"],
-      },
-      {
         code: "SWE484",
         name: "Multimedia Computing",
         credits: 3,
-        prerequisites: ["SWE211"],
+        prerequisites: [],
       },
       {
-        code: "SWE483",
-        name: "Selected Topics (Specific Area)",
+        code: "CSC215",
+        name: "Procedural Programming With C",
         credits: 3,
-        prerequisites: ["SWE312"],
+        prerequisites: ["CSC111"],
       },
       {
-        code: "CEN445",
-        name: "Network Protocols and Algorithms",
+        code: "CENX445",
+        name: "Network Protocols & Algorithms",
+        credits: 4,
+        prerequisites: ["CENX303"],
+      },
+      {
+        code: "SWE486",
+        name: "Cloud Computing & Big Data",
         credits: 3,
-        prerequisites: ["CEN303"],
+        prerequisites: [],
+      },
+      {
+        code: "SWE488",
+        name: "Complex Systems Engineering",
+        credits: 3,
+        prerequisites: [],
+      },
+      {
+        code: "CENX318",
+        name: "Embedded Systems Design",
+        credits: 3,
+        prerequisites: ["CENX303"],
+      },
+      {
+        code: "CSC311",
+        name: "Design & Analysis of Algorithms",
+        credits: 3,
+        prerequisites: ["CSC212"],
+      },
+      {
+        code: "IS485",
+        name: "Enterprise Resource Planning Systems Lab",
+        credits: 1,
+        prerequisites: ["IS385"],
+      },
+      {
+        code: "CENX316",
+        name: "Computer Architecture & Assembly Languages",
+        credits: 3,
+        prerequisites: ["CENX303"],
+      },
+      {
+        code: "SWE485",
+        name: "Selected Topics in Software Engineering",
+        credits: 3,
+        prerequisites: [],
+      },
+      {
+        code: "CSC478",
+        name: "Digital Image Processing and Analysis",
+        credits: 3,
+        prerequisites: ["CSC361"],
       },
       {
         code: "CSC476",
         name: "Computer Graphics",
         credits: 3,
-        prerequisites: ["MATH151"],
+        prerequisites: ["CSC212"],
       },
       {
-        code: "CSC478",
-        name: "Web Application Engineering",
+        code: "IS385",
+        name: "Enterprise Resource Planning Systems",
+        credits: 3,
+        prerequisites: ["IS230"],
+      },
+      {
+        code: "CSC361",
+        name: "Artificial Intelligence",
+        credits: 3,
+        prerequisites: ["CSC220"],
+      },
+      {
+        code: "SWE481",
+        name: "Advanced Web Applications Engineering",
         credits: 3,
         prerequisites: ["SWE381"],
       },
       {
-        code: "SWE485",
+        code: "SWE483",
         name: "Mobile Application Development",
         credits: 3,
         prerequisites: ["SWE381"],
-      },
-      {
-        code: "IS485",
-        name: "Cloud Computing and Big Data",
-        credits: 3,
-        prerequisites: ["CSC311"],
-      },
-      {
-        code: "SWE486",
-        name: "Complex Systems Engineering",
-        credits: 3,
-        prerequisites: ["SWE333"],
-      },
-      {
-        code: "SWE488",
-        name: "Selected Topics in Software Engineering",
-        credits: 3,
-        prerequisites: ["SWE312"],
       },
     ],
   },

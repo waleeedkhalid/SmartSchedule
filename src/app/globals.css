@@ -419,3 +419,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Landing Page Styles */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}

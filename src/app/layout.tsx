@@ -21,9 +21,61 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// PRD 3.4 - SEO Metadata: Production-ready SEO optimization
 export const metadata: Metadata = {
-  title: "SmartSchedule Prototype",
-  description: "Scheduling workflow prototype with synthetic datasets",
+  metadataBase: new URL("https://smartschedule.ksu.edu.sa"),
+  title: {
+    default:
+      "SmartSchedule - Intelligent Academic Timetabling System | King Saud University",
+    template: "%s | SmartSchedule - KSU",
+  },
+  description:
+    "Revolutionary academic scheduling platform for King Saud University's Software Engineering Department. AI-powered course timetabling, automated conflict detection, faculty load management, and student registration optimization. Transform your academic planning with intelligent automation.",
+  keywords: [
+    "academic scheduling software",
+    "university timetabling system",
+    "course scheduling automation",
+    "King Saud University",
+    "KSU software engineering",
+    "faculty load management",
+    "student registration system",
+    "AI schedule optimization",
+    "academic planning tool",
+    "conflict-free timetabling",
+    "automated course scheduling",
+    "educational technology",
+    "academic resource optimization",
+  ],
+  authors: [{ name: "King Saud University - Software Engineering Department" }],
+  creator: "King Saud University",
+  publisher: "King Saud University",
+  openGraph: {
+    title: "SmartSchedule - Intelligent Academic Timetabling for KSU",
+    description:
+      "Transform academic planning with AI-powered scheduling, automated conflict resolution, and comprehensive resource optimization. Designed for KSU Software Engineering Department.",
+    type: "website",
+    locale: "en_US",
+    url: "https://smartschedule.ksu.edu.sa",
+    siteName: "SmartSchedule",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SmartSchedule - AI-Powered Academic Scheduling",
+    description:
+      "Intelligent timetabling system for King Saud University. Automate scheduling, optimize resources, and enhance academic excellence.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  category: "education",
 };
 
 export default function RootLayout({
