@@ -8,11 +8,6 @@ import {
 } from "@/components/shared";
 
 export default function Page(): React.ReactElement {
-  const handleSubmitPreferences = (preferences: unknown) => {
-    console.log("Submitting elective preferences:", preferences);
-    // TODO: Send to API endpoint POST /api/student/preferences
-  };
-
   return (
     <>
       <PersonaNavigation
@@ -25,9 +20,7 @@ export default function Page(): React.ReactElement {
         description="Rank your preferred elective courses for next semester"
       >
         <div className="max-w-3xl">
-          <student.electives.ElectiveSurvey
-            onSubmit={handleSubmitPreferences}
-          />
+          <student.electives.ElectiveSurvey />
         </div>
       </PageContainer>
     </>

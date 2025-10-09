@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import type { GeneratedSchedule } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar, Clock } from "lucide-react";
-import type { GeneratedSchedule } from "@/lib/schedule-generator";
 
 export interface SchedulePreviewerProps {
   schedules: GeneratedSchedule[];
@@ -76,9 +76,21 @@ export function SchedulePreviewer({
 
   const currentSchedule = schedules[currentIndex];
 
-  // Build a grid structure for display
+  // Derive a flattened list of courses and sections from the schedule's levels
+  const derivedCourses = currentSchedule.levels.flatMap((lvl) => lvl.courses);
+  const uniqueCourses = Array.from(
+    new Map(derivedCourses.map((c) => [c.code, c])).values()
+  );
+  const totalCredits = uniqueCourses.reduce((sum, c) => sum + c.credits, 0);
+
+  // Collect all sections with their times
+  const derivedSections = uniqueCourses.flatMap((course) =>
+    course.sections.map((section) => ({ course, section }))
+  );
+
   interface ClassEntry {
     courseCode: string;
+    courseName: string;
     instructor: string;
     room: string;
     startTime: string;
@@ -86,28 +98,21 @@ export function SchedulePreviewer({
   }
   const gridData = new Map<string, Map<string, ClassEntry[]>>();
 
-  for (const option of currentSchedule.options) {
-    for (const section of option.sections) {
-      for (const time of section.times) {
-        const day = time.day;
-        if (!gridData.has(day)) {
-          gridData.set(day, new Map());
-        }
-
-        const timeKey = time.start;
-        const dayMap = gridData.get(day)!;
-        if (!dayMap.has(timeKey)) {
-          dayMap.set(timeKey, []);
-        }
-
-        dayMap.get(timeKey)!.push({
-          courseCode: section.courseCode,
-          instructor: section.instructor,
-          room: section.room,
-          startTime: time.start,
-          endTime: time.end,
-        });
-      }
+  for (const { course, section } of derivedSections) {
+    for (const time of section.times) {
+      const day = time.day;
+      if (!gridData.has(day)) gridData.set(day, new Map());
+      const timeKey = time.start;
+      const dayMap = gridData.get(day)!;
+      if (!dayMap.has(timeKey)) dayMap.set(timeKey, []);
+      dayMap.get(timeKey)!.push({
+        courseCode: course.code,
+        courseName: course.name,
+        instructor: section.instructor,
+        room: section.room,
+        startTime: time.start,
+        endTime: time.end,
+      });
     }
   }
 
@@ -152,7 +157,7 @@ export function SchedulePreviewer({
               Schedule {currentIndex + 1} of {schedules.length}
             </div>
             <div className="text-sm text-muted-foreground">
-              {currentSchedule.totalCredits} total credits
+              {totalCredits} total credits
             </div>
           </div>
 
@@ -173,10 +178,10 @@ export function SchedulePreviewer({
         <div className="border rounded-lg p-4 bg-muted/50">
           <h4 className="font-medium mb-3">Courses in this schedule:</h4>
           <div className="grid grid-cols-2 gap-2">
-            {currentSchedule.options.map((option) => (
-              <div key={option.courseCode} className="flex items-center gap-2">
-                <Badge>{option.courseCode}</Badge>
-                <span className="text-sm truncate">{option.courseName}</span>
+            {uniqueCourses.map((course) => (
+              <div key={course.code} className="flex items-center gap-2">
+                <Badge>{course.code}</Badge>
+                <span className="text-sm truncate">{course.name}</span>
               </div>
             ))}
           </div>

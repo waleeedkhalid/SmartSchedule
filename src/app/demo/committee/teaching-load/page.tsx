@@ -48,34 +48,7 @@ const mockInstructorLoads = [
   },
 ];
 
-const mockConflicts = [
-  {
-    id: "c1",
-    type: "OVERLOAD" as const,
-    instructorId: "prof-omar",
-    instructorName: "Prof. Omar Badr",
-    message:
-      "Instructor assigned 18 hours, exceeding maximum limit of 15 hours",
-    severity: "HIGH" as const,
-    affectedSections: [
-      "SWE312-01",
-      "SWE312-02",
-      "SWE316-01",
-      "SWE314-01",
-      "SWE444-01",
-      "SWE485-01",
-    ],
-  },
-  {
-    id: "c2",
-    type: "TIME_OVERLAP" as const,
-    instructorId: "dr-sarah",
-    instructorName: "Dr. Sarah Al-Dossary",
-    message: "SWE211-01 and SWE211-LAB have overlapping time slots on Tuesday",
-    severity: "MEDIUM" as const,
-    affectedSections: ["SWE211-01", "SWE211-LAB"],
-  },
-];
+// Note: Conflict examples removed (unused) to satisfy lint rules. Add back when conflict display implemented.
 
 export default function Page(): React.ReactElement {
   return (

@@ -8,11 +8,6 @@ import {
 } from "@/components/shared";
 
 export default function Page(): React.ReactElement {
-  const handleSubmitFeedback = (feedback: unknown) => {
-    console.log("Submitting schedule feedback:", feedback);
-    // TODO: Send to API endpoint POST /api/student/feedback
-  };
-
   return (
     <>
       <PersonaNavigation
@@ -25,7 +20,7 @@ export default function Page(): React.ReactElement {
         description="Provide feedback on your course schedule and exam times"
       >
         <div className="max-w-3xl">
-          <student.feedback.FeedbackForm onSubmit={handleSubmitFeedback} />
+          <student.feedback.FeedbackForm />
         </div>
       </PageContainer>
     </>

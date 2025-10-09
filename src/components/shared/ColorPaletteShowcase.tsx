@@ -50,7 +50,19 @@ export function ColorPaletteShowcase() {
       mood: "Prestigious & Classical",
       useCase: "Administrative views, formal reports, archival data",
     },
+    ksuRoyal: {
+      emoji: "👑",
+      mood: "Institutional & Prestigious",
+      useCase: "Official university branded interfaces and documents",
+    },
   };
+
+  // Type refinement: some palettes (e.g., ksuRoyal) do not define textSecondary.
+  function getSecondaryTextColor(p: typeof currentPalette): string {
+    return (
+      (p as Partial<Record<string, string>>).textSecondary || p.textPrimary
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -222,7 +234,7 @@ export function ColorPaletteShowcase() {
                 <h3 className="font-semibold mb-2">Sample Card Content</h3>
                 <p
                   className="text-sm"
-                  style={{ color: currentPalette.textSecondary }}
+                  style={{ color: getSecondaryTextColor(currentPalette) }}
                 >
                   This is how text and cards would appear with this theme
                   applied to the scheduling interface.

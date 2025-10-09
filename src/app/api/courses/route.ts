@@ -1,52 +1,22 @@
-// GET /api/courses - Get all courses
-// Query params: ?type=ELECTIVE|REQUIRED, ?level=200|300|400
+// PRD: Feature 2 - API Layer (GET /api/courses)
+// Returns course offerings. Phase 1: in-memory store; Phase 2: Supabase persistence.
 
 import { NextResponse } from "next/server";
 import { courseOfferingService } from "@/lib/data-store";
+import type { CourseOffering } from "@/lib/types";
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type");
-    const level = searchParams.get("level");
-
-    let courses = courseOfferingService.findAll();
-
-    // Filter by type
-    if (type && (type === "ELECTIVE" || type === "REQUIRED")) {
-      courses = courseOfferingService.findByType(
-        type as "ELECTIVE" | "REQUIRED"
-      );
-    }
-
-    // Filter by level
-    if (level) {
-      const levelNum = parseInt(level);
-      courses = courses.filter((c) => c.level === levelNum);
-    }
-
-    return NextResponse.json(courses);
-  } catch (error) {
-    console.error("Error fetching courses:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch courses" },
-      { status: 500 }
-    );
-  }
+interface ApiResponse<T> {
+  readonly data: T;
+  readonly meta?: Record<string, unknown>;
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    console.log("Creating course:", body);
-
-    const newCourse = courseOfferingService.create(body);
-    return NextResponse.json(newCourse, { status: 201 });
-  } catch (error) {
-    console.error("Error creating course:", error);
-    return NextResponse.json(
-      { error: "Failed to create course" },
-      { status: 500 }
-    );
-  }
+/**
+ * GET /api/courses
+ */
+export async function GET(): Promise<Response> {
+  const items: ReadonlyArray<CourseOffering> = courseOfferingService.findAll();
+  const body: ApiResponse<ReadonlyArray<CourseOffering>> = {
+    data: items,
+  };
+  return NextResponse.json(body, { status: 200 });
 }

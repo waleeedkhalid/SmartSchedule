@@ -20,10 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import {
-  getSectionsByCourseCode,
-  type CourseOffering as CommitteeCourseOffering,
-} from "@/lib/committee-data-helpers";
+import { getSectionsByCourseCode } from "@/lib/committee-data-helpers";
+import type { CourseOffering } from "@/lib/types";
 import { mockCourseOfferings } from "@/data/mockData";
 
 interface CapacityRecord {
@@ -68,7 +66,7 @@ export const RegistrarCapacityManager: React.FC<
     if (!selectedCourse)
       return [] as ReturnType<typeof getSectionsByCourseCode>;
     return getSectionsByCourseCode(
-      mockCourseOfferings as unknown as CommitteeCourseOffering[],
+      mockCourseOfferings as unknown as CourseOffering[],
       selectedCourse
     );
   }, [selectedCourse]);

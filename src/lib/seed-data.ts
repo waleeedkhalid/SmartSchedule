@@ -14,6 +14,7 @@ import {
   mockSWEIrregularStudents,
   mockCourseOfferings,
 } from "@/data/mockData";
+import { CourseOffering } from "./types";
 
 export function seedData() {
   // Skip if already seeded
@@ -45,7 +46,7 @@ export function seedData() {
   );
 
   // Load course offerings (with type assertion for JSON compatibility)
-  mockCourseOfferings.forEach((course: any) => {
+  mockCourseOfferings.forEach((course: CourseOffering) => {
     courseOfferingService.create(course);
   });
   console.log(`✅ Loaded ${mockCourseOfferings.length} course offerings`);

@@ -206,7 +206,7 @@ export default function ExamScheduleTable() {
             </TableHeader>
 
             <TableBody>
-              {examData.map((weekData, weekIndex) => (
+              {examData.map((weekData) => (
                 <React.Fragment key={weekData.week}>
                   {weekData.exams.map((dayData, dayIndex) => (
                     <TableRow

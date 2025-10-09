@@ -8,26 +8,6 @@ import {
 } from "@/components/shared";
 
 export default function Page(): React.ReactElement {
-  const handleSubmitAvailability = async (availability: unknown) => {
-    console.log("Submitting faculty availability:", availability);
-
-    try {
-      const response = await fetch("/api/faculty/availability", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(availability),
-      });
-
-      if (!response.ok) {
-        console.error("Failed to submit availability", response.statusText);
-      }
-    } catch (error) {
-      console.error("Error submitting availability", error);
-    }
-  };
-
   return (
     <>
       <PersonaNavigation

@@ -46,11 +46,6 @@ const mockConflicts = [
 ];
 
 export default function Page(): React.ReactElement {
-  const handleResolveConflict = (conflictId: string) => {
-    console.log("Resolving conflict:", conflictId);
-    // TODO: Send to API endpoint POST /api/teaching-load/conflicts/:id/resolve
-  };
-
   return (
     <>
       <PersonaNavigation
@@ -84,10 +79,7 @@ export default function Page(): React.ReactElement {
             </div>
           </div>
 
-          <committee.teachingLoad.ConflictList
-            conflicts={mockConflicts}
-            onResolve={handleResolveConflict}
-          />
+          <committee.teachingLoad.ConflictList conflicts={mockConflicts} />
         </div>
       </PageContainer>
     </>

@@ -3,7 +3,7 @@
 import type { CourseOffering } from "@/lib/types";
 
 // Flattened view of nested exam objects for table rendering.
-export type FlattenedExamRecord = {
+export type ExamRecord = {
   id: string;
   courseCode: string;
   courseName: string;
@@ -37,10 +37,8 @@ export type ScheduleSection = {
  * Extract all exams from course offerings
  * Only includes SWE department courses
  */
-export function getExams(
-  courseOfferings: CourseOffering[]
-): FlattenedExamRecord[] {
-  const exams: FlattenedExamRecord[] = [];
+export function getExams(courseOfferings: CourseOffering[]): ExamRecord[] {
+  const exams: ExamRecord[] = [];
 
   courseOfferings.forEach((course) => {
     // Only include SWE department courses

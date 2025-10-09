@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BellIcon, Users, AlertCircle } from "lucide-react";
+import { BellIcon, Users } from "lucide-react";
 import { mockSWEIrregularStudents } from "@/data/mockData";
 import { useToastContext } from "@/components/ui/toast-provider";
 

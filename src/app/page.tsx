@@ -10,27 +10,22 @@ import {
 } from "@/components/ui/card";
 import { Calendar, ArrowRight } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { AuthButtons } from "@/components/auth/AuthButtons";
+import { useAuth } from "@/components/auth/use-auth";
 
 export default function HomePage() {
+  const { user } = useAuth();
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="flex justify-between items-center mb-12">
         <h1 className="text-3xl font-bold">SmartSchedule</h1>
         <div className="flex items-center gap-4">
           <ThemeSwitcher />
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button variant="outline">Sign In</Button>
-            </SignInButton>
-          </SignedOut>
+          <AuthButtons />
         </div>
       </header>
 
-      <SignedIn>
+      {user ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -49,22 +44,17 @@ export default function HomePage() {
 
           {/* Add more cards as needed */}
         </div>
-      </SignedIn>
-
-      <SignedOut>
+      ) : (
         <div className="text-center py-12">
-          <h2 className="text-2xl font-semibold mb-4">
-            Welcome to SmartSchedule
-          </h2>
+          <h2 className="text-2xl font-semibold mb-4">Welcome to SmartSchedule</h2>
           <p className="text-muted-foreground mb-8">
-            Sign in to access your personalized schedule and course management
-            tools.
+            Sign in to access your personalized schedule and course management tools.
           </p>
-          <SignInButton mode="modal">
-            <Button size="lg">Get Started</Button>
-          </SignInButton>
+          <div className="flex items-center justify-center">
+            <AuthButtons />
+          </div>
         </div>
-      </SignedOut>
+      )}
     </div>
   );
 }

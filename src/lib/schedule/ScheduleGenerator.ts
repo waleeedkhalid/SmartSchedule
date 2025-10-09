@@ -5,7 +5,6 @@ import {
   ScheduleMetadata,
   Section,
   CourseOffering,
-  SectionTime,
   SWEStudent,
   FacultyAvailability,
 } from "@/lib/types";
@@ -286,7 +285,7 @@ export class ScheduleGenerator {
   /**
    * Generate meeting times for a course
    */
-  private generateMeetingTimes(): SectionTime[] {
+  private generateMeetingTimes(): Section["times"] {
     // Simple time slot assignment (can be enhanced with optimization)
     const patterns = [
       // Pattern 1: Sunday, Tuesday, Thursday
