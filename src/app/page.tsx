@@ -1,11 +1,8 @@
-// PRD 3.1 - Landing Page: Gateway to SmartSchedule System
-// Modern, role-based interface for KSU SWE Department Timetabling
-// Uses shadcn/ui components with academic-inspired design
-// PRD 3.2 - Authentication: Protected role access with sign in/up flow
+// SmartSchedule Landing Page - Modern, responsive design with live data integration
+// Features demo account integration and role-based access
 
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -13,16 +10,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { AuthDialog } from "@/components/auth/AuthDialog";
+import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
   Users,
@@ -30,15 +20,12 @@ import {
   GraduationCap,
   ClipboardCheck,
   Briefcase,
-  CheckCircle2,
   Sparkles,
-  TrendingUp,
   Shield,
-  Zap,
   Brain,
-  ArrowRight,
   LucideIcon,
   LogIn,
+  Github,
 } from "lucide-react";
 
 // Role card data - PRD Section 3 (User Roles)
@@ -129,39 +116,8 @@ const roles: RoleCardData[] = [
   },
 ];
 
-// System features - PRD Section 4 (Core Features)
-const features = [
-  {
-    icon: Brain,
-    title: "Intelligent Generation",
-    description: "AI-powered schedule creation with conflict detection",
-  },
-  {
-    icon: Zap,
-    title: "Real-time Updates",
-    description: "Instant notifications and collaborative workflows",
-  },
-  {
-    icon: Shield,
-    title: "Rule Enforcement",
-    description: "Automated validation of prerequisites and constraints",
-  },
-  {
-    icon: TrendingUp,
-    title: "Analytics Dashboard",
-    description: "Comprehensive insights into scheduling patterns",
-  },
-];
 
 export default function HomePage() {
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleCardData | null>(null);
-
-  const handleRoleClick = (role: RoleCardData) => {
-    setSelectedRole(role);
-    setAuthDialogOpen(true);
-  };
-
   return (
     <>
       {/* Structured Data for SEO */}
@@ -174,7 +130,7 @@ export default function HomePage() {
             name: "SmartSchedule",
             applicationCategory: "EducationalApplication",
             description:
-              "Intelligent academic timetabling and course management system for universities. Features AI-powered scheduling, automated conflict detection, faculty load management, and comprehensive student registration tools.",
+              "Rule-aware academic scheduling platform with real-time Supabase data and department-specific rules.",
             operatingSystem: "Web",
             offers: {
               "@type": "Offer",
@@ -208,7 +164,7 @@ export default function HomePage() {
               {/* Brand Logo */}
               <div className="flex items-center justify-center">
                 <Image
-                  src="/branding/icon.png"
+                  src="/icon.png"
                   alt="SmartSchedule logo"
                   width={80}
                   height={80}
@@ -221,7 +177,7 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
-                  King Saud University
+                  Live Supabase Integration
                 </span>
               </div>
 
@@ -231,31 +187,26 @@ export default function HomePage() {
                   Smart<span className="text-primary">Schedule</span>
                 </h1>
                 <p className="text-xl text-muted-foreground md:text-2xl">
-                  Software Engineering Department
+                  Rule-Aware Academic Scheduling Platform
                 </p>
               </div>
 
-              {/* SEO-Optimized Description */}
+              {/* Description */}
               <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-                Transform academic planning with our intelligent timetabling
-                system. Automate course scheduling, eliminate conflicts,
-                optimize faculty workloads, and streamline student
-                registration—all powered by advanced algorithms designed for
-                educational excellence at King Saud University.
+                Automate course planning with real-time Supabase data and department-specific rules. 
+                Intelligent scheduling with conflict detection, faculty load management, and student registration.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap justify-center gap-4">
-                <Button
-                  size="lg"
-                  className="gap-2"
-                  onClick={() => handleRoleClick(roles[0])}
-                >
-                  <LogIn className="h-4 w-4" />
-                  Get Started
+                <Button size="lg" className="gap-2" asChild>
+                  <Link href="/login">
+                    <LogIn className="h-4 w-4" />
+                    Try Demo
+                  </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
-                  <Link href="#roles">Explore Roles</Link>
+                  <Link href="#features">Explore Features</Link>
                 </Button>
               </div>
             </div>
@@ -264,202 +215,140 @@ export default function HomePage() {
 
         {/* Features Section */}
         <section
+          id="features"
           className="container mx-auto px-4 py-16"
           aria-label="Key Features"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, idx) => (
-              <Card
-                key={idx}
-                className="relative overflow-hidden border-muted transition-all duration-300 hover:shadow-lg hover:border-primary/50"
-              >
-                <CardHeader>
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-4">
-                    <feature.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">
+              Core Features
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Three powerful features that make SmartSchedule the perfect solution for academic scheduling
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-xl mb-4">Curriculum Control</CardTitle>
+              <CardDescription className="text-base">
+                Edit courses and levels live with real-time Supabase data integration
+              </CardDescription>
+            </Card>
+            
+            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
+                <Brain className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-xl mb-4">Automated Scheduling</CardTitle>
+              <CardDescription className="text-base">
+                Rule-aware generator with conflict detection and optimization
+              </CardDescription>
+            </Card>
+            
+            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-xl mb-4">Secure Supabase Backend</CardTitle>
+              <CardDescription className="text-base">
+                Role-based access with RLS policies and real-time data synchronization
+              </CardDescription>
+            </Card>
           </div>
         </section>
 
-        {/* Roles Section */}
-        <section
-          id="roles"
-          className="container mx-auto px-4 py-16"
-          aria-label="User Roles"
-        >
-          <div className="text-center mb-12 space-y-4">
-            <Badge variant="outline" className="px-4 py-1">
-              User Roles
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Secure Role-Based Access
+        {/* Demo Accounts Section */}
+        <section className="container mx-auto px-4 py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">
+              Try Demo Accounts
             </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              Sign in to access specialized tools and workflows designed for
-              your role. Each dashboard is tailored to your specific needs and
-              permissions.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Experience SmartSchedule with pre-configured demo accounts for each role
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {roles.map((role) => {
               const Icon = role.icon;
               return (
-                <HoverCard key={role.id} openDelay={200}>
-                  <HoverCardTrigger asChild>
-                    <button
-                      onClick={() => handleRoleClick(role)}
-                      className="w-full text-left"
-                    >
-                      <Card
-                        className={`relative overflow-hidden border-2 ${role.borderColor} bg-gradient-to-br ${role.color} transition-all duration-300 hover:shadow-xl hover:scale-[1.02] cursor-pointer group`}
-                      >
-                        <CardHeader className="space-y-4">
-                          <div className="flex items-start justify-between">
-                            <div
-                              className={`inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${role.color} border-2 ${role.borderColor} transition-transform group-hover:scale-110 group-hover:rotate-3`}
-                            >
-                              <Icon className={`h-7 w-7 ${role.iconColor}`} />
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {role.badge}
-                            </Badge>
-                          </div>
-
-                          <div className="space-y-2">
-                            <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                              {role.title}
-                            </CardTitle>
-                            <CardDescription className="text-sm">
-                              {role.description}
-                            </CardDescription>
-                          </div>
-                        </CardHeader>
-
-                        <CardContent>
-                          <div className="space-y-2 mb-4">
-                            {role.features.map((feature, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 text-sm text-muted-foreground"
-                              >
-                                <CheckCircle2
-                                  className={`h-4 w-4 ${role.iconColor}`}
-                                />
-                                <span>{feature}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-2"
-                          >
-                            <LogIn className="h-4 w-4" />
-                            Sign In
-                          </Button>
-                        </CardContent>
-
-                        {/* Hover Arrow */}
-                        <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                          <ArrowRight className={`h-5 w-5 ${role.iconColor}`} />
-                        </div>
-                      </Card>
-                    </button>
-                  </HoverCardTrigger>
-
-                  <HoverCardContent className="w-80" side="top">
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">
-                        Secure Access Required
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Click to sign in and access the{" "}
-                        {role.title.toLowerCase()} dashboard with full access to
-                        all features and workflows.
-                      </p>
+                <Card key={role.id} className={`border-2 ${role.borderColor} bg-gradient-to-br ${role.color} hover:shadow-lg transition-all`}>
+                  <CardContent className="p-6 text-center">
+                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${role.color} border-2 ${role.borderColor} mb-4`}>
+                      <Icon className={`h-6 w-6 ${role.iconColor}`} />
                     </div>
-                  </HoverCardContent>
-                </HoverCard>
+                    <h3 className="font-semibold mb-2">{role.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{role.description}</p>
+                    <Button asChild size="sm" className="w-full">
+                      <Link href="/login">
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Sign In
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section
-          className="border-t bg-muted/30"
-          aria-label="System Statistics"
-        >
-          <div className="container mx-auto px-4 py-16">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {[
-                { value: "5", label: "User Roles", icon: Users },
-                { value: "100+", label: "Courses", icon: BookOpen },
-                { value: "24/7", label: "Availability", icon: Calendar },
-                { value: "Auto", label: "Generation", icon: Sparkles },
-              ].map((stat, idx) => {
-                const StatIcon = stat.icon;
-                return (
-                  <div key={idx} className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-2">
-                      <StatIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="text-3xl font-bold">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {stat.label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
         {/* Footer CTA */}
-        <section className="border-t">
+        <section className="border-t bg-muted/30">
           <div className="container mx-auto px-4 py-16 text-center">
             <div className="mx-auto max-w-2xl space-y-6">
               <h2 className="text-3xl font-bold tracking-tight">
-                Ready to Transform Your Academic Planning?
+                Ready to Experience SmartSchedule?
               </h2>
               <p className="text-lg text-muted-foreground">
-                Join hundreds of faculty and students using SmartSchedule to
-                streamline course management, optimize resources, and enhance
-                the academic experience at King Saud University.
+                Try our demo accounts to explore the full capabilities of our 
+                rule-aware academic scheduling platform with live Supabase data.
               </p>
               <div className="flex justify-center gap-4">
-                <Button size="lg" onClick={() => handleRoleClick(roles[0])}>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Access Student Portal
+                <Button size="lg" asChild>
+                  <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Try Demo Now
+                  </Link>
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => handleRoleClick(roles[1])}
-                >
-                  Faculty Login
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="https://github.com" target="_blank" rel="noopener noreferrer">
+                    <Github className="mr-2 h-4 w-4" />
+                    View on GitHub
+                  </Link>
                 </Button>
               </div>
             </div>
           </div>
         </section>
-      </div>
 
-      {/* Authentication Dialog */}
-      {selectedRole && (
-        <AuthDialog
-          open={authDialogOpen}
-          onOpenChange={setAuthDialogOpen}
-          roleTitle={selectedRole.title}
-          redirectPath={selectedRole.link}
-        />
-      )}
+        {/* Footer */}
+        <footer className="border-t">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/icon.png"
+                  alt="SmartSchedule"
+                  width={24}
+                  height={24}
+                />
+                <span className="font-semibold">SmartSchedule</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>v4.0.0</span>
+                <Separator orientation="vertical" className="h-4" />
+                <Link href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary">
+                  GitHub
+                </Link>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
     </>
   );
 }

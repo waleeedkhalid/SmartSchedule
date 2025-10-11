@@ -41,7 +41,7 @@ export function getSupabaseAdminOrThrow(): SupabaseClient<Database> {
 export const supabaseAdmin: SupabaseClient<Database> =
   getSupabaseAdminOrThrow();
 
-// Helper function to get student by user_id
+// Helper function to get student by user_id (legacy - use new student profile system)
 export async function getStudentByUserId(userId: string) {
   const { data, error } = await getSupabaseAdminOrThrow()
     .from("students")
@@ -49,12 +49,16 @@ export async function getStudentByUserId(userId: string) {
     .eq("user_id", userId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // No profile found
+    }
+    throw error;
+  }
   return data;
 }
 
-// Helper function to get student with completed courses
-// TODO: Implement a proper profile view or join when views are added
+// Helper function to get student profile (updated to use new system)
 export async function getStudentProfile(userId: string) {
   const { data, error } = await getSupabaseAdminOrThrow()
     .from("students")
@@ -62,11 +66,16 @@ export async function getStudentProfile(userId: string) {
     .eq("user_id", userId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // No profile found
+    }
+    throw error;
+  }
   return data;
 }
 
-// Helper function to get student by email
+// Helper function to get student by email (updated to use new system)
 export async function getStudentByEmail(email: string) {
   const { data, error } = await getSupabaseAdminOrThrow()
     .from("students")
@@ -74,6 +83,28 @@ export async function getStudentByEmail(email: string) {
     .eq("email", email)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // No profile found
+    }
+    throw error;
+  }
+  return data;
+}
+
+// New helper function to get user by email (for authentication)
+export async function getUserByEmail(email: string) {
+  const { data, error } = await getSupabaseAdminOrThrow()
+    .from("user")
+    .select("*")
+    .eq("email", email)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // No user found
+    }
+    throw error;
+  }
   return data;
 }

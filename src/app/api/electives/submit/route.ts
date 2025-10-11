@@ -37,8 +37,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const timestamp = new Date().toISOString();
+    // Use type assertion to handle the student data structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const studentTyped = student as any;
+    const studentId = studentTyped.user_id || studentTyped.id || '';
     const electiveRow = {
-      student_id: student.user_id, // references public.user(id)
+      student_id: studentId,
       elective_choices: {
         selections: body.selections,
       },
@@ -95,10 +99,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
+    // Use type assertion to handle the student data structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const studentTyped = student as any;
+    const studentUserId = studentTyped.user_id || studentTyped.id || '';
     const { data, error } = await supabaseAdmin
       .from("elective_preferences")
       .select("id, elective_choices, created_at, updated_at")
-      .eq("student_id", student.user_id)
+      .eq("student_id", studentUserId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

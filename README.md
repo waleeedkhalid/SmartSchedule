@@ -75,11 +75,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 # Supabase (Server - API routes only)
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Demo toggles (optional)
-# Set true to seed mock data locally
-NEXT_PUBLIC_USE_MOCK_DATA=false
 ```
+
+### Demo Accounts & Live Mode
+
+SmartSchedule now runs in full live mode with demo accounts for instant testing:
+
+**Demo Accounts Available:**
+- `student_demo@smartschedule.app` (password: `demo1234`) - Student role
+- `faculty_demo@smartschedule.app` (password: `demo1234`) - Faculty role  
+- `scheduler_demo@smartschedule.app` (password: `demo1234`) - Scheduling Committee
+- `load_demo@smartschedule.app` (password: `demo1234`) - Teaching Load Committee
+- `registrar_demo@smartschedule.app` (password: `demo1234`) - Registrar
+
+**Seeding Demo Accounts:**
+```bash
+# Seed demo accounts
+node scripts/seed-demo-accounts.js
+
+# Clear demo accounts
+node scripts/seed-demo-accounts.js clear
+```
+
+**API Endpoint:**
+- `GET /api/demo-accounts` - Returns demo account credentials (no auth required)
 
 ### Deploying
 

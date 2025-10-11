@@ -53,6 +53,18 @@ export function AuthDialog({
 
         if (signInError) throw signInError;
 
+        try {
+          const bootstrapResponse = await fetch("/api/auth/bootstrap", {
+            method: "POST",
+          });
+
+          if (!bootstrapResponse.ok) {
+            console.warn("Bootstrap onboarding failed", bootstrapResponse.statusText);
+          }
+        } catch (bootstrapError) {
+          console.warn("Bootstrap onboarding error", bootstrapError);
+        }
+
         // Redirect to the role dashboard
         router.push(redirectPath);
         onOpenChange(false);

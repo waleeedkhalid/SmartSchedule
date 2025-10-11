@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DBStudent } from "@/lib/types";
+import type { DBStudentProfile } from "@/lib/types";
 
 export const dbStudentSchema = z.object({
   id: z.string().uuid(),
@@ -18,7 +18,7 @@ export const dbStudentSchema = z.object({
 
 export type DBStudentInput = z.infer<typeof dbStudentSchema>;
 
-export function assertDBStudent(value: unknown): asserts value is DBStudent {
+export function assertDBStudent(value: unknown): asserts value is DBStudentProfile {
   dbStudentSchema.parse(value);
 }
 

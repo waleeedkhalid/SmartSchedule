@@ -53,9 +53,10 @@ Details the migration plan, schema alignment steps, and migration status for mov
 
 ## Revision History
 
-| Date       | Author    | Change Summary               |
-| ---------- | --------- | ---------------------------- |
-| 2025-10-02 | Architect | Initial migration plan draft |
+| Date       | Author                        | Change Summary               |
+| ---------- | ----------------------------- | ---------------------------- |
+| 2025-10-11 | Supabase Integration Engineer | Demo Accounts Fix            |
+| 2025-10-02 | Architect                     | Initial migration plan draft |
 
 ---
 
@@ -166,3 +167,87 @@ Notes:
 
 - Anonymous access is denied implicitly by absence of anon-allow policy.
 - `updated_by` references `public.user(id)`; UI to pass auth.uid via server actions.
+
+---
+
+## Phase 4.3 — Demo Accounts Seed (2025-01-XX)
+
+### Demo Account Creation
+
+**Script:** `scripts/seed-demo-accounts.js`
+
+**Demo Accounts Created:**
+
+```sql
+-- Demo Student Account
+INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
+VALUES ('student_demo@smartschedule.app', crypt('demo1234', gen_salt('bf')), now(), now(), now());
+
+INSERT INTO public.user (id, name, email, role)
+VALUES (auth_user_id, 'Demo Student', 'student_demo@smartschedule.app', 'student');
+
+INSERT INTO public.students (user_id, student_id, name, email, level, major, gpa, completed_credits, total_credits)
+VALUES (auth_user_id, 'STU001', 'Demo Student', 'student_demo@smartschedule.app', 6, 'Software Engineering', 3.5, 90, 132);
+
+-- Demo Faculty Account
+INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
+VALUES ('faculty_demo@smartschedule.app', crypt('demo1234', gen_salt('bf')), now(), now(), now());
+
+INSERT INTO public.user (id, name, email, role)
+VALUES (auth_user_id, 'Demo Faculty', 'faculty_demo@smartschedule.app', 'faculty');
+
+-- Demo Scheduling Committee Account
+INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
+VALUES ('scheduler_demo@smartschedule.app', crypt('demo1234', gen_salt('bf')), now(), now(), now());
+
+INSERT INTO public.user (id, name, email, role)
+VALUES (auth_user_id, 'Demo Scheduler', 'scheduler_demo@smartschedule.app', 'scheduling_committee');
+
+-- Demo Teaching Load Committee Account
+INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
+VALUES ('load_demo@smartschedule.app', crypt('demo1234', gen_salt('bf')), now(), now(), now());
+
+INSERT INTO public.user (id, name, email, role)
+VALUES (auth_user_id, 'Demo Load Manager', 'load_demo@smartschedule.app', 'teaching_load_committee');
+
+-- Demo Registrar Account
+INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
+VALUES ('registrar_demo@smartschedule.app', crypt('demo1234', gen_salt('bf')), now(), now(), now());
+
+INSERT INTO public.user (id, name, email, role)
+VALUES (auth_user_id, 'Demo Registrar', 'registrar_demo@smartschedule.app', 'registrar');
+```
+
+**RLS Access:** All demo accounts have appropriate RLS access based on their roles.
+
+**API Endpoint:** `GET /api/demo-accounts` returns demo account credentials for testing.
+
+### Mock Data Removal
+
+**Files Removed:**
+
+- `src/data/mockData.ts`
+- `src/data/mockSWEStudents.ts`
+- `src/data/mockSWEFaculty.ts`
+- `src/data/mockSWECurriculum.ts`
+- `src/data/mockRooms.ts`
+
+**Code Updates:**
+
+- `ScheduleDataCollector` now fetches all data from Supabase
+- `curriculum-source.ts` uses live `swe_plan` table
+- Removed `NEXT_PUBLIC_USE_MOCK_DATA` conditional logic
+- All data access paths now use live Supabase helpers
+
+---
+
+## 2025-10-11 — Demo Accounts Fix
+
+**Summary:** Reset Supabase Auth credentials for all demo accounts after credential drift caused failed logins. Confirmed `auth.users` and `public.user` records aligned per role and restored `email_confirmed_at` timestamps to allow password authentication.
+
+**Actions:**
+
+- Regenerated bcrypt password hashes with `demo1234` for student, faculty, scheduler, load, and registrar demo accounts.
+- Populated `email_confirmed_at`, `last_sign_in_at`, and `updated_at` for each demo user.
+- Validated role consistency between `auth.users` entries and linked `public.user` profiles.
+- Reviewed RLS coverage impacting demo account access.

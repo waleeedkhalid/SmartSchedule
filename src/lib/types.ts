@@ -291,24 +291,84 @@ export interface UserPreferences {
 // SUPABASE ENTITIES (CANONICAL DB-ALIGNED TYPES)
 // ============================================================================
 
-// DB: students
-// Note: Supabase returns DECIMAL columns as strings; keep gpa as string
-export interface DBStudent {
+// DB: user (core authentication and basic info)
+export interface DBUser {
   id: string; // UUID
-  user_id: string; // UUID -> auth.users.id
-  student_id: string; // human-readable student number
   name: string;
   email: string;
-  level: number;
-  major: string;
-  gpa: string; // DECIMAL(3,2) represented as string
-  completed_credits: number;
-  total_credits: number;
+  role: 'student' | 'faculty' | 'scheduling_committee' | 'teaching_load_committee' | 'registrar';
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
 }
 
-// DB: completed_courses
-// Removed obsolete interfaces that do not exist in the current schema:
-// - completed_courses, elective_submissions, student_schedules, student_feedback
-// - student_profiles and student_submission_details views
+// DB: student_profiles (academic data only)
+export interface DBStudentProfile {
+  id: string; // UUID
+  user_id: string; // UUID -> user.id
+  student_number: string; // Human-readable student ID
+  level: number; // 4-8
+  major: string;
+  gpa: string; // DECIMAL(3,2) represented as string
+  completed_credits: number;
+  total_credits: number;
+  academic_status: 'active' | 'inactive' | 'graduated' | 'suspended';
+  enrollment_date?: string; // ISO date
+  expected_graduation_date?: string; // ISO date
+  advisor_id?: string; // UUID -> user.id (faculty)
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+// Combined student data (user + profile)
+export interface DBStudentWithProfile {
+  // User data
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
+  user_created_at: string;
+  
+  // Profile data
+  profile_id?: string;
+  student_number?: string;
+  level?: number;
+  major?: string;
+  gpa?: string;
+  completed_credits?: number;
+  total_credits?: number;
+  academic_status?: string;
+  enrollment_date?: string;
+  expected_graduation_date?: string;
+  advisor_id?: string;
+  profile_created_at?: string;
+  profile_updated_at?: string;
+}
+
+// Student profile creation input
+export interface CreateStudentProfileInput {
+  user_id: string;
+  student_number: string;
+  level?: number;
+  major?: string;
+  gpa?: number;
+  completed_credits?: number;
+  total_credits?: number;
+  academic_status?: 'active' | 'inactive' | 'graduated' | 'suspended';
+  enrollment_date?: string;
+  expected_graduation_date?: string;
+  advisor_id?: string;
+}
+
+// Student profile update input
+export interface UpdateStudentProfileInput {
+  student_number?: string;
+  level?: number;
+  major?: string;
+  gpa?: number;
+  completed_credits?: number;
+  total_credits?: number;
+  academic_status?: 'active' | 'inactive' | 'graduated' | 'suspended';
+  enrollment_date?: string;
+  expected_graduation_date?: string;
+  advisor_id?: string;
+}

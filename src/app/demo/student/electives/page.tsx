@@ -10,7 +10,7 @@ import {
   SubmissionSuccess,
   SelectedCourse,
 } from "@/components/student/electives";
-import { mockElectivePackages } from "@/data/mockData";
+import { mockElectivePackages } from "@/data/demo-data";
 import { PageContainer } from "@/components/shared";
 
 type FlowStep = "login" | "selection" | "success";

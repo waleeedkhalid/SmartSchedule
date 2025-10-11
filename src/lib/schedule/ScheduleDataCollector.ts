@@ -4,19 +4,11 @@ import {
   SWEStudent,
   FacultyAvailability,
   ElectiveCourse,
-  ElectivePackage,
   CourseOffering,
   IrregularStudent,
 } from "@/lib/types";
-import {
-  mockSWECurriculum,
-  mockSWEStudents,
-  mockSWEFaculty,
-  mockElectivePackages,
-  mockSWEIrregularStudents,
-  mockCourseOfferings,
-} from "@/data/mockData";
 import { getCurriculumByLevel } from "@/lib/schedule/curriculum-source";
+import { getSupabaseAdminOrThrow } from "@/lib/supabase-admin";
 
 /**
  * ScheduleDataCollector - Phase 2: Data Services
@@ -30,59 +22,71 @@ import { getCurriculumByLevel } from "@/lib/schedule/curriculum-source";
  * - Irregular student accommodations
  */
 export class ScheduleDataCollector {
-  private curriculum: SWECurriculumLevel[];
-  private students: SWEStudent[];
-  private faculty: FacultyAvailability[];
-  private electives: ElectivePackage[];
-  private irregularStudents: IrregularStudent[];
-  private externalCourses: CourseOffering[];
-
   constructor() {
-    // Load all data from mock sources by default
-    this.curriculum = mockSWECurriculum;
-    this.students = mockSWEStudents;
-    this.faculty = mockSWEFaculty;
-    this.electives = mockElectivePackages;
-    this.irregularStudents = mockSWEIrregularStudents;
-    this.externalCourses = mockCourseOfferings;
+    // Live mode: all data fetched from Supabase on demand
   }
 
   /**
    * Get curriculum requirements for specific levels
    */
-  getCurriculumForLevels(levels: number[]): SWECurriculumLevel[] {
-    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-    if (useMock) {
-      return this.curriculum.filter((level) => levels.includes(level.level));
-    }
-    // In live mode, assemble per-level via adapter on-demand and cache into this.curriculum shape
-    // Note: keep synchronous signature by using the last known snapshot if any; callers of async flows should prefer adapter directly.
-    // For scheduler usage in this class, we will generate a fresh snapshot synchronously by throwing if called before warm-up.
-    // TODO: consider promoting getScheduleGenerationData to async and fetch levels in parallel.
-    throw new Error(
-      "getCurriculumForLevels requires async adapter in live mode. Use getScheduleGenerationData() which warms curriculum first."
+  async getCurriculumForLevels(levels: number[]): Promise<SWECurriculumLevel[]> {
+    const curriculum = await Promise.all(
+      levels.map((level) => getCurriculumByLevel(level))
     );
+    return curriculum;
   }
 
   /**
-   * Get students enrolled in specific levels
+   * Get students enrolled in specific levels (updated for new student profile system)
    */
-  getStudentsForLevels(levels: number[]): SWEStudent[] {
-    return this.students.filter((student) => levels.includes(student.level));
+  async getStudentsForLevels(levels: number[]): Promise<SWEStudent[]> {
+    const supabase = getSupabaseAdminOrThrow();
+    // Use the existing students table for now (will be updated when database types are regenerated)
+    const { data, error } = await supabase
+      .from("students")
+      .select("*")
+      .in("level", levels);
+    
+    if (error) throw error;
+    
+    return data.map((student) => ({
+      id: student.user_id, // Use user_id as the main identifier
+      name: student.name,
+      level: student.level,
+      electivePreferences: [], // TODO: Fetch from elective_preferences table
+    }));
   }
 
   /**
    * Get all available faculty
    */
-  getAvailableFaculty(): FacultyAvailability[] {
-    return [...this.faculty];
+  async getAvailableFaculty(): Promise<FacultyAvailability[]> {
+    const supabase = getSupabaseAdminOrThrow();
+    const { data, error } = await supabase
+      .from("user")
+      .select(`
+        *,
+        faculty_availability(*)
+      `)
+      .eq("role", "faculty");
+    
+    if (error) throw error;
+    
+    return data.map((faculty) => ({
+      instructorId: faculty.id,
+      instructorName: faculty.name,
+      department: "SWE", // TODO: Add department field to user table
+      availableSlots: [], // TODO: Map from faculty_availability table
+      maxTeachingHours: 20, // TODO: Add to faculty_availability table
+    }));
   }
 
   /**
    * Get faculty who can teach specific courses
    */
-  getFacultyForCourses(courseCodes: string[]): FacultyAvailability[] {
-    return this.faculty.filter((faculty) =>
+  async getFacultyForCourses(courseCodes: string[]): Promise<FacultyAvailability[]> {
+    const allFaculty = await this.getAvailableFaculty();
+    return allFaculty.filter((faculty) =>
       faculty.preferences?.some((pref) => courseCodes.includes(pref))
     );
   }
@@ -90,76 +94,108 @@ export class ScheduleDataCollector {
   /**
    * Get all elective courses available for selection
    */
-  getAllElectiveCourses(): ElectiveCourse[] {
-    return this.electives.flatMap((pkg) => pkg.courses);
+  async getAllElectiveCourses(): Promise<ElectiveCourse[]> {
+    const supabase = getSupabaseAdminOrThrow();
+    const { data, error } = await supabase
+      .from("course")
+      .select("*")
+      .eq("type", "elective");
+    
+    if (error) throw error;
+    
+    return data.map((course) => ({
+      id: course.code,
+      code: course.code,
+      name: course.name,
+      credits: course.credits,
+      level: course.level,
+      type: course.type,
+    }));
   }
 
   /**
    * Get elective courses by package
    */
-  getElectivesByPackage(packageId: string): ElectiveCourse[] {
-    const pkg = this.electives.find((p) => p.id === packageId);
-    return pkg ? pkg.courses : [];
+  async getElectivesByPackage(_packageId: string): Promise<ElectiveCourse[]> {
+    // TODO: Implement elective packages table
+    return [];
   }
 
   /**
    * Get external courses that conflict with SWE scheduling
    */
-  getExternalCourses(): CourseOffering[] {
-    return [...this.externalCourses];
+  async getExternalCourses(): Promise<CourseOffering[]> {
+    const supabase = getSupabaseAdminOrThrow();
+    const { data, error } = await supabase
+      .from("external_course")
+      .select(`
+        *,
+        time_slot(*)
+      `);
+    
+    if (error) throw error;
+    
+    return data.map((course) => ({
+      code: course.code,
+      name: course.name,
+      credits: 3, // TODO: Add credits to external_course table
+      department: course.department,
+      level: 4, // TODO: Add level to external_course table
+      type: "ELECTIVE" as const,
+      prerequisites: [],
+      sections: [],
+      exams: {
+        final: {
+          date: "2025-05-15",
+          time: "16:00",
+          duration: 120,
+        },
+      },
+    }));
   }
 
   /**
    * Get irregular students who need special accommodations
    */
-  getIrregularStudents(): IrregularStudent[] {
-    return [...this.irregularStudents];
+  async getIrregularStudents(): Promise<IrregularStudent[]> {
+    const supabase = getSupabaseAdminOrThrow();
+    const { data, error } = await supabase
+      .from("irregular_student")
+      .select(`
+        *,
+        student:user(*)
+      `);
+    
+    if (error) throw error;
+    
+    return data.map((irregular) => ({
+      id: irregular.id,
+      name: "Irregular Student", // TODO: Join with user table to get name
+      requiredCourses: Array.isArray(irregular.remaining_courses) 
+        ? irregular.remaining_courses as string[]
+        : [],
+    }));
   }
 
   /**
    * Get irregular students for specific levels
    */
-  getIrregularStudentsForLevels(): IrregularStudent[] {
-    // Note: Irregular students are identified by their irregularCourses
-    // This is a simplified mapping - in real implementation, irregular students
-    // would have their own level tracking
-    return this.irregularStudents;
+  async getIrregularStudentsForLevels(): Promise<IrregularStudent[]> {
+    return await this.getIrregularStudents();
   }
 
   /**
    * Get comprehensive data summary for schedule generation
    */
-  getScheduleGenerationData(request: ScheduleGenerationRequest) {
+  async getScheduleGenerationData(request: ScheduleGenerationRequest) {
     const levels = request.levels;
-    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-    let curriculum: SWECurriculumLevel[];
-    if (useMock) {
-      curriculum = this.getCurriculumForLevels(levels);
-    } else {
-      // Warm curriculum from adapter synchronously by blocking on Promise.all first
-      // Note: converting method body to async would ripple across call sites; keep sync by prefetching and then proceed.
-      const hydrated = (globalThis as any).__ss_curriculum_cache as
-        | Map<number, SWECurriculumLevel>
-        | undefined;
-      const cache = hydrated ?? new Map<number, SWECurriculumLevel>();
-      // fetch per-level
-      const fetchAll = levels.map(async (lvl) => {
-        const entry = await getCurriculumByLevel(lvl);
-        cache.set(lvl, entry);
-        return entry;
-      });
-      // This is a sync function; however we can block here by using Atomics? Not viable. Instead, we restructure to prefetch via sync wait impossible.
-      // Simplest non-breaking choice: if live mode, throw guiding error for now (callers can switch to async API in a follow-up phase).
-      throw new Error(
-        "Live curriculum requires async collection. Refactor caller to use async pathway or keep NEXT_PUBLIC_USE_MOCK_DATA=true for now."
-      );
-    }
-    const students = this.getStudentsForLevels(levels);
-    const faculty = this.getAvailableFaculty();
-    const electives = this.getAllElectiveCourses();
-    const externalCourses = this.getExternalCourses();
+    const curriculum = await this.getCurriculumForLevels(levels);
+    const students = await this.getStudentsForLevels(levels);
+    const faculty = await this.getAvailableFaculty();
+    const electives = await this.getAllElectiveCourses();
+    const externalCourses = await this.getExternalCourses();
     const irregularStudents = request.considerIrregularStudents
-      ? this.getIrregularStudentsForLevels()
+      ? await this.getIrregularStudentsForLevels()
       : [];
 
     return {
@@ -181,36 +217,48 @@ export class ScheduleDataCollector {
     };
   }
 
+  // Legacy method - now just calls the main async method
+  async getScheduleGenerationDataAsync(request: ScheduleGenerationRequest) {
+    return await this.getScheduleGenerationData(request);
+  }
+
   /**
    * Validate that all required data is available for the requested levels
    */
-  validateDataAvailability(levels: number[]): {
+  async validateDataAvailability(levels: number[]): Promise<{
     valid: boolean;
     missing: string[];
-  } {
+  }> {
     const missing: string[] = [];
 
-    // Check curriculum
-    const availableLevels = this.curriculum.map((c) => c.level);
-    const missingLevels = levels.filter((l) => !availableLevels.includes(l));
-    if (missingLevels.length > 0) {
-      missing.push(`Curriculum for levels: ${missingLevels.join(", ")}`);
-    }
+    try {
+      // Check curriculum
+      const curriculum = await this.getCurriculumForLevels(levels);
+      const availableLevels = curriculum.map((c) => c.level);
+      const missingLevels = levels.filter((l) => !availableLevels.includes(l));
+      if (missingLevels.length > 0) {
+        missing.push(`Curriculum for levels: ${missingLevels.join(", ")}`);
+      }
 
-    // Check students
-    const availableStudentLevels = [
-      ...new Set(this.students.map((s) => s.level)),
-    ];
-    const missingStudentLevels = levels.filter(
-      (l) => !availableStudentLevels.includes(l)
-    );
-    if (missingStudentLevels.length > 0) {
-      missing.push(`Students for levels: ${missingStudentLevels.join(", ")}`);
-    }
+      // Check students
+      const students = await this.getStudentsForLevels(levels);
+      const availableStudentLevels = [
+        ...new Set(students.map((s) => s.level)),
+      ];
+      const missingStudentLevels = levels.filter(
+        (l) => !availableStudentLevels.includes(l)
+      );
+      if (missingStudentLevels.length > 0) {
+        missing.push(`Students for levels: ${missingStudentLevels.join(", ")}`);
+      }
 
-    // Check faculty availability
-    if (this.faculty.length === 0) {
-      missing.push("Faculty availability data");
+      // Check faculty availability
+      const faculty = await this.getAvailableFaculty();
+      if (faculty.length === 0) {
+        missing.push("Faculty availability data");
+      }
+    } catch (error) {
+      missing.push(`Data validation error: ${error}`);
     }
 
     return {

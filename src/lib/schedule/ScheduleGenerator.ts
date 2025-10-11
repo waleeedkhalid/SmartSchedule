@@ -74,7 +74,10 @@ export class ScheduleGenerator {
 
     // Step 1: Collect all required data
     console.log("\n📊 Step 1: Collecting data...");
-    const data = this.dataCollector.getScheduleGenerationData(request);
+    // Use async path to support live curriculum via adapter while remaining safe for mock mode
+    const data = await this.dataCollector.getScheduleGenerationData(
+      request
+    );
     console.log(`- Students: ${data.summary.totalStudents}`);
     console.log(`- Faculty: ${data.summary.totalFaculty}`);
     console.log(`- Electives: ${data.summary.totalElectives}`);
@@ -130,7 +133,7 @@ export class ScheduleGenerator {
    */
   private generateLevelSchedule(
     level: number,
-    data: ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>
+    data: Awaited<ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>>
   ): LevelSchedule {
     const curriculum = data.curriculum.find((c) => c.level === level);
     if (!curriculum) {
@@ -195,7 +198,7 @@ export class ScheduleGenerator {
     courseCode: string,
     studentCount: number,
     level: number,
-    data: ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>
+    data: Awaited<ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>>
   ): CourseOffering | null {
     const SECTION_SIZE = 30;
     const numSections = Math.ceil(studentCount / SECTION_SIZE);
@@ -245,7 +248,7 @@ export class ScheduleGenerator {
     sectionNumber: number,
     capacity: number,
     level: number,
-    data: ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>
+    data: Awaited<ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>>
   ): Section | null {
     const sectionId = `${courseCode}-${String(sectionNumber).padStart(2, "0")}`;
 
@@ -362,7 +365,7 @@ export class ScheduleGenerator {
    */
   private getExternalCourses(
     courseCodes: string[],
-    data: ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>
+    data: Awaited<ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>>
   ): CourseOffering[] {
     return data.externalCourses.filter((course) =>
       courseCodes.includes(course.code)
@@ -376,7 +379,7 @@ export class ScheduleGenerator {
     level: number,
     electiveSlots: number,
     students: SWEStudent[],
-    data: ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>
+    data: Awaited<ReturnType<ScheduleDataCollector["getScheduleGenerationData"]>>
   ): CourseOffering[] {
     // Calculate demand for each elective
     const demandMap = new Map<string, number>();

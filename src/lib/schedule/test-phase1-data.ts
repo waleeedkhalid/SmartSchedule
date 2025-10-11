@@ -11,7 +11,7 @@ import {
   getFacultyStatistics,
   getAllSWECourses,
   getTotalSWEStudents,
-} from "@/data/mockData";
+} from "@/data/demo-data";
 
 export function testScheduleDataSetup() {
   console.log("=".repeat(60));

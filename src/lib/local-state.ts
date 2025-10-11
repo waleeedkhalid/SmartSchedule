@@ -1,13 +1,10 @@
 // Local state management for exams and courses
-// This replaces mockData with persistent in-memory state until API integration
+// This provides in-memory state for demo/testing purposes
 
-import { mockCourseOfferings, mockStudentCounts } from "@/data/mockData";
 import type { CourseOffering, Section } from "./types";
 
-// Deep clone to avoid mutating mockData
-let coursesState: CourseOffering[] = JSON.parse(
-  JSON.stringify(mockCourseOfferings)
-);
+// Initialize with empty arrays (live data should come from Supabase)
+let coursesState: CourseOffering[] = [];
 
 // Student counts state
 export type StudentCount = {
@@ -17,9 +14,7 @@ export type StudentCount = {
   total_students: number;
 };
 
-let studentCountsState: StudentCount[] = JSON.parse(
-  JSON.stringify(mockStudentCounts)
-);
+let studentCountsState: StudentCount[] = [];
 
 // ============================================================================
 // COURSES STATE MANAGEMENT
@@ -361,10 +356,10 @@ export function removeEnrollmentOverride(
 // RESET FUNCTION (for testing)
 // ============================================================================
 
-export function resetToMockData(): void {
-  coursesState = JSON.parse(JSON.stringify(mockCourseOfferings));
-  studentCountsState = JSON.parse(JSON.stringify(mockStudentCounts));
+export function resetToEmptyState(): void {
+  coursesState = [];
+  studentCountsState = [];
   enrollmentRequestsState = [];
   enrollmentOverridesState = [];
-  console.log("Reset to mock data");
+  console.log("Reset to empty state");
 }

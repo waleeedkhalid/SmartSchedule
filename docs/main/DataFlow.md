@@ -203,27 +203,34 @@ User Action → Component → API Route → Helper Function → Supabase Client 
 
 ---
 
-## Legacy Mock Data
+## Live Mode Integration
 
-### Deprecated Sources
+### Full Supabase Integration
 
-**Location:** `src/data/mockData.ts`, `src/data/mockSWE*.ts`, `src/lib/local-state.ts`
+**Status:** All mock data has been removed. The system now runs in full live mode with all data fetched from Supabase.
 
-**Status:** These files remain for backward compatibility with demo pages but should NOT be used for new features.
+**Data Sources:**
 
-**Migration Status:**
+- ✅ **Students** → `students` table via `getStudentsForLevels()`
+- ✅ **Faculty** → `user` + `faculty_availability` tables via `getAvailableFaculty()`
+- ✅ **Courses** → `course` table via `getAllElectiveCourses()`
+- ✅ **External Courses** → `external_course` table via `getExternalCourses()`
+- ✅ **Irregular Students** → `irregular_student` table via `getIrregularStudents()`
+- ✅ **Curriculum** → `swe_plan` table via `getCurriculumByLevel()`
 
-- ✅ `student_profiles` → `students` table
-- ✅ `courses/sections` → `course/section/time_slot` tables
-- ✅ `elective_submissions` → `elective_preferences` table
-- ⚠️ `completed_courses` → To be derived from `registration` history
-- ⚠️ `mockSWECurriculum/Students/Faculty` → Used only in demo/test pages
+**ScheduleDataCollector Updates:**
 
-**Action Items:**
+All methods in `ScheduleDataCollector` are now async and fetch data directly from Supabase:
+- `getCurriculumForLevels()` → Fetches from `swe_plan` table
+- `getStudentsForLevels()` → Fetches from `students` table
+- `getAvailableFaculty()` → Fetches from `user` + `faculty_availability` tables
+- `getAllElectiveCourses()` → Fetches from `course` table
+- `getExternalCourses()` → Fetches from `external_course` table
+- `getIrregularStudents()` → Fetches from `irregular_student` table
 
-- Seed Supabase with representative data from mock files
-- Replace demo page references with Supabase queries
-- Mark mock files as deprecated with comments
+**Demo Accounts:**
+
+Demo accounts are seeded via `scripts/seed-demo-accounts.js` and accessible via `/api/demo-accounts` endpoint.
 
 ---
 

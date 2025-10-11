@@ -9,7 +9,7 @@ import {
   SubmissionSuccess,
   SelectedCourse,
 } from "@/components/student/electives";
-import { mockElectivePackages } from "@/data/mockData";
+import { mockElectivePackages } from "@/data/demo-data";
 import { useAuth } from "@/components/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -8,7 +8,7 @@ import {
   registrarNavItems,
 } from "@/components/shared";
 
-import { mockSWEIrregularStudents } from "@/data/mockData";
+import { mockSWEIrregularStudents } from "@/data/demo-data";
 
 export default function Page(): React.ReactElement {
   const handleCreateIrregularStudent = (studentData: IrregularStudent) => {

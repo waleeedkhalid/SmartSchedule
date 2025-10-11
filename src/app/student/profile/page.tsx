@@ -18,71 +18,106 @@ import { ArrowLeft, User, Mail, IdCard, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 interface StudentProfile {
-  studentId: string;
+  user_id: string;
   name: string;
   email: string;
-  level: number;
-  major: string;
-  gpa: number;
-  completedCredits: number;
-  totalCredits: number;
-}
+        try {
+          const loadProfile = () =>
+            fetch(
+              `/api/student/profile?userId=${encodeURIComponent(user.email ?? "")}`
+            );
 
-export default function StudentProfilePage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading, signOut } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [studentData, setStudentData] = useState<StudentProfile | null>(null);
+          let response = await loadProfile();
 
-  useEffect(() => {
-    const fetchStudentProfile = async () => {
-      if (!user?.email) {
-        setLoading(false);
-        return;
-      }
+          if (response.status === 404) {
+            try {
+              const bootstrapResponse = await fetch("/api/auth/bootstrap", {
+                method: "POST",
+              });
 
-      try {
-        const response = await fetch(
-          `/api/student/profile?userId=${encodeURIComponent(user.email)}`
-        );
-        const data = await response.json();
+              if (bootstrapResponse.ok) {
+                response = await loadProfile();
+              }
+            } catch (bootstrapError) {
+              console.warn("Bootstrap onboarding error", bootstrapError);
+            }
+          }
 
-        if (data.success) {
+          if (response.ok) {
+            const data = await response.json();
+
+            if (data.success) {
+              setStudentData({
+                user_id: data.student.user_id,
+                name: data.student.name,
+                email: data.student.email,
+                student_number: data.student.student_number,
+                level: data.student.level,
+                major: data.student.major,
+                gpa: data.student.gpa,
+                completed_credits: data.student.completed_credits,
+                total_credits: data.student.total_credits,
+                academic_status: data.student.academic_status,
+                enrollment_date: data.student.enrollment_date,
+                expected_graduation_date: data.student.expected_graduation_date,
+                advisor_id: data.student.advisor_id,
+              });
+              return;
+            }
+          }
+
           setStudentData({
-            studentId: data.student.studentId,
-            name: data.student.name,
-            email: data.student.email,
-            level: data.student.level,
-            major: data.student.major,
-            gpa: data.student.gpa,
-            completedCredits: data.student.completedCredits,
-            totalCredits: data.student.totalCredits,
-          });
-        } else {
-          // Fallback to user metadata
-          setStudentData({
-            studentId: user.email?.split("@")[0] || "Unknown",
+            user_id: user.id || "",
             name: user.user_metadata?.full_name || "Student",
             email: user.email || "",
+            student_number: user.email?.split("@")[0] || "Unknown",
             level: 6,
             major: "Software Engineering",
-            gpa: 0,
-            completedCredits: 0,
-            totalCredits: 132,
+            gpa: "0.00",
+            completed_credits: 0,
+            total_credits: 132,
+            academic_status: "active",
           });
-        }
-      } catch (error) {
-        console.error("Error fetching student profile:", error);
-        // Fallback to user metadata
-        setStudentData({
-          studentId: user.email?.split("@")[0] || "Unknown",
-          name: user.user_metadata?.full_name || "Student",
-          email: user.email || "",
+        } catch (error) {
+                  user_id: data.student.user_id,
+                  name: data.student.name,
+                  email: data.student.email,
+                  student_number: data.student.student_number,
+                  level: data.student.level,
+                  major: data.student.major,
+                  gpa: data.student.gpa,
+                  completed_credits: data.student.completed_credits,
+                  total_credits: data.student.total_credits,
+                  academic_status: data.student.academic_status,
+                  enrollment_date: data.student.enrollment_date,
+                  expected_graduation_date: data.student.expected_graduation_date,
+                  advisor_id: data.student.advisor_id,
+                });
+                return;
+              }
+            }
+
+            const fallbackData: StudentProfile = {
+              user_id: user.id || "",
+              name: user.user_metadata?.full_name || "Student",
+              email: user.email || "",
+              student_number: user.email?.split("@")[0] || "Unknown",
+              level: 6,
+              major: "Software Engineering",
+              gpa: "0.00",
+              completed_credits: 0,
+              total_credits: 132,
+              academic_status: "active",
+            };
+
+            setStudentData(fallbackData);
+          student_number: user.email?.split("@")[0] || "Unknown",
           level: 6,
           major: "Software Engineering",
-          gpa: 0,
-          completedCredits: 0,
-          totalCredits: 132,
+          gpa: "0.00",
+          completed_credits: 0,
+          total_credits: 132,
+          academic_status: "active",
         });
       } finally {
         setLoading(false);
@@ -207,7 +242,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Student ID</p>
-                  <p className="font-semibold">{studentData.studentId}</p>
+                  <p className="font-semibold">{studentData.student_number || "Not assigned"}</p>
                 </div>
               </div>
 
@@ -217,7 +252,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Major</p>
-                  <p className="font-semibold">{studentData.major}</p>
+                  <p className="font-semibold">{studentData.major || "Not assigned"}</p>
                 </div>
               </div>
             </div>
@@ -235,13 +270,13 @@ export default function StudentProfilePage() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Current Level
                 </p>
-                <p className="text-2xl font-bold">Level {studentData.level}</p>
+                <p className="text-2xl font-bold">Level {studentData.level || "Not assigned"}</p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground mb-1">GPA</p>
                 <p className="text-2xl font-bold">
-                  {studentData.gpa.toFixed(2)}
+                  {studentData.gpa ? parseFloat(studentData.gpa).toFixed(2) : "0.00"}
                 </p>
               </div>
 
@@ -250,7 +285,7 @@ export default function StudentProfilePage() {
                   Completed Credits
                 </p>
                 <p className="text-2xl font-bold">
-                  {studentData.completedCredits}
+                  {studentData.completed_credits || 0}
                 </p>
               </div>
 
@@ -258,7 +293,7 @@ export default function StudentProfilePage() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Total Required
                 </p>
-                <p className="text-2xl font-bold">{studentData.totalCredits}</p>
+                <p className="text-2xl font-bold">{studentData.total_credits || 132}</p>
               </div>
             </div>
 
@@ -267,7 +302,7 @@ export default function StudentProfilePage() {
                 <p className="text-sm text-muted-foreground">Progress</p>
                 <Badge variant="secondary">
                   {Math.round(
-                    (studentData.completedCredits / studentData.totalCredits) *
+                    ((studentData.completed_credits || 0) / (studentData.total_credits || 132)) *
                       100
                   )}
                   %
@@ -278,8 +313,8 @@ export default function StudentProfilePage() {
                   className="h-full bg-primary transition-all"
                   style={{
                     width: `${
-                      (studentData.completedCredits /
-                        studentData.totalCredits) *
+                      ((studentData.completed_credits || 0) /
+                        (studentData.total_credits || 132)) *
                       100
                     }%`,
                   }}

@@ -7,7 +7,7 @@ import { ScheduleDataCollector } from "./ScheduleDataCollector";
 import { TimeSlotManager } from "./TimeSlotManager";
 import { TimeSlot } from "@/lib/types";
 
-export function testPhase2DataServices() {
+export async function testPhase2DataServices() {
   console.log("=".repeat(60));
   console.log("SCHEDULE GENERATION - PHASE 2 DATA SERVICES VERIFICATION");
   console.log("=".repeat(60));
@@ -20,26 +20,26 @@ export function testPhase2DataServices() {
   const collector = new ScheduleDataCollector();
 
   // Test data validation
-  const validation = collector.validateDataAvailability([4, 5, 6, 7, 8]);
+  const validation = await collector.validateDataAvailability([4, 5, 6, 7, 8]);
   console.log(`Data validation: ${validation.valid ? "PASS" : "FAIL"}`);
   if (!validation.valid) {
     console.log(`Missing data: ${validation.missing.join(", ")}`);
   }
 
   // Test curriculum retrieval
-  const curriculum = collector.getCurriculumForLevels([4, 5, 6]);
+  const curriculum = await collector.getCurriculumForLevels([4, 5, 6]);
   console.log(`Retrieved curriculum for 3 levels: ${curriculum.length} levels`);
 
   // Test student retrieval
-  const students = collector.getStudentsForLevels([4, 5]);
+  const students = await collector.getStudentsForLevels([4, 5]);
   console.log(`Retrieved students for levels 4-5: ${students.length} students`);
 
   // Test faculty retrieval
-  const faculty = collector.getAvailableFaculty();
+  const faculty = await collector.getAvailableFaculty();
   console.log(`Available faculty: ${faculty.length} instructors`);
 
   // Test elective retrieval
-  const electives = collector.getAllElectiveCourses();
+  const electives = await collector.getAllElectiveCourses();
   console.log(`Available elective courses: ${electives.length} courses`);
 
   // Test comprehensive data collection
@@ -50,7 +50,7 @@ export function testPhase2DataServices() {
     optimizationGoals: ["minimize-conflicts" as const],
   };
 
-  const data = collector.getScheduleGenerationData(request);
+  const data = await collector.getScheduleGenerationData(request);
   console.log(`Comprehensive data collection:`);
   console.log(`  - Levels: ${data.summary.levels}`);
   console.log(`  - Students: ${data.summary.totalStudents}`);

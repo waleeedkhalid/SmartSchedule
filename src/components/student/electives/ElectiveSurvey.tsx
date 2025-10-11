@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X, Filter } from "lucide-react";
-import { mockElectivePackages } from "@/data/mockData";
+import { mockElectivePackages } from "@/data/demo-data";
 
 interface SelectedCourse {
   code: string;

@@ -7,18 +7,8 @@ import { Footer } from "@/components/shared/Footer";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import "./globals.css";
-import { seedData } from "@/lib/seed-data";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import NavAuth from "@/components/auth/NavAuth";
-
-// Seed data only when explicitly enabled (dev/demo). Prevents mock data in production.
-// Enable by setting NEXT_PUBLIC_USE_MOCK_DATA=true in your .env.local
-if (
-  typeof window === "undefined" &&
-  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true"
-) {
-  seedData();
-}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

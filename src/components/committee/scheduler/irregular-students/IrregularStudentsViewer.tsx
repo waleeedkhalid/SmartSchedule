@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BellIcon, Users } from "lucide-react";
-import { mockSWEIrregularStudents } from "@/data/mockData";
+import { mockSWEIrregularStudents } from "@/data/demo-data";
 import { useToastContext } from "@/components/ui/toast-provider";
 
 export function IrregularStudentsViewer() {

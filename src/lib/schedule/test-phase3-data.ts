@@ -5,7 +5,7 @@
 
 import { ConflictChecker } from "./ConflictChecker";
 import { Section, CourseOffering, SWEStudent } from "@/lib/types";
-import { mockSWEFaculty } from "@/data/mockData";
+import { mockSWEFaculty } from "@/data/demo-data";
 
 export function testPhase3ConflictDetection() {
   console.log("=".repeat(60));
