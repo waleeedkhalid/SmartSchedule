@@ -59,7 +59,10 @@ export function AuthDialog({
           });
 
           if (!bootstrapResponse.ok) {
-            console.warn("Bootstrap onboarding failed", bootstrapResponse.statusText);
+            console.warn(
+              "Bootstrap onboarding failed",
+              bootstrapResponse.statusText
+            );
           }
         } catch (bootstrapError) {
           console.warn("Bootstrap onboarding error", bootstrapError);

@@ -2,38 +2,40 @@
 // New student profile system that extends user table with academic data
 
 import { getSupabaseAdminOrThrow } from "@/lib/supabase-admin";
-import type { 
-  DBStudentWithProfile, 
-  CreateStudentProfileInput, 
-  UpdateStudentProfileInput 
+import type {
+  DBStudentWithProfile,
+  CreateStudentProfileInput,
+  UpdateStudentProfileInput,
 } from "@/lib/types";
 
 /**
  * Get student profile by user ID
  */
-export async function getStudentProfile(userId: string): Promise<DBStudentWithProfile | null> {
+export async function getStudentProfile(
+  userId: string
+): Promise<DBStudentWithProfile | null> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .eq('user_id', userId)
+    .from("students")
+    .select("*")
+    .eq("user_id", userId)
     .single();
-    
+
   if (error) {
-    if (error.code === 'PGRST116') {
+    if (error.code === "PGRST116") {
       return null; // No profile found
     }
     throw error;
   }
-  
+
   // Transform the data to match the expected interface
   return {
     user_id: data.user_id,
     name: data.name,
     email: data.email,
-    role: 'student', // Default role for students
-    user_created_at: data.created_at || '',
+    role: "student", // Default role for students
+    user_created_at: data.created_at || "",
     profile_id: data.id,
     student_number: data.student_id,
     level: data.level,
@@ -41,7 +43,7 @@ export async function getStudentProfile(userId: string): Promise<DBStudentWithPr
     gpa: data.gpa || undefined,
     completed_credits: data.completed_credits || undefined,
     total_credits: data.total_credits || undefined,
-    academic_status: 'active', // Default status
+    academic_status: "active", // Default status
     enrollment_date: undefined,
     expected_graduation_date: undefined,
     advisor_id: undefined,
@@ -53,24 +55,26 @@ export async function getStudentProfile(userId: string): Promise<DBStudentWithPr
 /**
  * Get all students with profiles
  */
-export async function getAllStudentsWithProfiles(): Promise<DBStudentWithProfile[]> {
+export async function getAllStudentsWithProfiles(): Promise<
+  DBStudentWithProfile[]
+> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .order('level', { ascending: true })
-    .order('name', { ascending: true });
-    
+    .from("students")
+    .select("*")
+    .order("level", { ascending: true })
+    .order("name", { ascending: true });
+
   if (error) throw error;
-  
+
   // Transform the data to match the expected interface
-  return (data || []).map(student => ({
+  return (data || []).map((student) => ({
     user_id: student.user_id,
     name: student.name,
     email: student.email,
-    role: 'student' as const,
-    user_created_at: student.created_at || '',
+    role: "student" as const,
+    user_created_at: student.created_at || "",
     profile_id: student.id,
     student_number: student.student_id,
     level: student.level,
@@ -78,7 +82,7 @@ export async function getAllStudentsWithProfiles(): Promise<DBStudentWithProfile
     gpa: student.gpa || undefined,
     completed_credits: student.completed_credits || undefined,
     total_credits: student.total_credits || undefined,
-    academic_status: 'active' as const,
+    academic_status: "active" as const,
     enrollment_date: undefined,
     expected_graduation_date: undefined,
     advisor_id: undefined,
@@ -90,7 +94,9 @@ export async function getAllStudentsWithProfiles(): Promise<DBStudentWithProfile
 /**
  * Create a new student profile
  */
-export async function createStudentProfile(input: CreateStudentProfileInput): Promise<string> {
+export async function createStudentProfile(
+  input: CreateStudentProfileInput
+): Promise<string> {
   const supabase = getSupabaseAdminOrThrow();
 
   const { data: userRecord, error: userError } = await supabase
@@ -114,13 +120,13 @@ export async function createStudentProfile(input: CreateStudentProfileInput): Pr
     total_credits: input.total_credits ?? 132,
     gpa: input.gpa !== undefined ? input.gpa.toFixed(2) : undefined,
   } satisfies Record<string, unknown>;
-  
+
   const { data, error } = await supabase
-    .from('students')
+    .from("students")
     .insert(insertPayload)
-    .select('id')
+    .select("id")
     .single();
-    
+
   if (error) throw error;
   return data.id;
 }
@@ -129,23 +135,23 @@ export async function createStudentProfile(input: CreateStudentProfileInput): Pr
  * Update student profile
  */
 export async function updateStudentProfile(
-  userId: string, 
+  userId: string,
   updates: UpdateStudentProfileInput
 ): Promise<void> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { error } = await supabase
-    .from('students')
+    .from("students")
     .update({
       student_id: updates.student_number,
       level: updates.level,
       major: updates.major,
-  gpa: updates.gpa !== undefined ? updates.gpa.toFixed(2) : undefined,
+      gpa: updates.gpa !== undefined ? updates.gpa.toFixed(2) : undefined,
       completed_credits: updates.completed_credits,
-      total_credits: updates.total_credits
+      total_credits: updates.total_credits,
     })
-    .eq('user_id', userId);
-    
+    .eq("user_id", userId);
+
   if (error) throw error;
 }
 
@@ -154,36 +160,38 @@ export async function updateStudentProfile(
  */
 export async function deleteStudentProfile(userId: string): Promise<void> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { error } = await supabase
-    .from('students')
+    .from("students")
     .delete()
-    .eq('user_id', userId);
-    
+    .eq("user_id", userId);
+
   if (error) throw error;
 }
 
 /**
  * Get students by level
  */
-export async function getStudentsByLevel(level: number): Promise<DBStudentWithProfile[]> {
+export async function getStudentsByLevel(
+  level: number
+): Promise<DBStudentWithProfile[]> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .eq('level', level)
-    .order('name', { ascending: true });
-    
+    .from("students")
+    .select("*")
+    .eq("level", level)
+    .order("name", { ascending: true });
+
   if (error) throw error;
-  
+
   // Transform the data to match the expected interface
-  return (data || []).map(student => ({
+  return (data || []).map((student) => ({
     user_id: student.user_id,
     name: student.name,
     email: student.email,
-    role: 'student' as const,
-    user_created_at: student.created_at || '',
+    role: "student" as const,
+    user_created_at: student.created_at || "",
     profile_id: student.id,
     student_number: student.student_id,
     level: student.level,
@@ -191,7 +199,7 @@ export async function getStudentsByLevel(level: number): Promise<DBStudentWithPr
     gpa: student.gpa || undefined,
     completed_credits: student.completed_credits || undefined,
     total_credits: student.total_credits || undefined,
-    academic_status: 'active' as const,
+    academic_status: "active" as const,
     enrollment_date: undefined,
     expected_graduation_date: undefined,
     advisor_id: undefined,
@@ -203,24 +211,26 @@ export async function getStudentsByLevel(level: number): Promise<DBStudentWithPr
 /**
  * Get students by academic status
  */
-export async function getStudentsByStatus(_status: string): Promise<DBStudentWithProfile[]> {
+export async function getStudentsByStatus(
+  _status: string
+): Promise<DBStudentWithProfile[]> {
   void _status;
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .order('name', { ascending: true });
-    
+    .from("students")
+    .select("*")
+    .order("name", { ascending: true });
+
   if (error) throw error;
-  
+
   // Transform the data to match the expected interface
-  return (data || []).map(student => ({
+  return (data || []).map((student) => ({
     user_id: student.user_id,
     name: student.name,
     email: student.email,
-    role: 'student' as const,
-    user_created_at: student.created_at || '',
+    role: "student" as const,
+    user_created_at: student.created_at || "",
     profile_id: student.id,
     student_number: student.student_id,
     level: student.level,
@@ -228,7 +238,7 @@ export async function getStudentsByStatus(_status: string): Promise<DBStudentWit
     gpa: student.gpa || undefined,
     completed_credits: student.completed_credits || undefined,
     total_credits: student.total_credits || undefined,
-    academic_status: 'active' as const,
+    academic_status: "active" as const,
     enrollment_date: undefined,
     expected_graduation_date: undefined,
     advisor_id: undefined,
@@ -240,24 +250,26 @@ export async function getStudentsByStatus(_status: string): Promise<DBStudentWit
 /**
  * Search students by name or student number
  */
-export async function searchStudents(query: string): Promise<DBStudentWithProfile[]> {
+export async function searchStudents(
+  query: string
+): Promise<DBStudentWithProfile[]> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   const { data, error } = await supabase
-    .from('students')
-    .select('*')
+    .from("students")
+    .select("*")
     .or(`name.ilike.%${query}%,student_id.ilike.%${query}%`)
-    .order('name', { ascending: true });
-    
+    .order("name", { ascending: true });
+
   if (error) throw error;
-  
+
   // Transform the data to match the expected interface
-  return (data || []).map(student => ({
+  return (data || []).map((student) => ({
     user_id: student.user_id,
     name: student.name,
     email: student.email,
-    role: 'student' as const,
-    user_created_at: student.created_at || '',
+    role: "student" as const,
+    user_created_at: student.created_at || "",
     profile_id: student.id,
     student_number: student.student_id,
     level: student.level,
@@ -265,7 +277,7 @@ export async function searchStudents(query: string): Promise<DBStudentWithProfil
     gpa: student.gpa || undefined,
     completed_credits: student.completed_credits || undefined,
     total_credits: student.total_credits || undefined,
-    academic_status: 'active' as const,
+    academic_status: "active" as const,
     enrollment_date: undefined,
     expected_graduation_date: undefined,
     advisor_id: undefined,
@@ -284,38 +296,36 @@ export async function getStudentStatistics(): Promise<{
   averageGPA: number;
 }> {
   const supabase = getSupabaseAdminOrThrow();
-  
+
   // Get all students
-  const { data, error } = await supabase
-    .from('students')
-    .select('level, gpa');
-    
+  const { data, error } = await supabase.from("students").select("level, gpa");
+
   if (error) throw error;
-  
+
   const students = data || [];
   const total = students.length;
-  
+
   // Calculate statistics
   const byLevel: Record<number, number> = {};
   const byStatus: Record<string, number> = {};
   let totalGPA = 0;
   let validGPAs = 0;
-  
-  students.forEach(student => {
+
+  students.forEach((student) => {
     // By level
     byLevel[student.level] = (byLevel[student.level] || 0) + 1;
-    
+
     // GPA calculation
     if (student.gpa && !isNaN(parseFloat(student.gpa))) {
       totalGPA += parseFloat(student.gpa);
       validGPAs++;
     }
   });
-  
+
   return {
     total,
     byLevel,
     byStatus,
-    averageGPA: validGPAs > 0 ? totalGPA / validGPAs : 0
+    averageGPA: validGPAs > 0 ? totalGPA / validGPAs : 0,
   };
 }

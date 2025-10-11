@@ -31,7 +31,10 @@ function createSupabaseServerClient(request: NextRequest) {
   });
 }
 
-function resolveDisplayName(email: string | null, metadata: Record<string, unknown> | null) {
+function resolveDisplayName(
+  email: string | null,
+  metadata: Record<string, unknown> | null
+) {
   const rawName =
     (metadata?.full_name as string | undefined) ??
     (metadata?.name as string | undefined);
@@ -89,8 +92,14 @@ export async function POST(request: NextRequest) {
 
     const admin = getSupabaseAdminOrThrow();
 
-  const displayName = resolveDisplayName(user.email ?? null, user.user_metadata ?? null);
-  const role = resolveRole(user.app_metadata ?? null, user.user_metadata ?? null);
+    const displayName = resolveDisplayName(
+      user.email ?? null,
+      user.user_metadata ?? null
+    );
+    const role = resolveRole(
+      user.app_metadata ?? null,
+      user.user_metadata ?? null
+    );
     const email = user.email ?? "";
 
     const { error: userUpsertError } = await admin.from("user").upsert(
@@ -111,10 +120,7 @@ export async function POST(request: NextRequest) {
     let studentNumber: string | undefined;
 
     if (role === "student") {
-      const {
-        data: existingStudent,
-        error: studentLookupError,
-      } = await admin
+      const { data: existingStudent, error: studentLookupError } = await admin
         .from("students")
         .select("id, student_id")
         .eq("user_id", user.id)

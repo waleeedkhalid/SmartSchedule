@@ -5,24 +5,30 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/lib/supabase-client";
-import { 
-  Loader2, 
-  Mail, 
-  Lock, 
-  CheckCircle2, 
-  Users, 
-  Calendar, 
-  Briefcase, 
+import {
+  Loader2,
+  Mail,
+  Lock,
+  CheckCircle2,
+  Users,
+  Calendar,
+  Briefcase,
   ClipboardCheck,
   GraduationCap,
   ArrowRight,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 
 interface DemoAccount {
@@ -42,9 +48,12 @@ const roleIcons = {
 
 const roleColors = {
   student: "from-blue-500/10 to-cyan-500/10 border-blue-500/20 text-blue-600",
-  faculty: "from-purple-500/10 to-pink-500/10 border-purple-500/20 text-purple-600",
-  scheduling_committee: "from-emerald-500/10 to-teal-500/10 border-emerald-500/20 text-emerald-600",
-  teaching_load_committee: "from-amber-500/10 to-orange-500/10 border-amber-500/20 text-amber-600",
+  faculty:
+    "from-purple-500/10 to-pink-500/10 border-purple-500/20 text-purple-600",
+  scheduling_committee:
+    "from-emerald-500/10 to-teal-500/10 border-emerald-500/20 text-emerald-600",
+  teaching_load_committee:
+    "from-amber-500/10 to-orange-500/10 border-amber-500/20 text-amber-600",
   registrar: "from-rose-500/10 to-red-500/10 border-rose-500/20 text-rose-600",
 };
 
@@ -61,13 +70,13 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchDemoAccounts = async () => {
       try {
-        const response = await fetch('/api/demo-accounts');
+        const response = await fetch("/api/demo-accounts");
         const data = await response.json();
         if (data.success) {
           setDemoAccounts(data.accounts);
         }
       } catch (err) {
-        console.error('Failed to fetch demo accounts:', err);
+        console.error("Failed to fetch demo accounts:", err);
       } finally {
         setLoadingDemoAccounts(false);
       }
@@ -101,44 +110,49 @@ export default function LoginPage() {
         });
 
         if (!bootstrapResponse.ok) {
-          console.warn("Bootstrap onboarding failed", bootstrapResponse.statusText);
+          console.warn(
+            "Bootstrap onboarding failed",
+            bootstrapResponse.statusText
+          );
         }
       } catch (bootstrapError) {
         console.warn("Bootstrap onboarding error", bootstrapError);
       }
 
       // Get user role and redirect accordingly
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: userData } = await supabase
-          .from('user')
-          .select('role')
-          .eq('id', user.id)
+          .from("user")
+          .select("role")
+          .eq("id", user.id)
           .single();
 
         if (userData) {
           // Redirect based on role
           switch (userData.role) {
-            case 'student':
-              router.push('/student');
+            case "student":
+              router.push("/student");
               break;
-            case 'faculty':
-              router.push('/faculty');
+            case "faculty":
+              router.push("/faculty");
               break;
-            case 'scheduling_committee':
-              router.push('/committee/scheduler');
+            case "scheduling_committee":
+              router.push("/committee/scheduler");
               break;
-            case 'teaching_load_committee':
-              router.push('/committee/teaching-load');
+            case "teaching_load_committee":
+              router.push("/committee/teaching-load");
               break;
-            case 'registrar':
-              router.push('/committee/registrar');
+            case "registrar":
+              router.push("/committee/registrar");
               break;
             default:
-              router.push('/dashboard');
+              router.push("/dashboard");
           }
         } else {
-          router.push('/dashboard');
+          router.push("/dashboard");
         }
       }
     } catch (err) {
@@ -154,12 +168,7 @@ export default function LoginPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/icon.png"
-              alt="SmartSchedule"
-              width={32}
-              height={32}
-            />
+            <Image src="/icon.png" alt="SmartSchedule" width={32} height={32} />
             <span className="text-xl font-bold">SmartSchedule</span>
           </Link>
           <Button variant="outline" asChild>
@@ -182,7 +191,8 @@ export default function LoginPage() {
               Sign in to <span className="text-primary">SmartSchedule</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Access your role-based dashboard with live Supabase data and automated scheduling capabilities.
+              Access your role-based dashboard with live Supabase data and
+              automated scheduling capabilities.
             </p>
           </div>
 
@@ -206,9 +216,11 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   demoAccounts.map((account) => {
-                    const Icon = roleIcons[account.role as keyof typeof roleIcons];
-                    const colors = roleColors[account.role as keyof typeof roleColors];
-                    
+                    const Icon =
+                      roleIcons[account.role as keyof typeof roleIcons];
+                    const colors =
+                      roleColors[account.role as keyof typeof roleColors];
+
                     return (
                       <Button
                         key={account.email}
@@ -217,13 +229,17 @@ export default function LoginPage() {
                         onClick={() => handleDemoAccountClick(account)}
                       >
                         <div className="flex items-center gap-3 w-full">
-                          <div className={`p-2 rounded-lg bg-gradient-to-br ${colors}`}>
+                          <div
+                            className={`p-2 rounded-lg bg-gradient-to-br ${colors}`}
+                          >
                             <Icon className="h-5 w-5" />
                           </div>
                           <div className="flex-1 text-left">
                             <div className="font-medium">{account.name}</div>
                             <div className="text-sm text-muted-foreground">
-                              {account.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              {account.role
+                                .replace("_", " ")
+                                .replace(/\b\w/g, (l) => l.toUpperCase())}
                             </div>
                           </div>
                           <ArrowRight className="h-4 w-4 opacity-50" />
@@ -323,7 +339,7 @@ export default function LoginPage() {
                 All data is fetched from Supabase in real-time
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="text-center p-6">
                 <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
@@ -334,7 +350,7 @@ export default function LoginPage() {
                   All information is fetched live from Supabase
                 </p>
               </Card>
-              
+
               <Card className="text-center p-6">
                 <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
                   <Users className="h-6 w-6 text-primary" />
@@ -344,7 +360,7 @@ export default function LoginPage() {
                   Secure access based on user roles and permissions
                 </p>
               </Card>
-              
+
               <Card className="text-center p-6">
                 <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
                   <Sparkles className="h-6 w-6 text-primary" />
