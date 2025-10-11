@@ -23,6 +23,7 @@ For non-SWE courses, the system only tracks them as external course offerings th
 - **Teaching Load Management**: Monitor SWE faculty teaching loads and conflicts
 - **Registrar Tools**: Manage irregular students requiring SWE courses
 - **Responsive Design**: Works on desktop and mobile devices
+- **Curriculum Backend (SWE Plan)**: Admin-editable curriculum stored in Supabase `swe_plan` with RLS; access via helpers in `src/lib/supabase/swe-plan.ts`
 
 ## Tech Stack
 
@@ -68,13 +69,25 @@ For non-SWE courses, the system only tracks them as external course offerings th
 Create a `.env.local` file in the root directory with the following variables:
 
 ```env
-# Application
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Supabase (Client)
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Authentication (for future use)
-# NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+# Supabase (Server - API routes only)
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Demo toggles (optional)
+# Set true to seed mock data locally
+NEXT_PUBLIC_USE_MOCK_DATA=false
 ```
+
+### Deploying
+
+1. Configure the environment variables above in your hosting provider (e.g., Vercel → Project Settings → Environment Variables).
+2. Build and run:
+   - Local: `npm run build && npm start`
+   - Docker: `docker build -t smartschedule . && docker run -p 3000:3000 --env-file .env.local smartschedule`
+3. Ensure Supabase Auth has at least one user and a `students` row tied to that `auth.users.id` (see `supabase-schema.sql`).
 
 ## Project Structure
 

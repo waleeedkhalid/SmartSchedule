@@ -16,6 +16,7 @@ import {
   mockSWEIrregularStudents,
   mockCourseOfferings,
 } from "@/data/mockData";
+import { getCurriculumByLevel } from "@/lib/schedule/curriculum-source";
 
 /**
  * ScheduleDataCollector - Phase 2: Data Services
@@ -37,7 +38,7 @@ export class ScheduleDataCollector {
   private externalCourses: CourseOffering[];
 
   constructor() {
-    // Load all data from mock sources
+    // Load all data from mock sources by default
     this.curriculum = mockSWECurriculum;
     this.students = mockSWEStudents;
     this.faculty = mockSWEFaculty;
@@ -50,7 +51,17 @@ export class ScheduleDataCollector {
    * Get curriculum requirements for specific levels
    */
   getCurriculumForLevels(levels: number[]): SWECurriculumLevel[] {
-    return this.curriculum.filter((level) => levels.includes(level.level));
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+    if (useMock) {
+      return this.curriculum.filter((level) => levels.includes(level.level));
+    }
+    // In live mode, assemble per-level via adapter on-demand and cache into this.curriculum shape
+    // Note: keep synchronous signature by using the last known snapshot if any; callers of async flows should prefer adapter directly.
+    // For scheduler usage in this class, we will generate a fresh snapshot synchronously by throwing if called before warm-up.
+    // TODO: consider promoting getScheduleGenerationData to async and fetch levels in parallel.
+    throw new Error(
+      "getCurriculumForLevels requires async adapter in live mode. Use getScheduleGenerationData() which warms curriculum first."
+    );
   }
 
   /**
@@ -120,7 +131,29 @@ export class ScheduleDataCollector {
    */
   getScheduleGenerationData(request: ScheduleGenerationRequest) {
     const levels = request.levels;
-    const curriculum = this.getCurriculumForLevels(levels);
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+    let curriculum: SWECurriculumLevel[];
+    if (useMock) {
+      curriculum = this.getCurriculumForLevels(levels);
+    } else {
+      // Warm curriculum from adapter synchronously by blocking on Promise.all first
+      // Note: converting method body to async would ripple across call sites; keep sync by prefetching and then proceed.
+      const hydrated = (globalThis as any).__ss_curriculum_cache as
+        | Map<number, SWECurriculumLevel>
+        | undefined;
+      const cache = hydrated ?? new Map<number, SWECurriculumLevel>();
+      // fetch per-level
+      const fetchAll = levels.map(async (lvl) => {
+        const entry = await getCurriculumByLevel(lvl);
+        cache.set(lvl, entry);
+        return entry;
+      });
+      // This is a sync function; however we can block here by using Atomics? Not viable. Instead, we restructure to prefetch via sync wait impossible.
+      // Simplest non-breaking choice: if live mode, throw guiding error for now (callers can switch to async API in a follow-up phase).
+      throw new Error(
+        "Live curriculum requires async collection. Refactor caller to use async pathway or keep NEXT_PUBLIC_USE_MOCK_DATA=true for now."
+      );
+    }
     const students = this.getStudentsForLevels(levels);
     const faculty = this.getAvailableFaculty();
     const electives = this.getAllElectiveCourses();

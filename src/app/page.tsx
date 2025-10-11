@@ -7,17 +7,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { AuthDialog } from "@/components/auth/AuthDialog";
-import { 
-  Calendar, 
-  Users, 
-  BookOpen, 
-  GraduationCap, 
-  ClipboardCheck, 
+import {
+  Calendar,
+  Users,
+  BookOpen,
+  GraduationCap,
+  ClipboardCheck,
   Briefcase,
   CheckCircle2,
   Sparkles,
@@ -27,9 +38,8 @@ import {
   Brain,
   ArrowRight,
   LucideIcon,
-  LogIn
+  LogIn,
 } from "lucide-react";
-
 
 // Role card data - PRD Section 3 (User Roles)
 interface RoleCardData {
@@ -49,63 +59,74 @@ const roles: RoleCardData[] = [
   {
     id: "student",
     title: "Students",
-    description: "Complete elective surveys, view schedules, and provide feedback",
+    description:
+      "Complete elective surveys, view schedules, and provide feedback",
     icon: GraduationCap,
-    color: "from-blue-500/10 to-cyan-500/10 dark:from-blue-500/20 dark:to-cyan-500/20",
+    color:
+      "from-blue-500/10 to-cyan-500/10 dark:from-blue-500/20 dark:to-cyan-500/20",
     borderColor: "border-blue-500/20 dark:border-blue-500/30",
     iconColor: "text-blue-600 dark:text-blue-400",
     badge: "Academic",
     features: ["Elective Selection", "Schedule Preview", "Feedback System"],
-    link: "/student"
+    link: "/student",
   },
   {
     id: "faculty",
     title: "Faculty",
-    description: "Manage teaching assignments and submit availability preferences",
+    description:
+      "Manage teaching assignments and submit availability preferences",
     icon: Users,
-    color: "from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20",
+    color:
+      "from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20",
     borderColor: "border-purple-500/20 dark:border-purple-500/30",
     iconColor: "text-purple-600 dark:text-purple-400",
     badge: "Teaching",
     features: ["Time Availability", "Load Management", "Course Preferences"],
-    link: "/demo/faculty"
+    link: "/demo/faculty",
   },
   {
     id: "scheduler",
     title: "Scheduling Committee",
     description: "Oversee courses, generate schedules, and resolve conflicts",
     icon: Calendar,
-    color: "from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20",
+    color:
+      "from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20",
     borderColor: "border-emerald-500/20 dark:border-emerald-500/30",
     iconColor: "text-emerald-600 dark:text-emerald-400",
     badge: "Operations",
-    features: ["Schedule Generation", "Conflict Detection", "Course Management"],
-    link: "/demo/committee/scheduler"
+    features: [
+      "Schedule Generation",
+      "Conflict Detection",
+      "Course Management",
+    ],
+    link: "/demo/committee/scheduler",
   },
   {
     id: "load-committee",
     title: "Teaching Load Committee",
     description: "Balance faculty workloads and manage instructor assignments",
     icon: Briefcase,
-    color: "from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20",
+    color:
+      "from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20",
     borderColor: "border-amber-500/20 dark:border-amber-500/30",
     iconColor: "text-amber-600 dark:text-amber-400",
     badge: "Management",
     features: ["Load Balancing", "Assignment Review", "Faculty Analytics"],
-    link: "/demo/committee/teaching-load"
+    link: "/demo/committee/teaching-load",
   },
   {
     id: "registrar",
     title: "Registrar",
     description: "Handle special cases and manage closed section registrations",
     icon: ClipboardCheck,
-    color: "from-rose-500/10 to-red-500/10 dark:from-rose-500/20 dark:to-red-500/20",
+    color:
+      "from-rose-500/10 to-red-500/10 dark:from-rose-500/20 dark:to-red-500/20",
     borderColor: "border-rose-500/20 dark:border-rose-500/30",
     iconColor: "text-rose-600 dark:text-rose-400",
     badge: "Administration",
     features: ["Override Management", "Special Cases", "Section Control"],
-    link: "/demo/committee/registrar"
-  }
+    link: "/demo/committee/registrar",
+  },
 ];
 
 // System features - PRD Section 4 (Core Features)
@@ -113,23 +134,23 @@ const features = [
   {
     icon: Brain,
     title: "Intelligent Generation",
-    description: "AI-powered schedule creation with conflict detection"
+    description: "AI-powered schedule creation with conflict detection",
   },
   {
     icon: Zap,
     title: "Real-time Updates",
-    description: "Instant notifications and collaborative workflows"
+    description: "Instant notifications and collaborative workflows",
   },
   {
     icon: Shield,
     title: "Rule Enforcement",
-    description: "Automated validation of prerequisites and constraints"
+    description: "Automated validation of prerequisites and constraints",
   },
   {
     icon: TrendingUp,
     title: "Analytics Dashboard",
-    description: "Comprehensive insights into scheduling patterns"
-  }
+    description: "Comprehensive insights into scheduling patterns",
+  },
 ];
 
 export default function HomePage() {
@@ -150,30 +171,31 @@ export default function HomePage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "SoftwareApplication",
-            "name": "SmartSchedule",
-            "applicationCategory": "EducationalApplication",
-            "description": "Intelligent academic timetabling and course management system for universities. Features AI-powered scheduling, automated conflict detection, faculty load management, and comprehensive student registration tools.",
-            "operatingSystem": "Web",
-            "offers": {
+            name: "SmartSchedule",
+            applicationCategory: "EducationalApplication",
+            description:
+              "Intelligent academic timetabling and course management system for universities. Features AI-powered scheduling, automated conflict detection, faculty load management, and comprehensive student registration tools.",
+            operatingSystem: "Web",
+            offers: {
               "@type": "Offer",
-              "price": "0",
-              "priceCurrency": "USD"
+              price: "0",
+              priceCurrency: "USD",
             },
-            "provider": {
+            provider: {
               "@type": "EducationalOrganization",
-              "name": "King Saud University",
-              "department": "Software Engineering Department"
+              name: "King Saud University",
+              department: "Software Engineering Department",
             },
-            "featureList": [
+            featureList: [
               "AI-Powered Schedule Generation",
               "Automated Conflict Detection",
               "Faculty Load Management",
               "Student Elective Selection",
               "Real-time Notifications",
               "Analytics Dashboard",
-              "Rule-Based Validation"
-            ]
-          })
+              "Rule-Based Validation",
+            ],
+          }),
         }}
       />
 
@@ -183,10 +205,24 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-grid-pattern opacity-5" />
           <div className="container relative mx-auto px-4 py-20 md:py-28">
             <div className="mx-auto max-w-4xl text-center space-y-8">
+              {/* Brand Logo */}
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/branding/icon.png"
+                  alt="SmartSchedule logo"
+                  width={80}
+                  height={80}
+                  priority
+                  className="drop-shadow-lg"
+                />
+              </div>
+
               {/* Header Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">King Saud University</span>
+                <span className="text-sm font-medium text-primary">
+                  King Saud University
+                </span>
               </div>
 
               {/* Main Heading */}
@@ -201,16 +237,17 @@ export default function HomePage() {
 
               {/* SEO-Optimized Description */}
               <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-                Transform academic planning with our intelligent timetabling system. 
-                Automate course scheduling, eliminate conflicts, optimize faculty workloads, 
-                and streamline student registration—all powered by advanced algorithms 
-                designed for educational excellence at King Saud University.
+                Transform academic planning with our intelligent timetabling
+                system. Automate course scheduling, eliminate conflicts,
+                optimize faculty workloads, and streamline student
+                registration—all powered by advanced algorithms designed for
+                educational excellence at King Saud University.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap justify-center gap-4">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="gap-2"
                   onClick={() => handleRoleClick(roles[0])}
                 >
@@ -218,9 +255,7 @@ export default function HomePage() {
                   Get Started
                 </Button>
                 <Button size="lg" variant="outline" asChild>
-                  <Link href="#roles">
-                    Explore Roles
-                  </Link>
+                  <Link href="#roles">Explore Roles</Link>
                 </Button>
               </div>
             </div>
@@ -228,11 +263,14 @@ export default function HomePage() {
         </section>
 
         {/* Features Section */}
-        <section className="container mx-auto px-4 py-16" aria-label="Key Features">
+        <section
+          className="container mx-auto px-4 py-16"
+          aria-label="Key Features"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, idx) => (
-              <Card 
-                key={idx} 
+              <Card
+                key={idx}
                 className="relative overflow-hidden border-muted transition-all duration-300 hover:shadow-lg hover:border-primary/50"
               >
                 <CardHeader>
@@ -248,7 +286,11 @@ export default function HomePage() {
         </section>
 
         {/* Roles Section */}
-        <section id="roles" className="container mx-auto px-4 py-16" aria-label="User Roles">
+        <section
+          id="roles"
+          className="container mx-auto px-4 py-16"
+          aria-label="User Roles"
+        >
           <div className="text-center mb-12 space-y-4">
             <Badge variant="outline" className="px-4 py-1">
               User Roles
@@ -257,8 +299,9 @@ export default function HomePage() {
               Secure Role-Based Access
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Sign in to access specialized tools and workflows designed for your role. 
-              Each dashboard is tailored to your specific needs and permissions.
+              Sign in to access specialized tools and workflows designed for
+              your role. Each dashboard is tailored to your specific needs and
+              permissions.
             </p>
           </div>
 
@@ -268,23 +311,25 @@ export default function HomePage() {
               return (
                 <HoverCard key={role.id} openDelay={200}>
                   <HoverCardTrigger asChild>
-                    <button 
+                    <button
                       onClick={() => handleRoleClick(role)}
                       className="w-full text-left"
                     >
-                      <Card 
+                      <Card
                         className={`relative overflow-hidden border-2 ${role.borderColor} bg-gradient-to-br ${role.color} transition-all duration-300 hover:shadow-xl hover:scale-[1.02] cursor-pointer group`}
                       >
                         <CardHeader className="space-y-4">
                           <div className="flex items-start justify-between">
-                            <div className={`inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${role.color} border-2 ${role.borderColor} transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+                            <div
+                              className={`inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${role.color} border-2 ${role.borderColor} transition-transform group-hover:scale-110 group-hover:rotate-3`}
+                            >
                               <Icon className={`h-7 w-7 ${role.iconColor}`} />
                             </div>
                             <Badge variant="secondary" className="text-xs">
                               {role.badge}
                             </Badge>
                           </div>
-                          
+
                           <div className="space-y-2">
                             <CardTitle className="text-xl group-hover:text-primary transition-colors">
                               {role.title}
@@ -298,16 +343,21 @@ export default function HomePage() {
                         <CardContent>
                           <div className="space-y-2 mb-4">
                             {role.features.map((feature, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <CheckCircle2 className={`h-4 w-4 ${role.iconColor}`} />
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 text-sm text-muted-foreground"
+                              >
+                                <CheckCircle2
+                                  className={`h-4 w-4 ${role.iconColor}`}
+                                />
                                 <span>{feature}</span>
                               </div>
                             ))}
                           </div>
 
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="w-full gap-2"
                           >
                             <LogIn className="h-4 w-4" />
@@ -322,13 +372,16 @@ export default function HomePage() {
                       </Card>
                     </button>
                   </HoverCardTrigger>
-                  
+
                   <HoverCardContent className="w-80" side="top">
                     <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">Secure Access Required</h4>
+                      <h4 className="text-sm font-semibold">
+                        Secure Access Required
+                      </h4>
                       <p className="text-sm text-muted-foreground">
-                        Click to sign in and access the {role.title.toLowerCase()} dashboard 
-                        with full access to all features and workflows.
+                        Click to sign in and access the{" "}
+                        {role.title.toLowerCase()} dashboard with full access to
+                        all features and workflows.
                       </p>
                     </div>
                   </HoverCardContent>
@@ -339,14 +392,17 @@ export default function HomePage() {
         </section>
 
         {/* Stats Section */}
-        <section className="border-t bg-muted/30" aria-label="System Statistics">
+        <section
+          className="border-t bg-muted/30"
+          aria-label="System Statistics"
+        >
           <div className="container mx-auto px-4 py-16">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {[
                 { value: "5", label: "User Roles", icon: Users },
                 { value: "100+", label: "Courses", icon: BookOpen },
                 { value: "24/7", label: "Availability", icon: Calendar },
-                { value: "Auto", label: "Generation", icon: Sparkles }
+                { value: "Auto", label: "Generation", icon: Sparkles },
               ].map((stat, idx) => {
                 const StatIcon = stat.icon;
                 return (
@@ -355,7 +411,9 @@ export default function HomePage() {
                       <StatIcon className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-3xl font-bold">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {stat.label}
+                    </div>
                   </div>
                 );
               })}
@@ -371,20 +429,17 @@ export default function HomePage() {
                 Ready to Transform Your Academic Planning?
               </h2>
               <p className="text-lg text-muted-foreground">
-                Join hundreds of faculty and students using SmartSchedule to streamline 
-                course management, optimize resources, and enhance the academic experience 
-                at King Saud University.
+                Join hundreds of faculty and students using SmartSchedule to
+                streamline course management, optimize resources, and enhance
+                the academic experience at King Saud University.
               </p>
               <div className="flex justify-center gap-4">
-                <Button 
-                  size="lg"
-                  onClick={() => handleRoleClick(roles[0])}
-                >
+                <Button size="lg" onClick={() => handleRoleClick(roles[0])}>
                   <LogIn className="mr-2 h-4 w-4" />
                   Access Student Portal
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
                   onClick={() => handleRoleClick(roles[1])}
                 >

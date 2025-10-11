@@ -14,7 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Send } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Send, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -53,11 +54,28 @@ export default function StudentFeedbackPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-40 mb-4" />
+          <Skeleton className="h-9 w-64 mb-2" />
+          <Skeleton className="h-5 w-80" />
         </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -88,8 +106,9 @@ export default function StudentFeedbackPage() {
         </CardHeader>
         <CardContent>
           {submitted && (
-            <Alert className="mb-4">
-              <AlertDescription>
+            <Alert className="mb-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-900 dark:text-green-100">
                 Thank you! Your feedback has been submitted successfully.
               </AlertDescription>
             </Alert>
@@ -105,6 +124,7 @@ export default function StudentFeedbackPage() {
                 onChange={(e) => setFeedback(e.target.value)}
                 rows={8}
                 required
+                className="resize-none"
               />
               <p className="text-xs text-muted-foreground">
                 Your feedback will be reviewed by the scheduling committee.
@@ -115,12 +135,10 @@ export default function StudentFeedbackPage() {
               type="submit"
               disabled={submitting || !feedback.trim()}
               className="w-full"
+              size="lg"
             >
               {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
+                <>Submitting...</>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />

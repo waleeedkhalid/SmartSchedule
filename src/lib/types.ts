@@ -254,21 +254,6 @@ export interface CourseSection {
   };
 }
 
-export interface CourseStructure {
-  courseCode: string;
-  courseName: string;
-  hasLecture: boolean;
-  hasTutorial: boolean;
-  hasLab: boolean;
-  lectureRequired: boolean;
-  tutorialRequired: boolean;
-  labRequired: boolean;
-  sections: Course[];
-  lectureToTutorials: Map<number, Course[]>; // lectureId -> tutorials
-  lectureToLabs: Map<number, Course[]>; // lectureId -> labs
-  standaloneActivities: Course[]; // For courses without lectures (Lab-only)
-}
-
 export interface CourseSelectionValidation {
   isValid: boolean;
   errors: string[];
@@ -292,15 +277,6 @@ export interface Schedule {
   };
 }
 
-export interface Constraint {
-  id: string;
-  name: string;
-  type: "required" | "preferred" | "forbidden";
-  description: string;
-  weight: number; // 1-10 for scoring
-  validator: (schedule: Schedule) => boolean;
-}
-
 export interface UserPreferences {
   maxSolutionsToGenerate: number;
   avoidMorningClasses: boolean; // Before 9 AM
@@ -311,10 +287,28 @@ export interface UserPreferences {
   forbiddenTimeSlots: NormalizedTimeSlot[];
 }
 
-export interface RegistrationState {
-  selectedCourses: Map<string, Course[]>; // courseCode -> selected sections
-  constraints: Constraint[];
-  preferences: UserPreferences;
-  favoriteSchedules: string[];
-  disabledCourses: Set<string>; // courseCode -> disabled for generation
+// ============================================================================
+// SUPABASE ENTITIES (CANONICAL DB-ALIGNED TYPES)
+// ============================================================================
+
+// DB: students
+// Note: Supabase returns DECIMAL columns as strings; keep gpa as string
+export interface DBStudent {
+  id: string; // UUID
+  user_id: string; // UUID -> auth.users.id
+  student_id: string; // human-readable student number
+  name: string;
+  email: string;
+  level: number;
+  major: string;
+  gpa: string; // DECIMAL(3,2) represented as string
+  completed_credits: number;
+  total_credits: number;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
 }
+
+// DB: completed_courses
+// Removed obsolete interfaces that do not exist in the current schema:
+// - completed_courses, elective_submissions, student_schedules, student_feedback
+// - student_profiles and student_submission_details views

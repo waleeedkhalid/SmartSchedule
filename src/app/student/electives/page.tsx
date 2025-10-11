@@ -12,9 +12,12 @@ import {
 import { mockElectivePackages } from "@/data/mockData";
 import { useAuth } from "@/components/auth/use-auth";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { toast } from "sonner";
 
 type FlowStep = "selection" | "success";
 
@@ -128,11 +131,12 @@ export default function ElectiveSelectionPage() {
       setFlowStep("success");
     } catch (error) {
       console.error("Submission error:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to submit preferences. Please try again."
-      );
+      toast.error("Submission Failed", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit preferences. Please try again.",
+      });
     }
   };
 
@@ -143,10 +147,34 @@ export default function ElectiveSelectionPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading student profile...</p>
+      <div className="container mx-auto px-4 py-8 max-w-[1800px]">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-32 mb-4" />
+          <Skeleton className="h-9 w-80 mb-2" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+
+        {/* Package Navigation Skeleton */}
+        <div className="flex gap-2 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-32" />
+          ))}
+        </div>
+
+        {/* Course Grid Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full mb-3" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );

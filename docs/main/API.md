@@ -1,0 +1,74 @@
+# API Documentation
+
+**Last Updated:** 2025-10-02  
+**Maintainer:** [Name/Role]
+
+---
+
+## Overview
+
+[API routes, request/response formats, usage examples.]
+
+---
+
+## Contents
+
+- API Routes
+- Request/Response Formats
+- Usage Examples
+- ...
+
+---
+
+## API Routes
+
+### SWE Plan
+
+Proposed endpoints for curriculum management. These use centralized helpers in `src/lib/supabase/swe-plan.ts` and are protected by RLS.
+
+- GET `/api/swe-plan` — List active curriculum rows
+  - Query params: `level?` (number)
+  - Response: `SWEPlan[]`
+- POST `/api/swe-plan` — Create a curriculum entry (admin roles only)
+  - Body: `Omit<SWEPlan, "id" | "created_at" | "updated_at">`
+  - Response: `SWEPlan`
+- PATCH `/api/swe-plan/:id` — Update a curriculum entry (admin roles only)
+  - Body: `Partial<SWEPlan>`
+  - Response: `SWEPlan`
+- DELETE `/api/swe-plan/:id` — Soft-archive a curriculum entry (admin roles only)
+  - Effect: sets `is_active = false`
+  - Response: `{ success: true }`
+
+Notes:
+
+- Authorization is enforced via Supabase RLS policies on `public.swe_plan`.
+- API handlers must call helpers: `getSWEPlan`, `addCourse`, `updateCourse`, `archiveCourse`.
+
+---
+
+## Request/Response Formats
+
+[Request and response format details.]
+
+---
+
+## Usage Examples
+
+[Example API calls and responses.]
+
+---
+
+## References
+
+- [Link to related docs or code]
+- [External resources, if any]
+- Helpers: `src/lib/supabase/swe-plan.ts`
+- Types: `types/swe-plan.ts`
+
+---
+
+## Revision History
+
+| Date       | Author    | Change Summary |
+| ---------- | --------- | -------------- |
+| 2025-10-02 | Architect | Initial draft  |

@@ -1,29 +1,49 @@
 // Server-side Supabase client for API routes
 // PRD: Feature 1 - Role-Based Authentication (Supabase)
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error(
-    "Missing Supabase environment variables. Please configure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
-  );
+let _adminClient: SupabaseClient<Database> | null = null;
+
+export const hasSupabaseAdmin: boolean = Boolean(
+  supabaseUrl && supabaseServiceKey
+);
+
+// Returns a Supabase admin client or null if env is missing.
+export function tryGetSupabaseAdmin(): SupabaseClient<Database> | null {
+  if (!hasSupabaseAdmin) return null;
+  if (_adminClient) return _adminClient;
+  _adminClient = createClient<Database>(supabaseUrl!, supabaseServiceKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  return _adminClient;
 }
 
-// Create a Supabase client with the service role key
-// This bypasses RLS and should only be used in API routes
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+// Backwards-compatible export: obtain the admin client or throw with a clear message.
+export function getSupabaseAdminOrThrow(): SupabaseClient<Database> {
+  const client = tryGetSupabaseAdmin();
+  if (!client) {
+    throw new Error(
+      "Missing Supabase env. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+    );
+  }
+  return client;
+}
+
+// For legacy imports expecting `supabaseAdmin`, export a getter proxy.
+export const supabaseAdmin: SupabaseClient<Database> =
+  getSupabaseAdminOrThrow();
 
 // Helper function to get student by user_id
 export async function getStudentByUserId(userId: string) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdminOrThrow()
     .from("students")
     .select("*")
     .eq("user_id", userId)
@@ -34,9 +54,10 @@ export async function getStudentByUserId(userId: string) {
 }
 
 // Helper function to get student with completed courses
+// TODO: Implement a proper profile view or join when views are added
 export async function getStudentProfile(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("student_profiles")
+  const { data, error } = await getSupabaseAdminOrThrow()
+    .from("students")
     .select("*")
     .eq("user_id", userId)
     .single();
@@ -47,7 +68,7 @@ export async function getStudentProfile(userId: string) {
 
 // Helper function to get student by email
 export async function getStudentByEmail(email: string) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdminOrThrow()
     .from("students")
     .select("*")
     .eq("email", email)

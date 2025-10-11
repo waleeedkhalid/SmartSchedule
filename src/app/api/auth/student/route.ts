@@ -1,5 +1,6 @@
-// API Route: Student Authentication (Mock)
+// API Route: Student Authentication (Supabase-backed)
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdminOrThrow } from "@/lib/supabase-admin";
 
 export interface StudentAuthRequest {
   studentId: string;
@@ -18,59 +19,9 @@ export interface StudentAuthResponse {
   error?: string;
 }
 
-// Mock student database
-const MOCK_STUDENTS = [
-  {
-    studentId: "441000001",
-    password: "student123",
-    name: "Ahmed Al-Rashid",
-    level: 6,
-    completedCourses: [
-      "SWE211",
-      "SWE312",
-      "CSC111",
-      "CSC113",
-      "CEN303",
-      "MATH151",
-      "MATH106",
-      "PHY103",
-      "PHY104",
-      "SWE321",
-      "SWE314",
-    ],
-    email: "ahmed.alrashid@student.ksu.edu.sa",
-  },
-  {
-    studentId: "441000002",
-    password: "student123",
-    name: "Fatimah Al-Zahrani",
-    level: 7,
-    completedCourses: [
-      "CSC111",
-      "MATH151",
-      "SWE211",
-      "CSC113",
-      "CEN303",
-      "MATH106",
-      "PHY103",
-      "PHY104",
-      "SWE312",
-      "SWE314",
-      "SWE321",
-      "SWE333",
-      "SWE381",
-    ],
-    email: "fatimah.alzahrani@student.ksu.edu.sa",
-  },
-  {
-    studentId: "test",
-    password: "test",
-    name: "Test Student",
-    level: 6,
-    completedCourses: ["SWE211", "CSC111", "CSC113", "MATH151"],
-    email: "test@student.ksu.edu.sa",
-  },
-];
+// NOTE: This endpoint emulates a simple student credential check by looking up a student
+// record in Supabase by student_id or email. It does NOT create a Supabase Auth session.
+// Keep response shape compatible with Phase 3 consumers.
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -87,15 +38,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Simulate authentication delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // Simulate authentication delay (kept for UX parity)
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Find student (mock authentication)
-    const student = MOCK_STUDENTS.find(
-      (s) => s.studentId === body.studentId && s.password === body.password
-    );
+    const admin = getSupabaseAdminOrThrow();
 
-    if (!student) {
+    // Try lookup by student_id first, else by email
+    const { data: studentRow, error: studentErr } = await admin
+      .from("students")
+      .select("id, student_id, name, level, email")
+      .or(`student_id.eq.${body.studentId},email.eq.${body.studentId}`)
+      .single();
+
+    if (studentErr || !studentRow) {
       return NextResponse.json(
         {
           success: false,
@@ -106,40 +61,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // TODO: Replace with actual authentication (Supabase Auth or custom)
-    /*
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: body.studentId + '@university.edu.sa',
-      password: body.password,
-    });
-
-    if (authError) {
-      throw authError;
+    // NOTE: No password verification here since Supabase Auth isn’t wired in this endpoint.
+    // Optionally, you could enforce a shared demo password.
+    if (body.password !== "student123" && body.password !== "test") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Invalid credentials. Please check your Student ID and password.",
+        } as StudentAuthResponse,
+        { status: 401 }
+      );
     }
 
-    // Fetch student profile
-    const { data: profile, error: profileError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('student_id', body.studentId)
-      .single();
-
-    if (profileError) {
-      throw profileError;
-    }
-    */
-
-    console.log("✅ Student authenticated:", student.studentId, student.name);
+    // TODO: completed courses no longer stored in a dedicated table.
+    // Consider deriving from transcripts or registration history when available.
+    const completedCourses: string[] = [];
 
     return NextResponse.json(
       {
         success: true,
         session: {
-          studentId: student.studentId,
-          name: student.name,
-          level: student.level,
-          completedCourses: student.completedCourses,
-          email: student.email,
+          studentId: studentRow.student_id,
+          name: studentRow.name,
+          level: Number(studentRow.level ?? 0),
+          completedCourses,
+          email: studentRow.email ?? undefined,
         },
       } as StudentAuthResponse,
       { status: 200 }

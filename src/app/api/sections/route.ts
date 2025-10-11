@@ -2,7 +2,7 @@
 // Returns flattened sections across all course offerings.
 
 import { NextResponse } from "next/server";
-import { courseOfferingService } from "@/lib/data-store";
+import { fetchSectionsFromDB } from "@/lib/course-queries";
 import type { Section } from "@/lib/types";
 
 interface ApiResponse<T> {
@@ -14,9 +14,10 @@ interface ApiResponse<T> {
  * GET /api/sections
  */
 export async function GET(): Promise<Response> {
-  const sections: ReadonlyArray<Section> = courseOfferingService
-    .findAll()
-    .flatMap((c) => c.sections);
-  const body: ApiResponse<ReadonlyArray<Section>> = { data: sections };
+  const sections: ReadonlyArray<Section> = await fetchSectionsFromDB();
+  const body: ApiResponse<ReadonlyArray<Section>> = {
+    data: sections,
+    meta: { source: "supabase" },
+  };
   return NextResponse.json(body, { status: 200 });
 }

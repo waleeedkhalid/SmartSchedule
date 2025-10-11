@@ -10,6 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyMedia,
+} from "@/components/ui/empty";
 
 // UI-only notification shape (avoid collision with domain Notification in types.ts)
 interface UINotificationItem {
@@ -126,9 +132,14 @@ export function NotificationsDropdown() {
 
         <div className="max-h-[400px] overflow-y-auto">
           {notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No notifications
-            </div>
+            <Empty className="min-h-[200px] border-none">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Bell className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyTitle className="text-sm">No notifications</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           ) : (
             notifications.map((notification) => (
               <DropdownMenuItem

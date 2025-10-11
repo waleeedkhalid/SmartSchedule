@@ -16,45 +16,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Try to get student by email (userId is email in most cases)
-    let student;
-    try {
-      student = await getStudentByEmail(userId);
-    } catch {
-      // If not found by email, try by user_id (UUID)
-      try {
-        student = await getStudentProfile(userId);
-      } catch {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Student profile not found. Please ensure your profile is set up in the system.",
-            details: "No student record found for this user.",
-          },
-          { status: 404 }
-        );
-      }
+    // Try to get student by email; fallback to user_id UUID
+    const byEmail = await getStudentByEmail(userId).catch(() => null);
+    const row = byEmail ?? (await getStudentProfile(userId).catch(() => null));
+    if (!row) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Student profile not found. Please ensure your profile is set up in the system.",
+          details: "No student record found for this user.",
+        },
+        { status: 404 }
+      );
     }
 
-    // Format the response
-    const studentData = {
-      userId: student.user_id,
-      studentId: student.student_id,
-      name: student.name,
-      email: student.email,
-      level: student.level,
-      major: student.major,
-      gpa: parseFloat(student.gpa) || 0,
-      completedCredits: student.completed_credits,
-      totalCredits: student.total_credits,
-      completedCourses: student.completed_courses || [],
-    };
-
-    return NextResponse.json({
-      success: true,
-      student: studentData,
-    });
+    return NextResponse.json({ success: true, student: row });
   } catch (error) {
     console.error("Error fetching student profile:", error);
     return NextResponse.json(

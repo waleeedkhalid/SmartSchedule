@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
   FileText,
@@ -19,7 +20,6 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/use-auth";
 
@@ -88,10 +88,43 @@ export default function StudentDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="mb-8">
+          <Skeleton className="h-9 w-64 mb-2" />
+          <Skeleton className="h-5 w-48" />
+        </div>
+
+        {/* Quick Stats Skeletons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-8 w-32" />
+                  </div>
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Main Actions Skeletons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48 mb-2" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-24 w-full mb-4" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
@@ -112,7 +145,11 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+        role="region"
+        aria-label="Student statistics"
+      >
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -120,9 +157,17 @@ export default function StudentDashboardPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Student ID
                 </p>
-                <p className="text-2xl font-bold">{studentData.studentId}</p>
+                <p
+                  className="text-2xl font-bold"
+                  aria-label={`Student ID ${studentData.studentId}`}
+                >
+                  {studentData.studentId}
+                </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div
+                className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center"
+                aria-hidden="true"
+              >
                 <BookOpen className="h-6 w-6 text-primary" />
               </div>
             </div>
@@ -136,9 +181,17 @@ export default function StudentDashboardPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Current Level
                 </p>
-                <p className="text-2xl font-bold">Level {studentData.level}</p>
+                <p
+                  className="text-2xl font-bold"
+                  aria-label={`Current level: ${studentData.level}`}
+                >
+                  Level {studentData.level}
+                </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <div
+                className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center"
+                aria-hidden="true"
+              >
                 <Calendar className="h-6 w-6 text-blue-500" />
               </div>
             </div>
@@ -152,15 +205,28 @@ export default function StudentDashboardPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Preferences
                 </p>
-                <p className="text-2xl font-bold flex items-center gap-2">
+                <p
+                  className="text-2xl font-bold flex items-center gap-2"
+                  aria-label={`Preferences status: ${
+                    studentData.hasSubmittedPreferences
+                      ? "Submitted"
+                      : "Pending"
+                  }`}
+                >
                   {studentData.hasSubmittedPreferences ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2
+                        className="h-5 w-5 text-green-500"
+                        aria-hidden="true"
+                      />
                       Submitted
                     </>
                   ) : (
                     <>
-                      <Clock className="h-5 w-5 text-yellow-500" />
+                      <Clock
+                        className="h-5 w-5 text-yellow-500"
+                        aria-hidden="true"
+                      />
                       Pending
                     </>
                   )}
@@ -172,14 +238,18 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Main Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        role="region"
+        aria-label="Main student actions"
+      >
         {/* Elective Selection */}
         <Card className="hover:shadow-lg transition-all border-2 hover:border-primary">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
+                  <BookOpen className="h-5 w-5" aria-hidden="true" />
                   Elective Course Selection
                 </CardTitle>
                 <CardDescription className="mt-2">

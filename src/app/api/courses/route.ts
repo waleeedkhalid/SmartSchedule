@@ -2,7 +2,7 @@
 // Returns course offerings. Phase 1: in-memory store; Phase 2: Supabase persistence.
 
 import { NextResponse } from "next/server";
-import { courseOfferingService } from "@/lib/data-store";
+import { fetchCourseOfferingsFromDB } from "@/lib/course-queries";
 import type { CourseOffering } from "@/lib/types";
 
 interface ApiResponse<T> {
@@ -14,9 +14,11 @@ interface ApiResponse<T> {
  * GET /api/courses
  */
 export async function GET(): Promise<Response> {
-  const items: ReadonlyArray<CourseOffering> = courseOfferingService.findAll();
+  const items: ReadonlyArray<CourseOffering> =
+    await fetchCourseOfferingsFromDB();
   const body: ApiResponse<ReadonlyArray<CourseOffering>> = {
     data: items,
+    meta: { source: "supabase" },
   };
   return NextResponse.json(body, { status: 200 });
 }

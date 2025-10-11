@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, User, Mail, IdCard, BookOpen } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, User, Mail, IdCard, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 interface StudentProfile {
@@ -104,10 +105,50 @@ export default function StudentProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading profile...</p>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-40 mb-4" />
+          <Skeleton className="h-9 w-64 mb-2" />
+          <Skeleton className="h-5 w-80" />
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-24 mb-1" />
+                      <Skeleton className="h-5 w-48" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i}>
+                    <Skeleton className="h-4 w-32 mb-1" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

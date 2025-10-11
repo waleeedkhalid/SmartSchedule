@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
+import Link from "next/link";
 import { Providers } from "./providers";
 import { Footer } from "@/components/shared/Footer";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import "./globals.css";
 import { seedData } from "@/lib/seed-data";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import NavAuth from "@/components/auth/NavAuth";
 
-// Seed data on app start
-if (typeof window === "undefined") {
+// Seed data only when explicitly enabled (dev/demo). Prevents mock data in production.
+// Enable by setting NEXT_PUBLIC_USE_MOCK_DATA=true in your .env.local
+if (
+  typeof window === "undefined" &&
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true"
+) {
   seedData();
 }
 
@@ -23,7 +32,7 @@ const geistMono = Geist_Mono({
 
 // PRD 3.4 - SEO Metadata: Production-ready SEO optimization
 export const metadata: Metadata = {
-  metadataBase: new URL("https://smartschedule.ksu.edu.sa"),
+  metadataBase: new URL("https://smart-schedule-lime.vercel.app"),
   title: {
     default:
       "SmartSchedule - Intelligent Academic Timetabling System | King Saud University",
@@ -55,7 +64,7 @@ export const metadata: Metadata = {
       "Transform academic planning with AI-powered scheduling, automated conflict resolution, and comprehensive resource optimization. Designed for KSU Software Engineering Department.",
     type: "website",
     locale: "en_US",
-    url: "https://smartschedule.ksu.edu.sa",
+    url: "https://smart-schedule-lime.vercel.app",
     siteName: "SmartSchedule",
   },
   twitter: {
@@ -89,9 +98,37 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
         <Providers>
-          <div className="flex-1">{children}</div>
+          {/* PRD 3.1 - Global Header with brand logo */}
+          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="container mx-auto h-16 px-4 flex items-center justify-between">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  src="/branding/icon.png"
+                  alt="SmartSchedule logo"
+                  width={32}
+                  height={32}
+                  priority
+                />
+                <span className="font-semibold tracking-tight text-lg">
+                  SmartSchedule
+                </span>
+              </Link>
+
+              {/* Navbar Auth: sign in/register or user menu */}
+              <NavAuth />
+            </div>
+          </header>
+
+          <div className="flex-1">
+            {children}
+            <SpeedInsights />
+          </div>
           <Footer />
           <Toaster />
+          <Sonner />
         </Providers>
       </body>
     </html>

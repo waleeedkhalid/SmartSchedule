@@ -3,6 +3,7 @@
 // PRD 3.3 - Authentication Dialog: Sign in/up flow for role access
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -84,11 +85,19 @@ export function AuthDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
+        <DialogHeader className="space-y-3">
+          <div className="flex items-center justify-center">
+            <Image
+              src="/branding/icon.png"
+              alt="SmartSchedule"
+              width={48}
+              height={48}
+            />
+          </div>
+          <DialogTitle className="text-center">
             {mode === "signin" ? "Sign In" : "Create Account"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-center">
             Access the {roleTitle} dashboard
           </DialogDescription>
         </DialogHeader>
@@ -118,7 +127,7 @@ export function AuthDialog({
               <Input
                 id="email"
                 type="email"
-                placeholder="your.email@ksu.edu.sa"
+                placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

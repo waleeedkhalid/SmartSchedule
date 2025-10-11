@@ -1,273 +1,132 @@
-Excellent — you’re thinking like a real engineering lead now 👏
+# 🧭 GitHub Copilot – Engineering Instructions
 
-Since your repo is already **partially built and cluttered**, we’ll craft the final **`copilot-instructions.md`** in a way that:
+## 1. Project Overview
 
-- Focuses Copilot on _implementing and refactoring_ toward the PRD.
-- Prevents it from amplifying the mess (no new random files).
-- Guides it to reuse or clean existing code where possible.
-- Keeps code — not documentation — as the source of truth.
+This repository uses **Next.js (App Router)** with **TypeScript** to build fullstack web applications.  
+Copilot’s role is to act as an **engineering assistant** that quickly implements working code, explores valid options, and refines them toward correct, maintainable solutions.
 
----
-
-## 📘 `copilot-instructions.md`
-
-Place this file at your repository root.
-
-````md
-# 🧭 SmartSchedule — GitHub Copilot Instructions
+The goal is to move fast, generate functional output, and improve iteratively — not to overanalyze or produce documentation.
 
 ---
 
-## 🧩 Project Context
+## 2. Tech Stack
 
-**SmartSchedule** is an academic timetabling and teaching-load management system for the **Software Engineering Department (SWE)**.  
-It enables the **Scheduling Committee**, **Teaching Load Committee**, **Registrar**, **Faculty**, and **Students** to collaboratively manage course schedules, resolve conflicts, and collect feedback.
+### Frameworks and Libraries
 
-This is a **Next.js + TypeScript** web app using:
+- **Next.js 15 (App Router)** – routing, server actions, and APIs
+- **TypeScript** – strict typing; avoid `any`
+- **Tailwind CSS** + **shadcn/ui** – styling and UI components
+- **Supabase** – authentication, database, and storage
+- **SWR** – data fetching and caching
+- **Zod** – schema validation for all inputs and API responses
+- **Chart.js** – dashboards and statistical reporting
+- **Yjs** – real-time collaboration and shared editing
+- **jsondiffpatch** – version control and schedule history
+- **Lucide Icons** – iconography
+- **ESLint** + **Prettier** – linting and formatting
+- **Vercel** – deployment platform
+- **@google/genai (Google AI Studio / Gemini API)** – generative AI for intelligent schedule recommendations and chatbot functionality
 
-- **Next.js 15 (App Router)**
-- **shadcn/ui** + **Tailwind CSS**
-- **Supabase (PostgreSQL)** for authentication and persistence
-- **SWR** + lightweight local stores (not Zustand)
-- Temporary **in-memory JSON storage** for Phase 3 prototype
-- No real-time collaboration or versioning yet (future)
+### Core Features Supported by Stack
 
----
+- **AI-Powered Schedule Recommendation** – use Gemini models via `@google/genai` to generate optimized schedules based on predefined rules and preferences.
+- **Chatbot Assistant** – provide real-time Q&A and scheduling support through Gemini integration.
+- **Dashboards** – visualize scheduling and teaching load data using Chart.js.
+- **Real-Time Collaboration** – enable concurrent edits and feedback via Yjs.
+- **Version Control** – maintain schedule versions and change diffs using jsondiffpatch.
+- **Notifications** – alert users to updates, comments, and approvals through Supabase.
 
-## 🎯 Purpose of These Instructions
+### Patterns and Conventions
 
-Guide Copilot to:
-
-- **Implement missing features from the PRD**
-- **Refactor messy code responsibly**
-- **Avoid generating redundant documentation**
-- **Write working, modular TypeScript**
-- **Reuse existing components and logic before creating new ones**
-
-Copilot’s goal is to **incrementally evolve the existing codebase** into a functional, PRD-compliant prototype — **not rewrite it from scratch**.
-
----
-
-## ✅ You Should
-
-1. **Write functional, testable code** that fulfills PRD features.
-
-   - Use the **App Router API pattern** (`/src/app/api/**/route.ts`).
-   - Use **Supabase** for data and auth persistence.
-   - Use **shadcn/ui** for UI (avoid new UI libraries).
-   - Reuse and improve existing components before creating new ones.
-
-2. **Refactor where needed** — if a component or function is redundant, unused, or broken, fix or remove it, but **preserve working features**.
-
-3. **Follow these implementation layers:**
-
-   - `/src/app/` → pages and routes
-   - `/src/components/` → UI logic
-   - `/src/lib/` → utilities, rules, generator logic
-   - `/src/app/api/` → backend endpoints
-
-4. **Reference PRD sections** when implementing features:
-
-   - Add inline comment tags like:
-     ```ts
-     // PRD 4.2 - Schedule Generation Endpoint
-     ```
-   - Keep comments brief, technical, and contextual.
-
-5. **Ask clarifying questions** as code comments if unsure:
-   ```ts
-   // TODO: Confirm if registrar override should allow 25% capacity or 30%.
-   ```
-````
+- Functional React components only
+- Async functions with `await` for data access
+- Prefer existing code reuse over new abstractions
+- Avoid extra libraries unless explicitly approved
 
 ---
 
-## ❌ You Should Not
+## 3. Coding Guidelines
 
-- Generate `.md` summaries, architecture reports, or documentation files.
-- Add new random components unless required by PRD.
-- Rewrite working files entirely — prefer _surgical edits_.
-- Output “analysis,” “explanations,” or “proposals” in code comments.
-- Import extra dependencies beyond the approved stack:
+### General Behavior
 
-  - ✅ Allowed: Supabase, shadcn/ui, SWR, jsondiffpatch, Yjs (later)
-  - 🚫 Disallowed: Redux, Axios, Mongoose, Moment.js, etc.
+- **Start by implementing working code.**
+- **Then refine.** Suggest small, concrete improvements only after a functional version exists.
+- **Keep edits surgical.** Modify the minimum needed for progress.
+- **Reuse existing logic and structure.** Don’t duplicate or create random files.
+- **Ask clarifying questions as inline TODO comments** if uncertain.
 
----
+### Code Quality
 
-## ⚙️ Key Implementation Priorities (PRD Alignment)
+- Use clear, minimal, technical comments:
+  ```ts
+  // TODO: confirm section capacity rule
+  // PRD 3.4 — registration validation
+  ```
+- Write descriptive, concise commit messages.
+- Follow existing naming conventions and file structures.
+- Ensure all code is type-safe and free of TypeScript errors.
 
-### 1️⃣ Authentication & Roles
+* Keep files modular and short.
+* Prefer composable, testable functions.
+* Always check types and handle possible null/undefined cases.
+* Follow RESTful conventions for API routes.
 
-- Replace Clerk with **Supabase Auth** (email/password only).
-- No domain restriction required yet (`.ksu.edu.sa` check deferred).
-- Add **role-based logic** (scheduler, load-committee, registrar, faculty, student).
-- Store roles in Supabase users table or profiles table.
+### Restrictions
 
-### 2️⃣ API Layer (App Router)
-
-Implement the following routes in `/src/app/api/`:
-
-| Route                      | Purpose                                    |
-| -------------------------- | ------------------------------------------ |
-| `/api/schedule/generate`   | Run schedule generator, store version      |
-| `/api/schedules`           | Get all schedules with metadata            |
-| `/api/preferences`         | Store/retrieve student elective selections |
-| `/api/feedback`            | Save feedback from students/faculty        |
-| `/api/notifications`       | Create and list notifications              |
-| `/api/teaching-load`       | Get and update faculty load assignments    |
-| `/api/registrar/overrides` | Registrar-specific registration handling   |
-
-Each route must:
-
-- Use `NextResponse` and `async/await`
-- Validate inputs
-- Interact with Supabase or local mock store
-- Return JSON responses
-
-### 3️⃣ Scheduler Logic
-
-- Reuse existing logic under `/src/lib/schedule/`:
-
-  - `ScheduleGenerator.ts`
-  - `ConflictChecker.ts`
-  - `TimeSlotManager.ts`
-  - `rules-engine.ts`
-
-- Implement missing PRD rules:
-
-  - Midterm blocks (Mon/Wed 12–2)
-  - Lab continuity (2-hour blocks)
-  - Balanced days (one day off)
-  - Prerequisites alignment
-  - External non-SWE conflicts avoidance
-
-- Expose the generator via `/api/schedule/generate`.
-
-### 4️⃣ Data Layer
-
-- Migrate `data-store.ts` to Supabase gradually.
-- Tables to implement:
-
-  - `users`, `courses`, `sections`, `rules`, `schedules`, `feedback`, `notifications`, `preferences`, `registrations`
-
-- Keep in-memory fallback for dev mode.
-
-### 5️⃣ Teaching Load
-
-- Connect `/demo/committee/teaching-load` page to `/api/teaching-load`.
-- Validate faculty load assignments; mark overloads/conflicts.
-
-### 6️⃣ Student Workflows
-
-- Connect Elective Survey to `/api/preferences`.
-- Connect Feedback Form to `/api/feedback`.
-- Implement `/api/register` to enforce:
-
-  - Section capacity
-  - Time conflict checks
-  - Registrar 25% override
-
-### 7️⃣ Notifications
-
-- Implement real notifications persistence via Supabase.
-- Trigger on:
-
-  - New schedule version
-  - Schedule approval or rollback
-  - Registrar override
-
-- Use `NotificationsBell.tsx` as entry point.
-
-### 8️⃣ Dashboards
-
-- Add charts/tables for:
-
-  - Faculty load
-  - Section distribution
-  - Student electives
-
-- Use `recharts` (already available in shadcn projects).
-
-### 9️⃣ Version Control & Collaboration
-
-- Add `jsondiffpatch` for schedule version snapshots.
-- Add Yjs-based real-time sync (future milestone, not now).
+- Do not generate documentation or markdown summaries.
+- Do not overwrite stable modules or add large frameworks.
+- Do not assume external resources or APIs.
+- Do not produce analysis or explanations — code only.
 
 ---
 
-## 🧱 Code Style & Conventions
+## 4. Project Structure
 
-| Area       | Rule                                                           |
-| ---------- | -------------------------------------------------------------- |
-| Imports    | Use `@/lib/...`, `@/components/...`                            |
-| Types      | Use `/src/lib/types.ts` definitions; avoid `any`               |
-| Components | Functional only, PascalCase names                              |
-| API        | Use `NextResponse.json()` and async handlers                   |
-| UI         | Prefer shadcn/ui components; avoid raw HTML                    |
-| Comments   | Use `// PRD <id>` for new logic; no long docs                  |
-| Commits    | Follow pattern: `feat(api): add schedule generation (PRD 4.2)` |
+| Path                | Purpose                                      |
+| ------------------- | -------------------------------------------- |
+| `/src/app/`         | Pages, layouts, and API routes               |
+| `/src/app/api/`     | Server endpoints using `NextResponse.json()` |
+| `/src/components/`  | UI components using `shadcn/ui`              |
+| `/src/lib/`         | Utilities, helpers, business logic           |
+| `/src/lib/types.ts` | Shared type definitions                      |
+| `/public/`          | Static assets                                |
+| `/scripts/`         | Setup or build scripts                       |
 
----
+**File naming:**
 
-## 🧹 Refactoring Guidelines
-
-When Copilot detects inconsistencies (duplicate files, unused components, outdated imports):
-
-1. **Check usage before deletion.**
-
-   - If unused or conflicting, mark with:
-
-     ```ts
-     // TODO: candidate for removal — unused after PRD refactor
-     ```
-
-2. **Rename unclear files** (e.g., `MockData.ts` → `mockCourses.ts`).
-
-3. **Merge redundant components** (e.g., multiple schedule tables → one shared ScheduleGrid).
-
-4. **Keep demo pages** under `/demo/` — do not delete, but mark prototype-only:
-
-   ```ts
-   // NOTE: demo-only component, to be replaced in Phase 4
-   ```
+- Components: PascalCase (e.g., `ScheduleTable.tsx`)
+- Utilities and stores: camelCase (e.g., `timeSlotManager.ts`)
+- Avoid redundant suffixes like `Component` or `Helper`.
 
 ---
 
-## 🧠 Copilot Mental Model
+## 5. Resources
 
-When generating or completing code:
+- **Scripts**
 
-> “This repository is already partially implemented. My goal is to **incrementally improve it** and make it comply with the PRD, using existing files and logic first, before creating new ones.”
+  - `setup.sh` or `setup-env.*` – environment setup
+  - `dev`, `build`, `lint`, and `test` scripts – standard project tasks
 
----
+- **MCP / Tools**
 
-## 💬 Example Prompts (for Copilot Chat)
+  - Supabase MCP for database and auth management
+  - Shadcn/ui MCP for UI components
+  - Shadcn.io for component customization
 
-```text
-Implement the /api/schedule/generate route based on existing ScheduleGenerator.ts.
-```
+- **Recommended Prompts**
 
-```text
-Refactor the elective survey component to save results via Supabase API.
-```
-
-```text
-Add missing rule enforcement for midterm blocks in rules-engine.ts.
-```
-
-```text
-Replace Clerk auth with Supabase auth, keeping role-based access logic.
-```
+  - _Implement_: “Implement `/api/schedule/generate` using existing scheduler logic.”
+  - _Refactor_: “Refactor `CourseTable.tsx` to use `shadcn/ui` components.”
+  - _Add feature_: “Add Supabase auth with role-based access.”
 
 ---
 
-## 🧩 Summary
+### Summary
 
-- Copilot’s mission: **implement + refactor**, not describe.
-- Always code toward the **PRD feature list**, not random ideas.
-- Keep the repository clean, modular, and type-safe.
-- Use existing logic first; build new only when necessary.
-- Each commit should represent **real progress toward PRD compliance**.
+Copilot’s purpose:
 
----
+> Generate fast, functional, type-safe code for Next.js fullstack apps using the defined stack and structure.
+
+**Act first, refine second.**
+**Keep code clean, small, and real.**
+**Progress is measured by working features, not explanations.**
