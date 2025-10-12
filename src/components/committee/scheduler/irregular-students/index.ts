@@ -1,1 +1,1 @@
-export { IrregularStudentsViewer } from "./IrregularStudentsViewer";
+// export { IrregularStudentsViewer } from "./IrregularStudentsViewer";

@@ -49,3 +49,5 @@ next-env.d.ts
 Dockerfile*
 .dockerignore
 /archived-api
+
+*.sql
