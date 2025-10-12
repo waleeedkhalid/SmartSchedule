@@ -89,28 +89,20 @@ export default function RootLayout({
       >
         <Providers>
           {/* PRD 3.1 - Global Header with brand logo */}
-          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container mx-auto h-16 px-4 flex items-center justify-between">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2">
                 <Image
-                  src="/branding/icon.png"
-                  alt="SmartSchedule logo"
+                  src="/icon.png"
+                  alt="SmartSchedule"
                   width={32}
                   height={32}
-                  priority
                 />
-                <span className="font-semibold tracking-tight text-lg">
-                  SmartSchedule
-                </span>
+                <span className="text-xl font-bold">SmartSchedule</span>
               </Link>
-
-              {/* Navbar Auth: sign in/register or user menu */}
               <NavAuth />
             </div>
-          </header>
+          </div>
 
           <div className="flex-1">
             {children}

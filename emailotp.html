@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Confirm your email</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #f6f7f9;
+      color: #0f172a;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+        Helvetica, Arial;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      style="background: #f6f7f9; padding: 24px 0"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="600"
+            cellspacing="0"
+            cellpadding="0"
+            style="
+              width: 100%;
+              max-width: 600px;
+              background: #ffffff;
+              border-radius: 12px;
+              overflow: hidden;
+              border: 1px solid #e5e7eb;
+            "
+          >
+            <tr>
+              <td style="padding: 20px 24px; background: #0b1220">
+                <table role="presentation" width="100%">
+                  <tr>
+                    <td style="vertical-align: middle">
+                      <a
+                        href="https://smart-schedule-lime.vercel.app/"
+                        style="
+                          text-decoration: none;
+                          display: inline-flex;
+                          align-items: center;
+                          gap: 10px;
+                        "
+                      >
+                        <img
+                          src="https://i.ibb.co/FL1ZyCgG/Smart-Schedule.png"
+                          alt="SmartSchedule"
+                          width="28"
+                          height="28"
+                          style="display: block; border: 0"
+                        />
+                        <span
+                          style="
+                            color: #e2f3f0;
+                            font-weight: 700;
+                            font-size: 16px;
+                            line-height: 1;
+                          "
+                          >SmartSchedule</span
+                        >
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 24px">
+                <h1
+                  style="
+                    margin: 0 0 12px 0;
+                    font-size: 20px;
+                    line-height: 28px;
+                    color: #0f172a;
+                  "
+                >
+                  Confirm your email
+                </h1>
+                <p
+                  style="
+                    margin: 0 0 16px 0;
+                    font-size: 14px;
+                    line-height: 22px;
+                    color: #334155;
+                  "
+                >
+                  Thanks for creating your SmartSchedule account. Please verify
+                  your email address.
+                </p>
+
+                <div style="margin: 24px 0" align="center">
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="
+                      display: inline-block;
+                      background: #0d9488;
+                      color: #ffffff;
+                      text-decoration: none;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      font-size: 14px;
+                      font-weight: 600;
+                    "
+                  >
+                    Confirm email
+                  </a>
+                </div>
+
+                <p
+                  style="
+                    margin: 0 0 12px 0;
+                    font-size: 12px;
+                    line-height: 20px;
+                    color: #64748b;
+                  "
+                >
+                  This link will expire in 24 hours. If the button doesn’t work,
+                  copy and paste this URL into your browser:
+                </p>
+                <p
+                  style="
+                    word-break: break-all;
+                    margin: 0 0 8px 0;
+                    font-size: 12px;
+                    line-height: 18px;
+                    color: #0f172a;
+                  "
+                >
+                  {{ .ConfirmationURL }}
+                </p>
+
+                <p
+                  style="
+                    margin: 16px 0 0 0;
+                    font-size: 12px;
+                    line-height: 20px;
+                    color: #64748b;
+                  "
+                >
+                  If you didn’t create this account, you can safely ignore this
+                  email.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                style="
+                  padding: 16px 24px;
+                  background: #f8fafc;
+                  border-top: 1px solid #e5e7eb;
+                "
+              >
+                <div style="font-size: 11px; line-height: 18px; color: #64748b">
+                  SmartSchedule · Smart timetabling department courses and exams
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div
+            style="
+              padding: 12px 0;
+              font-size: 11px;
+              line-height: 18px;
+              color: #94a3b8;
+            "
+          >
+            You received this email because a sign-up was initiated with your
+            address.
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

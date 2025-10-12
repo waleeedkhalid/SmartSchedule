@@ -1,80 +1,37 @@
-import { Github, Linkedin } from "lucide-react";
-
-// UI-only: team member display info (exclude from domain model)
-export interface TeamMember {
-  name: string;
-  github: string;
-  linkedin: string;
-}
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 interface FooterProps {
-  team?: TeamMember[];
   className?: string;
 }
 
-export function Footer({ team, className = "" }: FooterProps) {
-  const defaultTeam: TeamMember[] = [
-    {
-      name: "Abdullah Alsuhaibani",
-      github: "https://github.com/Abdullah-0S",
-      linkedin: "https://www.linkedin.com/in/abdullahalsuhaibani/",
-    },
-    {
-      name: "Sulaiman Mokhaniq",
-      github: "https://github.com/sulaimanmokhaniq",
-      linkedin: "https://www.linkedin.com/in/sulaiman-mokhaniq/",
-    },
-    {
-      name: "Waleeed Khalid",
-      github: "https://github.com/waleeedkhalid",
-      linkedin: "https://www.linkedin.com/in/w4leedkhalid",
-    },
-    {
-      name: "Hamza Hamdi",
-      github: "https://github.com/hamza808111",
-      linkedin: "https://www.linkedin.com/in/hamza-hamdi-48b316157/",
-    },
-    {
-      name: "Abderraouf Bendjedia",
-      github: "https://github.com/Abderraouf17",
-      linkedin: "https://linkedin.com/in/abderraouf-bendjedia",
-    },
-  ];
-
-  const teamMembers = team || defaultTeam;
-
+export function Footer({ className = "" }: FooterProps) {
   return (
-    <footer className={`border-t bg-muted/30 py-8 px-8 ${className}`}>
-      <div className="max-w-4xl mx-auto text-center">
-        <h3 className="text-foreground text-lg font-semibold mb-6">Made by:</h3>
-        <div className="flex flex-wrap justify-center gap-6">
-          {teamMembers.map((member) => (
-            <div key={member.name} className="flex items-center gap-3">
-              <span className="text-foreground/90 text-base">
-                {member.name}
-              </span>
-              <div className="flex items-center gap-2">
-                <a
-                  href={member.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground hover:text-primary transition-colors flex items-center"
-                  title={`${member.name}'s GitHub`}
-                >
-                  <Github className="w-5 h-5" />
-                </a>
-                <a
-                  href={member.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#0A66C2] hover:opacity-80 transition-opacity flex items-center"
-                  title={`${member.name}'s LinkedIn`}
-                >
-                  <Linkedin className="w-5 h-5" />
-                </a>
+    <footer className={`border-t bg-background ${className}`}>
+      <div className="container mx-auto px-4 py-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <Image src="/icon.png" alt="SmartSchedule" width={32} height={32} />
+            <div className="text-left">
+              <div className="font-bold text-lg">SmartSchedule</div>
+              <div className="text-xs text-muted-foreground">
+                Academic scheduling platform
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Links */}
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                v4.0.0
+              </Badge>
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <span>© 2025 SmartSchedule</span>
+          </div>
         </div>
       </div>
     </footer>

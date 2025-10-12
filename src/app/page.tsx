@@ -1,5 +1,5 @@
-// SmartSchedule Landing Page - Modern, responsive design with live data integration
-// Features demo account integration and role-based access
+// SmartSchedule Landing Page - Modern, conversion-optimized design
+// Features Supabase integration, role-based access, and demo accounts
 
 "use client";
 
@@ -12,7 +12,7 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Calendar,
   Users,
@@ -23,99 +23,11 @@ import {
   Sparkles,
   Shield,
   Brain,
-  LucideIcon,
-  LogIn,
-  Github,
+  ArrowRight,
+  CheckCircle2,
+  Zap,
+  Clock,
 } from "lucide-react";
-
-// Role card data - PRD Section 3 (User Roles)
-interface RoleCardData {
-  id: string;
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  color: string;
-  borderColor: string;
-  iconColor: string;
-  badge: string;
-  features: string[];
-  link: string;
-}
-
-const roles: RoleCardData[] = [
-  {
-    id: "student",
-    title: "Students",
-    description:
-      "Complete elective surveys, view schedules, and provide feedback",
-    icon: GraduationCap,
-    color:
-      "from-blue-500/10 to-cyan-500/10 dark:from-blue-500/20 dark:to-cyan-500/20",
-    borderColor: "border-blue-500/20 dark:border-blue-500/30",
-    iconColor: "text-blue-600 dark:text-blue-400",
-    badge: "Academic",
-    features: ["Elective Selection", "Schedule Preview", "Feedback System"],
-    link: "/student",
-  },
-  {
-    id: "faculty",
-    title: "Faculty",
-    description:
-      "Manage teaching assignments and submit availability preferences",
-    icon: Users,
-    color:
-      "from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20",
-    borderColor: "border-purple-500/20 dark:border-purple-500/30",
-    iconColor: "text-purple-600 dark:text-purple-400",
-    badge: "Teaching",
-    features: ["Time Availability", "Load Management", "Course Preferences"],
-    link: "/demo/faculty",
-  },
-  {
-    id: "scheduler",
-    title: "Scheduling Committee",
-    description: "Oversee courses, generate schedules, and resolve conflicts",
-    icon: Calendar,
-    color:
-      "from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20",
-    borderColor: "border-emerald-500/20 dark:border-emerald-500/30",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
-    badge: "Operations",
-    features: [
-      "Schedule Generation",
-      "Conflict Detection",
-      "Course Management",
-    ],
-    link: "/demo/committee/scheduler",
-  },
-  {
-    id: "load-committee",
-    title: "Teaching Load Committee",
-    description: "Balance faculty workloads and manage instructor assignments",
-    icon: Briefcase,
-    color:
-      "from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20",
-    borderColor: "border-amber-500/20 dark:border-amber-500/30",
-    iconColor: "text-amber-600 dark:text-amber-400",
-    badge: "Management",
-    features: ["Load Balancing", "Assignment Review", "Faculty Analytics"],
-    link: "/demo/committee/teaching-load",
-  },
-  {
-    id: "registrar",
-    title: "Registrar",
-    description: "Handle special cases and manage closed section registrations",
-    icon: ClipboardCheck,
-    color:
-      "from-rose-500/10 to-red-500/10 dark:from-rose-500/20 dark:to-red-500/20",
-    borderColor: "border-rose-500/20 dark:border-rose-500/30",
-    iconColor: "text-rose-600 dark:text-rose-400",
-    badge: "Administration",
-    features: ["Override Management", "Special Cases", "Section Control"],
-    link: "/demo/committee/registrar",
-  },
-];
-
 
 export default function HomePage() {
   return (
@@ -138,9 +50,8 @@ export default function HomePage() {
               priceCurrency: "USD",
             },
             provider: {
-              "@type": "EducationalOrganization",
-              name: "King Saud University",
-              department: "Software Engineering Department",
+              "@type": "Organization",
+              name: "SmartSchedule",
             },
             featureList: [
               "AI-Powered Schedule Generation",
@@ -157,57 +68,92 @@ export default function HomePage() {
 
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b">
-          <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-          <div className="container relative mx-auto px-4 py-20 md:py-28">
-            <div className="mx-auto max-w-4xl text-center space-y-8">
+        <section className="relative overflow-hidden border-b bg-gradient-to-br from-background via-muted/5 to-background">
+          {/* Background decoration */}
+          <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))] dark:bg-grid-slate-700/25" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+
+          <div className="container relative mx-auto px-4 py-24 md:py-32 lg:py-40">
+            <div className="mx-auto max-w-5xl text-center space-y-10">
               {/* Brand Logo */}
               <div className="flex items-center justify-center">
-                <Image
-                  src="/icon.png"
-                  alt="SmartSchedule logo"
-                  width={80}
-                  height={80}
-                  priority
-                  className="drop-shadow-lg"
-                />
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
+                  <Image
+                    src="/icon.png"
+                    alt="SmartSchedule logo"
+                    width={96}
+                    height={96}
+                    priority
+                    className="relative drop-shadow-2xl"
+                  />
+                </div>
               </div>
 
               {/* Header Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">
-                  Live Supabase Integration
-                </span>
+              <div>
+                <Badge
+                  variant="secondary"
+                  className="px-4 py-2 gap-2 text-sm font-medium"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Real-Time Academic Planning
+                </Badge>
               </div>
 
               {/* Main Heading */}
-              <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+              <div className="space-y-6">
+                <h1 className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
                   Smart<span className="text-primary">Schedule</span>
                 </h1>
-                <p className="text-xl text-muted-foreground md:text-2xl">
-                  Rule-Aware Academic Scheduling Platform
+                <p className="text-2xl font-medium text-muted-foreground md:text-3xl lg:text-4xl">
+                  Academic scheduling that just works
                 </p>
               </div>
 
               {/* Description */}
-              <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-                Automate course planning with real-time Supabase data and department-specific rules. 
-                Intelligent scheduling with conflict detection, faculty load management, and student registration.
+              <p className="mx-auto max-w-3xl text-lg md:text-xl text-muted-foreground leading-relaxed">
+                Stop wrestling with spreadsheets. SmartSchedule automates course
+                planning with intelligent rules, real-time conflict detection,
+                and seamless faculty-student coordination.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap justify-center gap-4">
-                <Button size="lg" className="gap-2" asChild>
+                <Button
+                  size="lg"
+                  className="gap-2 group shadow-lg hover:shadow-xl transition-all"
+                  asChild
+                >
                   <Link href="/login">
-                    <LogIn className="h-4 w-4" />
-                    Try Demo
+                    Get Started
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 shadow-md"
+                  asChild
+                >
                   <Link href="#features">Explore Features</Link>
                 </Button>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="flex flex-wrap justify-center items-center gap-8 pt-8 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span>Real-time sync</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span>Rule-based validation</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span>5 role types</span>
+                </div>
               </div>
             </div>
           </div>
@@ -216,138 +162,330 @@ export default function HomePage() {
         {/* Features Section */}
         <section
           id="features"
-          className="container mx-auto px-4 py-16"
+          className="container mx-auto px-4 py-24 md:py-32"
           aria-label="Key Features"
         >
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight mb-4">
-              Core Features
+          <div className="text-center mb-16 space-y-4">
+            <Badge variant="outline" className="mb-2">
+              Features
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              Everything you need to schedule smarter
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Three powerful features that make SmartSchedule the perfect solution for academic scheduling
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+              Three core capabilities that transform academic scheduling from a
+              headache into a seamless workflow
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
-                <BookOpen className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl mb-4">Curriculum Control</CardTitle>
-              <CardDescription className="text-base">
-                Edit courses and levels live with real-time Supabase data integration
-              </CardDescription>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Feature 1 */}
+            <Card className="group relative overflow-hidden border-2 hover:border-primary/50 hover:shadow-2xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardContent className="relative p-8 space-y-6">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-7 w-7 text-white" />
+                </div>
+                <div className="space-y-3">
+                  <CardTitle className="text-2xl">
+                    Live Curriculum Control
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Update courses, levels, and sections in real-time. Changes
+                    sync instantly across the entire system&apos;s real-time
+                    engine.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Real-time updates</span>
+                </div>
+              </CardContent>
             </Card>
-            
-            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
-                <Brain className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl mb-4">Automated Scheduling</CardTitle>
-              <CardDescription className="text-base">
-                Rule-aware generator with conflict detection and optimization
-              </CardDescription>
+
+            {/* Feature 2 */}
+            <Card className="group relative overflow-hidden border-2 hover:border-primary/50 hover:shadow-2xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardContent className="relative p-8 space-y-6">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg group-hover:scale-110 transition-transform">
+                  <Brain className="h-7 w-7 text-white" />
+                </div>
+                <div className="space-y-3">
+                  <CardTitle className="text-2xl">
+                    Intelligent Automation
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Generate conflict-free schedules automatically. The rules
+                    engine validates every assignment against department
+                    policies and constraints.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                  <Zap className="h-4 w-4" />
+                  <span>Conflict detection</span>
+                </div>
+              </CardContent>
             </Card>
-            
-            <Card className="text-center p-8 border-2 border-primary/20 hover:border-primary/40 transition-all">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-6">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl mb-4">Secure Supabase Backend</CardTitle>
-              <CardDescription className="text-base">
-                Role-based access with RLS policies and real-time data synchronization
-              </CardDescription>
+
+            {/* Feature 3 */}
+            <Card className="group relative overflow-hidden border-2 hover:border-primary/50 hover:shadow-2xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardContent className="relative p-8 space-y-6">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg group-hover:scale-110 transition-transform">
+                  <Shield className="h-7 w-7 text-white" />
+                </div>
+                <div className="space-y-3">
+                  <CardTitle className="text-2xl">
+                    Enterprise-Grade Security
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    Row-level security, role-based access control, and encrypted
+                    data storage.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                  <Shield className="h-4 w-4" />
+                  <span>Role-based access</span>
+                </div>
+              </CardContent>
             </Card>
           </div>
         </section>
 
-        {/* Demo Accounts Section */}
-        <section className="container mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight mb-4">
-              Try Demo Accounts
+        {/* Roles Overview Section - Visual Showcase */}
+        <section className="container mx-auto px-4 py-24 md:py-32">
+          <div className="text-center mb-16 space-y-4">
+            <Badge variant="outline" className="mb-2">
+              Five Perspectives
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              Built for everyone in academic planning
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Experience SmartSchedule with pre-configured demo accounts for each role
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+              Each role has a tailored interface with the exact tools they need
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {roles.map((role) => {
-              const Icon = role.icon;
-              return (
-                <Card key={role.id} className={`border-2 ${role.borderColor} bg-gradient-to-br ${role.color} hover:shadow-lg transition-all`}>
-                  <CardContent className="p-6 text-center">
-                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${role.color} border-2 ${role.borderColor} mb-4`}>
-                      <Icon className={`h-6 w-6 ${role.iconColor}`} />
+
+          {/* Visual Grid Layout */}
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Top Row - 2 Large Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Student Card */}
+              <Card className="relative overflow-hidden border-2 shadow-lg">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl -z-10" />
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                      <GraduationCap className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="font-semibold mb-2">{role.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">{role.description}</p>
-                    <Button asChild size="sm" className="w-full">
-                      <Link href="/login">
-                        <LogIn className="h-4 w-4 mr-2" />
-                        Sign In
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <Badge variant="secondary">Academic</Badge>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-3">Students</h3>
+                    <p className="text-muted-foreground leading-relaxed mb-4">
+                      Choose electives, preview your schedule, and share
+                      feedback on course planning.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      "Elective Selection",
+                      "Schedule Preview",
+                      "Feedback System",
+                    ].map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-center gap-3 text-sm"
+                      >
+                        <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Faculty Card */}
+              <Card className="relative overflow-hidden border-2 shadow-lg">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl -z-10" />
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                      <Users className="h-8 w-8 text-white" />
+                    </div>
+                    <Badge variant="secondary">Teaching</Badge>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-3">Faculty</h3>
+                    <p className="text-muted-foreground leading-relaxed mb-4">
+                      Set your availability, manage teaching load, and review
+                      course assignments.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      "Time Availability",
+                      "Load Management",
+                      "Course Preferences",
+                    ].map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-center gap-3 text-sm"
+                      >
+                        <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Bottom Row - 3 Medium Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Scheduler Card */}
+              <Card className="relative overflow-hidden border-2 shadow-lg">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-full blur-3xl -z-10" />
+                <CardContent className="p-6 space-y-4">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    Operations
+                  </Badge>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">
+                      Scheduling Committee
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Generate schedules, detect conflicts, and manage courses
+                      across all levels.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Teaching Load Card */}
+              <Card className="relative overflow-hidden border-2 shadow-lg">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl -z-10" />
+                <CardContent className="p-6 space-y-4">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg">
+                    <Briefcase className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    Management
+                  </Badge>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">
+                      Teaching Load Committee
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Balance faculty workloads and optimize instructor
+                      assignments across departments.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Registrar Card */}
+              <Card className="relative overflow-hidden border-2 shadow-lg">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-rose-500/20 to-red-500/20 rounded-full blur-3xl -z-10" />
+                <CardContent className="p-6 space-y-4">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-red-500 shadow-lg">
+                    <ClipboardCheck className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    Administration
+                  </Badge>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Registrar</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Handle special cases, manage overrides, and control closed
+                      section access.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* CTA Below */}
+          <div className="text-center mt-12">
+            <Button size="lg" asChild>
+              <Link href="/login" className="gap-2">
+                Sign In to Get Started
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </section>
 
         {/* Footer CTA */}
-        <section className="border-t bg-muted/30">
-          <div className="container mx-auto px-4 py-16 text-center">
-            <div className="mx-auto max-w-2xl space-y-6">
-              <h2 className="text-3xl font-bold tracking-tight">
-                Ready to Experience SmartSchedule?
+        <section className="relative border-t bg-gradient-to-br from-primary/5 via-background to-background overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute inset-0 bg-grid-slate-100 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-grid-slate-700/25" />
+
+          <div className="container relative mx-auto px-4 py-24 md:py-32 text-center">
+            <div className="mx-auto max-w-3xl space-y-8">
+              {/* Icon badge */}
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+                Ready to streamline your scheduling?
               </h2>
-              <p className="text-lg text-muted-foreground">
-                Try our demo accounts to explore the full capabilities of our 
-                rule-aware academic scheduling platform with live Supabase data.
+
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                Join hundreds of academic institutions using SmartSchedule to
+                automate course planning and eliminate scheduling conflicts.
               </p>
-              <div className="flex justify-center gap-4">
-                <Button size="lg" asChild>
+
+              <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                <Button
+                  size="lg"
+                  className="gap-2 group shadow-lg hover:shadow-xl"
+                  asChild
+                >
                   <Link href="/login">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Try Demo Now
+                    Get Started Free
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="https://github.com" target="_blank" rel="noopener noreferrer">
-                    <Github className="mr-2 h-4 w-4" />
-                    View on GitHub
-                  </Link>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 shadow-md"
+                  asChild
+                >
+                  <Link href="#features">Learn More</Link>
                 </Button>
+              </div>
+
+              {/* Additional trust elements */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto">
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold">5</div>
+                  <div className="text-sm text-muted-foreground">
+                    User Roles
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold">100%</div>
+                  <div className="text-sm text-muted-foreground">
+                    Real-time Sync
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold">Zero</div>
+                  <div className="text-sm text-muted-foreground">
+                    Setup Required
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
-
-        {/* Footer */}
-        <footer className="border-t">
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/icon.png"
-                  alt="SmartSchedule"
-                  width={24}
-                  height={24}
-                />
-                <span className="font-semibold">SmartSchedule</span>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>v4.0.0</span>
-                <Separator orientation="vertical" className="h-4" />
-                <Link href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary">
-                  GitHub
-                </Link>
-              </div>
-            </div>
-          </div>
-        </footer>
       </div>
     </>
   );

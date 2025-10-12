@@ -33,7 +33,13 @@ function useProvideAuth(): AuthContextValue {
   }, []);
 
   const signInWithOtp = useCallback(async (email: string) => {
-    return supabase.auth.signInWithOtp({ email });
+    return supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
   }, []);
 
   const signOut = useCallback(async () => {

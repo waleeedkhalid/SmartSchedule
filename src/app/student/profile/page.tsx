@@ -3,6 +3,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { AuthContextValue } from "@/components/auth/auth-types";
 import { useAuth } from "@/components/auth/use-auth";
 import {
   Card,
@@ -15,123 +17,171 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, User, Mail, IdCard, BookOpen } from "lucide-react";
-import Link from "next/link";
 
 interface StudentProfile {
   user_id: string;
   name: string;
   email: string;
-        try {
-          const loadProfile = () =>
-            fetch(
-              `/api/student/profile?userId=${encodeURIComponent(user.email ?? "")}`
-            );
+  student_number?: string;
+  level?: number;
+  major?: string;
+  gpa?: string;
+  completed_credits?: number;
+  total_credits?: number;
+  academic_status?: string;
+  enrollment_date?: string | null;
+  expected_graduation_date?: string | null;
+  advisor_id?: string | null;
+}
 
-          let response = await loadProfile();
+const FALLBACK_LEVEL = 6;
+const FALLBACK_TOTAL_CREDITS = 132;
 
-          if (response.status === 404) {
-            try {
-              const bootstrapResponse = await fetch("/api/auth/bootstrap", {
-                method: "POST",
-              });
+function normaliseGpa(value: unknown): string | undefined {
+  if (typeof value === "number") {
+    return value.toFixed(2);
+  }
 
-              if (bootstrapResponse.ok) {
-                response = await loadProfile();
-              }
-            } catch (bootstrapError) {
-              console.warn("Bootstrap onboarding error", bootstrapError);
-            }
-          }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value;
+  }
 
-          if (response.ok) {
-            const data = await response.json();
+  return undefined;
+}
 
-            if (data.success) {
-              setStudentData({
-                user_id: data.student.user_id,
-                name: data.student.name,
-                email: data.student.email,
-                student_number: data.student.student_number,
-                level: data.student.level,
-                major: data.student.major,
-                gpa: data.student.gpa,
-                completed_credits: data.student.completed_credits,
-                total_credits: data.student.total_credits,
-                academic_status: data.student.academic_status,
-                enrollment_date: data.student.enrollment_date,
-                expected_graduation_date: data.student.expected_graduation_date,
-                advisor_id: data.student.advisor_id,
-              });
-              return;
-            }
-          }
+function mapStudentResponse(student: Record<string, unknown>): StudentProfile {
+  return {
+    user_id: (student.user_id as string) ?? "",
+    name: (student.name as string) ?? "Student",
+    email: (student.email as string) ?? "",
+    student_number:
+      (student.student_number as string | undefined) ??
+      (student.student_id as string | undefined),
+    level: typeof student.level === "number" ? student.level : undefined,
+    major: (student.major as string | undefined) ?? undefined,
+    gpa: normaliseGpa(student.gpa),
+    completed_credits:
+      typeof student.completed_credits === "number"
+        ? student.completed_credits
+        : undefined,
+    total_credits:
+      typeof student.total_credits === "number"
+        ? student.total_credits
+        : undefined,
+    academic_status:
+      (student.academic_status as string | undefined) ?? undefined,
+    enrollment_date:
+      (student.enrollment_date as string | null | undefined) ?? null,
+    expected_graduation_date:
+      (student.expected_graduation_date as string | null | undefined) ?? null,
+    advisor_id: (student.advisor_id as string | null | undefined) ?? null,
+  };
+}
 
-          setStudentData({
-            user_id: user.id || "",
-            name: user.user_metadata?.full_name || "Student",
-            email: user.email || "",
-            student_number: user.email?.split("@")[0] || "Unknown",
-            level: 6,
-            major: "Software Engineering",
-            gpa: "0.00",
-            completed_credits: 0,
-            total_credits: 132,
-            academic_status: "active",
+function fallbackProfile(user: AuthContextValue["user"]): StudentProfile {
+  const displayName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    user?.email?.split("@")[0] ??
+    "Student";
+
+  return {
+    user_id: user?.id ?? "",
+    name: displayName,
+    email: user?.email ?? "",
+    student_number: user?.email?.split("@")[0] ?? undefined,
+    level: FALLBACK_LEVEL,
+    major: "Software Engineering",
+    gpa: "0.00",
+    completed_credits: 0,
+    total_credits: FALLBACK_TOTAL_CREDITS,
+    academic_status: "active",
+  };
+}
+
+export default function StudentProfilePage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const [studentData, setStudentData] = useState<StudentProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.push("/");
+      return;
+    }
+
+    let isActive = true;
+
+    const loadProfile = async (): Promise<StudentProfile | null> => {
+      const identifier = user.id ?? user.email ?? "";
+      if (!identifier) {
+        return null;
+      }
+
+      const response = await fetch(
+        `/api/student/profile?userId=${encodeURIComponent(identifier)}`
+      );
+
+      if (response.status === 404) {
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Profile request failed (${response.status})`);
+      }
+
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!payload.success || !payload.student) {
+        return null;
+      }
+
+      return mapStudentResponse(payload.student as Record<string, unknown>);
+    };
+
+    const fetchStudentProfile = async () => {
+      setLoading(true);
+
+      try {
+        let profile = await loadProfile();
+
+        if (!profile) {
+          // Attempt bootstrap provisioning if the profile does not exist yet
+          const bootstrapResponse = await fetch("/api/auth/bootstrap", {
+            method: "POST",
           });
-        } catch (error) {
-                  user_id: data.student.user_id,
-                  name: data.student.name,
-                  email: data.student.email,
-                  student_number: data.student.student_number,
-                  level: data.student.level,
-                  major: data.student.major,
-                  gpa: data.student.gpa,
-                  completed_credits: data.student.completed_credits,
-                  total_credits: data.student.total_credits,
-                  academic_status: data.student.academic_status,
-                  enrollment_date: data.student.enrollment_date,
-                  expected_graduation_date: data.student.expected_graduation_date,
-                  advisor_id: data.student.advisor_id,
-                });
-                return;
-              }
-            }
 
-            const fallbackData: StudentProfile = {
-              user_id: user.id || "",
-              name: user.user_metadata?.full_name || "Student",
-              email: user.email || "",
-              student_number: user.email?.split("@")[0] || "Unknown",
-              level: 6,
-              major: "Software Engineering",
-              gpa: "0.00",
-              completed_credits: 0,
-              total_credits: 132,
-              academic_status: "active",
-            };
+          if (bootstrapResponse.ok) {
+            profile = await loadProfile();
+          }
+        }
 
-            setStudentData(fallbackData);
-          student_number: user.email?.split("@")[0] || "Unknown",
-          level: 6,
-          major: "Software Engineering",
-          gpa: "0.00",
-          completed_credits: 0,
-          total_credits: 132,
-          academic_status: "active",
-        });
+        const resolvedProfile = profile ?? fallbackProfile(user);
+
+        if (isActive) {
+          setStudentData(resolvedProfile);
+        }
+      } catch (error) {
+        console.warn("Student profile fetch failed", error);
+        if (isActive) {
+          setStudentData(fallbackProfile(user));
+        }
       } finally {
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
 
-    if (!authLoading) {
-      if (!user) {
-        router.push("/");
-      } else {
-        fetchStudentProfile();
-      }
-    }
-  }, [user, authLoading, router]);
+    void fetchStudentProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [authLoading, router, user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -242,7 +292,9 @@ interface StudentProfile {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Student ID</p>
-                  <p className="font-semibold">{studentData.student_number || "Not assigned"}</p>
+                  <p className="font-semibold">
+                    {studentData.student_number || "Not assigned"}
+                  </p>
                 </div>
               </div>
 
@@ -252,7 +304,9 @@ interface StudentProfile {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Major</p>
-                  <p className="font-semibold">{studentData.major || "Not assigned"}</p>
+                  <p className="font-semibold">
+                    {studentData.major || "Not assigned"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -270,13 +324,17 @@ interface StudentProfile {
                 <p className="text-sm text-muted-foreground mb-1">
                   Current Level
                 </p>
-                <p className="text-2xl font-bold">Level {studentData.level || "Not assigned"}</p>
+                <p className="text-2xl font-bold">
+                  Level {studentData.level || "Not assigned"}
+                </p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground mb-1">GPA</p>
                 <p className="text-2xl font-bold">
-                  {studentData.gpa ? parseFloat(studentData.gpa).toFixed(2) : "0.00"}
+                  {studentData.gpa
+                    ? parseFloat(studentData.gpa).toFixed(2)
+                    : "0.00"}
                 </p>
               </div>
 
@@ -293,7 +351,9 @@ interface StudentProfile {
                 <p className="text-sm text-muted-foreground mb-1">
                   Total Required
                 </p>
-                <p className="text-2xl font-bold">{studentData.total_credits || 132}</p>
+                <p className="text-2xl font-bold">
+                  {studentData.total_credits || 132}
+                </p>
               </div>
             </div>
 
@@ -302,7 +362,8 @@ interface StudentProfile {
                 <p className="text-sm text-muted-foreground">Progress</p>
                 <Badge variant="secondary">
                   {Math.round(
-                    ((studentData.completed_credits || 0) / (studentData.total_credits || 132)) *
+                    ((studentData.completed_credits || 0) /
+                      (studentData.total_credits || 132)) *
                       100
                   )}
                   %

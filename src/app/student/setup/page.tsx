@@ -2,8 +2,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
 import { createServerClient } from "@/utils/supabase/server";
+import StudentSetupForm from "@/app/student/setup/student-setup-form";
 
-export default async function FacultyLandingPage() {
+export default async function StudentSetupPage() {
   const cookieStore = await cookies();
   const supabase = createServerClient(cookieStore);
 
@@ -17,7 +18,7 @@ export default async function FacultyLandingPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("full_name, email, role")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -25,19 +26,29 @@ export default async function FacultyLandingPage() {
     | UserRole
     | undefined;
 
-  if (role !== "faculty") {
+  if (role !== "student") {
     redirect(redirectByRole(role));
   }
 
-  const { data: faculty } = await supabase
-    .from("faculty")
+  const { data: existingStudent } = await supabase
+    .from("students")
     .select("id")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (faculty) {
-    redirect("/faculty/dashboard");
+  if (existingStudent) {
+    redirect("/student/dashboard");
   }
 
-  redirect("/faculty/setup");
+  return (
+    <div className="bg-muted/10">
+      <div className="mx-auto flex min-h-screen w-full max-w-2xl items-center px-6 py-16">
+        <StudentSetupForm
+          userId={user.id}
+          fullName={profile?.full_name ?? user.user_metadata?.full_name ?? ""}
+          email={profile?.email ?? user.email ?? ""}
+        />
+      </div>
+    </div>
+  );
 }

@@ -1,21 +1,14 @@
-// PRD: Feature 1 - Role-Based Authentication (Supabase)
-// Supabase client singleton for browser usage
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@/utils/supabase/client";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
+let client: SupabaseClient | null = null;
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export function getSupabaseClient() {
+  if (!client) {
+    client = createBrowserClient();
+  }
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  // Intentionally console.warn (not throw) to avoid crashing prototype when env is missing
-  // Configure env vars to enable Supabase Auth and persistence.
-  console.warn(
-    "Supabase env vars are missing. Auth/Persistence will be disabled."
-  );
+  return client;
 }
 
-export const supabase: SupabaseClient<Database> = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+export const supabase = getSupabaseClient();
