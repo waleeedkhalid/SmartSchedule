@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase/server-client";
+import { createServerClient } from "@/utils/supabase/server";
 
 const COMMITTEE_TYPE = "scheduling_committee" as const;
 const DASHBOARD_PATH = "/committee/scheduler/dashboard";

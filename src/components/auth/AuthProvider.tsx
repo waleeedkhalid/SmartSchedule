@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthError, Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase-client";
 import AuthContext from "./auth-context";
+import { supabase } from "@/utils/supabase/client";
 
 interface AuthContextValue {
   readonly session: Session | null;

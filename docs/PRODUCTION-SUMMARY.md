@@ -236,7 +236,7 @@ Landing Page → Click Role Card → Auth Dialog → Sign In/Up → Dashboard
 
 ### Long-Tail Keywords
 
-- KSU software engineering department
+- software engineering department
 - Automated course scheduling system
 - Educational technology for universities
 

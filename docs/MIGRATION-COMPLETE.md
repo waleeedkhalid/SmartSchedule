@@ -40,8 +40,6 @@ Successfully migrated the SmartSchedule system from mock data to a fully-integra
 
 **Files Updated:**
 
-- `src/lib/supabase-client.ts` - Typed browser client
-- `src/lib/supabase-admin.ts` - Typed admin client with helpers
 - `src/lib/course-queries.ts` - Complete rewrite for new schema
 - `src/lib/student-helpers.ts` - Aligned with students table
 - `src/lib/validators/students.ts` - Updated schemas

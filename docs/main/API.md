@@ -25,6 +25,7 @@
 ### Demo Accounts
 
 **GET `/api/demo-accounts`** — Returns demo account credentials for testing
+
 - **Authentication:** None required (read-only demo listing)
 - **Response:**
   ```json
@@ -38,21 +39,21 @@
         "name": "Demo Student"
       },
       {
-        "email": "faculty_demo@smartschedule.app", 
+        "email": "faculty_demo@smartschedule.app",
         "password": "demo1234",
         "role": "faculty",
         "name": "Demo Faculty"
       },
       {
         "email": "scheduler_demo@smartschedule.app",
-        "password": "demo1234", 
+        "password": "demo1234",
         "role": "scheduling_committee",
         "name": "Demo Scheduler"
       },
       {
         "email": "load_demo@smartschedule.app",
         "password": "demo1234",
-        "role": "teaching_load_committee", 
+        "role": "teaching_load_committee",
         "name": "Demo Load Manager"
       },
       {
@@ -68,7 +69,7 @@
 
 ### SWE Plan
 
-Proposed endpoints for curriculum management. These use centralized helpers in `src/lib/supabase/swe-plan.ts` and are protected by RLS.
+Proposed endpoints for curriculum management.
 
 - GET `/api/swe-plan` — List active curriculum rows
   - Query params: `level?` (number)

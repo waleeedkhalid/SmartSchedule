@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/utils/supabase/client";
 
 interface TeachingLoadData {
   name: string;

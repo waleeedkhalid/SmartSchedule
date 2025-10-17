@@ -284,7 +284,6 @@ VALUES ('YOUR_USER_ID', '441000001', 'Your Name', 'your@email.com', 6);
 ### New Files
 
 1. **`/supabase-schema.sql`** - Complete schema (for reference)
-2. **`/src/lib/supabase-admin.ts`** - Server-side Supabase client
 
 ### Updated Files
 

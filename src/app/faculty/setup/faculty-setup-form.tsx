@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/utils/supabase/client";
 
 interface FacultySetupFormProps {
   userId: string;

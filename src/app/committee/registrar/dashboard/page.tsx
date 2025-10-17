@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase/server-client";
+import { createServerClient } from "@/utils/supabase/server";
 
 const COMMITTEE_TYPE = "registrar" as const;
 const SETUP_PATH = "/committee/registrar/setup";

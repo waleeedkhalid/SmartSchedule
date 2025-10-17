@@ -41,7 +41,7 @@ The platform leverages **Next.js, TypeScript, Supabase, TailwindCSS, and Yjs** t
 ### **Non-Goals**
 
 - University-wide or multi-department scheduling.
-- Handling actual KSU student data (synthetic data only).
+- Handling actual student data (synthetic data only).
 - Integration with Edugate or production-grade SIS systems.
 - Full mobile app (only PWA or responsive web).
 - Automated grading or attendance modules.
@@ -111,7 +111,7 @@ The platform leverages **Next.js, TypeScript, Supabase, TailwindCSS, and Yjs** t
 
 | #   | Feature                       | Description                                                            |
 | --- | ----------------------------- | ---------------------------------------------------------------------- |
-| 1   | **Role-Based Authentication** | Users log in via Supabase Auth with `.ksu.edu.sa` domain verification. |
+| 1   | **Role-Based Authentication** | Users log in via Supabase Auth.                                        |
 | 2   | **Course & Exam Scheduler**   | Generate course and exam timetables based on constraints and rules.    |
 | 3   | **Rule Management Engine**    | Define, edit, and enforce rules (break times, lab durations, etc.).    |
 | 4   | **Teaching Load Management**  | Balance faculty assignments and validate conflicts.                    |

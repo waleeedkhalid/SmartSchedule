@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase-client";
+import { supabase } from "@/utils/supabase/client";
 
 interface StudentSetupFormProps {
   userId: string;

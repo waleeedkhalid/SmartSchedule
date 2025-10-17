@@ -23,7 +23,7 @@ For non-SWE courses, the system only tracks them as external course offerings th
 - **Teaching Load Management**: Monitor SWE faculty teaching loads and conflicts
 - **Registrar Tools**: Manage irregular students requiring SWE courses
 - **Responsive Design**: Works on desktop and mobile devices
-- **Curriculum Backend (SWE Plan)**: Admin-editable curriculum stored in Supabase `swe_plan` with RLS; access via helpers in `src/lib/supabase/swe-plan.ts`
+- **Curriculum Backend (SWE Plan)**: Admin-editable curriculum stored in Supabase `swe_plan` with RLS;
 
 ## Tech Stack
 
@@ -82,13 +82,15 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SmartSchedule now runs in full live mode with demo accounts for instant testing:
 
 **Demo Accounts Available:**
+
 - `student_demo@smartschedule.app` (password: `demo1234`) - Student role
-- `faculty_demo@smartschedule.app` (password: `demo1234`) - Faculty role  
+- `faculty_demo@smartschedule.app` (password: `demo1234`) - Faculty role
 - `scheduler_demo@smartschedule.app` (password: `demo1234`) - Scheduling Committee
 - `load_demo@smartschedule.app` (password: `demo1234`) - Teaching Load Committee
 - `registrar_demo@smartschedule.app` (password: `demo1234`) - Registrar
 
 **Seeding Demo Accounts:**
+
 ```bash
 # Seed demo accounts
 node scripts/seed-demo-accounts.js
@@ -98,6 +100,7 @@ node scripts/seed-demo-accounts.js clear
 ```
 
 **API Endpoint:**
+
 - `GET /api/demo-accounts` - Returns demo account credentials (no auth required)
 
 ### Deploying
