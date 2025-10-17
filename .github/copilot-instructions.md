@@ -16,7 +16,7 @@ The goal is to move fast, generate functional output, and improve iteratively �
 - **Next.js 15 (App Router)** – routing, server actions, and APIs
 - **TypeScript** – strict typing; avoid `any`
 - **Tailwind CSS** + **shadcn/ui** – styling and UI components
-- **Supabase** – authentication, database, and storage
+- **Supabase** – authentication, and database.
 - **SWR** – data fetching and caching
 - **Zod** – schema validation for all inputs and API responses
 - **Chart.js** – dashboards and statistical reporting
@@ -90,7 +90,6 @@ The goal is to move fast, generate functional output, and improve iteratively �
 | `/src/lib/`         | Utilities, helpers, business logic           |
 | `/src/lib/types.ts` | Shared type definitions                      |
 | `/public/`          | Static assets                                |
-| `/scripts/`         | Setup or build scripts                       |
 
 **File naming:**
 
@@ -104,7 +103,6 @@ The goal is to move fast, generate functional output, and improve iteratively �
 
 - **Scripts**
 
-  - `setup.sh` or `setup-env.*` – environment setup
   - `dev`, `build`, `lint`, and `test` scripts – standard project tasks
 
 - **MCP / Tools**
