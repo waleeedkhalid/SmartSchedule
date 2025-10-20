@@ -117,10 +117,12 @@ export default function StudentSetupForm({
             <Label htmlFor="student_number">Student number</Label>
             <Input
               id="student_number"
-              placeholder="e.g. 2025-12345"
+              placeholder="e.g. 444100000"
               value={studentNumber}
               onChange={(event) => setStudentNumber(event.target.value)}
               disabled={isPending}
+              maxLength={9}
+              minLength={9}
               required
             />
           </div>

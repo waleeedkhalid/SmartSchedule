@@ -1,15 +1,28 @@
-// GET demo accounts from supabase
 import { NextResponse } from "next/server";
-import { supabase } from "@/utils/supabase/client";
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, full_name, email, role");
+  const demoAccounts = [
+    {
+      full_name: "Ahmed",
+      email: "3ee8fcc8d8@webxios.pro",
+      role: "student",
+    },
+    {
+      full_name: "Elliott",
+      email: "394e3da6b0@webxios.pro",
+      role: "scheduling_committee",
+    },
+    {
+      full_name: "Doe",
+      email: "f5545f4c5d@webxios.pro",
+      role: "registrar",
+    },
+    {
+      full_name: "John Doe",
+      email: "d05e85a298@webxios.pro",
+      role: "faculty",
+    },
+  ];
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ demoAccounts: data }, { status: 200 });
+  return NextResponse.json(demoAccounts);
 }

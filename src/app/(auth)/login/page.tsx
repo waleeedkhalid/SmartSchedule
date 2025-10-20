@@ -32,12 +32,11 @@ import {
   Zap,
 } from "lucide-react";
 
-interface DemoAccount {
+type DemoAccount = {
+  full_name: string;
   email: string;
-  password: string;
   role: string;
-  name: string;
-}
+};
 
 const roleIcons = {
   student: GraduationCap,
@@ -93,24 +92,21 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchDemoAccounts = async () => {
       try {
-        const response = await fetch("/api/demo-accounts");
-        const data = await response.json();
-        if (data.success) {
-          setDemoAccounts(data.accounts);
-        }
+        const res = await fetch("/api/demo-accounts", { cache: "no-store" });
+        const data = await res.json();
+        if (Array.isArray(data)) setDemoAccounts(data);
       } catch (err) {
         console.error("Failed to fetch demo accounts:", err);
       } finally {
         setLoadingDemoAccounts(false);
       }
     };
-
     fetchDemoAccounts();
   }, []);
 
   const handleDemoAccountClick = (account: DemoAccount) => {
     setEmail(account.email);
-    setPassword(account.password);
+    setPassword(account.email);
     setSelectedRole(account.role);
     setError(null);
   };
@@ -158,6 +154,8 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  console.log(demoAccounts);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/5 to-background">
@@ -301,6 +299,7 @@ export default function LoginPage() {
                     </div>
                   ) : (
                     demoAccounts.map((account) => {
+                      console.log(account);
                       const Icon =
                         roleIcons[account.role as keyof typeof roleIcons];
                       const config =
@@ -322,7 +321,7 @@ export default function LoginPage() {
                               <div
                                 className={`font-semibold ${config.text} truncate`}
                               >
-                                {account.name}
+                                {account.full_name}
                               </div>
                               <div className="text-xs text-muted-foreground truncate">
                                 {account.role
