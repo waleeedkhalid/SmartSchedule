@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +24,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/utils/supabase/client";
+import {
+  facultySetupFormSchema,
+  facultyTitles,
+  type FacultySetupFormData,
+} from "@/lib/validations/faculty.schemas";
 
 interface FacultySetupFormProps {
   userId: string;
@@ -40,30 +47,33 @@ export default function FacultySetupForm({
   initialFacultyNumber,
   initialTitle,
 }: FacultySetupFormProps) {
-  const [facultyNumber, setFacultyNumber] = useState(
-    initialFacultyNumber ?? ""
-  );
-  const [title, setTitle] = useState(initialTitle ?? "");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    setValue,
+    watch,
+    formState: { errors, isValid, isDirty },
+  } = useForm<FacultySetupFormData>({
+    resolver: zodResolver(facultySetupFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      facultyId: initialFacultyNumber ?? "",
+      title: (initialTitle as any) ?? undefined,
+    },
+  });
 
-    if (!facultyNumber.trim() || !title) {
-      toast({
-        title: "Missing information",
-        description: "Please provide your faculty number and title.",
-      });
-      return;
-    }
+  const titleValue = watch("title");
 
+  const onSubmit = (data: FacultySetupFormData) => {
     startTransition(async () => {
       const { error } = await supabase.from("faculty").upsert({
         id: userId,
-        faculty_number: facultyNumber.trim(),
-        title,
+        faculty_number: data.facultyId,
+        title: data.title,
       });
 
       if (error) {
@@ -83,8 +93,6 @@ export default function FacultySetupForm({
     });
   };
 
-  const disableSubmit = isPending || !facultyNumber.trim() || !title;
-
   return (
     <Card className="w-full shadow-lg">
       <CardHeader className="space-y-2">
@@ -97,7 +105,7 @@ export default function FacultySetupForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={handleFormSubmit(onSubmit)}>
           <section className="space-y-4">
             <div className="grid gap-2">
               <Label className="text-sm text-muted-foreground">Full name</Label>
@@ -117,25 +125,37 @@ export default function FacultySetupForm({
 
           <section className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="faculty_number">Faculty number</Label>
+              <Label htmlFor="faculty_number">
+                Faculty ID <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="faculty_number"
-                placeholder="e.g. FAC-2025-87"
-                value={facultyNumber}
-                onChange={(event) => setFacultyNumber(event.target.value)}
+                placeholder="e.g. F12345"
+                {...register("facultyId")}
                 disabled={isPending}
-                required
+                aria-invalid={errors.facultyId ? "true" : "false"}
               />
+              {errors.facultyId ? (
+                <p className="text-sm text-destructive">
+                  {errors.facultyId.message}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Format: F followed by 4-6 digits (e.g., F12345)
+                </p>
+              )}
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">
+                Title <span className="text-destructive">*</span>
+              </Label>
               <Select
-                value={title}
-                onValueChange={setTitle}
+                value={titleValue}
+                onValueChange={(value) => setValue("title", value as any, { shouldValidate: true })}
                 disabled={isPending}
               >
-                <SelectTrigger id="title">
+                <SelectTrigger id="title" aria-invalid={errors.title ? "true" : "false"}>
                   <SelectValue placeholder="Select your title" />
                 </SelectTrigger>
                 <SelectContent>
@@ -146,10 +166,19 @@ export default function FacultySetupForm({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.title && (
+                <p className="text-sm text-destructive">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
           </section>
 
-          <Button type="submit" className="w-full" disabled={disableSubmit}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isPending || !isValid || !isDirty}
+          >
             {isPending ? "Saving..." : "Continue to dashboard"}
           </Button>
         </form>

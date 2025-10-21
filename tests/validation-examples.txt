@@ -1,0 +1,101 @@
+# Validation Examples: Valid and Invalid Inputs
+
+---
+---
+Email invalid: bademail
+
+Password valid: StrongPass1
+Password invalid: weak
+
+Login password valid: pass123
+Login password invalid: (empty)
+
+Full name valid: John Doe
+# Notes & Schema Clarifications
+
+- Student level 2 is invalid because only levels 4-8 are allowed (see schema: min 4, max 8).
+- Student ID format is now YYYGXXXXX (Y=year, G=gender, X=digit, 9 chars).
+- Valid slot days: Sunday to Thursday only. Friday and Saturday are considered weekend/off and are invalid.
+
+# Example of a Fully Valid Set
+
+## Student Setup
+studentNumber: 123100001
+level: "4"
+
+## Student Login
+studentNumber: 123100001
+password: pass123
+
+## Student Feedback
+courseCode: CS101
+rating: 5
+feedback: Great course! Learned a lot.
+
+## Faculty Setup
+facultyId: F12345
+title: Dr.
+
+## Time Slot
+{
+	day: "Monday",
+	startTime: "09:00",
+	endTime: "10:00"
+}
+
+# Invalid Examples
+- Student level: 2 (invalid, must be 4-8)
+- Student number: 12345 (invalid, must match YYYY-XXXXX)
+- Time slot: day: "Friday" (invalid, weekend)
+
+SignIn valid: { email: user@email.com, password: pass123 }
+SignIn invalid: { email: bad, password: (empty) }
+
+SignUp valid: { email: user@email.com, password: StrongPass1, confirmPassword: StrongPass1, fullName: John Doe, role: student }
+SignUp invalid: { email: bad, password: weak, confirmPassword: notmatch, fullName: J1, role: unknown }
+
+---
+STUDENT
+---
+Student number valid: 123100001 (YYYGXXXXX)
+Student number invalid: 12345
+
+
+Student level valid: 4
+Student level valid: 8
+Student level invalid: 3
+Student level invalid: 9
+
+Student level string valid: "4"
+Student level string valid: "8"
+Student level string invalid: "abc"
+
+Student setup valid: { studentNumber: 123100001, level: "4" }
+
+Student setup valid: { studentNumber: 123100001, level: "3" }
+Student setup invalid: { studentNumber: bad, level: "abc" }
+
+Student login valid: { studentNumber: 123100001, password: pass }
+Student login invalid: { studentNumber: bad, password: (empty) }
+
+Student feedback valid: { courseCode: CS101, rating: 5, feedback: Great course! Learned a lot. }
+Student feedback invalid: { courseCode: (empty), rating: 10, feedback: bad }
+
+---
+FACULTY
+---
+Faculty ID valid: ABDULLAH
+Faculty ID valid: PROFJONES
+Faculty ID invalid: 12345
+Faculty ID invalid: ABDULLAH123
+Faculty ID invalid: ABDULLAH!@#
+Faculty ID invalid: THISISWAYTOOLONGFORID
+
+Faculty title valid: Dr.
+Faculty title invalid: Unknown
+
+Faculty setup valid: { facultyId: F12345, title: Dr. }
+Faculty setup invalid: { facultyId: bad, title: Unknown }
+
+Time slot valid: { day: Monday, startTime: 09:00, endTime: 10:00 }
+Time slot invalid: { day: Friday, startTime: 10:00, endTime: 09:00 }

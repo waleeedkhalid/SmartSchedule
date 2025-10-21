@@ -1,7 +1,10 @@
 // Student Feedback - Production Page
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { studentFeedbackSchema, StudentFeedbackFormData } from "@/lib/validations/student.schemas";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/use-auth";
 import {
@@ -22,10 +25,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export default function StudentFeedbackPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [submitted, setSubmitted] = React.useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid },
+    reset,
+  } = useForm<StudentFeedbackFormData>({
+    resolver: zodResolver(studentFeedbackSchema),
+    mode: "onChange",
+    defaultValues: {
+      feedback: "",
+      courseCode: "",
+      rating: 3,
+    },
+  });
 
   useEffect(() => {
     if (!authLoading) {
@@ -37,18 +52,11 @@ export default function StudentFeedbackPage() {
     }
   }, [user, authLoading, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!feedback.trim()) return;
-
-    setSubmitting(true);
+  const onSubmit = async (data: StudentFeedbackFormData) => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setSubmitted(true);
-    setSubmitting(false);
-    setFeedback("");
-
-    // Reset after 3 seconds
+    reset();
     setTimeout(() => setSubmitted(false), 3000);
   };
 
@@ -114,18 +122,20 @@ export default function StudentFeedbackPage() {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="feedback">Your Feedback</Label>
               <Textarea
                 id="feedback"
                 placeholder="Please share your thoughts, concerns, or suggestions about your schedule..."
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
                 rows={8}
-                required
                 className="resize-none"
+                {...register("feedback")}
+                aria-invalid={!!errors.feedback}
               />
+              {errors.feedback && (
+                <p className="text-xs text-red-600 dark:text-red-400">{errors.feedback.message}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Your feedback will be reviewed by the scheduling committee.
               </p>
@@ -133,11 +143,11 @@ export default function StudentFeedbackPage() {
 
             <Button
               type="submit"
-              disabled={submitting || !feedback.trim()}
+              disabled={!isValid || isSubmitting}
               className="w-full"
               size="lg"
             >
-              {submitting ? (
+              {isSubmitting ? (
                 <>Submitting...</>
               ) : (
                 <>
