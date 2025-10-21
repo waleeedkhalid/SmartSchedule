@@ -38,7 +38,7 @@ interface FacultySetupFormProps {
   initialTitle?: string | null;
 }
 
-const titles = ["Dr.", "Prof.", "Mr.", "Ms."];
+type FacultyTitle = typeof facultyTitles[number];
 
 export default function FacultySetupForm({
   userId,
@@ -62,7 +62,7 @@ export default function FacultySetupForm({
     mode: "onChange",
     defaultValues: {
       facultyId: initialFacultyNumber ?? "",
-      title: (initialTitle as any) ?? undefined,
+      title: (initialTitle as FacultyTitle) ?? undefined,
     },
   });
 
@@ -152,14 +152,14 @@ export default function FacultySetupForm({
               </Label>
               <Select
                 value={titleValue}
-                onValueChange={(value) => setValue("title", value as any, { shouldValidate: true })}
+                onValueChange={(value) => setValue("title", value as FacultyTitle, { shouldValidate: true })}
                 disabled={isPending}
               >
                 <SelectTrigger id="title" aria-invalid={errors.title ? "true" : "false"}>
                   <SelectValue placeholder="Select your title" />
                 </SelectTrigger>
                 <SelectContent>
-                  {titles.map((option) => (
+                  {facultyTitles.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>

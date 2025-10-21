@@ -52,7 +52,7 @@ export default function StudentSetupForm({
     setValue,
     watch,
     formState: { errors, isValid, isDirty },
-  } = useForm<StudentSetupFormInput, any, StudentSetupFormData>({
+  } = useForm<StudentSetupFormInput, unknown, StudentSetupFormData>({
     resolver: zodResolver(studentSetupFormSchema),
     mode: "onChange",
     defaultValues: {

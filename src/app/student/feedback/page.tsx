@@ -52,7 +52,7 @@ export default function StudentFeedbackPage() {
     }
   }, [user, authLoading, router]);
 
-  const onSubmit = async (data: StudentFeedbackFormData) => {
+  const onSubmit = async () => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setSubmitted(true);
