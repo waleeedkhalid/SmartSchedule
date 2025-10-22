@@ -43,159 +43,85 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Default theme: KSU Royal - King Saud University Identity (Clean Neutrals) */
+/* Light theme: Blue & White primary with complementary accents */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0); /* Pure White (Replaced Cream/Soft White) */
-  --foreground: oklch(0 0 0); /* Official KSU Black for text */
-  --card: oklch(0.98 0 0); /* Near White for cards */
-  --card-foreground: oklch(0 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0.55 0.17 250); /* Official KSU Blue #0084BD */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.57 0.04 250); /* Official KSU Grey #748995 */
-  --secondary-foreground: oklch(0.15 0.03 250);
-  --muted: oklch(0.95 0 0); /* Light Grey for muted (Replaced Cream-based) */
-  --muted-foreground: oklch(0.4 0 0); /* Muted Dark Grey */
-  --accent: oklch(0.57 0.04 250); /* Official KSU Grey for accents */
-  --accent-foreground: oklch(0.15 0.03 250);
-  --destructive: oklch(
-    0.5 0.15 25
-  ); /* Destructive Red (Retained standard semantic) */
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0 0); /* Light Grey Border */
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.55 0.17 250); /* KSU Blue for ring */
-
-  /* Chart Colors (Updated secondary/accent to KSU Grey) */
-  --chart-1: oklch(0.55 0.17 250); /* KSU Blue */
-  --chart-2: oklch(0.57 0.04 250); /* KSU Grey */
-  --chart-3: oklch(0.45 0.15 135); /* Success Green */
-  --chart-4: oklch(0.5 0.11 55); /* Warning Orange */
-  --chart-5: oklch(0.65 0.16 230); /* Info Blue */
-
-  /* Sidebar Colors (Updated based on new neutrals and primary/secondary) */
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0.55 0.17 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.57 0.04 250);
-  --sidebar-accent-foreground: oklch(0.15 0.03 250);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.55 0.17 250);
-}
-
-/* Dark theme: KSU Royal - King Saud University Identity (No Golden/Cream Tones) */
-.dark {
-  --background: oklch(0.13 0.03 250); /* Dark Background (Retained) */
-  --foreground: oklch(0.9 0.02 250); /* Light Text (Retained) */
-  --card: oklch(0.2 0.04 250); /* Dark Card (Retained) */
-  --card-foreground: oklch(0.9 0.02 250);
-  --popover: oklch(0.2 0.04 250);
-  --popover-foreground: oklch(0.9 0.02 250);
-  --primary: oklch(0.4 0.15 250); /* Darkened KSU Blue for primary action */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.57 0.04 250); /* Official KSU Grey #748995 */
-  --secondary-foreground: oklch(0.9 0.02 250); /* Light text on KSU Grey */
-  --muted: oklch(0.25 0.05 250);
-  --muted-foreground: oklch(0.83 0.02 250);
-  --accent: oklch(0.57 0.04 250); /* Official KSU Grey for accents */
-  --accent-foreground: oklch(0.9 0.02 250); /* Light text on KSU Grey */
-  --destructive: oklch(0.68 0.18 25); /* Destructive Red (Retained) */
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.55 0.17 250); /* KSU Blue for ring */
-  --chart-1: oklch(0.55 0.17 250); /* Official KSU Blue */
-  --chart-2: oklch(0.57 0.04 250); /* Official KSU Grey */
-  --chart-3: oklch(0.68 0.15 135); /* Success Green (Retained) */
-  --chart-4: oklch(0.72 0.15 45); /* Warning Orange (Retained) */
-  --chart-5: oklch(0.7 0.16 230); /* Info Blue (Retained) */
-  --sidebar: oklch(0.2 0.04 250);
-  --sidebar-foreground: oklch(0.9 0.02 250);
-  --sidebar-primary: oklch(0.55 0.17 250); /* KSU Blue */
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.57 0.04 250); /* KSU Grey */
-  --sidebar-accent-foreground: oklch(0.9 0.02 250);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.55 0.17 250);
-}
-/* ============================================================================
-   CUSTOM COLOR PALETTES - SmartSchedule Themed Colors
-   ============================================================================ */
-
-/* Theme 4: KSU Royal - Balanced Contrast, Identity-Aligned */
-.theme-ksu-royal {
-  --radius: 0.625rem;
   --background: oklch(1 0 0); /* Pure White */
-  --foreground: oklch(0 0 0);
-  --card: oklch(0.98 0 0);
-  --card-foreground: oklch(0 0 0);
+  --foreground: oklch(0.2 0.02 250); /* Deep Blue-Black for text */
+  --card: oklch(0.99 0 0); /* Near White for cards */
+  --card-foreground: oklch(0.2 0.02 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0.55 0.17 250); /* Official KSU Blue #0084BD */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.85 0.05 250); /* Light Blue Accent (Replaced Grey) */
-  --secondary-foreground: oklch(0.15 0.03 250);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.4 0 0);
-  --accent: oklch(0.85 0.05 250); /* Light Blue Accent (Replaced Grey) */
-  --accent-foreground: oklch(0.15 0.03 250);
-  --destructive: oklch(0.5 0.15 25);
+  --popover-foreground: oklch(0.2 0.02 250);
+  --primary: oklch(0.55 0.17 250); /* KSU Blue #0084BD */
+  --primary-foreground: oklch(1 0 0); /* White on Blue */
+  --secondary: oklch(0.65 0.12 250); /* Light Blue complement */
+  --secondary-foreground: oklch(1 0 0); /* White on Light Blue */
+  --muted: oklch(0.96 0.01 250); /* Very Light Blue tint */
+  --muted-foreground: oklch(0.45 0.08 250); /* Muted Blue */
+  --accent: oklch(0.75 0.14 250); /* Bright Blue accent */
+  --accent-foreground: oklch(0.2 0.02 250); /* Dark Blue on Bright Blue */
+  --destructive: oklch(0.5 0.15 25); /* Red for errors */
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.55 0.17 250);
-  --chart-1: oklch(0.55 0.17 250); /* KSU Blue */
-  --chart-2: oklch(0.85 0.05 250); /* Light Blue Accent */
-  --chart-3: oklch(0.45 0.15 135);
-  --chart-4: oklch(0.5 0.11 55);
-  --chart-5: oklch(0.65 0.16 230);
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0 0 0);
+  --border: oklch(0.92 0.01 250); /* Light Blue-tinted border */
+  --input: oklch(0.92 0.01 250);
+  --ring: oklch(0.55 0.17 250); /* KSU Blue for focus */
+
+  /* Chart Colors - Blue spectrum with complementary colors */
+  --chart-1: oklch(0.55 0.17 250); /* Primary Blue */
+  --chart-2: oklch(0.65 0.12 250); /* Light Blue */
+  --chart-3: oklch(0.75 0.14 250); /* Bright Blue */
+  --chart-4: oklch(0.45 0.18 250); /* Deep Blue */
+  --chart-5: oklch(0.6 0.15 230); /* Cyan Blue */
+
+  /* Sidebar Colors */
+  --sidebar: oklch(0.99 0 0);
+  --sidebar-foreground: oklch(0.2 0.02 250);
   --sidebar-primary: oklch(0.55 0.17 250);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.85 0.05 250); /* Light Blue Accent */
-  --sidebar-accent-foreground: oklch(0.15 0.03 250);
-  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-accent: oklch(0.65 0.12 250);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.92 0.01 250);
   --sidebar-ring: oklch(0.55 0.17 250);
 }
 
-/* Dark Theme: KSU Royal - King Saud University Identity (Blue-Focused Accent) */
-.theme-ksu-royal.dark {
-  --background: oklch(0.13 0.03 250);
-  --foreground: oklch(0.9 0.02 250);
-  --card: oklch(0.2 0.04 250);
-  --card-foreground: oklch(0.9 0.02 250);
-  --popover: oklch(0.2 0.04 250);
-  --popover-foreground: oklch(0.9 0.02 250);
-  --primary: oklch(0.4 0.15 250); /* Darkened KSU Blue */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.35 0.07 250); /* Muted Blue Accent (Replaced Grey) */
-  --secondary-foreground: oklch(0.9 0.02 250);
-  --muted: oklch(0.25 0.05 250);
-  --muted-foreground: oklch(0.83 0.02 250);
-  --accent: oklch(0.35 0.07 250); /* Muted Blue Accent (Replaced Grey) */
-  --accent-foreground: oklch(0.9 0.02 250);
-  --destructive: oklch(0.68 0.18 25);
+/* Dark theme: Blue & White inverted with consistent hierarchy */
+.dark {
+  --background: oklch(0.15 0.04 250); /* Deep Blue-Black */
+  --foreground: oklch(0.95 0.01 250); /* Near White text */
+  --card: oklch(0.2 0.05 250); /* Dark Blue card */
+  --card-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.2 0.05 250);
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.65 0.17 250); /* Bright Blue primary */
+  --primary-foreground: oklch(0.15 0.04 250); /* Dark on Bright */
+  --secondary: oklch(0.45 0.14 250); /* Medium Blue */
+  --secondary-foreground: oklch(0.95 0.01 250); /* White on Medium Blue */
+  --muted: oklch(0.25 0.06 250); /* Muted Dark Blue */
+  --muted-foreground: oklch(0.75 0.05 250); /* Light Blue-Grey */
+  --accent: oklch(0.55 0.16 250); /* Accent Blue */
+  --accent-foreground: oklch(0.95 0.01 250); /* White on Accent */
+  --destructive: oklch(0.68 0.18 25); /* Red for errors */
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.55 0.17 250);
-  --chart-1: oklch(0.55 0.17 250); /* Official KSU Blue */
-  --chart-2: oklch(0.35 0.07 250); /* Muted Blue Accent */
-  --chart-3: oklch(0.68 0.15 135);
-  --chart-4: oklch(0.72 0.15 45);
-  --chart-5: oklch(0.7 0.16 230);
-  --sidebar: oklch(0.2 0.04 250);
-  --sidebar-foreground: oklch(0.9 0.02 250);
-  --sidebar-primary: oklch(0.55 0.17 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.35 0.07 250); /* Muted Blue Accent */
-  --sidebar-accent-foreground: oklch(0.9 0.02 250);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.55 0.17 250);
+  --border: oklch(0.3 0.06 250); /* Subtle Blue border */
+  --input: oklch(0.25 0.06 250);
+  --ring: oklch(0.65 0.17 250); /* Bright Blue focus */
+
+  /* Chart Colors - Dark mode blue spectrum */
+  --chart-1: oklch(0.65 0.17 250); /* Bright Blue */
+  --chart-2: oklch(0.55 0.16 250); /* Medium Blue */
+  --chart-3: oklch(0.75 0.14 250); /* Light Blue */
+  --chart-4: oklch(0.45 0.18 250); /* Deep Blue */
+  --chart-5: oklch(0.7 0.15 230); /* Cyan Blue */
+
+  /* Sidebar Colors */
+  --sidebar: oklch(0.2 0.05 250);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.65 0.17 250);
+  --sidebar-primary-foreground: oklch(0.15 0.04 250);
+  --sidebar-accent: oklch(0.45 0.14 250);
+  --sidebar-accent-foreground: oklch(0.95 0.01 250);
+  --sidebar-border: oklch(0.3 0.06 250);
+  --sidebar-ring: oklch(0.65 0.17 250);
 }
 
 @layer base {

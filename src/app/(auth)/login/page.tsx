@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,13 +33,12 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import {
+  signInSchema,
+  type SignInFormData,
+} from "@/lib/validations/auth.schemas";
 
-interface DemoAccount {
-  email: string;
-  password: string;
-  role: string;
-  name: string;
-}
+import { DEMO_ACCOUNTS, type DemoAccount } from "@/data/demo-accounts";
 
 const roleIcons = {
   student: GraduationCap,
@@ -82,41 +83,33 @@ const roleConfig = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
-  const [loadingDemoAccounts, setLoadingDemoAccounts] = useState(true);
+  const demoAccounts = useMemo(() => DEMO_ACCOUNTS, []);
 
-  useEffect(() => {
-    const fetchDemoAccounts = async () => {
-      try {
-        const response = await fetch("/api/demo-accounts");
-        const data = await response.json();
-        if (data.success) {
-          setDemoAccounts(data.accounts);
-        }
-      } catch (err) {
-        console.error("Failed to fetch demo accounts:", err);
-      } finally {
-        setLoadingDemoAccounts(false);
-      }
-    };
-
-    fetchDemoAccounts();
-  }, []);
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    setValue,
+    formState: { errors, isValid },
+  } = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+    mode: "onChange",
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   const handleDemoAccountClick = (account: DemoAccount) => {
-    setEmail(account.email);
-    setPassword(account.password);
+    setValue("email", account.email, { shouldValidate: true });
+    setValue("password", account.password, { shouldValidate: true });
     setSelectedRole(account.role);
     setError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: SignInFormData) => {
     setError(null);
     setIsLoading(true);
 
@@ -127,8 +120,8 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          password,
+          email: data.email,
+          password: data.password,
           role: selectedRole ?? undefined,
         }),
       });
@@ -158,6 +151,8 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Using static demo accounts; no network calls needed
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/5 to-background">
@@ -189,10 +184,14 @@ export default function LoginPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form
+                    onSubmit={handleFormSubmit(onSubmit)}
+                    className="space-y-5"
+                  >
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-sm font-medium">
-                        Email address
+                        Email address{" "}
+                        <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -200,21 +199,26 @@ export default function LoginPage() {
                           id="email"
                           type="email"
                           placeholder="you@example.com"
-                          value={email}
+                          {...register("email")}
                           onChange={(e) => {
-                            setEmail(e.target.value);
+                            register("email").onChange(e);
                             setSelectedRole(null);
                           }}
                           className="pl-10 h-11 focus-visible:ring-2"
-                          required
                           disabled={isLoading}
+                          aria-invalid={errors.email ? "true" : "false"}
                         />
                       </div>
+                      {errors.email && (
+                        <p className="text-sm text-destructive">
+                          {errors.email.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="password" className="text-sm font-medium">
-                        Password
+                        Password <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -222,17 +226,21 @@ export default function LoginPage() {
                           id="password"
                           type="password"
                           placeholder="Enter your password"
-                          value={password}
+                          {...register("password")}
                           onChange={(e) => {
-                            setPassword(e.target.value);
+                            register("password").onChange(e);
                             setSelectedRole(null);
                           }}
                           className="pl-10 h-11 focus-visible:ring-2"
-                          required
                           disabled={isLoading}
-                          minLength={6}
+                          aria-invalid={errors.password ? "true" : "false"}
                         />
                       </div>
+                      {errors.password && (
+                        <p className="text-sm text-destructive">
+                          {errors.password.message}
+                        </p>
+                      )}
                     </div>
 
                     {error && (
@@ -246,7 +254,7 @@ export default function LoginPage() {
                     <Button
                       type="submit"
                       className="w-full h-11 text-base font-medium shadow-sm"
-                      disabled={isLoading}
+                      disabled={isLoading || !isValid}
                     >
                       {isLoading ? (
                         <>
@@ -274,7 +282,7 @@ export default function LoginPage() {
                   </div>
 
                   <Button variant="outline" asChild className="w-full h-11">
-                    <Link href="/">Return to homepage</Link>
+                    <Link href="/sign-up">Create an account</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -292,54 +300,44 @@ export default function LoginPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {loadingDemoAccounts ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading accounts...
-                      </span>
-                    </div>
-                  ) : (
-                    demoAccounts.map((account) => {
-                      const Icon =
-                        roleIcons[account.role as keyof typeof roleIcons];
-                      const config =
-                        roleConfig[account.role as keyof typeof roleConfig];
+                  {demoAccounts.map((account) => {
+                    const Icon =
+                      roleIcons[account.role as keyof typeof roleIcons];
+                    const config =
+                      roleConfig[account.role as keyof typeof roleConfig];
 
-                      return (
-                        <button
-                          key={account.email}
-                          onClick={() => handleDemoAccountClick(account)}
-                          className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
-                            >
-                              <Icon className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className={`font-semibold ${config.text} truncate`}
-                              >
-                                {account.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {account.role
-                                  .split("_")
-                                  .map(
-                                    (w) =>
-                                      w.charAt(0).toUpperCase() + w.slice(1)
-                                  )
-                                  .join(" ")}
-                              </div>
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                    return (
+                      <button
+                        key={account.email}
+                        onClick={() => handleDemoAccountClick(account)}
+                        className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
+                          >
+                            <Icon className="h-5 w-5 text-white" />
                           </div>
-                        </button>
-                      );
-                    })
-                  )}
+                          <div className="flex-1 min-w-0">
+                            <div
+                              className={`font-semibold ${config.text} truncate`}
+                            >
+                              {account.full_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {account.role
+                                .split("_")
+                                .map(
+                                  (w) => w.charAt(0).toUpperCase() + w.slice(1)
+                                )
+                                .join(" ")}
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>

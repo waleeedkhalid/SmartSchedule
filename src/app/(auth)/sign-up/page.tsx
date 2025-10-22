@@ -35,6 +35,10 @@ import {
   Calendar,
   Briefcase,
   ClipboardCheck,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  UserPlus,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth/redirect-by-role";
 
@@ -84,35 +88,108 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
+  const validateFullName = (name: string) => {
+    if (!name.trim()) return "Full name is required";
+    if (name.trim().length < 3)
+      return "Full name must be at least 3 characters";
+    return "";
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) return "Email is required";
+    if (!emailRegex.test(email)) return "Invalid email format";
+    return "";
+  };
+
+  // when password is filling and role is not selected then the user skipped the role selection
+  const validateRole = (role: UserRole | null) => {
+    if (!role) return "Please select a role before typing a password";
+    return "";
+  };
+
+  const roleError = touchedFields.has("password") ? validateRole(role) : "";
+
+  const validatePassword = (pwd: string) => {
+    if (pwd.length < 8) return "Password must be at least 8 characters";
+    if (!/[A-Z]/.test(pwd)) return "Include an uppercase letter";
+    if (!/[a-z]/.test(pwd)) return "Include a lowercase letter";
+    if (!/[0-9]/.test(pwd)) return "Include a number";
+    return "";
+  };
+
+  const getPasswordStrength = (pwd: string) => {
+    if (!pwd) return { strength: 0, label: "", color: "" };
+    let strength = 0;
+    if (pwd.length >= 8) strength++;
+    if (pwd.length >= 12) strength++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) strength++;
+    if (/[0-9]/.test(pwd)) strength++;
+    if (/[^A-Za-z0-9]/.test(pwd)) strength++;
+
+    if (strength <= 2) return { strength, label: "Weak", color: "bg-red-500" };
+    if (strength <= 3)
+      return { strength, label: "Fair", color: "bg-yellow-500" };
+    if (strength <= 4) return { strength, label: "Good", color: "bg-blue-500" };
+    return { strength, label: "Strong", color: "bg-green-500" };
+  };
+
+  const handleBlur = (field: string) => {
+    setTouchedFields((prev) => new Set(prev).add(field));
+  };
+
+  const fullNameError = touchedFields.has("fullName")
+    ? validateFullName(fullName)
+    : "";
+
+  const emailError = touchedFields.has("email") ? validateEmail(email) : "";
+
+  const passwordStrength = getPasswordStrength(password);
+  const passwordError = touchedFields.has("password")
+    ? validatePassword(password)
+    : "";
+  const confirmPasswordError =
+    touchedFields.has("confirmPassword") &&
+    confirmPassword &&
+    password !== confirmPassword
+      ? "Passwords do not match"
+      : "";
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    console.log("role:", role);
-
-    if (isLoading) {
-      return;
-    }
+    if (isLoading) return;
 
     setError(null);
     setSuccessMessage(null);
 
-    if (!fullName.trim()) {
-      setError("Please provide your full name.");
+    const fullNameError = validateFullName(fullName);
+    if (fullNameError) {
+      setError(fullNameError);
       return;
     }
 
-    if (!role || role === null) {
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    if (!role) {
       setError("Please select a role before continuing.");
-      document.getElementById("role")?.focus();
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    const pwdValidation = validatePassword(password);
+    if (pwdValidation) {
+      setError(pwdValidation);
       return;
     }
 
@@ -130,22 +207,30 @@ export default function SignUpPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          fullName,
           email,
           password,
-          fullName,
           role,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? "Unable to create account");
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.error ?? "Unable to create account");
       }
 
       setSuccessMessage(
-        data.message ?? "Check your email to verify your account."
+        responseData.message ?? "Check your email to verify your account."
       );
+
+      // Reset form
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setRole(null);
+      setTouchedFields(new Set());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred."
@@ -158,8 +243,8 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/5 to-background">
       <div className="container mx-auto px-4 py-12 md:py-20">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12 space-y-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10 space-y-6">
             <Badge variant="secondary" className="px-4 py-2 gap-2">
               <Sparkles className="h-4 w-4" />
               Create your SmartSchedule account
@@ -173,244 +258,286 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="border-2">
-              <CardHeader className="space-y-2">
-                <CardTitle className="text-2xl">Create your account</CardTitle>
-                <CardDescription>
-                  Enter your details to receive a verification email
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={onSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="full-name" className="text-sm font-medium">
-                      Full name
-                    </Label>
-                    <Input
-                      id="full-name"
-                      placeholder="Alex Johnson"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      required
-                      disabled={isLoading}
-                      className="h-11 focus-visible:ring-2"
-                    />
-                  </div>
+          <Card className="border-2 bg-gradient-to-br from-primary/5 via-background to-background shadow-md h-fit">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <UserPlus className="h-6 w-6" />
+                Create your account
+              </CardTitle>
+              <CardDescription>
+                Enter your details to receive a verification email
+              </CardDescription>
+            </CardHeader>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">
-                      Email address
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      required
-                      disabled={isLoading}
-                      className="h-11 focus-visible:ring-2"
-                    />
-                  </div>
+            <CardContent>
+              <form onSubmit={onSubmit} className="space-y-5">
+                {/* Full name */}
+                <div className="space-y-2">
+                  <Label htmlFor="full-name" className="text-sm font-medium">
+                    Full name
+                  </Label>
+                  <Input
+                    id="full-name"
+                    placeholder="Alex Johnson"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onBlur={() => handleBlur("fullName")}
+                    required
+                    disabled={isLoading}
+                    className={`h-11 focus-visible:ring-2 transition-all ${
+                      fullNameError
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
+                  />
+                  <p className="text-sm text-red-500">{fullNameError}</p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="role" className="text-sm font-medium">
-                      Role
-                    </Label>
-                    <Select
-                      key={role}
-                      value={role ?? ""}
-                      onValueChange={(value) => {
-                        setRole(value as UserRole);
-                        console.log("Selected role:", value);
-                      }}
-                      disabled={isLoading}
-                      required
-                    >
-                      <SelectTrigger id="role" className="h-11">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roleOptions.map((option) => {
-                          const Icon = option.icon;
-                          return (
-                            <SelectItem key={option.value} value={option.value}>
-                              <span className="flex items-center gap-2">
-                                <Icon className="h-4 w-4" />
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium">
+                    Email address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => handleBlur("email")}
+                    required
+                    disabled={isLoading}
+                    className={`h-11 focus-visible:ring-2 transition-all ${
+                      emailError
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
+                  />
+                  <p className="text-sm text-red-500">{emailError}</p>
+                </div>
+
+                {/* Role selection */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="role"
+                    className={`text-sm font-medium flex items-center gap-2`}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Select your role
+                    {roleError && (
+                      <span className="text-sm text-red-500">{roleError}</span>
+                    )}
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {roleOptions.map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = role === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => setRole(option.value)}
+                          className={`text-left p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ease-in-out ${
+                            isSelected
+                              ? "border-primary bg-primary/5 shadow-sm scale-[1.01]"
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          }`}
+                          disabled={isLoading}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                isSelected ? "bg-primary/20" : "bg-primary/10"
+                              }`}
+                            >
+                              <Icon
+                                className={`h-5 w-5 ${
+                                  isSelected
+                                    ? "text-primary"
+                                    : "text-primary/70"
+                                }`}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-base mb-0.5">
                                 {option.label}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                              </div>
+                              <div className="text-sm text-muted-foreground leading-snug">
+                                {option.description}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-sm font-medium">
-                        Password
-                      </Label>
+                {/* Password fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">
+                      Password
+                    </Label>
+                    <div className="relative">
                       <Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Enter a secure password"
                         value={password}
-                        onChange={(event) => setPassword(event.target.value)}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onBlur={() => handleBlur("password")}
                         required
                         disabled={isLoading}
-                        className="h-11 focus-visible:ring-2"
-                        minLength={6}
+                        className={`h-11 pr-10 focus-visible:ring-2 transition-all ${
+                          passwordError
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }`}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="confirm-password"
-                        className="text-sm font-medium"
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
                       >
-                        Confirm password
-                      </Label>
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {password && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                              style={{
+                                width: `${
+                                  (passwordStrength.strength / 5) * 100
+                                }%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground min-w-[45px]">
+                            {passwordStrength.label}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {passwordError && (
+                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {passwordError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="confirm-password"
+                      className="text-sm font-medium"
+                    >
+                      Confirm password
+                    </Label>
+                    <div className="relative">
                       <Input
                         id="confirm-password"
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         placeholder="Re-enter your password"
                         value={confirmPassword}
-                        onChange={(event) =>
-                          setConfirmPassword(event.target.value)
-                        }
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onBlur={() => handleBlur("confirmPassword")}
                         required
                         disabled={isLoading}
-                        className="h-11 focus-visible:ring-2"
-                        minLength={6}
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <Alert variant="destructive" className="border-2">
-                      <AlertDescription className="text-sm">
-                        {error}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {successMessage && (
-                    <Alert className="border-2 border-emerald-200 dark:border-emerald-900">
-                      <AlertDescription className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        {successMessage}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full h-11 text-base font-medium shadow-sm"
-                    disabled={isLoading || Boolean(successMessage)}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating your account...
-                      </>
-                    ) : (
-                      <>
-                        Create account
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4">
-                <Separator />
-                <div className="w-full">
-                  <Button variant="outline" asChild className="w-full h-11">
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center justify-center gap-2"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Back to login
-                    </Link>
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="border-2 bg-gradient-to-br from-primary/5 via-background to-background">
-                <CardHeader className="space-y-2">
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" />
-                    Role-based access
-                  </CardTitle>
-                  <CardDescription>
-                    Choose the workspace that matches your responsibilities.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {roleOptions.map((option) => {
-                    const Icon = option.icon;
-                    const isSelected = role === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setRole(option.value)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                          isSelected
-                            ? "border-primary bg-primary/5 shadow-sm"
-                            : "border-border hover:border-primary/50"
+                        className={`h-11 pr-10 focus-visible:ring-2 transition-all ${
+                          confirmPasswordError
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
                         }`}
-                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                            <Icon className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-semibold text-base">
-                              {option.label}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {option.description}
-                            </div>
-                          </div>
-                        </div>
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                    </div>
+                    {confirmPasswordError && (
+                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {confirmPasswordError}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-              <Card className="border-2">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-primary" />
-                    <div>
-                      <div className="font-semibold">Verified enrollment</div>
-                      <p className="text-sm text-muted-foreground">
-                        Secure email verification ensures that only approved
-                        users gain access to SmartSchedule dashboards.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-6 w-6 text-primary" />
-                    <div>
-                      <div className="font-semibold">Protected data</div>
-                      <p className="text-sm text-muted-foreground">
-                        Supabase row-level security keeps academic records safe
-                        while enabling real-time collaboration.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                {/* Alerts */}
+                {error && (
+                  <Alert
+                    variant="destructive"
+                    className="border-2 animate-in fade-in slide-in-from-top-2 duration-300"
+                  >
+                    <AlertDescription className="text-sm font-medium">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {successMessage && (
+                  <Alert className="border-2 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <AlertDescription className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                      {successMessage}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Submit */}
+                <Button
+                  type="submit"
+                  className="w-full h-11 text-base font-medium shadow-sm hover:shadow-md transition-all"
+                  disabled={isLoading || !role || Boolean(successMessage)}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating your account...
+                    </>
+                  ) : (
+                    <>
+                      Create account
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex flex-col pt-0 pb-2 gap-4">
+              <Separator />
+              <Button
+                variant="outline"
+                className="w-full h-11 hover:bg-muted transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to login
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </div>
