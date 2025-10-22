@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -32,11 +32,7 @@ import {
   Zap,
 } from "lucide-react";
 
-type DemoAccount = {
-  full_name: string;
-  email: string;
-  role: string;
-};
+import { DEMO_ACCOUNTS, type DemoAccount } from "@/data/demo-accounts";
 
 const roleIcons = {
   student: GraduationCap,
@@ -86,27 +82,11 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
-  const [loadingDemoAccounts, setLoadingDemoAccounts] = useState(true);
-
-  useEffect(() => {
-    const fetchDemoAccounts = async () => {
-      try {
-        const res = await fetch("/api/demo-accounts", { cache: "no-store" });
-        const data = await res.json();
-        if (Array.isArray(data)) setDemoAccounts(data);
-      } catch (err) {
-        console.error("Failed to fetch demo accounts:", err);
-      } finally {
-        setLoadingDemoAccounts(false);
-      }
-    };
-    fetchDemoAccounts();
-  }, []);
+  const demoAccounts = useMemo(() => DEMO_ACCOUNTS, []);
 
   const handleDemoAccountClick = (account: DemoAccount) => {
     setEmail(account.email);
-    setPassword(account.email);
+    setPassword(account.password);
     setSelectedRole(account.role);
     setError(null);
   };
@@ -155,7 +135,7 @@ export default function LoginPage() {
     }
   };
 
-  console.log(demoAccounts);
+  // Using static demo accounts; no network calls needed
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/5 to-background">
@@ -272,7 +252,7 @@ export default function LoginPage() {
                   </div>
 
                   <Button variant="outline" asChild className="w-full h-11">
-                    <Link href="/">Return to homepage</Link>
+                    <Link href="/sign-up">Create an account</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -290,55 +270,44 @@ export default function LoginPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {loadingDemoAccounts ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading accounts...
-                      </span>
-                    </div>
-                  ) : (
-                    demoAccounts.map((account) => {
-                      console.log(account);
-                      const Icon =
-                        roleIcons[account.role as keyof typeof roleIcons];
-                      const config =
-                        roleConfig[account.role as keyof typeof roleConfig];
+                  {demoAccounts.map((account) => {
+                    const Icon =
+                      roleIcons[account.role as keyof typeof roleIcons];
+                    const config =
+                      roleConfig[account.role as keyof typeof roleConfig];
 
-                      return (
-                        <button
-                          key={account.email}
-                          onClick={() => handleDemoAccountClick(account)}
-                          className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
-                            >
-                              <Icon className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className={`font-semibold ${config.text} truncate`}
-                              >
-                                {account.full_name}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {account.role
-                                  .split("_")
-                                  .map(
-                                    (w) =>
-                                      w.charAt(0).toUpperCase() + w.slice(1)
-                                  )
-                                  .join(" ")}
-                              </div>
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                    return (
+                      <button
+                        key={account.email}
+                        onClick={() => handleDemoAccountClick(account)}
+                        className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
+                          >
+                            <Icon className="h-5 w-5 text-white" />
                           </div>
-                        </button>
-                      );
-                    })
-                  )}
+                          <div className="flex-1 min-w-0">
+                            <div
+                              className={`font-semibold ${config.text} truncate`}
+                            >
+                              {account.full_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {account.role
+                                .split("_")
+                                .map(
+                                  (w) => w.charAt(0).toUpperCase() + w.slice(1)
+                                )
+                                .join(" ")}
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>
