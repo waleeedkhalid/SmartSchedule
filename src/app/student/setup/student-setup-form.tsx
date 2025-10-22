@@ -121,7 +121,9 @@ export default function StudentSetupForm({
             </Label>
             <Input
               id="student_number"
-              placeholder="e.g. 2025-12345"
+              placeholder="e.g. 444100000"
+              minLength={9}
+              maxLength={9}
               {...register("studentNumber")}
               disabled={isPending}
               aria-invalid={errors.studentNumber ? "true" : "false"}
@@ -139,10 +141,15 @@ export default function StudentSetupForm({
             </Label>
             <Select
               value={levelValue}
-              onValueChange={(value) => setValue("level", value, { shouldValidate: true })}
+              onValueChange={(value) =>
+                setValue("level", value, { shouldValidate: true })
+              }
               disabled={isPending}
             >
-              <SelectTrigger id="level" aria-invalid={errors.level ? "true" : "false"}>
+              <SelectTrigger
+                id="level"
+                aria-invalid={errors.level ? "true" : "false"}
+              >
                 <SelectValue placeholder="Select your level" />
               </SelectTrigger>
               <SelectContent>
@@ -154,9 +161,7 @@ export default function StudentSetupForm({
               </SelectContent>
             </Select>
             {errors.level && (
-              <p className="text-sm text-destructive">
-                {errors.level.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.level.message}</p>
             )}
           </div>
 
