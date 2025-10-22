@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
--- 1. USER
+-- 1. USER (DONE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.user (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.user (
 );
 
 -- ============================================================================
--- 2. STUDENTS
+-- 2. STUDENTS (SHOULD BE REVIEWED)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.students (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -39,43 +39,8 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 -- ============================================================================
--- 3. COURSE
+-- 3. COURSE & RELATED TABLES (DONE) in main.sql
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.course (
-  code text PRIMARY KEY,
-  name text NOT NULL,
-  credits integer NOT NULL,
-  level integer NOT NULL,
-  type text NOT NULL CHECK (type IN ('required','elective','external')),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- ============================================================================
--- 4. TIME_SLOT
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.time_slot (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  day_of_week text NOT NULL CHECK (day_of_week IN ('sunday','monday','tuesday','wednesday','thursday','friday')),
-  start_time time NOT NULL,
-  end_time time NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('lecture','lab','exam')),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- ============================================================================
--- 5. SECTION
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.section (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  course_code text NOT NULL REFERENCES public.course(code) ON DELETE CASCADE,
-  instructor_id uuid NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
-  capacity integer NOT NULL,
-  time_slot_id uuid NOT NULL REFERENCES public.time_slot(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
 
 -- ============================================================================
 -- 6. SCHEDULE
