@@ -2,6 +2,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
   CardContent,
@@ -16,6 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  studentLoginSchema,
+  type StudentLoginFormData,
+} from "@/lib/validations/student.schemas";
 
 export interface StudentLoginData {
   studentId: string;
@@ -40,21 +46,35 @@ export function StudentLoginForm({
   onLogin,
   onSuccess,
 }: StudentLoginFormProps) {
-  const [studentId, setStudentId] = useState("");
-  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isValid },
+  } = useForm<StudentLoginFormData>({
+    resolver: zodResolver(studentLoginSchema),
+    mode: "onChange",
+    defaultValues: {
+      studentNumber: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: StudentLoginFormData) => {
     setError(null);
     setLoading(true);
 
     try {
-      const session = await onLogin({ studentId, password, rememberMe });
+      const session = await onLogin({
+        studentId: data.studentNumber,
+        password: data.password,
+        rememberMe,
+      });
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.(session);
@@ -69,8 +89,6 @@ export function StudentLoginForm({
       setLoading(false);
     }
   };
-
-  const isFormValid = studentId.length > 0 && password.length > 0;
 
   if (success) {
     return (
@@ -105,7 +123,7 @@ export function StudentLoginForm({
           Student Elective Selection Portal
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleFormSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
@@ -115,30 +133,37 @@ export function StudentLoginForm({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="studentId">Student ID</Label>
+            <Label htmlFor="studentId">
+              Student Number <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="studentId"
-              placeholder="Enter your student ID"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              placeholder="e.g. 2025-12345"
+              {...register("studentNumber")}
               disabled={loading}
               autoComplete="username"
-              required
+              aria-invalid={errors.studentNumber ? "true" : "false"}
             />
+            {errors.studentNumber && (
+              <p className="text-sm text-destructive">
+                {errors.studentNumber.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">
+              Password <span className="text-destructive">*</span>
+            </Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password")}
                 disabled={loading}
                 autoComplete="current-password"
-                required
+                aria-invalid={errors.password ? "true" : "false"}
               />
               <button
                 type="button"
@@ -154,6 +179,11 @@ export function StudentLoginForm({
                 )}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -176,7 +206,7 @@ export function StudentLoginForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={!isFormValid || loading}
+            disabled={!isValid || loading}
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? "Logging in..." : "Login"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -39,13 +40,7 @@ import {
   AlertCircle,
   UserPlus,
 } from "lucide-react";
-
-type UserRole =
-  | "student"
-  | "faculty"
-  | "scheduling_committee"
-  | "teaching_load_committee"
-  | "registrar";
+import type { UserRole } from "@/lib/auth/redirect-by-role";
 
 type RoleOption = {
   value: UserRole;
@@ -212,21 +207,21 @@ export default function SignUpPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          fullName,
           email,
           password,
-          fullName,
           role,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? "Unable to create account");
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.error ?? "Unable to create account");
       }
 
       setSuccessMessage(
-        data.message ?? "Check your email to verify your account."
+        responseData.message ?? "Check your email to verify your account."
       );
 
       // Reset form

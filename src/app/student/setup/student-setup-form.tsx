@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +23,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/utils/supabase/client";
+import {
+  studentSetupFormSchema,
+  type StudentSetupFormData,
+  type StudentSetupFormInput,
+} from "@/lib/validations/student.schemas";
 
 interface StudentSetupFormProps {
   userId: string;
@@ -35,36 +42,33 @@ export default function StudentSetupForm({
   fullName,
   email,
 }: StudentSetupFormProps) {
-  const [studentNumber, setStudentNumber] = useState("");
-  const [level, setLevel] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    setValue,
+    watch,
+    formState: { errors, isValid, isDirty },
+  } = useForm<StudentSetupFormInput, unknown, StudentSetupFormData>({
+    resolver: zodResolver(studentSetupFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      studentNumber: "",
+      level: "",
+    },
+  });
 
-    if (!studentNumber.trim() || !level) {
-      toast({
-        title: "Missing information",
-        description: "Please provide your student number and level.",
-      });
-      return;
-    }
+  const levelValue = watch("level");
 
-    if (isNaN(Number(level)) || Number(level) < 4 || Number(level) > 8) {
-      toast({
-        title: "Invalid level",
-        description: "Level must be between 4 and 8.",
-      });
-      return;
-    }
-
+  const onSubmit = (data: StudentSetupFormData) => {
     startTransition(async () => {
       const { error } = await supabase.from("students").upsert({
         id: userId,
-        student_number: studentNumber.trim(),
-        level: Number(level),
+        student_number: data.studentNumber,
+        level: data.level,
       });
 
       if (error) {
@@ -84,8 +88,6 @@ export default function StudentSetupForm({
     });
   };
 
-  const disableSubmit = isPending || !studentNumber.trim() || !level;
-
   return (
     <Card className="w-full shadow-lg">
       <CardHeader className="space-y-2">
@@ -98,7 +100,7 @@ export default function StudentSetupForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={handleFormSubmit(onSubmit)}>
           <div className="grid gap-2">
             <Label className="text-sm text-muted-foreground">Full name</Label>
             <p className="rounded-md border bg-muted/50 px-4 py-2 text-sm font-medium">
@@ -114,23 +116,40 @@ export default function StudentSetupForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="student_number">Student number</Label>
+            <Label htmlFor="student_number">
+              Student number <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="student_number"
               placeholder="e.g. 444100000"
-              value={studentNumber}
-              onChange={(event) => setStudentNumber(event.target.value)}
-              disabled={isPending}
-              maxLength={9}
               minLength={9}
-              required
+              maxLength={9}
+              {...register("studentNumber")}
+              disabled={isPending}
+              aria-invalid={errors.studentNumber ? "true" : "false"}
             />
+            {errors.studentNumber && (
+              <p className="text-sm text-destructive">
+                {errors.studentNumber.message}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="level">Level</Label>
-            <Select value={level} onValueChange={setLevel} disabled={isPending}>
-              <SelectTrigger id="level">
+            <Label htmlFor="level">
+              Level <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={levelValue}
+              onValueChange={(value) =>
+                setValue("level", value, { shouldValidate: true })
+              }
+              disabled={isPending}
+            >
+              <SelectTrigger
+                id="level"
+                aria-invalid={errors.level ? "true" : "false"}
+              >
                 <SelectValue placeholder="Select your level" />
               </SelectTrigger>
               <SelectContent>
@@ -141,9 +160,16 @@ export default function StudentSetupForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.level && (
+              <p className="text-sm text-destructive">{errors.level.message}</p>
+            )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={disableSubmit}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isPending || !isValid || !isDirty}
+          >
             {isPending ? "Saving..." : "Complete registration"}
           </Button>
         </form>
