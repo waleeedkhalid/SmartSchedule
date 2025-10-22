@@ -14,6 +14,7 @@ const roles: readonly UserRole[] = [
 
 const bootstrapSchema = z
   .object({
+    email: z.email(),
     role: z.enum(roles as [UserRole, ...UserRole[]]).optional(),
     fullName: z.string().optional(),
   })

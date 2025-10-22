@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,12 +38,7 @@ import {
   type SignInFormData,
 } from "@/lib/validations/auth.schemas";
 
-interface DemoAccount {
-  email: string;
-  password: string;
-  role: string;
-  name: string;
-}
+import { DEMO_ACCOUNTS, type DemoAccount } from "@/data/demo-accounts";
 
 const roleIcons = {
   student: GraduationCap,
@@ -91,8 +86,7 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
-  const [loadingDemoAccounts, setLoadingDemoAccounts] = useState(true);
+  const demoAccounts = useMemo(() => DEMO_ACCOUNTS, []);
 
   const {
     register,
@@ -107,24 +101,6 @@ export default function LoginPage() {
       password: "",
     },
   });
-
-  useEffect(() => {
-    const fetchDemoAccounts = async () => {
-      try {
-        const response = await fetch("/api/demo-accounts");
-        const data = await response.json();
-        if (data.success) {
-          setDemoAccounts(data.accounts);
-        }
-      } catch (err) {
-        console.error("Failed to fetch demo accounts:", err);
-      } finally {
-        setLoadingDemoAccounts(false);
-      }
-    };
-
-    fetchDemoAccounts();
-  }, []);
 
   const handleDemoAccountClick = (account: DemoAccount) => {
     setValue("email", account.email, { shouldValidate: true });
@@ -176,6 +152,8 @@ export default function LoginPage() {
     }
   };
 
+  // Using static demo accounts; no network calls needed
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/5 to-background">
       <div className="container mx-auto px-4 py-12 md:py-20">
@@ -206,10 +184,14 @@ export default function LoginPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleFormSubmit(onSubmit)} className="space-y-5">
+                  <form
+                    onSubmit={handleFormSubmit(onSubmit)}
+                    className="space-y-5"
+                  >
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-sm font-medium">
-                        Email address <span className="text-destructive">*</span>
+                        Email address{" "}
+                        <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -300,7 +282,7 @@ export default function LoginPage() {
                   </div>
 
                   <Button variant="outline" asChild className="w-full h-11">
-                    <Link href="/">Return to homepage</Link>
+                    <Link href="/sign-up">Create an account</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -318,54 +300,44 @@ export default function LoginPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {loadingDemoAccounts ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading accounts...
-                      </span>
-                    </div>
-                  ) : (
-                    demoAccounts.map((account) => {
-                      const Icon =
-                        roleIcons[account.role as keyof typeof roleIcons];
-                      const config =
-                        roleConfig[account.role as keyof typeof roleConfig];
+                  {demoAccounts.map((account) => {
+                    const Icon =
+                      roleIcons[account.role as keyof typeof roleIcons];
+                    const config =
+                      roleConfig[account.role as keyof typeof roleConfig];
 
-                      return (
-                        <button
-                          key={account.email}
-                          onClick={() => handleDemoAccountClick(account)}
-                          className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
-                            >
-                              <Icon className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className={`font-semibold ${config.text} truncate`}
-                              >
-                                {account.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {account.role
-                                  .split("_")
-                                  .map(
-                                    (w) =>
-                                      w.charAt(0).toUpperCase() + w.slice(1)
-                                  )
-                                  .join(" ")}
-                              </div>
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                    return (
+                      <button
+                        key={account.email}
+                        onClick={() => handleDemoAccountClick(account)}
+                        className={`w-full p-4 rounded-lg border-2 ${config.border} ${config.bg} transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] text-left group`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${config.gradient} shadow-sm`}
+                          >
+                            <Icon className="h-5 w-5 text-white" />
                           </div>
-                        </button>
-                      );
-                    })
-                  )}
+                          <div className="flex-1 min-w-0">
+                            <div
+                              className={`font-semibold ${config.text} truncate`}
+                            >
+                              {account.full_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {account.role
+                                .split("_")
+                                .map(
+                                  (w) => w.charAt(0).toUpperCase() + w.slice(1)
+                                )
+                                .join(" ")}
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>

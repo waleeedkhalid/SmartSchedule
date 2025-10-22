@@ -13,7 +13,7 @@ const roles: readonly UserRole[] = [
 ];
 
 const signInSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(6),
   role: z.enum(roles as [UserRole, ...UserRole[]]).optional(),
   fullName: z.string().optional(),
