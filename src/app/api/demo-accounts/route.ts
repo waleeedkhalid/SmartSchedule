@@ -1,8 +1,12 @@
 // GET demo accounts from supabase
 import { NextResponse } from "next/server";
-import { supabase } from "@/utils/supabase/client";
+import { cookies } from "next/headers";
+import { createServerClient } from "@/utils/supabase/server";
 
 export async function GET() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+  
   const { data, error } = await supabase
     .from("users")
     .select("id, full_name, email, role");

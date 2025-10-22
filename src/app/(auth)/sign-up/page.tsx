@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import {
   Card,
@@ -37,6 +39,10 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth/redirect-by-role";
+import {
+  signUpSchema,
+  type SignUpFormData,
+} from "@/lib/validations/auth.schemas";
 
 type RoleOption = {
   value: UserRole;
@@ -79,48 +85,37 @@ const roleOptions: RoleOption[] = [
 ];
 
 export default function SignUpPage() {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    setValue,
+    watch,
+    formState: { errors, isValid },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+    mode: "onChange",
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: undefined,
+    },
+  });
 
-    console.log("role:", role);
+  const roleValue = watch("role");
 
+  const onSubmit = async (data: SignUpFormData) => {
     if (isLoading) {
       return;
     }
 
     setError(null);
     setSuccessMessage(null);
-
-    if (!fullName.trim()) {
-      setError("Please provide your full name.");
-      return;
-    }
-
-    if (!role || role === null) {
-      setError("Please select a role before continuing.");
-      document.getElementById("role")?.focus();
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -130,21 +125,21 @@ export default function SignUpPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          password,
-          fullName,
-          role,
+          email: data.email,
+          password: data.password,
+          fullName: data.fullName,
+          role: data.role,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? "Unable to create account");
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.error ?? "Unable to create account");
       }
 
       setSuccessMessage(
-        data.message ?? "Check your email to verify your account."
+        responseData.message ?? "Check your email to verify your account."
       );
     } catch (err) {
       setError(
@@ -182,53 +177,58 @@ export default function SignUpPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={onSubmit} className="space-y-5">
+                <form onSubmit={handleFormSubmit(onSubmit)} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="full-name" className="text-sm font-medium">
-                      Full name
+                      Full name <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="full-name"
                       placeholder="Alex Johnson"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      required
+                      {...register("fullName")}
                       disabled={isLoading}
                       className="h-11 focus-visible:ring-2"
+                      aria-invalid={errors.fullName ? "true" : "false"}
                     />
+                    {errors.fullName && (
+                      <p className="text-sm text-destructive">
+                        {errors.fullName.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium">
-                      Email address
+                      Email address <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="you@example.com"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      required
+                      {...register("email")}
                       disabled={isLoading}
                       className="h-11 focus-visible:ring-2"
+                      aria-invalid={errors.email ? "true" : "false"}
                     />
+                    {errors.email && (
+                      <p className="text-sm text-destructive">
+                        {errors.email.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="role" className="text-sm font-medium">
-                      Role
+                      Role <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      key={role}
-                      value={role ?? ""}
+                      value={roleValue ?? ""}
                       onValueChange={(value) => {
-                        setRole(value as UserRole);
-                        console.log("Selected role:", value);
+                        setValue("role", value as UserRole, { shouldValidate: true });
                       }}
                       disabled={isLoading}
-                      required
                     >
-                      <SelectTrigger id="role" className="h-11">
+                      <SelectTrigger id="role" className="h-11" aria-invalid={errors.role ? "true" : "false"}>
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -245,45 +245,58 @@ export default function SignUpPage() {
                         })}
                       </SelectContent>
                     </Select>
+                    {errors.role && (
+                      <p className="text-sm text-destructive">
+                        {errors.role.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="password" className="text-sm font-medium">
-                        Password
+                        Password <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="password"
                         type="password"
                         placeholder="Enter a secure password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
+                        {...register("password")}
                         disabled={isLoading}
                         className="h-11 focus-visible:ring-2"
-                        minLength={6}
+                        aria-invalid={errors.password ? "true" : "false"}
                       />
+                      {errors.password ? (
+                        <p className="text-sm text-destructive">
+                          {errors.password.message}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Must be 6+ characters with uppercase, lowercase, and number
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label
                         htmlFor="confirm-password"
                         className="text-sm font-medium"
                       >
-                        Confirm password
+                        Confirm password <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="confirm-password"
                         type="password"
                         placeholder="Re-enter your password"
-                        value={confirmPassword}
-                        onChange={(event) =>
-                          setConfirmPassword(event.target.value)
-                        }
-                        required
+                        {...register("confirmPassword")}
                         disabled={isLoading}
                         className="h-11 focus-visible:ring-2"
-                        minLength={6}
+                        aria-invalid={errors.confirmPassword ? "true" : "false"}
                       />
+                      {errors.confirmPassword && (
+                        <p className="text-sm text-destructive">
+                          {errors.confirmPassword.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -307,7 +320,7 @@ export default function SignUpPage() {
                   <Button
                     type="submit"
                     className="w-full h-11 text-base font-medium shadow-sm"
-                    disabled={isLoading || Boolean(successMessage)}
+                    disabled={isLoading || !isValid || Boolean(successMessage)}
                   >
                     {isLoading ? (
                       <>
@@ -353,12 +366,12 @@ export default function SignUpPage() {
                 <CardContent className="space-y-4">
                   {roleOptions.map((option) => {
                     const Icon = option.icon;
-                    const isSelected = role === option.value;
+                    const isSelected = roleValue === option.value;
                     return (
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setRole(option.value)}
+                        onClick={() => setValue("role", option.value, { shouldValidate: true })}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                           isSelected
                             ? "border-primary bg-primary/5 shadow-sm"
