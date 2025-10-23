@@ -97,22 +97,34 @@ export const registrarNavItems: NavItem[] = [
 
 export const studentNavItems: NavItem[] = [
   {
-    label: "My Schedule",
-    href: "/demo/student",
-    icon: Calendar,
-    description: "View your course schedule and exams",
+    label: "Dashboard",
+    href: "/student/dashboard",
+    icon: BarChart3,
+    description: "Get a snapshot of your schedule readiness",
   },
   {
-    label: "Elective Preferences",
-    href: "/demo/student/preferences",
+    label: "My Schedule",
+    href: "/student/schedule",
+    icon: Calendar,
+    description: "Review sections, instructors, and exam dates",
+  },
+  {
+    label: "Electives",
+    href: "/student/electives",
     icon: Star,
-    description: "Rank your elective course preferences",
+    description: "Rank electives to personalize recommendations",
+  },
+  {
+    label: "Profile",
+    href: "/student/profile",
+    icon: UserCog,
+    description: "Manage academic details and preferences",
   },
   {
     label: "Feedback",
-    href: "/demo/student/feedback",
+    href: "/student/feedback",
     icon: MessageSquare,
-    description: "Provide feedback on the schedule",
+    description: "Share insights with the scheduling committee",
   },
 ];
 

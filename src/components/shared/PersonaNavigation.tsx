@@ -32,7 +32,12 @@ export function PersonaNavigation({
   const pathname = usePathname();
 
   return (
-    <div className={cn("border-b bg-background", className)}>
+    <div
+      className={cn(
+        "white:bg-background dark:bg-background border-b",
+        className
+      )}
+    >
       <div className="container mx-auto px-4">
         {/* Persona Header */}
         <div className="flex items-center justify-between py-4">
