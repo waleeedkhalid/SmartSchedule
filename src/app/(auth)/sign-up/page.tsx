@@ -280,7 +280,10 @@ export default function SignUpPage() {
                     id="full-name"
                     placeholder="Alex Johnson"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      handleBlur("fullName");
+                    }}
                     onBlur={() => handleBlur("fullName")}
                     required
                     disabled={isLoading}
@@ -303,7 +306,10 @@ export default function SignUpPage() {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      handleBlur("email");
+                    }}
                     onBlur={() => handleBlur("email")}
                     required
                     disabled={isLoading}
@@ -320,14 +326,14 @@ export default function SignUpPage() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="role"
-                    className={`text-sm font-medium flex items-center gap-2`}
+                    className="text-sm font-medium flex items-center gap-2"
                   >
                     <ShieldCheck className="h-4 w-4" />
-                    Select your role
-                    {roleError && (
-                      <span className="text-sm text-red-500">{roleError}</span>
-                    )}
+                    <span>Select your role</span>
                   </Label>
+                  {roleError && (
+                    <p className="text-sm text-red-500">{roleError}</p>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {roleOptions.map((option) => {
                       const Icon = option.icon;
@@ -389,7 +395,10 @@ export default function SignUpPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter a secure password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          handleBlur("password");
+                        }}
                         onBlur={() => handleBlur("password")}
                         required
                         disabled={isLoading}
@@ -452,7 +461,10 @@ export default function SignUpPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="Re-enter your password"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          handleBlur("confirmPassword");
+                        }}
                         onBlur={() => handleBlur("confirmPassword")}
                         required
                         disabled={isLoading}
