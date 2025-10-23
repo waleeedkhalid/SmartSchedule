@@ -8,7 +8,7 @@ import { z } from "zod";
 export const emailSchema = z
   .string()
   .min(1, "Email is required")
-  .email("Invalid email address")
+  .email("Please enter a valid email address (e.g., name@example.com)")
   .max(255, "Email is too long");
 
 // Password validation
@@ -32,7 +32,7 @@ export const fullNameSchema = z
   .string()
   .min(2, "Name must be at least 2 characters")
   .max(120, "Name is too long")
-  .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes");
+  .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens and apostrophes (no numbers or special characters)");
 
 // Sign in schema
 export const signInSchema = z.object({

@@ -1,22 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createServerClient } from "@/utils/supabase/server";
-
-const roles = [
-  "student",
-  "faculty",
-  "scheduling_committee",
-  "teaching_load_committee",
-  "registrar",
-] as const;
-
-const signUpSchema = z.object({
-  email: z.email(),
-  password: z.string().min(6),
-  fullName: z.string().min(2).max(120),
-  role: z.enum(roles),
-});
+import { signUpSchema } from "@/lib/validations/auth.schemas";
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -33,8 +18,24 @@ export async function POST(request: Request) {
   const parsed = signUpSchema.safeParse(payload);
 
   if (!parsed.success) {
+    // Format validation errors in a user-friendly way
+    const zodErrors = parsed.error.issues;
+    const errors = zodErrors.map((err) => {
+      const field = err.path.join(".");
+      return `${field}: ${err.message}`;
+    });
+    
     return NextResponse.json(
-      { success: false, error: parsed.error.message },
+      { 
+        success: false, 
+        error: errors.length === 1 
+          ? errors[0] 
+          : "Please fix the following errors:\n" + errors.join("\n"),
+        validationErrors: zodErrors.map((err) => ({
+          field: err.path.join("."),
+          message: err.message,
+        })),
+      },
       { status: 400 }
     );
   }
