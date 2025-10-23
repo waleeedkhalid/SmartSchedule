@@ -217,16 +217,4 @@ SmartSchedule follows a **three-tier architecture**:
 
 ---
 
-## **11. Risks and Constraints**
-
-| Risk                          | Mitigation                                      |
-| ----------------------------- | ----------------------------------------------- |
-| Real Edugate data unavailable | Use synthetic datasets.                         |
-| Complex rule conflicts        | Modular rule engine allows manual overrides.    |
-| User confusion                | Simplified dashboards and guided workflows.     |
-| AI misrecommendations         | Allow manual adjustments before finalization.   |
-| Collaboration latency         | Optimize Yjs sync for smaller document updates. |
-
----
-
 ✅ **End of PRD Document**
