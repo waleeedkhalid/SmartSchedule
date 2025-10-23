@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Home } from "lucide-react";
 import { NotificationsDropdown } from "../NotificationsDropdown";
+import ThemeToggleButton from "@/components/ui/theme-toggle-button";
 
 // UI-only: navigation metadata (not a domain type)
 export interface NavItem {
@@ -47,8 +48,11 @@ export function PersonaNavigation({
             <h1 className="text-lg font-semibold">{personaName}</h1>
           </div>
 
-          {/* Notifications dropdown (replaces placeholder button) */}
-          <NotificationsDropdown />
+          {/* Right-side actions */}
+          <div className="flex items-center gap-2">
+            <ThemeToggleButton />
+            <NotificationsDropdown />
+          </div>
         </div>
 
         {/* Navigation Tabs */}
