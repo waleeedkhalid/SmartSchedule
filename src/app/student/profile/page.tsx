@@ -24,29 +24,7 @@ interface StudentProfile {
   email: string;
   student_number?: string;
   level?: number;
-  major?: string;
-  gpa?: string;
-  completed_credits?: number;
-  total_credits?: number;
-  academic_status?: string;
-  enrollment_date?: string | null;
-  expected_graduation_date?: string | null;
-  advisor_id?: string | null;
-}
-
-const FALLBACK_LEVEL = 6;
-const FALLBACK_TOTAL_CREDITS = 132;
-
-function normaliseGpa(value: unknown): string | undefined {
-  if (typeof value === "number") {
-    return value.toFixed(2);
-  }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value;
-  }
-
-  return undefined;
+  status?: string;
 }
 
 function mapStudentResponse(student: Record<string, unknown>): StudentProfile {
@@ -58,43 +36,7 @@ function mapStudentResponse(student: Record<string, unknown>): StudentProfile {
       (student.student_number as string | undefined) ??
       (student.student_id as string | undefined),
     level: typeof student.level === "number" ? student.level : undefined,
-    major: (student.major as string | undefined) ?? undefined,
-    gpa: normaliseGpa(student.gpa),
-    completed_credits:
-      typeof student.completed_credits === "number"
-        ? student.completed_credits
-        : undefined,
-    total_credits:
-      typeof student.total_credits === "number"
-        ? student.total_credits
-        : undefined,
-    academic_status:
-      (student.academic_status as string | undefined) ?? undefined,
-    enrollment_date:
-      (student.enrollment_date as string | null | undefined) ?? null,
-    expected_graduation_date:
-      (student.expected_graduation_date as string | null | undefined) ?? null,
-    advisor_id: (student.advisor_id as string | null | undefined) ?? null,
-  };
-}
-
-function fallbackProfile(user: AuthContextValue["user"]): StudentProfile {
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined) ??
-    user?.email?.split("@")[0] ??
-    "Student";
-
-  return {
-    user_id: user?.id ?? "",
-    name: displayName,
-    email: user?.email ?? "",
-    student_number: user?.email?.split("@")[0] ?? undefined,
-    level: FALLBACK_LEVEL,
-    major: "Software Engineering",
-    gpa: "0.00",
-    completed_credits: 0,
-    total_credits: FALLBACK_TOTAL_CREDITS,
-    academic_status: "active",
+    status: (student.status as string) ?? undefined,
   };
 }
 
@@ -159,7 +101,7 @@ export default function StudentProfilePage() {
           }
         }
 
-        const resolvedProfile = profile ?? fallbackProfile(user);
+        const resolvedProfile = profile;
 
         if (isActive) {
           setStudentData(resolvedProfile);
@@ -167,7 +109,7 @@ export default function StudentProfilePage() {
       } catch (error) {
         console.warn("Student profile fetch failed", error);
         if (isActive) {
-          setStudentData(fallbackProfile(user));
+          setStudentData(null);
         }
       } finally {
         if (isActive) {
@@ -304,9 +246,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Major</p>
-                  <p className="font-semibold">
-                    {studentData.major || "Not assigned"}
-                  </p>
+                  <p className="font-semibold">Software Engineering</p>
                 </div>
               </div>
             </div>
@@ -327,59 +267,6 @@ export default function StudentProfilePage() {
                 <p className="text-2xl font-bold">
                   Level {studentData.level || "Not assigned"}
                 </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">GPA</p>
-                <p className="text-2xl font-bold">
-                  {studentData.gpa
-                    ? parseFloat(studentData.gpa).toFixed(2)
-                    : "0.00"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  Completed Credits
-                </p>
-                <p className="text-2xl font-bold">
-                  {studentData.completed_credits || 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  Total Required
-                </p>
-                <p className="text-2xl font-bold">
-                  {studentData.total_credits || 132}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Progress</p>
-                <Badge variant="secondary">
-                  {Math.round(
-                    ((studentData.completed_credits || 0) /
-                      (studentData.total_credits || 132)) *
-                      100
-                  )}
-                  %
-                </Badge>
-              </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{
-                    width: `${
-                      ((studentData.completed_credits || 0) /
-                        (studentData.total_credits || 132)) *
-                      100
-                    }%`,
-                  }}
-                />
               </div>
             </div>
           </CardContent>
