@@ -1,32 +1,22 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { createServerClient } from "@/utils/supabase/server";
-import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
+/**
+ * Bootstrap API Route
+ * POST: Initialize or update user profile after authentication
+ */
 
-const roles: readonly UserRole[] = [
-  "student",
-  "faculty",
-  "scheduling_committee",
-  "teaching_load_committee",
-  "registrar",
-];
+import { cookies } from "next/headers";
+import { z } from "zod";
+import { createServerClient } from "@/lib/supabase";
+import { successResponse, errorResponse, validationErrorResponse, unauthorizedResponse } from "@/lib/api";
+import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
+import { USER_ROLES, ensureValidRole } from "@/lib/auth/constants";
 
 const bootstrapSchema = z
   .object({
     email: z.email(),
-    role: z.enum(roles as [UserRole, ...UserRole[]]).optional(),
+    role: z.enum(USER_ROLES as [UserRole, ...UserRole[]]).optional(),
     fullName: z.string().optional(),
   })
   .partial();
-
-function ensureRole(role?: string | null): UserRole {
-  if (roles.includes(role as UserRole)) {
-    return role as UserRole;
-  }
-
-  return "student";
-}
 
 export async function POST(request: Request) {
   let payload: unknown = {};
@@ -42,10 +32,7 @@ export async function POST(request: Request) {
   const parsed = bootstrapSchema.safeParse(payload ?? {});
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: parsed.error.message },
-      { status: 400 }
-    );
+    return validationErrorResponse(parsed.error);
   }
 
   const cookieStore = await cookies();
@@ -57,10 +44,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (getUserError || !user) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return unauthorizedResponse();
   }
 
   const { data: profile } = await supabase
@@ -69,7 +53,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const role = ensureRole(
+  const role = ensureValidRole(
     profile?.role ?? parsed.data.role ?? (user.user_metadata?.role as string)
   );
 
@@ -88,11 +72,8 @@ export async function POST(request: Request) {
   );
 
   if (upsertError) {
-    return NextResponse.json(
-      { success: false, error: upsertError.message },
-      { status: 400 }
-    );
+    return errorResponse(upsertError.message, 400);
   }
 
-  return NextResponse.json({ success: true, redirect: redirectByRole(role) });
+  return successResponse({ redirect: redirectByRole(role), role });
 }

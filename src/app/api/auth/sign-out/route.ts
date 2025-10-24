@@ -1,6 +1,11 @@
+/**
+ * Sign Out API Route
+ * POST: End user session
+ */
+
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase";
+import { successResponse, errorResponse } from "@/lib/api";
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -9,11 +14,8 @@ export async function POST() {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 400 }
-    );
+    return errorResponse(error.message, 400);
   }
 
-  return NextResponse.json({ success: true });
+  return successResponse({ message: "Signed out successfully" });
 }

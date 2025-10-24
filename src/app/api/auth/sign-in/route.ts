@@ -1,31 +1,21 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { createServerClient } from "@/utils/supabase/server";
-import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
+/**
+ * Sign In API Route
+ * POST: Authenticate user and create session
+ */
 
-const roles: readonly UserRole[] = [
-  "student",
-  "faculty",
-  "scheduling_committee",
-  "teaching_load_committee",
-  "registrar",
-];
+import { cookies } from "next/headers";
+import { z } from "zod";
+import { createServerClient } from "@/lib/supabase";
+import { successResponse, errorResponse, validationErrorResponse } from "@/lib/api";
+import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
+import { USER_ROLES, ensureValidRole } from "@/lib/auth/constants";
 
 const signInSchema = z.object({
   email: z.email(),
   password: z.string().min(6),
-  role: z.enum(roles as [UserRole, ...UserRole[]]).optional(),
+  role: z.enum(USER_ROLES as [UserRole, ...UserRole[]]).optional(),
   fullName: z.string().optional(),
 });
-
-function ensureRole(role?: string | null): UserRole {
-  if (roles.includes(role as UserRole)) {
-    return role as UserRole;
-  }
-
-  return "student";
-}
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -33,19 +23,13 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid request payload" },
-      { status: 400 }
-    );
+    return validationErrorResponse("Invalid request payload");
   }
 
   const parsed = signInSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: parsed.error.message },
-      { status: 400 }
-    );
+    return validationErrorResponse(parsed.error);
   }
 
   const { email, password, role: requestedRole, fullName } = parsed.data;
@@ -59,10 +43,7 @@ export async function POST(request: Request) {
   });
 
   if (signInError) {
-    return NextResponse.json(
-      { success: false, error: signInError.message },
-      { status: 401 }
-    );
+    return errorResponse(signInError.message, 401);
   }
 
   const {
@@ -71,10 +52,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (getUserError || !user) {
-    return NextResponse.json(
-      { success: false, error: getUserError?.message ?? "User not found" },
-      { status: 500 }
-    );
+    return errorResponse(getUserError?.message ?? "User not found");
   }
 
   const { data: profile } = await supabase
@@ -83,7 +61,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const derivedRole = ensureRole(
+  const derivedRole = ensureValidRole(
     profile?.role ?? requestedRole ?? (user.user_metadata?.role as string)
   );
 
@@ -103,13 +81,10 @@ export async function POST(request: Request) {
     .upsert(upsertPayload, { onConflict: "id" });
 
   if (upsertError) {
-    return NextResponse.json(
-      { success: false, error: upsertError.message },
-      { status: 400 }
-    );
+    return errorResponse(upsertError.message, 400);
   }
 
   const redirect = redirectByRole(derivedRole);
 
-  return NextResponse.json({ success: true, redirect, role: derivedRole });
+  return successResponse({ redirect, role: derivedRole });
 }

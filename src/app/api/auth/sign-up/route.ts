@@ -1,21 +1,19 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { createServerClient } from "@/utils/supabase/server";
+/**
+ * Sign Up API Route
+ * POST: Create new user account
+ */
 
-const roles = [
-  "student",
-  "faculty",
-  "scheduling_committee",
-  "teaching_load_committee",
-  "registrar",
-] as const;
+import { cookies } from "next/headers";
+import { z } from "zod";
+import { createServerClient } from "@/lib/supabase";
+import { successResponse, validationErrorResponse, errorResponse } from "@/lib/api";
+import { USER_ROLES, type UserRole } from "@/lib/auth/constants";
 
 const signUpSchema = z.object({
   email: z.email(),
   password: z.string().min(6),
   fullName: z.string().min(2).max(120),
-  role: z.enum(roles),
+  role: z.enum(USER_ROLES as [UserRole, ...UserRole[]]),
 });
 
 export async function POST(request: Request) {
@@ -24,19 +22,13 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid request payload" },
-      { status: 400 }
-    );
+    return validationErrorResponse("Invalid request payload");
   }
 
   const parsed = signUpSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: parsed.error.message },
-      { status: 400 }
-    );
+    return validationErrorResponse(parsed.error);
   }
 
   const { email, password, fullName, role } = parsed.data;
@@ -64,14 +56,11 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: error.status ?? 400 }
-    );
+    return errorResponse(error.message, error.status ?? 400);
   }
 
-  return NextResponse.json({
-    success: true,
-    message: "Check your email to verify your account.",
-  });
+  return successResponse(
+    { message: "Check your email to verify your account." },
+    "Account created successfully"
+  );
 }

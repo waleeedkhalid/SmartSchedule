@@ -541,13 +541,15 @@ export default function SignUpPage() {
 
             <CardFooter className="flex flex-col pt-0 pb-2 gap-4">
               <Separator />
-              <Button
-                variant="outline"
-                className="w-full h-11 hover:bg-muted transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to login
-              </Button>
+              <Link href="/login" className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 hover:bg-muted transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to login
+                </Button>
+              </Link>
             </CardFooter>
           </Card>
         </div>
