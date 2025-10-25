@@ -1,3 +1,8 @@
+/**
+ * Supabase Browser Client
+ * For use in client-side React components
+ */
+
 import { createBrowserClient as createSupabaseBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -15,3 +20,4 @@ export function createBrowserClient(): SupabaseClient {
 }
 
 export const supabase = createBrowserClient();
+

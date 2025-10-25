@@ -1,26 +1,35 @@
-export type UserRole =
-  | "student"
-  | "faculty"
-  | "scheduling_committee"
-  | "teaching_load_committee"
-  | "registrar";
+import { type UserRole, ensureValidRole } from "./constants";
 
+/**
+ * Map roles to their corresponding dashboard paths
+ */
 const roleToPath: Record<UserRole, string> = {
   student: "/student",
   faculty: "/faculty",
   scheduling_committee: "/committee/scheduler",
   teaching_load_committee: "/committee/teaching-load",
   registrar: "/committee/registrar",
-};
+} as const;
 
-export function redirectByRole(role?: string | null) {
+/**
+ * Get the redirect path for a given user role
+ * @param role - The user's role
+ * @returns The dashboard path for the role, or /dashboard if invalid
+ */
+export function redirectByRole(role?: string | null): string {
   if (!role) {
     return "/dashboard";
   }
 
-  return roleToPath[role as UserRole] ?? "/dashboard";
+  const validRole = ensureValidRole(role);
+  return roleToPath[validRole] ?? "/dashboard";
 }
 
+/**
+ * Determine which role is required for a given path
+ * @param pathname - The path to check
+ * @returns The required role, or null if no specific role is required
+ */
 export function pathRequiresRole(pathname: string): UserRole | null {
   if (pathname.startsWith("/student")) {
     return "student";
@@ -45,7 +54,12 @@ export function pathRequiresRole(pathname: string): UserRole | null {
   return null;
 }
 
-export function isProtectedPath(pathname: string) {
+/**
+ * Check if a path requires authentication
+ * @param pathname - The path to check
+ * @returns true if the path is protected and requires auth
+ */
+export function isProtectedPath(pathname: string): boolean {
   if (pathname === "/login") {
     return false;
   }
@@ -57,3 +71,6 @@ export function isProtectedPath(pathname: string) {
     pathname.startsWith("/dashboard")
   );
 }
+
+// Re-export UserRole type for convenience
+export type { UserRole };

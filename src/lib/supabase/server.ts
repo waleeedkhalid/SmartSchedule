@@ -1,3 +1,8 @@
+/**
+ * Supabase Server Client
+ * For use in Server Components, Route Handlers, and Server Actions
+ */
+
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 
 type CookieStore = {
@@ -31,3 +36,4 @@ export function createServerClient(cookieStore: CookieStore) {
     }
   );
 }
+

@@ -1,3 +1,8 @@
+/**
+ * Supabase Middleware Client
+ * For use in Next.js middleware
+ */
+
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -29,3 +34,4 @@ export function createMiddlewareClient(request: NextRequest) {
 
   return { supabase, response };
 }
+

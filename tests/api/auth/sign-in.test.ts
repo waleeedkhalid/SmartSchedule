@@ -1,5 +1,5 @@
 import { POST } from "@/app/api/auth/sign-in/route";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { MockSupabaseClient } from "../../utils/mock-types";
 

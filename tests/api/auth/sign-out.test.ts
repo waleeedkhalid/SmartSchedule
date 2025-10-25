@@ -1,5 +1,5 @@
 import { POST } from "@/app/api/auth/sign-out/route";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock Next.js modules
