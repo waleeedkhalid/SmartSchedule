@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 
 interface AuthDialogProps {

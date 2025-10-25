@@ -1,16 +1,24 @@
 "use client";
 
+/**
+ * Navigation Auth Component
+ * Displays authentication controls in the navigation bar
+ * Shows login/register buttons for guests, dashboard/sign-out for authenticated users
+ */
+
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "./use-auth";
 import { redirectByRole } from "@/lib/auth/redirect-by-role";
 
-// Navbar auth widget: exposes login/register for guests and dashboard/sign-out for authenticated users
 export default function NavAuth(): React.ReactElement {
+  const router = useRouter();
   const { user, isLoading, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center gap-3" aria-hidden>
@@ -20,9 +28,27 @@ export default function NavAuth(): React.ReactElement {
     );
   }
 
+  // Authenticated state
   if (user) {
     const role = (user.user_metadata?.role as string | undefined) ?? null;
-    const dashboardHref = redirectByRole(role) ?? "/dashboard";
+    const dashboardHref = redirectByRole(role);
+
+    const handleSignOut = async () => {
+      setIsSigningOut(true);
+      try {
+        // Call API to clear server-side session
+        await fetch("/api/auth/sign-out", { method: "POST" });
+      } catch (error) {
+        console.warn("Sign-out API error (non-critical):", error);
+      }
+      
+      // Clear client-side session
+      await signOut();
+      
+      // Redirect to home page
+      router.push("/");
+      setIsSigningOut(false);
+    };
 
     return (
       <div className="flex items-center gap-3">
@@ -41,16 +67,7 @@ export default function NavAuth(): React.ReactElement {
           variant="outline"
           size="sm"
           disabled={isSigningOut}
-          onClick={async () => {
-            setIsSigningOut(true);
-            try {
-              await fetch("/api/auth/sign-out", { method: "POST" });
-            } catch {
-              // Ignore sign-out network errors; local state still clears.
-            }
-            await signOut();
-            setIsSigningOut(false);
-          }}
+          onClick={handleSignOut}
         >
           {isSigningOut ? "Signing out..." : "Sign out"}
         </Button>
@@ -58,6 +75,7 @@ export default function NavAuth(): React.ReactElement {
     );
   }
 
+  // Guest state
   return (
     <div className="flex items-center gap-3">
       <Link href="/login">

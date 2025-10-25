@@ -1,23 +1,31 @@
 "use client";
 
-// PRD: Feature 1 - Role-Based Authentication (Supabase)
-// Minimal auth buttons with magic link sign-in and sign-out.
+/**
+ * Auth Buttons Component
+ * Simple authentication UI with magic link sign-in and sign-out
+ * Note: Consider using the full login page for production use
+ */
 
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "./use-auth";
 
+/**
+ * Simple auth buttons for magic link authentication
+ */
 export function AuthButtons(): React.ReactElement {
   const { user, isLoading, signInWithOtp, signOut } = useAuth();
   const [email, setEmail] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
 
+  // Loading state
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Authenticated state
   if (user) {
     return (
       <div className="flex items-center gap-2">
@@ -29,6 +37,7 @@ export function AuthButtons(): React.ReactElement {
     );
   }
 
+  // Handle magic link send
   const handleSend = async (): Promise<void> => {
     setMessage("");
     if (!email) {
