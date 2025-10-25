@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createMiddlewareClient } from "@/utils/supabase/middleware";
+import { createMiddlewareClient } from "@/lib/supabase";
 import {
   isProtectedPath,
   pathRequiresRole,

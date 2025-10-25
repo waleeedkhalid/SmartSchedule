@@ -25,7 +25,7 @@
 // import { Checkbox } from "@/components/ui/checkbox";
 // import { Label } from "@/components/ui/label";
 // import { Loader2, Sparkles } from "lucide-react";
-// import { ScheduleGenerationRequest, GeneratedSchedule } from "@/lib/types";
+// import { ScheduleGenerationRequest, GeneratedSchedule } from "@/types";
 
 // interface GenerateScheduleDialogProps {
 //   semester: string;

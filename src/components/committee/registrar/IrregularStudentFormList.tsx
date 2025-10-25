@@ -20,7 +20,7 @@
 // import { Input } from "@/components/ui/input";
 // import { Badge } from "@/components/ui/badge";
 // import { Pencil, Trash2 } from "lucide-react";
-// import type { IrregularStudent } from "@/lib/types";
+// import type { IrregularStudent } from "@/types";
 
 // interface IrregularStudentFormListProps {
 //   irregularStudents: IrregularStudent[];

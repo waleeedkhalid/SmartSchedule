@@ -30,7 +30,7 @@
 //   Download,
 //   FileText,
 // } from "lucide-react";
-// import { GeneratedSchedule } from "@/lib/types";
+// import { GeneratedSchedule } from "@/types";
 
 // interface GeneratedScheduleResultsProps {
 //   schedule: GeneratedSchedule;

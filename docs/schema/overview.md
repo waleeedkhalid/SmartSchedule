@@ -20,6 +20,27 @@ Defines the role types available in the system:
 - `teaching_load_committee`
 - `registrar`
 
+### `event_type`
+Defines types of academic timeline events:
+- `registration` - Course registration period
+- `add_drop` - Add/drop courses period
+- `elective_survey` - Elective preference survey period
+- `midterm_exam` - Midterm examination period
+- `final_exam` - Final examination period
+- `break` - Academic break period
+- `grade_submission` - Grade submission deadline
+- `feedback_period` - Student feedback collection period
+- `schedule_publish` - Schedule publication date
+- `academic_milestone` - Important academic dates
+- `other` - Other events
+
+### `event_category`
+Categories for organizing events in UI:
+- `academic` - Academic events and milestones
+- `registration` - Registration-related events
+- `exam` - Examination periods
+- `administrative` - Administrative deadlines and dates
+
 ---
 
 ## Core Tables
@@ -139,6 +160,80 @@ Audit trail for all changes to critical entities.
 
 ---
 
+## Academic Timeline Module
+
+### `academic_term`
+Academic term/semester information.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `code` | TEXT | PRIMARY KEY | Unique term code (e.g., "471") |
+| `name` | TEXT | NOT NULL | Term name (e.g., "Fall 2024/2025") |
+| `type` | TEXT | NOT NULL, CHECK (type IN ('FALL','SPRING','SUMMER')) | Term type |
+| `start_date` | DATE | NOT NULL | Term start date |
+| `end_date` | DATE | NOT NULL | Term end date |
+| `is_active` | BOOLEAN | DEFAULT false | Whether this is the current active term |
+| `schedule_published` | BOOLEAN | DEFAULT false | Whether schedules have been published |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+**Row Level Security:** Enabled (public read access)
+
+---
+
+### `term_events`
+Timeline events for academic terms - **Used for dynamic feature gating**.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique event ID |
+| `term_code` | TEXT | NOT NULL, REFERENCES academic_term(code) ON DELETE CASCADE | Associated term |
+| `title` | TEXT | NOT NULL | Event title |
+| `description` | TEXT | | Event description |
+| `event_type` | event_type | NOT NULL | Type of event (enum) |
+| `category` | event_category | NOT NULL, DEFAULT 'academic' | Event category (enum) |
+| `start_date` | TIMESTAMPTZ | NOT NULL | Event start date/time |
+| `end_date` | TIMESTAMPTZ | NOT NULL | Event end date/time |
+| `is_recurring` | BOOLEAN | DEFAULT false | Whether event recurs |
+| `metadata` | JSONB | DEFAULT '{}'::jsonb | Additional event metadata |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+**Constraints:**
+- `end_date` must be >= `start_date`
+
+**Indexes:**
+- `idx_term_events_term_code` on `term_code`
+- `idx_term_events_type` on `event_type`
+- `idx_term_events_category` on `category`
+- `idx_term_events_dates` on `(start_date, end_date)`
+- `idx_term_events_created` on `created_at DESC`
+- `idx_term_events_metadata` (GIN) for JSONB queries
+
+**Row Level Security:** Enabled
+- Everyone can view events
+- Committee members can manage events
+
+**Timeline-Based Feature Gating:**
+This table is central to the dynamic feature gating system. Key event types used for gating:
+- `elective_survey`: Controls access to elective preference submission (`/student/electives`)
+- `feedback_period`: Controls access to feedback submission (`/student/feedback`)
+
+The system checks if `NOW()` is between `start_date` and `end_date` for these event types to determine feature availability.
+
+**Event Metadata Examples:**
+```json
+{
+  "priority": "high",
+  "requires_action": true,
+  "url": "/student/electives",
+  "notification": true,
+  "audience": "student"
+}
+```
+
+---
+
 ## Student Features Module
 
 ### `electives`
@@ -255,6 +350,25 @@ Automatically updates the `updated_at` timestamp on record modification.
 - `student_electives` table
 - `feedback` table
 - `schedules` table
+- `term_events` table
+- `academic_term` table
+
+### `get_active_events(term_code)`
+Returns all currently active events (where NOW() is between start_date and end_date).
+
+**Parameters:**
+- `term_code` (TEXT, optional): Filter by specific term
+
+**Returns:** Table of active events with all columns
+
+### `get_upcoming_events(term_code, days_ahead)`
+Returns upcoming events within a specified number of days.
+
+**Parameters:**
+- `term_code` (TEXT): Term to query
+- `days_ahead` (INTEGER, default 30): Number of days to look ahead
+
+**Returns:** Table with event details and `days_until` field
 
 ---
 
@@ -283,6 +397,8 @@ course (1) ─── (*) exam
 users (1) ─── (*) section (instructor_id)
 room (1) ─── (*) section
 section (1) ─── (*) section_time
+
+academic_term (1) ─── (*) term_events
 ```
 
 ---
@@ -298,6 +414,26 @@ All tables have **Row Level Security (RLS)** enabled with specific policies:
    - Teaching Load Committee: manages sections
    - Registrar: manages exams
    - All committees: can view all data and manage schedules
+
+---
+
+## Database Maintenance
+
+### Resetting User Data
+
+✅ **Database Reset Complete** (2025-10-24)
+
+All demo/test user data has been cleared:
+- ✅ `auth.users` - 0 rows
+- ✅ `public.users` - 0 rows  
+- ✅ `public.students` - 0 rows
+- ✅ `public.faculty` - 0 rows
+- ✅ `public.student_electives` - 0 rows
+- ✅ `public.feedback` - 0 rows
+- ✅ `public.schedules` - 0 rows
+- ✅ `public.enrollment` - 0 rows
+
+The database is now ready to accept real users.
 
 ---
 

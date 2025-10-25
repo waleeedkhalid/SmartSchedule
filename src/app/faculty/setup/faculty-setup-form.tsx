@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase";
 import {
   facultySetupFormSchema,
   facultyTitles,

@@ -11,6 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Calendar,
   Users,
@@ -21,8 +24,11 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  MessageSquare,
+  Info,
 } from "lucide-react";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SchedulerData {
   name: string;
@@ -33,11 +39,22 @@ interface SchedulerData {
   scheduleGenerated: boolean;
 }
 
+interface FeedbackSettings {
+  feedback_open: boolean;
+  schedule_published: boolean;
+}
+
 export default function SchedulerDashboardPage() {
   const [schedulerData, setSchedulerData] = useState<SchedulerData | null>(
     null
   );
+  const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettings>({
+    feedback_open: false,
+    schedule_published: false,
+  });
   const [loading, setLoading] = useState(true);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchSchedulerData = async () => {
@@ -96,7 +113,62 @@ export default function SchedulerDashboardPage() {
     };
 
     fetchSchedulerData();
+    fetchFeedbackSettings();
   }, []);
+
+  const fetchFeedbackSettings = async () => {
+    try {
+      const response = await fetch("/api/committee/scheduler/feedback-settings");
+      const data = await response.json();
+      
+      if (data.success) {
+        setFeedbackSettings({
+          feedback_open: data.data.feedback_open || false,
+          schedule_published: data.data.schedule_published || false,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching feedback settings:", error);
+    }
+  };
+
+  const updateFeedbackSetting = async (key: keyof FeedbackSettings, value: boolean) => {
+    setUpdatingSettings(true);
+    try {
+      const response = await fetch("/api/committee/scheduler/feedback-settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ [key]: value }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setFeedbackSettings((prev) => ({ ...prev, [key]: value }));
+        toast({
+          title: "Settings updated",
+          description: `Feedback ${key === "feedback_open" ? "period" : "publication"} has been ${value ? "enabled" : "disabled"}.`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update settings",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating feedback settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -364,6 +436,107 @@ export default function SchedulerDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Feedback Control Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Student Feedback Controls
+          </CardTitle>
+          <CardDescription>
+            Manage when students can submit feedback about their schedules
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Use these controls to open or close the feedback period for students.
+              Students can only submit feedback when both their schedule is assigned and
+              the feedback period is open.
+            </AlertDescription>
+          </Alert>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Schedule Published Toggle */}
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="schedule-published" className="text-base font-medium">
+                  Schedules Published
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Mark schedules as published and visible to students
+                </p>
+              </div>
+              <Switch
+                id="schedule-published"
+                checked={feedbackSettings.schedule_published}
+                onCheckedChange={(checked) =>
+                  updateFeedbackSetting("schedule_published", checked)
+                }
+                disabled={updatingSettings}
+              />
+            </div>
+
+            {/* Feedback Open Toggle */}
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="feedback-open" className="text-base font-medium">
+                  Feedback Period Open
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow students to submit feedback about their schedules
+                </p>
+              </div>
+              <Switch
+                id="feedback-open"
+                checked={feedbackSettings.feedback_open}
+                onCheckedChange={(checked) =>
+                  updateFeedbackSetting("feedback_open", checked)
+                }
+                disabled={updatingSettings}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 p-4">
+            <h4 className="mb-2 text-sm font-medium">Current Status</h4>
+            <div className="grid gap-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Schedules Published:</span>
+                <span className="font-medium">
+                  {feedbackSettings.schedule_published ? (
+                    <span className="text-green-600 dark:text-green-400">Yes</span>
+                  ) : (
+                    <span className="text-red-600 dark:text-red-400">No</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Feedback Open:</span>
+                <span className="font-medium">
+                  {feedbackSettings.feedback_open ? (
+                    <span className="text-green-600 dark:text-green-400">Yes</span>
+                  ) : (
+                    <span className="text-red-600 dark:text-red-400">No</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="text-muted-foreground">Students Can Submit Feedback:</span>
+                <span className="font-medium">
+                  {feedbackSettings.schedule_published && feedbackSettings.feedback_open ? (
+                    <span className="text-green-600 dark:text-green-400">Yes</span>
+                  ) : (
+                    <span className="text-red-600 dark:text-red-400">No</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Important Notice */}
       {!schedulerData.scheduleGenerated && (

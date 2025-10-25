@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase";
 
 export default async function FacultyLandingPage() {
   const cookieStore = await cookies();

@@ -1,5 +1,5 @@
 {
-  "name": "semester-scheduler",
+  "name": "smartschedule",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,11 @@
     "lint": "eslint",
     "test": "vitest",
     "test:watch": "vitest",
-    "test:ci": "vitest run"
+    "test:ci": "vitest run",
+    "docs:generate": "tsx scripts/generate-docs.ts",
+    "docs:schema": "tsx scripts/generate-docs.ts --schema",
+    "docs:api": "tsx scripts/generate-docs.ts --api",
+    "docs:features": "tsx scripts/generate-docs.ts --features"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

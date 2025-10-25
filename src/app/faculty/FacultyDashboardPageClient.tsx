@@ -23,7 +23,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 type FacultyAvailability = {
   id: string;

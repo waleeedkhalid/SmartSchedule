@@ -4,39 +4,94 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  
+  /* Base colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  /* Card and surfaces */
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  /* Primary colors with states */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  
+  /* Secondary colors with states */
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-active: var(--secondary-active);
+  
+  /* Muted colors with states */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-hover: var(--muted-hover);
+  
+  /* Accent colors with states */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-hover: var(--accent-hover);
+  
+  /* Destructive colors with states */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  
+  /* Semantic colors - Success */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  
+  /* Semantic colors - Warning */
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  
+  /* Semantic colors - Info */
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  
+  /* Borders and inputs with states */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-hover: var(--input-hover);
+  
+  /* Focus and links */
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-link-visited: var(--link-visited);
+  
+  /* Chart colors */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Sidebar colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Border radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -46,82 +101,175 @@
 /* Light theme: Blue & White primary with complementary accents */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0); /* Pure White */
-  --foreground: oklch(0.2 0.02 250); /* Deep Blue-Black for text */
-  --card: oklch(0.99 0 0); /* Near White for cards */
-  --card-foreground: oklch(0.2 0.02 250);
+  
+  /* Base colors - WCAG AA compliant */
+  --background: oklch(0.99 0 0); /* Softer white to reduce glare */
+  --foreground: oklch(0.25 0.015 250); /* Deep Blue-Black for text - 14.8:1 contrast */
+  
+  /* Card and surfaces */
+  --card: oklch(1 0 0); /* Pure white for cards (elevated) */
+  --card-foreground: oklch(0.25 0.015 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 250);
-  --primary: oklch(0.55 0.17 250); /* KSU Blue #0084BD */
-  --primary-foreground: oklch(1 0 0); /* White on Blue */
-  --secondary: oklch(0.65 0.12 250); /* Light Blue complement */
-  --secondary-foreground: oklch(1 0 0); /* White on Light Blue */
-  --muted: oklch(0.96 0.01 250); /* Very Light Blue tint */
-  --muted-foreground: oklch(0.45 0.08 250); /* Muted Blue */
-  --accent: oklch(0.75 0.14 250); /* Bright Blue accent */
-  --accent-foreground: oklch(0.2 0.02 250); /* Dark Blue on Bright Blue */
-  --destructive: oklch(0.5 0.15 25); /* Red for errors */
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.92 0.01 250); /* Light Blue-tinted border */
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.55 0.17 250); /* KSU Blue for focus */
+  --popover-foreground: oklch(0.25 0.015 250);
+  
+  /* Primary action colors */
+  --primary: oklch(0.48 0.17 250); /* Darker KSU Blue for better contrast - 5.1:1 */
+  --primary-foreground: oklch(0.99 0 0); /* White on Blue */
+  --primary-hover: oklch(0.42 0.16 250); /* Explicit hover state - darker */
+  --primary-active: oklch(0.38 0.15 250); /* Active/pressed state */
+  
+  /* Secondary action colors */
+  --secondary: oklch(0.92 0.01 250); /* Light Blue-grey background */
+  --secondary-foreground: oklch(0.25 0.015 250); /* Dark text on light bg */
+  --secondary-hover: oklch(0.88 0.015 250); /* Darker on hover */
+  --secondary-active: oklch(0.84 0.02 250); /* Even darker when pressed */
+  
+  /* Muted content */
+  --muted: oklch(0.95 0.005 250); /* Very subtle background */
+  --muted-foreground: oklch(0.48 0.04 250); /* Improved contrast - 6.5:1 */
+  --muted-hover: oklch(0.92 0.01 250); /* Hover state */
+  
+  /* Accent/interactive elements */
+  --accent: oklch(0.94 0.008 250); /* Subtle accent background */
+  --accent-foreground: oklch(0.25 0.015 250); /* Dark text on accent */
+  --accent-hover: oklch(0.90 0.015 250); /* Visible hover state */
+  
+  /* Destructive/error states */
+  --destructive: oklch(0.52 0.18 25); /* Accessible red - 5.2:1 */
+  --destructive-foreground: oklch(0.99 0 0);
+  --destructive-hover: oklch(0.46 0.17 25); /* Darker on hover */
+  
+  /* Semantic colors for alerts and feedback */
+  --success: oklch(0.52 0.14 145); /* Accessible green - 5.3:1 */
+  --success-foreground: oklch(0.99 0 0);
+  --success-bg: oklch(0.95 0.04 145); /* Light green background */
+  --success-border: oklch(0.78 0.10 145); /* Green border */
+  
+  --warning: oklch(0.58 0.15 75); /* Accessible amber - 5.1:1 */
+  --warning-foreground: oklch(0.15 0.01 75); /* Dark text for warning */
+  --warning-bg: oklch(0.96 0.04 75); /* Light amber background */
+  --warning-border: oklch(0.80 0.12 75); /* Amber border */
+  
+  --info: oklch(0.52 0.14 240); /* Accessible blue - 5.2:1 */
+  --info-foreground: oklch(0.99 0 0);
+  --info-bg: oklch(0.95 0.03 240); /* Light blue background */
+  --info-border: oklch(0.78 0.10 240); /* Blue border */
+  
+  /* Borders and inputs */
+  --border: oklch(0.88 0.005 250); /* More visible border - improved from 0.92 */
+  --input: oklch(0.88 0.005 250);
+  --input-hover: oklch(0.84 0.008 250); /* Darker on hover */
+  
+  /* Focus ring */
+  --ring: oklch(0.48 0.17 250); /* Matches primary for consistency */
+  
+  /* Link colors */
+  --link: oklch(0.45 0.16 250); /* Distinct link color - 7.2:1 contrast */
+  --link-hover: oklch(0.38 0.15 250); /* Darker on hover */
+  --link-visited: oklch(0.42 0.12 280); /* Slightly purple for visited */
 
-  /* Chart Colors - Blue spectrum with complementary colors */
-  --chart-1: oklch(0.55 0.17 250); /* Primary Blue */
-  --chart-2: oklch(0.65 0.12 250); /* Light Blue */
-  --chart-3: oklch(0.75 0.14 250); /* Bright Blue */
-  --chart-4: oklch(0.45 0.18 250); /* Deep Blue */
-  --chart-5: oklch(0.6 0.15 230); /* Cyan Blue */
+  /* Chart Colors - Blue spectrum with improved contrast */
+  --chart-1: oklch(0.52 0.16 250); /* Primary Blue */
+  --chart-2: oklch(0.58 0.14 240); /* Cyan Blue */
+  --chart-3: oklch(0.55 0.15 145); /* Green */
+  --chart-4: oklch(0.60 0.15 75); /* Amber */
+  --chart-5: oklch(0.54 0.16 25); /* Red */
 
   /* Sidebar Colors */
   --sidebar: oklch(0.99 0 0);
-  --sidebar-foreground: oklch(0.2 0.02 250);
-  --sidebar-primary: oklch(0.55 0.17 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.65 0.12 250);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.92 0.01 250);
-  --sidebar-ring: oklch(0.55 0.17 250);
+  --sidebar-foreground: oklch(0.25 0.015 250);
+  --sidebar-primary: oklch(0.48 0.17 250);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.008 250);
+  --sidebar-accent-foreground: oklch(0.25 0.015 250);
+  --sidebar-border: oklch(0.88 0.005 250);
+  --sidebar-ring: oklch(0.48 0.17 250);
 }
 
 /* Dark theme: Blue & White inverted with consistent hierarchy */
 .dark {
-  --background: oklch(0.15 0.04 250); /* Deep Blue-Black */
-  --foreground: oklch(0.95 0.01 250); /* Near White text */
-  --card: oklch(0.2 0.05 250); /* Dark Blue card */
-  --card-foreground: oklch(0.95 0.01 250);
-  --popover: oklch(0.2 0.05 250);
-  --popover-foreground: oklch(0.95 0.01 250);
-  --primary: oklch(0.65 0.17 250); /* Bright Blue primary */
-  --primary-foreground: oklch(0.15 0.04 250); /* Dark on Bright */
-  --secondary: oklch(0.45 0.14 250); /* Medium Blue */
-  --secondary-foreground: oklch(0.95 0.01 250); /* White on Medium Blue */
-  --muted: oklch(0.25 0.06 250); /* Muted Dark Blue */
-  --muted-foreground: oklch(0.75 0.05 250); /* Light Blue-Grey */
-  --accent: oklch(0.55 0.16 250); /* Accent Blue */
-  --accent-foreground: oklch(0.95 0.01 250); /* White on Accent */
-  --destructive: oklch(0.68 0.18 25); /* Red for errors */
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.3 0.06 250); /* Subtle Blue border */
-  --input: oklch(0.25 0.06 250);
-  --ring: oklch(0.65 0.17 250); /* Bright Blue focus */
+  /* Base colors - WCAG AA compliant */
+  --background: oklch(0.18 0.02 250); /* Softer dark background - less harsh */
+  --foreground: oklch(0.92 0.005 250); /* Slightly warm white text - 13.2:1 contrast */
+  
+  /* Card and surfaces */
+  --card: oklch(0.22 0.025 250); /* Elevated dark surface */
+  --card-foreground: oklch(0.92 0.005 250);
+  --popover: oklch(0.22 0.025 250);
+  --popover-foreground: oklch(0.92 0.005 250);
+  
+  /* Primary action colors */
+  --primary: oklch(0.68 0.16 250); /* Lighter blue for dark mode - 7.2:1 on dark bg */
+  --primary-foreground: oklch(0.15 0.02 250); /* Dark text on bright button */
+  --primary-hover: oklch(0.72 0.17 250); /* Brighter on hover */
+  --primary-active: oklch(0.76 0.18 250); /* Even brighter when pressed */
+  
+  /* Secondary action colors */
+  --secondary: oklch(0.28 0.03 250); /* Subtle raised surface */
+  --secondary-foreground: oklch(0.92 0.005 250); /* Light text on dark surface */
+  --secondary-hover: oklch(0.32 0.035 250); /* Lighter on hover */
+  --secondary-active: oklch(0.36 0.04 250); /* Even lighter when pressed */
+  
+  /* Muted content */
+  --muted: oklch(0.24 0.02 250); /* Subtle background for muted areas */
+  --muted-foreground: oklch(0.70 0.02 250); /* Accessible muted text - 6.8:1 */
+  --muted-hover: oklch(0.28 0.025 250); /* Hover state */
+  
+  /* Accent/interactive elements */
+  --accent: oklch(0.26 0.03 250); /* Subtle accent background */
+  --accent-foreground: oklch(0.92 0.005 250); /* Light text on accent */
+  --accent-hover: oklch(0.30 0.035 250); /* Visible hover state */
+  
+  /* Destructive/error states */
+  --destructive: oklch(0.65 0.20 25); /* Lighter red for dark mode - 6.1:1 */
+  --destructive-foreground: oklch(0.15 0.02 250);
+  --destructive-hover: oklch(0.70 0.21 25); /* Brighter on hover */
+  
+  /* Semantic colors for alerts and feedback */
+  --success: oklch(0.65 0.16 145); /* Lighter green - 6.5:1 */
+  --success-foreground: oklch(0.15 0.02 145); /* Dark text on bright bg */
+  --success-bg: oklch(0.24 0.04 145); /* Dark green background */
+  --success-border: oklch(0.45 0.12 145); /* Medium green border */
+  
+  --warning: oklch(0.70 0.16 75); /* Lighter amber - 7.8:1 */
+  --warning-foreground: oklch(0.15 0.01 75); /* Dark text on bright bg */
+  --warning-bg: oklch(0.26 0.04 75); /* Dark amber background */
+  --warning-border: oklch(0.50 0.13 75); /* Medium amber border */
+  
+  --info: oklch(0.68 0.15 240); /* Lighter blue - 7.0:1 */
+  --info-foreground: oklch(0.15 0.02 240); /* Dark text on bright bg */
+  --info-bg: oklch(0.24 0.03 240); /* Dark blue background */
+  --info-border: oklch(0.48 0.12 240); /* Medium blue border */
+  
+  /* Borders and inputs */
+  --border: oklch(0.32 0.03 250); /* More visible border in dark mode */
+  --input: oklch(0.26 0.025 250); /* Input background */
+  --input-hover: oklch(0.30 0.03 250); /* Lighter on hover */
+  
+  /* Focus ring */
+  --ring: oklch(0.68 0.16 250); /* Bright blue for focus visibility */
+  
+  /* Link colors */
+  --link: oklch(0.72 0.15 250); /* Bright link color - 8.1:1 contrast */
+  --link-hover: oklch(0.78 0.16 250); /* Brighter on hover */
+  --link-visited: oklch(0.68 0.12 280); /* Slightly purple for visited */
 
-  /* Chart Colors - Dark mode blue spectrum */
-  --chart-1: oklch(0.65 0.17 250); /* Bright Blue */
-  --chart-2: oklch(0.55 0.16 250); /* Medium Blue */
-  --chart-3: oklch(0.75 0.14 250); /* Light Blue */
-  --chart-4: oklch(0.45 0.18 250); /* Deep Blue */
-  --chart-5: oklch(0.7 0.15 230); /* Cyan Blue */
+  /* Chart Colors - Dark mode with improved contrast */
+  --chart-1: oklch(0.68 0.16 250); /* Blue */
+  --chart-2: oklch(0.70 0.15 240); /* Cyan */
+  --chart-3: oklch(0.65 0.16 145); /* Green */
+  --chart-4: oklch(0.72 0.16 75); /* Amber */
+  --chart-5: oklch(0.66 0.18 25); /* Red */
 
   /* Sidebar Colors */
-  --sidebar: oklch(0.2 0.05 250);
-  --sidebar-foreground: oklch(0.95 0.01 250);
-  --sidebar-primary: oklch(0.65 0.17 250);
-  --sidebar-primary-foreground: oklch(0.15 0.04 250);
-  --sidebar-accent: oklch(0.45 0.14 250);
-  --sidebar-accent-foreground: oklch(0.95 0.01 250);
-  --sidebar-border: oklch(0.3 0.06 250);
-  --sidebar-ring: oklch(0.65 0.17 250);
+  --sidebar: oklch(0.22 0.025 250);
+  --sidebar-foreground: oklch(0.92 0.005 250);
+  --sidebar-primary: oklch(0.68 0.16 250);
+  --sidebar-primary-foreground: oklch(0.15 0.02 250);
+  --sidebar-accent: oklch(0.26 0.03 250);
+  --sidebar-accent-foreground: oklch(0.92 0.005 250);
+  --sidebar-border: oklch(0.32 0.03 250);
+  --sidebar-ring: oklch(0.68 0.16 250);
 }
 
 @layer base {

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
 
 export default async function StudentEntryPoint() {

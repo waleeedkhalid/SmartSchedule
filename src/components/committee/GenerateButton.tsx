@@ -13,7 +13,7 @@
 // } from "@/components/ui/dialog";
 // import { Alert, AlertDescription } from "@/components/ui/alert";
 // import { Badge } from "@/components/ui/badge";
-// import type { ConflictInfo, ScheduleOut } from "@/lib/types/schedule";
+// import type { ConflictInfo, ScheduleOut } from "@/types";
 
 // interface GenerateResult {
 //   versionId?: string;

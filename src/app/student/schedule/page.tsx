@@ -79,7 +79,7 @@ export default function StudentSchedulePage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
-        <Link href="/student">
+        <Link href="/student/dashboard">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
@@ -92,7 +92,19 @@ export default function StudentSchedulePage() {
       </div>
 
       {/* Content */}
-      {!hasSchedule ? (
+      {loading ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-96 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : !hasSchedule ? (
         <Empty className="min-h-[500px]">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -115,25 +127,58 @@ export default function StudentSchedulePage() {
           <Card>
             <CardHeader>
               <CardTitle>Weekly Schedule</CardTitle>
-              <CardDescription>Spring 2025 Semester</CardDescription>
+              <CardDescription>{scheduleData.term}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Schedule grid will appear here
-              </p>
+              <div className="space-y-4">
+                {scheduleData.courses.map((course: any) => (
+                  <div key={course.courseCode} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold">
+                          {course.courseCode} - {course.courseName}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {course.instructor} • Section {course.section} • {course.credits} credits
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      {course.schedule.map((slot: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 text-sm bg-muted/50 rounded p-2"
+                        >
+                          <span className="font-medium w-24">{slot.day}</span>
+                          <span className="text-muted-foreground">
+                            {slot.startTime} - {slot.endTime}
+                          </span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-muted-foreground">{slot.room}</span>
+                          <span className="ml-auto text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded">
+                            {slot.type}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Exam Schedule */}
+          {/* Course Summary */}
           <Card>
             <CardHeader>
-              <CardTitle>Exam Schedule</CardTitle>
-              <CardDescription>Midterms and Finals</CardDescription>
+              <CardTitle>Course Summary</CardTitle>
+              <CardDescription>
+                Total credits: {scheduleData.courses.reduce((sum, c) => sum + c.credits, 0)}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Exam dates will appear here
-              </p>
+              <div className="text-sm text-muted-foreground">
+                You are enrolled in {scheduleData.courses.length} courses this term.
+              </div>
             </CardContent>
           </Card>
         </div>

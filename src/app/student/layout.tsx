@@ -15,14 +15,14 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen flex-col bg-muted/10">
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
         <PersonaNavigation
           personaName="Student Portal"
           navItems={navigationItems}
-          className="sticky top-0 z-40"
+          className="sticky top-0 z-40 border-b bg-white dark:bg-gray-950 shadow-sm"
         />
         <main className="flex-1">
-          <div className="container mx-auto w-full max-w-7xl px-4 py-6">
+          <div className="container mx-auto w-full max-w-7xl px-4 py-8">
             {children}
           </div>
         </main>

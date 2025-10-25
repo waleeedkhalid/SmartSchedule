@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/utils/supabase/server";
+import { createServerClient } from "@/lib/supabase";
 
 const COMMITTEE_TYPE = "teaching_load_committee" as const;
 const SETUP_PATH = "/committee/teaching-load/setup";

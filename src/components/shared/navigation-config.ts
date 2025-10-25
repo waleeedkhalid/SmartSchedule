@@ -134,22 +134,34 @@ export const studentNavItems: NavItem[] = [
 
 export const facultyNavItems: NavItem[] = [
   {
-    label: "My Assignments",
-    href: "/demo/faculty",
+    label: "Dashboard",
+    href: "/faculty/dashboard",
+    icon: BarChart3,
+    description: "Overview and quick actions",
+  },
+  {
+    label: "My Courses",
+    href: "/faculty/courses",
     icon: GraduationCap,
-    description: "View your teaching assignments",
+    description: "View your course assignments",
+  },
+  {
+    label: "Schedule",
+    href: "/faculty/schedule",
+    icon: Calendar,
+    description: "View your teaching schedule",
   },
   {
     label: "Availability",
-    href: "/demo/faculty/availability",
+    href: "/faculty/availability",
     icon: Clock,
     description: "Set your weekly availability preferences",
   },
   {
-    label: "Comments",
-    href: "/demo/faculty/comments",
+    label: "Feedback",
+    href: "/faculty/feedback",
     icon: MessageSquare,
-    description: "Provide feedback to the scheduling committee",
+    description: "Review student feedback",
   },
 ];
 

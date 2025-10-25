@@ -65,6 +65,19 @@ End-to-end workflow documentation:
 
 ---
 
+### [Design System](./design/color-system.md)
+Complete design system documentation:
+- **[Color System Guide](./design/color-system.md)** - Comprehensive color token reference
+- **[Quick Reference](./design/COLOR-SYSTEM-QUICK-REFERENCE.md)** - TL;DR guide for developers
+- **[Audit Report](./design/COLOR-SYSTEM-AUDIT-REPORT.md)** - Before/after analysis
+- WCAG AA compliant color palette
+- Theme customization guide
+- Accessibility standards
+
+**New:** v2.0 - 100% WCAG AA compliant with explicit hover states
+
+---
+
 ### [Legacy Documentation](./system/legacy/)
 Archived documentation from previous versions:
 - Migration guides

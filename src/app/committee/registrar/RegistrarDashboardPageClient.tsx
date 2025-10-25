@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   UserCheck,
 } from "lucide-react";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 interface RegistrarData {
   name: string;

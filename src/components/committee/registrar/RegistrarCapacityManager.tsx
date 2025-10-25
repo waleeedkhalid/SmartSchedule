@@ -21,7 +21,7 @@
 // import { ScrollArea } from "@/components/ui/scroll-area";
 // import { cn } from "@/lib/utils";
 // import { getSectionsByCourseCode } from "@/lib/committee-data-helpers";
-// import type { CourseOffering } from "@/lib/types";
+// import type { CourseOffering } from "@/types";
 // import { mockCourseOfferings } from "@/data/demo-data";
 
 // interface CapacityRecord {

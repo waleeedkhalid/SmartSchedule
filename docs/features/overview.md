@@ -143,13 +143,117 @@ This document provides a comprehensive overview of all implemented features orga
 
 ### Dashboard (`/faculty/dashboard`)
 **Location:** `src/app/faculty/dashboard/`  
-**Component:** `FacultyDashboardPageClient.tsx`
+**Component:** `FacultyDashboardClient.tsx`
 
 **Features:**
-- Overview of assigned courses
-- Teaching schedule
-- Student counts per section
-- Announcements and updates
+- Welcome header with active term information
+- Phase-aware status cards (Assigned Courses, Schedule Status, Feedback Access)
+- My Courses summary with quick stats
+- Teaching schedule preview
+- Upcoming deadlines and faculty-relevant events
+- Faculty profile overview
+- Alert messages for schedule and feedback status
+
+**Key Components:**
+- `FacultyStatusCards` - Status overview cards
+- `MyCoursesCard` - Course assignments summary
+- `TeachingScheduleCard` - Weekly schedule preview
+- `FacultyUpcomingEvents` - Relevant deadlines widget
+
+**API Endpoints Used:**
+- `GET /api/faculty/status` - Faculty status and term info
+
+**Database Tables:**
+- `faculty` (read)
+- `section` (read - where instructor_id = user.id)
+- `academic_term` (read)
+
+**Documentation:** [Faculty Features Guide](../../src/docs/features/faculty-features.md)
+
+---
+
+### My Courses (`/faculty/courses`)
+**Location:** `src/app/faculty/courses/`  
+**Component:** `FacultyCoursesClient.tsx`
+
+**Features:**
+- Detailed view of all assigned courses and sections
+- Course information (name, code, description, credits, type)
+- Enrollment statistics with capacity percentages
+- Section times and room assignments
+- Department and level information
+- Visual cards for each course
+
+**API Endpoints Used:**
+- `GET /api/faculty/courses` - Fetch assigned sections with details
+
+**Database Tables:**
+- `section` (read - where instructor_id = user.id)
+- `section_time` (read)
+- `course` (read)
+- `enrollment` (count)
+
+**Phase Control:**
+- ✅ Available: After schedule publication
+- ❌ Locked: During scheduling phase
+
+---
+
+### Teaching Schedule (`/faculty/schedule`)
+**Location:** `src/app/faculty/schedule/`  
+**Component:** `FacultyScheduleClient.tsx`
+
+**Features:**
+- Full weekly calendar view (Sunday-Thursday)
+- Day-by-day schedule breakdown
+- Course names, times, and room assignments
+- Visual indicators for teaching days
+- Empty day indicators
+
+**API Endpoints Used:**
+- `GET /api/faculty/schedule` - Generate weekly schedule
+
+**Database Tables:**
+- `section` (read - where instructor_id = user.id)
+- `section_time` (read)
+- `course` (read)
+
+**Phase Control:**
+- ✅ Available: After schedule publication
+- ❌ Locked: During scheduling phase
+
+---
+
+### Course Feedback (`/faculty/feedback`)
+**Location:** `src/app/faculty/feedback/`  
+**Component:** `FacultyFeedbackClient.tsx`
+
+**Features:**
+- Aggregated, anonymized student feedback
+- Overall statistics (average rating, response rate, total responses)
+- Per-course detailed breakdown
+- Rating distribution charts (1-5 stars)
+- Anonymized student comments with ratings
+- Response metrics and percentages
+- Privacy-first design with phase protection
+
+**API Endpoints Used:**
+- `GET /api/faculty/feedback` - Fetch aggregated feedback
+
+**Database Tables:**
+- `feedback` (read - aggregated)
+- `section` (read - where instructor_id = user.id)
+- `enrollment` (count)
+- `academic_term` (read - for phase control)
+
+**Phase Control:**
+- ✅ Available: ONLY after feedback period closes
+- ❌ Locked: During active feedback collection (to ensure anonymity)
+
+**Security:**
+- Complete anonymization of student responses
+- No student identifiers exposed
+- Aggregate-only statistics
 
 ---
 
@@ -157,7 +261,9 @@ This document provides a comprehensive overview of all implemented features orga
 **Location:** `src/app/faculty/setup/`  
 **Component Directory:** `src/components/faculty/availability/`
 
-**Features:**
+**Status:** 🚧 Coming Soon
+
+**Planned Features:**
 - Set weekly availability preferences
 - Block specific time slots
 - Set recurring availability patterns
@@ -168,24 +274,7 @@ This document provides a comprehensive overview of all implemented features orga
 - Time slot selector
 
 **Database Tables:**
-- `faculty_availability` (assumed - CRUD)
-
----
-
-### Personal Schedule (`/faculty/dashboard`)
-**Component Directory:** `src/components/faculty/personal-schedule/`
-
-**Features:**
-- View assigned teaching schedule
-- See course assignments
-- View room assignments
-- Access section details
-
-**Database Tables:**
-- `section` (read - where instructor_id = user.id)
-- `section_time` (read)
-- `course` (read)
-- `room` (read)
+- `faculty_availability` (planned - CRUD)
 
 ---
 
@@ -449,8 +538,10 @@ Comprehensive design system with:
 | Dashboard | ✅ | ✅ | ✅ | Complete |
 | Schedule View | ✅ | ✅ | ✅ | Complete |
 | Elective Management | ✅ | - | ✅ | Complete |
-| Feedback System | ✅ | - | ✅ | Complete |
-| Availability Setting | - | ✅ | - | Complete |
+| Feedback System | ✅ | ✅ | ✅ | Complete |
+| Course Management | - | ✅ | ✅ | Complete |
+| Phase-Based Permissions | ✅ | ✅ | - | Complete |
+| Availability Setting | - | ⏳ | - | In Progress |
 | Teaching Load Assignment | - | - | ✅ | Complete |
 | Exam Scheduling | - | - | ✅ | Complete |
 | Schedule Generation | - | - | ✅ | Complete |
@@ -474,11 +565,14 @@ Comprehensive design system with:
 - ❌ Cannot view other students' data
 
 ### Faculty Role
-- ✅ View own teaching schedule
-- ✅ Set availability preferences
-- ✅ View assigned sections
+- ✅ View own teaching schedule (after publication)
+- ✅ View assigned courses and sections (after publication)
+- ✅ Access aggregated student feedback (after feedback period closes)
+- ✅ View academic deadlines and events
+- ⏳ Set availability preferences (coming soon)
 - ❌ Cannot modify schedules directly
-- ❌ Cannot access student data
+- ❌ Cannot access individual student data
+- ❌ Cannot view feedback during collection period
 
 ### Scheduling Committee Role
 - ✅ Generate schedules

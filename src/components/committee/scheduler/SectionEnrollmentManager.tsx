@@ -24,7 +24,7 @@
 //   removeEnrollmentOverride,
 //   createEnrollmentRequest,
 // } from "@/lib/local-state";
-// import type { SWEStudent } from "@/lib/types";
+// import type { SWEStudent } from "@/types";
 // import { cn } from "@/lib/utils";
 // import {
 //   Users,
