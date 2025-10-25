@@ -4,7 +4,7 @@
 //  */
 
 // import { ConflictChecker } from "./ConflictChecker";
-// import { Section, CourseOffering, SWEStudent } from "@/lib/types";
+// import { Section, CourseOffering, SWEStudent } from "@/types";
 // import { mockSWEFaculty } from "@/data/demo-data";
 
 // export function testPhase3ConflictDetection() {

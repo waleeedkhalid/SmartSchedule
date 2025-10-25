@@ -5,7 +5,7 @@
 
 // import { ScheduleDataCollector } from "./ScheduleDataCollector";
 // import { TimeSlotManager } from "./TimeSlotManager";
-// import { TimeSlot } from "@/lib/types";
+// import { TimeSlot } from "@/types";
 
 // export async function testPhase2DataServices() {
 //   console.log("=".repeat(60));

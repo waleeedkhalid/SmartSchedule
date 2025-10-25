@@ -1,5 +1,5 @@
 // import { getSWEPlan } from "@/lib/supabase/swe-plan";
-// import type { SWECurriculumLevel } from "@/lib/types";
+// import type { SWECurriculumLevel } from "@/types";
 
 // // Static elective slots per level (subject to change)
 // const ELECTIVE_SLOTS_BY_LEVEL: Record<number, number> = {

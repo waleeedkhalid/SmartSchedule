@@ -4,7 +4,7 @@
 //  */
 
 // import { ScheduleGenerator } from "./ScheduleGenerator";
-// import { ScheduleGenerationRequest } from "@/lib/types";
+// import { ScheduleGenerationRequest } from "@/types";
 
 // export async function testPhase4ScheduleGeneration() {
 //   console.log("=".repeat(60));

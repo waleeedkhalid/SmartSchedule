@@ -1,4 +1,4 @@
-// import { TimeSlot, FacultyAvailability } from "@/lib/types";
+// import { TimeSlot, FacultyAvailability } from "@/types";
 
 // /**
 //  * TimeSlotManager - Phase 2: Data Services

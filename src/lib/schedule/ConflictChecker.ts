@@ -6,7 +6,7 @@
 //   FacultyAvailability,
 //   Conflict,
 //   SectionMeeting,
-// } from "@/lib/types";
+// } from "@/types";
 // import { TimeSlotManager } from "./TimeSlotManager";
 
 // /**

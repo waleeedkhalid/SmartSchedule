@@ -6,7 +6,7 @@
 //   ElectiveCourse,
 //   CourseOffering,
 //   IrregularStudent,
-// } from "@/lib/types";
+// } from "@/types";
 // import { getCurriculumByLevel } from "@/lib/schedule/curriculum-source";
 // import { getSupabaseAdminOrThrow } from "@/lib/supabase-admin";
 

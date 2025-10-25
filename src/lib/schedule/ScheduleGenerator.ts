@@ -7,7 +7,7 @@
 //   CourseOffering,
 //   SWEStudent,
 //   FacultyAvailability,
-// } from "@/lib/types";
+// } from "@/types";
 // import { ScheduleDataCollector } from "./ScheduleDataCollector";
 // import { TimeSlotManager } from "./TimeSlotManager";
 // import { ConflictChecker } from "./ConflictChecker";
