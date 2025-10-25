@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -83,6 +84,7 @@ const roleOptions: RoleOption[] = [
 ];
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,6 +96,7 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
   const validateFullName = (name: string) => {
     if (!name.trim()) return "Full name is required";
@@ -144,6 +147,18 @@ export default function SignUpPage() {
   const handleBlur = (field: string) => {
     setTouchedFields((prev) => new Set(prev).add(field));
   };
+
+  // Countdown and redirect after successful signup
+  useEffect(() => {
+    if (redirectCountdown !== null && redirectCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRedirectCountdown(redirectCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (redirectCountdown === 0) {
+      router.push("/login");
+    }
+  }, [redirectCountdown, router]);
 
   const fullNameError = touchedFields.has("fullName")
     ? validateFullName(fullName)
@@ -223,6 +238,9 @@ export default function SignUpPage() {
       setSuccessMessage(
         responseData.message ?? "Check your email to verify your account."
       );
+
+      // Start countdown to redirect
+      setRedirectCountdown(5);
 
       // Reset form
       setFullName("");
@@ -511,9 +529,16 @@ export default function SignUpPage() {
                 )}
                 {successMessage && (
                   <Alert className="border-2 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <AlertDescription className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                      <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                      {successMessage}
+                    <AlertDescription className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                        {successMessage}
+                      </div>
+                      {redirectCountdown !== null && (
+                        <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                          Redirecting to login in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
+                        </div>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
