@@ -1,40 +1,34 @@
-// Centralized, static demo accounts used across the app
+/**
+ * Demo Accounts
+ * Centralized demo accounts for testing and demonstration
+ */
 
-export type DemoAccount = {
+import type { UserRole } from "@/lib/auth/constants";
+
+export interface DemoAccount {
   full_name: string;
   email: string;
   password: string;
-  role:
-    | "student"
-    | "faculty"
-    | "scheduling_committee"
-    | "teaching_load_committee"
-    | "registrar";
-};
+  role: UserRole;
+}
 
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     full_name: "Ahmed",
-    email: "3ee8fcc8d8@webxios.pro",
-    password: "3ee8fcc8d8@webxios.pro",
+    email: "064d6c9dac@webxios.pro",
+    password: "064d6c9dac@webxios.proL",
     role: "student",
   },
   {
-    full_name: "Elliott",
-    email: "394e3da6b0@webxios.pro",
-    password: "394e3da6b0@webxios.pro",
-    role: "scheduling_committee",
-  },
-  {
-    full_name: "Doe",
-    email: "f5545f4c5d@webxios.pro",
-    password: "f5545f4c5d@webxios.pro",
-    role: "registrar",
-  },
-  {
-    full_name: "John Doe",
-    email: "d05e85a298@webxios.pro",
-    password: "d05e85a298@webxios.pro",
+    full_name: "Ali",
+    email: "77539b2fb6@webxios.pro",
+    password: "77539b2fb6@webxios.proL",
     role: "faculty",
+  },
+  {
+    full_name: "Abdullah",
+    email: "7acde56893@webxios.pro",
+    password: "7acde56893@webxios.proL",
+    role: "registrar",
   },
 ];

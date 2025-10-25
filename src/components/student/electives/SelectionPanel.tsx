@@ -81,7 +81,7 @@ export function SelectionPanel({
             {selectedCourses.length}/{maxSelections}
           </Badge>
         </CardTitle>
-        <CardDescription>Rank your course preferences</CardDescription>
+        <CardDescription>Select 1-6 courses total (across all packages)</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -175,9 +175,9 @@ export function SelectionPanel({
           >
             Review & Submit
           </Button>
-          {!canSubmit && selectedCourses.length > 0 && (
+          {selectedCourses.length > 0 && !packageRequirements.every((pkg) => pkg.isComplete) && (
             <p className="text-xs text-center text-yellow-600 dark:text-yellow-400">
-              Complete all package requirements to submit
+              ⚠️ Some package requirements not met. You can still submit with eligible courses.
             </p>
           )}
         </div>
