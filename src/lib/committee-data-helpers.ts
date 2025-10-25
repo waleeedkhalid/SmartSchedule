@@ -1,6 +1,6 @@
 // // Utility functions to transform mockCourseOfferings data for committee components.
 // // Domain types MUST come from central definitions in src/lib/types.ts (DEC-Types-01).
-// import type { CourseOffering } from "@/lib/types";
+// import type { CourseOffering } from "@/types";
 
 // // Flattened view of nested exam objects for table rendering.
 // export type ExamRecord = {

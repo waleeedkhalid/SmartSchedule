@@ -7,7 +7,7 @@
 //   NormalizedTimeSlot,
 //   Schedule,
 //   SectionMeeting,
-// } from "@/lib/types";
+// } from "@/types";
 
 // export interface CatalogActivity {
 //   section: string;

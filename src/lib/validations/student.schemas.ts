@@ -62,8 +62,8 @@ export type StudentLoginFormData = z.infer<typeof studentLoginSchema>;
 
 // Student feedback schema
 export const studentFeedbackSchema = z.object({
-  courseCode: z.string().min(1, "Course code is required"),
-  rating: z.number().min(1).max(5),
+  courseCode: z.string().optional(),
+  rating: z.number().min(1).max(5).optional(),
   feedback: z
     .string()
     .min(10, "Feedback must be at least 10 characters")
