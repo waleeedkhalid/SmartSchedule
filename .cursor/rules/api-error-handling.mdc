@@ -1,0 +1,617 @@
+---
+description: API route patterns and comprehensive error handling
+globs: app/api/**/*,*.ts,*.tsx
+---
+
+# API Routes & Error Handling
+
+## Next.js 15 App Router API Routes
+
+### Basic Route Handler Structure
+
+```typescript
+// ✅ GOOD: app/api/courses/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    
+    // Fetch data
+    const { data, error } = await supabase
+      .from("course")
+      .select("*")
+      .order("course_code");
+    
+    if (error) throw error;
+    
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error("GET /api/courses error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    
+    // Parse and validate body
+    const body = await request.json();
+    
+    // Insert data
+    const { data, error } = await supabase
+      .from("course")
+      .insert(body)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/courses error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Dynamic Route Handlers
+
+```typescript
+// ✅ GOOD: app/api/courses/[courseId]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { courseId: string } }
+) {
+  try {
+    const supabase = await createServerClient();
+    const { courseId } = params;
+    
+    const { data, error } = await supabase
+      .from("course")
+      .select("*")
+      .eq("course_code", courseId)
+      .single();
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        return NextResponse.json(
+          { error: "Course not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
+    
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error(`GET /api/courses/${params.courseId} error:`, error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Input Validation with Zod
+
+```typescript
+// ✅ GOOD: Validate input with Zod
+import { z } from "zod";
+
+const createCourseSchema = z.object({
+  course_code: z.string().min(1).max(10),
+  course_name: z.string().min(1).max(200),
+  credits: z.number().int().min(1).max(6),
+  department: z.string().min(1),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Validate input
+    const validated = createCourseSchema.parse(body);
+    
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("course")
+      .insert(validated)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    // Validation error
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: "Validation failed",
+          details: error.errors 
+        },
+        { status: 400 }
+      );
+    }
+    
+    console.error("POST /api/courses error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Error Handling Patterns
+
+### Comprehensive Error Handler
+
+```typescript
+// ✅ GOOD: Centralized error handling utility
+export class ApiError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export function handleApiError(error: unknown): NextResponse {
+  console.error("API Error:", error);
+  
+  // Known API error
+  if (error instanceof ApiError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: error.statusCode }
+    );
+  }
+  
+  // Zod validation error
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { 
+        error: "Validation failed",
+        details: error.errors.map(e => ({
+          field: e.path.join("."),
+          message: e.message,
+        }))
+      },
+      { status: 400 }
+    );
+  }
+  
+  // Supabase error
+  if (error && typeof error === "object" && "code" in error) {
+    const pgError = error as { code: string; message: string };
+    
+    // Not found
+    if (pgError.code === "PGRST116") {
+      return NextResponse.json(
+        { error: "Resource not found" },
+        { status: 404 }
+      );
+    }
+    
+    // Permission denied (RLS)
+    if (pgError.code === "42501") {
+      return NextResponse.json(
+        { error: "Permission denied" },
+        { status: 403 }
+      );
+    }
+  }
+  
+  // Unknown error
+  return NextResponse.json(
+    { error: "Internal server error" },
+    { status: 500 }
+  );
+}
+
+// Usage
+export async function GET(request: NextRequest) {
+  try {
+    // ... api logic
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+```
+
+### Custom Error Classes
+
+```typescript
+// ✅ GOOD: Specific error types
+export class UnauthorizedError extends ApiError {
+  constructor(message = "Unauthorized") {
+    super(401, message, "UNAUTHORIZED");
+  }
+}
+
+export class ForbiddenError extends ApiError {
+  constructor(message = "Forbidden") {
+    super(403, message, "FORBIDDEN");
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(resource: string) {
+    super(404, `${resource} not found`, "NOT_FOUND");
+  }
+}
+
+export class ValidationError extends ApiError {
+  constructor(message: string, public details?: any) {
+    super(400, message, "VALIDATION_ERROR");
+  }
+}
+
+// Usage
+if (!user) {
+  throw new UnauthorizedError();
+}
+
+if (user.role !== "committee") {
+  throw new ForbiddenError("Only committee members can access this");
+}
+
+if (!course) {
+  throw new NotFoundError("Course");
+}
+```
+
+## Authentication Middleware
+
+```typescript
+// ✅ GOOD: Reusable auth wrapper
+export function withAuth(
+  handler: (req: NextRequest, user: User) => Promise<NextResponse>
+) {
+  return async (req: NextRequest) => {
+    try {
+      const supabase = await createServerClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new UnauthorizedError();
+      }
+      
+      return await handler(req, user);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  };
+}
+
+// Usage
+export const GET = withAuth(async (req, user) => {
+  const supabase = await createServerClient();
+  const { data } = await supabase.from("courses").select("*");
+  return NextResponse.json({ data });
+});
+```
+
+## Role-Based Authorization
+
+```typescript
+// ✅ GOOD: Role checking middleware
+export function withRole(
+  allowedRoles: string[],
+  handler: (req: NextRequest, user: User, profile: Profile) => Promise<NextResponse>
+) {
+  return withAuth(async (req, user) => {
+    const supabase = await createServerClient();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    
+    if (!profile || !allowedRoles.includes(profile.role)) {
+      throw new ForbiddenError(
+        `This action requires one of: ${allowedRoles.join(", ")}`
+      );
+    }
+    
+    return await handler(req, user, profile);
+  });
+}
+
+// Usage
+export const POST = withRole(
+  ["scheduling_committee", "registrar"],
+  async (req, user, profile) => {
+    // Only committee members and registrar can access
+    const body = await req.json();
+    // ... create course logic
+    return NextResponse.json({ success: true });
+  }
+);
+```
+
+## Server Actions (Preferred over API Routes)
+
+```typescript
+// ✅ GOOD: Use Server Actions for mutations
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createServerClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth/cached-auth";
+
+export async function createCourse(formData: FormData) {
+  try {
+    // Authentication
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return { error: "Unauthorized" };
+    }
+    
+    // Validation
+    const courseData = {
+      course_code: formData.get("code") as string,
+      course_name: formData.get("name") as string,
+      credits: parseInt(formData.get("credits") as string),
+    };
+    
+    const validated = createCourseSchema.parse(courseData);
+    
+    // Database operation
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("course")
+      .insert(validated)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Revalidate cache
+    revalidatePath("/committee/courses");
+    
+    return { success: true, data };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { 
+        error: "Validation failed",
+        details: error.errors 
+      };
+    }
+    
+    console.error("createCourse error:", error);
+    return { error: "Failed to create course" };
+  }
+}
+```
+
+## Error Boundaries (Client-Side)
+
+```typescript
+// ✅ GOOD: Error boundary for client components
+"use client";
+
+import { Component, ReactNode } from "react";
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+  
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Error boundary caught error:", error, errorInfo);
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="error-container">
+          <h2>Something went wrong</h2>
+          <p>{this.state.error?.message}</p>
+          <button onClick={() => this.setState({ hasError: false })}>
+            Try again
+          </button>
+        </div>
+      );
+    }
+    
+    return this.props.children;
+  }
+}
+
+// Usage
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <DashboardContent />
+</ErrorBoundary>
+```
+
+## Toast Notifications for User Feedback
+
+```typescript
+// ✅ GOOD: User-friendly error messages
+"use client";
+
+import { useToast } from "@/components/ui/use-toast";
+
+export function CourseForm() {
+  const { toast } = useToast();
+  
+  async function handleSubmit(formData: FormData) {
+    try {
+      const result = await createCourse(formData);
+      
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Success",
+        description: "Course created successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+  
+  return <form action={handleSubmit}>{/* form fields */}</form>;
+}
+```
+
+## Error Logging Best Practices
+
+```typescript
+// ✅ GOOD: Structured error logging
+function logError(error: unknown, context: Record<string, any>) {
+  const errorInfo = {
+    timestamp: new Date().toISOString(),
+    error: error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    } : error,
+    context,
+    environment: process.env.NODE_ENV,
+  };
+  
+  console.error("Error:", JSON.stringify(errorInfo, null, 2));
+  
+  // In production, send to error tracking service
+  if (process.env.NODE_ENV === "production") {
+    // Sentry, LogRocket, etc.
+  }
+}
+
+// Usage
+try {
+  await dangerousOperation();
+} catch (error) {
+  logError(error, {
+    userId: user.id,
+    operation: "createCourse",
+    input: courseData,
+  });
+  throw error;
+}
+```
+
+## HTTP Status Codes Reference
+
+```typescript
+// Use appropriate status codes
+export const StatusCodes = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_SERVER_ERROR: 500,
+} as const;
+
+// ✅ GOOD: Meaningful status codes
+if (!user) {
+  return NextResponse.json(
+    { error: "Not authenticated" },
+    { status: StatusCodes.UNAUTHORIZED }
+  );
+}
+
+if (user.role !== "admin") {
+  return NextResponse.json(
+    { error: "Insufficient permissions" },
+    { status: StatusCodes.FORBIDDEN }
+  );
+}
+
+if (existingCourse) {
+  return NextResponse.json(
+    { error: "Course already exists" },
+    { status: StatusCodes.CONFLICT }
+  );
+}
+```
+
+## Error Handling Checklist
+
+✅ Always wrap API handlers in try-catch
+✅ Return appropriate HTTP status codes
+✅ Validate input with Zod or similar
+✅ Log errors with context
+✅ Show user-friendly error messages
+✅ Use custom error classes for clarity
+✅ Implement error boundaries for client components
+✅ Handle Supabase errors specifically
+✅ Check authentication and authorization
+✅ Use Server Actions instead of API routes for mutations
+✅ Revalidate cache after mutations
+✅ Test error scenarios
+
+❌ Don't expose sensitive error details to users
+❌ Don't ignore errors silently
+❌ Don't return generic error messages
+❌ Don't forget to log errors
+❌ Don't skip input validation
+❌ Don't use API routes for simple mutations (use Server Actions)
+❌ Don't forget to handle async errors

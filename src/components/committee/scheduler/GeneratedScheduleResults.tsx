@@ -1,375 +1,398 @@
-// /**
-//  * GeneratedScheduleResults
-//  *
-//  * Displays generated schedule with:
-//  * - Metadata (utilization stats)
-//  * - Conflicts by severity
-//  * - Section details per level
-//  * - Export/publish options
-//  */
+/**
+ * GeneratedScheduleResults Component
+ * 
+ * Displays comprehensive results from schedule generation with:
+ * - Generation summary and statistics
+ * - Level-by-level breakdown
+ * - Section details
+ * - Export and publish actions
+ */
 
-// "use client";
+"use client";
 
-// import { useState } from "react";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
-// import {
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableHead,
-//   TableHeader,
-//   TableRow,
-// } from "@/components/ui/table";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import {
-//   AlertCircle,
-//   AlertTriangle,
-//   Check,
-//   Download,
-//   FileText,
-// } from "lucide-react";
-// import { GeneratedSchedule } from "@/types";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Clock,
+  Users,
+  BookOpen,
+  Calendar,
+  TrendingUp,
+} from "lucide-react";
 
-// interface GeneratedScheduleResultsProps {
-//   schedule: GeneratedSchedule;
-//   onExport?: () => void;
-//   onPublish?: () => void;
-// }
+export interface LevelScheduleData {
+  level: number;
+  studentCount: number;
+  courses: {
+    courseCode: string;
+    courseName: string;
+    sectionsCreated: number;
+    totalEnrolled?: number;
+    capacity?: number;
+  }[];
+}
 
-// export function GeneratedScheduleResults({
-//   schedule,
-//   onExport,
-//   onPublish,
-// }: GeneratedScheduleResultsProps) {
-//   const [selectedLevel, setSelectedLevel] = useState<number>(
-//     schedule.levels[0]?.level || 4
-//   );
+export interface GeneratedScheduleResultsProps {
+  data: {
+    levels: LevelScheduleData[];
+    conflicts: {
+      type: string;
+      description: string;
+      severity?: string;
+    }[];
+    execution_time_ms?: number;
+  };
+  termCode: string;
+  onExport?: () => void;
+  onPublish?: () => void;
+  onViewConflicts?: () => void;
+}
 
-//   // Categorize conflicts by severity
-//   const errorConflicts = schedule.conflicts.filter(
-//     (c) => c.severity === "ERROR"
-//   );
-//   const warningConflicts = schedule.conflicts.filter(
-//     (c) => c.severity === "WARNING"
-//   );
+export function GeneratedScheduleResults({
+  data,
+  termCode,
+  onExport,
+  onPublish,
+  onViewConflicts,
+}: GeneratedScheduleResultsProps) {
+  const [selectedLevel, setSelectedLevel] = useState<number>(
+    data.levels[0]?.level || 3
+  );
 
-//   const getSeverityIcon = (severity: "ERROR" | "WARNING") => {
-//     switch (severity) {
-//       case "ERROR":
-//         return <AlertCircle className="w-4 h-4 text-destructive" />;
-//       case "WARNING":
-//         return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-//       default:
-//         return null;
-//     }
-//   };
+  // Calculate overall statistics
+  const totalStudents = data.levels.reduce(
+    (sum, level) => sum + level.studentCount,
+    0
+  );
+  const totalSections = data.levels.reduce(
+    (sum, level) =>
+      sum +
+      level.courses.reduce((s, course) => s + course.sectionsCreated, 0),
+    0
+  );
+  const totalCourses = data.levels.reduce(
+    (sum, level) => sum + level.courses.length,
+    0
+  );
 
-//   const getSeverityBadge = (severity: "ERROR" | "WARNING") => {
-//     return (
-//       <Badge
-//         variant="secondary"
-//         className={
-//           severity === "ERROR" ? "bg-red-100 text-red-800 border-red-200" : ""
-//         }
-//       >
-//         {severity}
-//       </Badge>
-//     );
-//   };
+  const selectedLevelData = data.levels.find(
+    (level) => level.level === selectedLevel
+  );
 
-//   return (
-//     <div className="space-y-6">
-//       {/* Header */}
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h2 className="text-2xl font-bold">Generated Schedule</h2>
-//           <p className="text-sm text-muted-foreground">
-//             {schedule.semester} • Generated{" "}
-//             {new Date(schedule.generatedAt).toLocaleString()}
-//           </p>
-//         </div>
-//         <div className="flex gap-2">
-//           {onExport && (
-//             <Button variant="outline" onClick={onExport}>
-//               <Download className="w-4 h-4 mr-2" />
-//               Export
-//             </Button>
-//           )}
-//           {onPublish && (
-//             <Button onClick={onPublish}>
-//               <FileText className="w-4 h-4 mr-2" />
-//               Publish Schedule
-//             </Button>
-//           )}
-//         </div>
-//       </div>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-6 h-6 text-green-600" />
+            Schedule Generation Complete
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {termCode} • Generated for {data.levels.length} levels
+            {data.execution_time_ms && (
+              <span className="ml-2">
+                • Completed in {(data.execution_time_ms / 1000).toFixed(2)}s
+              </span>
+            )}
+          </p>
+        </div>
 
-//       {/* Metadata Cards */}
-//       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-//         <Card>
-//           <CardHeader className="pb-3">
-//             <CardTitle className="text-sm font-medium text-muted-foreground">
-//               Total Sections
-//             </CardTitle>
-//           </CardHeader>
-//           <CardContent>
-//             <p className="text-3xl font-bold">
-//               {schedule.metadata.totalSections}
-//             </p>
-//           </CardContent>
-//         </Card>
+        <div className="flex gap-2">
+          {onExport && (
+            <Button variant="outline" onClick={onExport}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          )}
+          {onPublish && (
+            <Button onClick={onPublish}>
+              <FileText className="w-4 h-4 mr-2" />
+              Publish Schedule
+            </Button>
+          )}
+        </div>
+      </div>
 
-//         <Card>
-//           <CardHeader className="pb-3">
-//             <CardTitle className="text-sm font-medium text-muted-foreground">
-//               Total Exams
-//             </CardTitle>
-//           </CardHeader>
-//           <CardContent>
-//             <p className="text-3xl font-bold">{schedule.metadata.totalExams}</p>
-//           </CardContent>
-//         </Card>
+      {/* Summary Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Total Students
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{totalStudents}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Across {data.levels.length} levels
+            </p>
+          </CardContent>
+        </Card>
 
-//         <Card>
-//           <CardHeader className="pb-3">
-//             <CardTitle className="text-sm font-medium text-muted-foreground">
-//               Faculty Utilization
-//             </CardTitle>
-//           </CardHeader>
-//           <CardContent>
-//             <p className="text-3xl font-bold">
-//               {schedule.metadata.facultyUtilization.toFixed(1)}%
-//             </p>
-//           </CardContent>
-//         </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Courses Scheduled
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{totalCourses}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Unique courses
+            </p>
+          </CardContent>
+        </Card>
 
-//         <Card>
-//           <CardHeader className="pb-3">
-//             <CardTitle className="text-sm font-medium text-muted-foreground">
-//               Room Utilization
-//             </CardTitle>
-//           </CardHeader>
-//           <CardContent>
-//             <p className="text-3xl font-bold">
-//               {schedule.metadata.roomUtilization.toFixed(1)}%
-//             </p>
-//           </CardContent>
-//         </Card>
-//       </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Sections Created
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{totalSections}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total sections
+            </p>
+          </CardContent>
+        </Card>
 
-//       {/* Conflicts Summary */}
-//       <Card>
-//         <CardHeader>
-//           <CardTitle className="flex items-center gap-2">
-//             {schedule.conflicts.length === 0 ? (
-//               <>
-//                 <Check className="w-5 h-5 text-green-500" />
-//                 No Conflicts Detected
-//               </>
-//             ) : (
-//               <>
-//                 <AlertCircle className="w-5 h-5 text-destructive" />
-//                 {schedule.conflicts.length} Conflict
-//                 {schedule.conflicts.length !== 1 ? "s" : ""} Detected
-//               </>
-//             )}
-//           </CardTitle>
-//         </CardHeader>
-//         {schedule.conflicts.length > 0 && (
-//           <CardContent>
-//             <div className="space-y-4">
-//               <div className="grid grid-cols-2 gap-4 text-sm">
-//                 <div className="flex items-center gap-2">
-//                   <AlertCircle className="w-4 h-4 text-destructive" />
-//                   <span className="font-medium">{errorConflicts.length}</span>
-//                   <span className="text-muted-foreground">Errors</span>
-//                 </div>
-//                 <div className="flex items-center gap-2">
-//                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
-//                   <span className="font-medium">{warningConflicts.length}</span>
-//                   <span className="text-muted-foreground">Warnings</span>
-//                 </div>
-//               </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Generation Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">
+              {data.execution_time_ms
+                ? (data.execution_time_ms / 1000).toFixed(1)
+                : "N/A"}
+              <span className="text-lg">s</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Execution time
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-//               {/* Conflict Details Table */}
-//               <div className="border rounded-md">
-//                 <Table>
-//                   <TableHeader>
-//                     <TableRow>
-//                       <TableHead className="w-[100px]">Severity</TableHead>
-//                       <TableHead className="w-[120px]">Type</TableHead>
-//                       <TableHead>Message</TableHead>
-//                       <TableHead className="w-[150px]">Affected</TableHead>
-//                     </TableRow>
-//                   </TableHeader>
-//                   <TableBody>
-//                     {schedule.conflicts.slice(0, 10).map((conflict, index) => (
-//                       <TableRow key={index}>
-//                         <TableCell>
-//                           <div className="flex items-center gap-2">
-//                             {getSeverityIcon(conflict.severity)}
-//                             {getSeverityBadge(conflict.severity)}
-//                           </div>
-//                         </TableCell>
-//                         <TableCell className="font-mono text-xs">
-//                           {conflict.type}
-//                         </TableCell>
-//                         <TableCell className="text-sm">
-//                           {conflict.message}
-//                         </TableCell>
-//                         <TableCell className="font-mono text-xs">
-//                           {conflict.affected.map((a) => a.label).join(", ")}
-//                         </TableCell>
-//                       </TableRow>
-//                     ))}
-//                   </TableBody>
-//                 </Table>
-//               </div>
-//               {schedule.conflicts.length > 10 && (
-//                 <p className="text-sm text-muted-foreground text-center">
-//                   Showing 10 of {schedule.conflicts.length} conflicts
-//                 </p>
-//               )}
-//             </div>
-//           </CardContent>
-//         )}
-//       </Card>
+      {/* Conflicts Summary */}
+      {data.conflicts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-destructive">
+                {data.conflicts.length} Conflict
+                {data.conflicts.length !== 1 ? "s" : ""} Detected
+              </CardTitle>
+              {onViewConflicts && (
+                <Button variant="outline" onClick={onViewConflicts} size="sm">
+                  View & Resolve
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.conflicts.slice(0, 5).map((conflict, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/10 rounded-md"
+                >
+                  <Badge
+                    variant="secondary"
+                    className="bg-destructive/10 text-destructive mt-0.5"
+                  >
+                    {conflict.type}
+                  </Badge>
+                  <p className="text-sm flex-1">{conflict.description}</p>
+                </div>
+              ))}
+              {data.conflicts.length > 5 && (
+                <p className="text-sm text-muted-foreground text-center pt-2">
+                  ... and {data.conflicts.length - 5} more conflicts
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-//       {/* Level Schedule Details */}
-//       <Card>
-//         <CardHeader>
-//           <CardTitle>Schedule Details by Level</CardTitle>
-//         </CardHeader>
-//         <CardContent>
-//           <Tabs
-//             value={selectedLevel.toString()}
-//             onValueChange={(value) => setSelectedLevel(parseInt(value))}
-//           >
-//             <TabsList>
-//               {schedule.levels.map((ls) => (
-//                 <TabsTrigger key={ls.level} value={ls.level.toString()}>
-//                   Level {ls.level}
-//                   <Badge variant="secondary" className="ml-2">
-//                     {ls.studentCount}
-//                   </Badge>
-//                 </TabsTrigger>
-//               ))}
-//             </TabsList>
+      {/* Level-by-Level Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Schedule Details by Level</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs
+            value={selectedLevel.toString()}
+            onValueChange={(value) => setSelectedLevel(parseInt(value))}
+          >
+            <TabsList className="grid grid-cols-6 w-full">
+              {data.levels.map((level) => (
+                <TabsTrigger
+                  key={level.level}
+                  value={level.level.toString()}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Level {level.level}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {level.studentCount}
+                    </Badge>
+                  </div>
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-//             {schedule.levels.map((levelSchedule) => (
-//               <TabsContent
-//                 key={levelSchedule.level}
-//                 value={levelSchedule.level.toString()}
-//                 className="space-y-4"
-//               >
-//                 {/* Level Summary */}
-//                 <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-md">
-//                   <div>
-//                     <p className="text-sm text-muted-foreground">Students</p>
-//                     <p className="text-2xl font-bold">
-//                       {levelSchedule.studentCount}
-//                     </p>
-//                   </div>
-//                   <div>
-//                     <p className="text-sm text-muted-foreground">SWE Courses</p>
-//                     <p className="text-2xl font-bold">
-//                       {levelSchedule.courses.length}
-//                     </p>
-//                   </div>
-//                   <div>
-//                     <p className="text-sm text-muted-foreground">Sections</p>
-//                     <p className="text-2xl font-bold">
-//                       {levelSchedule.courses.reduce(
-//                         (sum, course) => sum + course.sections.length,
-//                         0
-//                       )}
-//                     </p>
-//                   </div>
-//                 </div>
+            {data.levels.map((levelData) => (
+              <TabsContent
+                key={levelData.level}
+                value={levelData.level.toString()}
+                className="space-y-4 mt-4"
+              >
+                {/* Level Summary */}
+                <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Students</p>
+                    </div>
+                    <p className="text-2xl font-bold">{levelData.studentCount}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <BookOpen className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Courses</p>
+                    </div>
+                    <p className="text-2xl font-bold">{levelData.courses.length}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Sections</p>
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {levelData.courses.reduce(
+                        (sum, course) => sum + course.sectionsCreated,
+                        0
+                      )}
+                    </p>
+                  </div>
+                </div>
 
-//                 {/* SWE Courses Table */}
-//                 <div>
-//                   <h4 className="font-semibold mb-3">SWE Courses & Sections</h4>
-//                   <div className="border rounded-md">
-//                     <Table>
-//                       <TableHeader>
-//                         <TableRow>
-//                           <TableHead>Course</TableHead>
-//                           <TableHead>Section</TableHead>
-//                           <TableHead>Instructor</TableHead>
-//                           <TableHead>Time</TableHead>
-//                           <TableHead>Room</TableHead>
-//                           <TableHead className="text-right">Capacity</TableHead>
-//                         </TableRow>
-//                       </TableHeader>
-//                       <TableBody>
-//                         {levelSchedule.courses.map((course) =>
-//                           course.sections.map((section) => (
-//                             <TableRow key={section.id}>
-//                               <TableCell className="font-mono text-sm">
-//                                 {course.code}
-//                                 <br />
-//                                 <span className="text-xs text-muted-foreground">
-//                                   {course.name}
-//                                 </span>
-//                               </TableCell>
-//                               <TableCell className="font-mono text-xs">
-//                                 {section.id}
-//                               </TableCell>
-//                               <TableCell className="text-sm">
-//                                 {section.instructor}
-//                               </TableCell>
-//                               <TableCell className="text-xs">
-//                                 {section.times.map((time, idx) => (
-//                                   <div key={idx}>
-//                                     {time.day} {time.start}-{time.end}
-//                                   </div>
-//                                 ))}
-//                               </TableCell>
-//                               <TableCell className="text-sm">
-//                                 {section.room}
-//                               </TableCell>
-//                               <TableCell className="text-right">
-//                                 {section.capacity || 30}
-//                               </TableCell>
-//                             </TableRow>
-//                           ))
-//                         )}
-//                       </TableBody>
-//                     </Table>
-//                   </div>
-//                 </div>
+                {/* Courses Table */}
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Course Code</TableHead>
+                        <TableHead>Course Name</TableHead>
+                        <TableHead className="text-center">Sections Created</TableHead>
+                        <TableHead className="text-center">Enrolled</TableHead>
+                        <TableHead className="text-center">Capacity</TableHead>
+                        <TableHead className="text-right">Utilization</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {levelData.courses.map((course) => {
+                        const utilization = course.capacity
+                          ? ((course.totalEnrolled || 0) / course.capacity) * 100
+                          : 0;
 
-//                 {/* External Courses */}
-//                 {levelSchedule.externalCourses.length > 0 && (
-//                   <div>
-//                     <h4 className="font-semibold mb-3">
-//                       External Courses (Reference)
-//                     </h4>
-//                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-//                       {levelSchedule.externalCourses.map((course) => (
-//                         <div
-//                           key={course.code}
-//                           className="p-3 border rounded-md bg-muted/30"
-//                         >
-//                           <p className="font-mono text-sm font-medium">
-//                             {course.code}
-//                           </p>
-//                           <p className="text-xs text-muted-foreground">
-//                             {course.department}
-//                           </p>
-//                         </div>
-//                       ))}
-//                     </div>
-//                   </div>
-//                 )}
-//               </TabsContent>
-//             ))}
-//           </Tabs>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// }
+                        return (
+                          <TableRow key={course.courseCode}>
+                            <TableCell className="font-mono font-medium">
+                              {course.courseCode}
+                            </TableCell>
+                            <TableCell>{course.courseName}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary">
+                                {course.sectionsCreated}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {course.totalEnrolled || "-"}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {course.capacity || "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {course.capacity ? (
+                                <span
+                                  className={
+                                    utilization > 90
+                                      ? "text-orange-600 font-medium"
+                                      : utilization > 100
+                                      ? "text-destructive font-medium"
+                                      : "text-muted-foreground"
+                                  }
+                                >
+                                  {utilization.toFixed(0)}%
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Execution Details */}
+      {data.execution_time_ms && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Execution Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Total Time:</span>
+                <span className="ml-2 font-medium">
+                  {(data.execution_time_ms / 1000).toFixed(2)}s
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Avg. per Level:</span>
+                <span className="ml-2 font-medium">
+                  {(data.execution_time_ms / 1000 / data.levels.length).toFixed(2)}s
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,397 @@
+---
+description: Supabase query optimization and best practices
+globs: *.ts,*.tsx,lib/**/*,app/**/*
+---
+
+# Supabase Query Best Practices
+
+## Critical Performance Rules
+
+### 1. RLS Policy-Aware Queries
+
+**CRITICAL: Always wrap auth.uid() in subquery for RLS policies**
+
+```sql
+-- ❌ BAD: auth.uid() re-evaluated for EVERY row (10-100x slower)
+CREATE POLICY "select_own" ON students
+  FOR SELECT USING (id = auth.uid());
+
+-- ✅ GOOD: auth.uid() evaluated ONCE per query
+CREATE POLICY "select_own" ON students
+  FOR SELECT USING (id = (select auth.uid()));
+```
+
+```typescript
+// TypeScript equivalent understanding:
+// When you query students table, RLS automatically applies
+// The optimized policy ensures auth.uid() is only called once
+
+const { data } = await supabase
+  .from("students")
+  .select("*"); // RLS automatically filters to current user
+```
+
+### 2. Select Only Required Columns
+
+```typescript
+// ❌ BAD: Fetches all columns (slow, high bandwidth)
+const { data } = await supabase
+  .from("section")
+  .select("*");
+
+// ✅ GOOD: Explicit column selection
+const { data } = await supabase
+  .from("section")
+  .select("section_id, course_id, capacity, instructor_id");
+
+// ✅ BETTER: With nested relations
+const { data } = await supabase
+  .from("section")
+  .select(`
+    section_id,
+    course_id,
+    capacity,
+    course:course_id (
+      course_code,
+      course_name
+    ),
+    instructor:instructor_id (
+      name,
+      email
+    )
+  `);
+```
+
+### 3. Use Proper Filtering
+
+```typescript
+// ✅ GOOD: Filter at database level
+const { data } = await supabase
+  .from("section")
+  .select("*")
+  .eq("term_id", termId)
+  .eq("is_active", true)
+  .order("course_id");
+
+// ❌ BAD: Filter in JavaScript (fetches all data first)
+const { data: allData } = await supabase.from("section").select("*");
+const filtered = allData.filter(s => s.term_id === termId && s.is_active);
+```
+
+### 4. Efficient Joins and Relations
+
+```typescript
+// ✅ GOOD: Single query with joins
+const { data } = await supabase
+  .from("section_enrollment")
+  .select(`
+    *,
+    student:student_id (
+      name,
+      email,
+      student_number
+    ),
+    section:section_id (
+      section_number,
+      course:course_id (
+        course_code,
+        course_name
+      )
+    )
+  `)
+  .eq("section_id", sectionId);
+
+// ❌ BAD: Multiple queries (N+1 problem)
+const { data: enrollments } = await supabase
+  .from("section_enrollment")
+  .select("*")
+  .eq("section_id", sectionId);
+
+const studentsData = await Promise.all(
+  enrollments.map(e => 
+    supabase.from("students").select("*").eq("id", e.student_id).single()
+  )
+);
+```
+
+### 5. Pagination
+
+```typescript
+// ✅ GOOD: Server-side pagination
+const PAGE_SIZE = 50;
+const { data, count } = await supabase
+  .from("students")
+  .select("*", { count: "exact" })
+  .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+  .order("name");
+
+// ❌ BAD: Fetch all and paginate client-side
+const { data: allStudents } = await supabase.from("students").select("*");
+const paginated = allStudents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+```
+
+### 6. Counting Rows Efficiently
+
+```typescript
+// ✅ GOOD: Count with query
+const { count } = await supabase
+  .from("students")
+  .select("*", { count: "exact", head: true });
+
+// ✅ BETTER: Count without fetching data (if you only need count)
+const { count } = await supabase
+  .from("students")
+  .select("id", { count: "exact", head: true });
+
+// ❌ BAD: Fetch all rows to count
+const { data } = await supabase.from("students").select("*");
+const count = data.length;
+```
+
+## Query Performance Patterns
+
+### 1. Avoid Fetching in Loops
+
+```typescript
+// ❌ BAD: N queries in a loop
+const courseIds = ["CS101", "CS102", "CS103"];
+const courses = await Promise.all(
+  courseIds.map(id => 
+    supabase.from("course").select("*").eq("course_code", id).single()
+  )
+);
+
+// ✅ GOOD: Single query with IN clause
+const { data: courses } = await supabase
+  .from("course")
+  .select("*")
+  .in("course_code", courseIds);
+```
+
+### 2. Use Indexes for Queries
+
+```typescript
+// ✅ GOOD: Query on indexed columns
+// Ensure these columns have indexes:
+// - Primary keys (automatic)
+// - Foreign keys (should be indexed)
+// - Columns used in WHERE, JOIN, ORDER BY
+
+const { data } = await supabase
+  .from("students")
+  .select("*")
+  .eq("id", userId); // 'id' is primary key (indexed)
+
+const { data: enrollments } = await supabase
+  .from("enrollment")
+  .select("*")
+  .eq("student_id", studentId) // Should have index
+  .order("created_at"); // Should have index if frequently sorted
+```
+
+### 3. Full-Text Search
+
+```typescript
+// ✅ GOOD: Full-text search with textSearch
+const { data } = await supabase
+  .from("course")
+  .select("*")
+  .textSearch("course_name", searchQuery);
+
+// ⚠️ OK but slower: ILIKE for simple searches
+const { data } = await supabase
+  .from("course")
+  .select("*")
+  .ilike("course_name", `%${searchQuery}%`);
+```
+
+### 4. Aggregations
+
+```typescript
+// ✅ GOOD: Database-level aggregation
+const { data } = await supabase
+  .rpc("get_enrollment_stats", { term_id: termId });
+
+// In SQL (create as RPC function):
+// CREATE OR REPLACE FUNCTION get_enrollment_stats(term_id uuid)
+// RETURNS TABLE (
+//   section_id uuid,
+//   enrolled_count bigint,
+//   capacity int
+// ) AS $$
+// BEGIN
+//   RETURN QUERY
+//   SELECT 
+//     s.section_id,
+//     COUNT(se.student_id) as enrolled_count,
+//     s.capacity
+//   FROM section s
+//   LEFT JOIN section_enrollment se ON s.section_id = se.section_id
+//   WHERE s.term_id = $1
+//   GROUP BY s.section_id, s.capacity;
+// END;
+// $$ LANGUAGE plpgsql;
+
+// ❌ BAD: Fetch all and aggregate in JavaScript
+const { data: sections } = await supabase.from("section").select("*");
+const { data: enrollments } = await supabase.from("section_enrollment").select("*");
+// ... complex JavaScript aggregation
+```
+
+## Error Handling
+
+```typescript
+// ✅ GOOD: Comprehensive error handling
+async function fetchStudentData(studentId: string) {
+  const supabase = createBrowserClient();
+  
+  const { data, error } = await supabase
+    .from("students")
+    .select("*")
+    .eq("id", studentId)
+    .single();
+  
+  if (error) {
+    // RLS error: User doesn't have permission
+    if (error.code === "PGRST116") {
+      throw new Error("You don't have permission to view this student");
+    }
+    
+    // Not found
+    if (error.code === "PGRST116") {
+      throw new Error("Student not found");
+    }
+    
+    // Other errors
+    console.error("Supabase error:", error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+  
+  return data;
+}
+```
+
+## Transactions and Batch Operations
+
+```typescript
+// ✅ GOOD: Batch insert
+const { data, error } = await supabase
+  .from("section_enrollment")
+  .insert([
+    { section_id: "...", student_id: "..." },
+    { section_id: "...", student_id: "..." },
+    // ... many more
+  ]);
+
+// ✅ GOOD: Batch update
+const { data, error } = await supabase
+  .from("section")
+  .update({ is_active: false })
+  .in("section_id", sectionIds);
+
+// ❌ BAD: Multiple individual operations
+for (const sectionId of sectionIds) {
+  await supabase
+    .from("section")
+    .update({ is_active: false })
+    .eq("section_id", sectionId);
+}
+```
+
+## Real-time Subscriptions
+
+```typescript
+// ✅ GOOD: Targeted subscription with filter
+const channel = supabase
+  .channel(`section-${sectionId}`)
+  .on(
+    "postgres_changes",
+    {
+      event: "INSERT",
+      schema: "public",
+      table: "section_enrollment",
+      filter: `section_id=eq.${sectionId}`,
+    },
+    handleNewEnrollment
+  )
+  .subscribe();
+
+// ❌ BAD: Subscribe to entire table without filter
+const channel = supabase
+  .channel("all-enrollments")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "section_enrollment",
+    },
+    handleChange // Called for ALL changes, not just relevant ones
+  )
+  .subscribe();
+```
+
+## Performance Checklist
+
+✅ Use `.select()` with specific columns, not `*`
+✅ Filter at database level with `.eq()`, `.in()`, etc.
+✅ Use `.range()` for pagination
+✅ Use `.order()` for sorting at database level
+✅ Batch operations instead of loops
+✅ Create indexes on frequently queried columns
+✅ Use RPC functions for complex queries
+✅ Use real-time subscriptions with filters
+✅ Handle errors appropriately
+✅ Wrap auth.uid() in subqueries in RLS policies
+
+❌ Don't fetch all data and filter in JavaScript
+❌ Don't use N+1 queries
+❌ Don't ignore error handling
+❌ Don't fetch data in loops
+❌ Don't use `SELECT *` unnecessarily
+❌ Don't paginate in JavaScript
+❌ Don't sort in JavaScript
+❌ Don't aggregate in JavaScript when possible in SQL
+
+## Monitoring Query Performance
+
+```typescript
+// Add this to development environment
+if (process.env.NODE_ENV === "development") {
+  const start = performance.now();
+  
+  const { data, error } = await supabase
+    .from("section")
+    .select("*");
+  
+  const end = performance.now();
+  console.log(`Query took ${end - start}ms`);
+  
+  // Warn if query is slow
+  if (end - start > 100) {
+    console.warn("Slow query detected! Consider optimization.");
+  }
+}
+```
+
+## Common Performance Issues
+
+### Issue: Slow listing pages
+**Cause**: Fetching too much data, no pagination
+**Solution**: Implement pagination with `.range()`
+
+### Issue: Dashboard loads slowly
+**Cause**: Multiple sequential queries (waterfall)
+**Solution**: Use `Promise.all()` for parallel fetching
+
+### Issue: Search is slow
+**Cause**: Using `.ilike()` without indexes
+**Solution**: Use full-text search or add GIN indexes
+
+### Issue: User queries are slow
+**Cause**: RLS policies calling `auth.uid()` without subquery
+**Solution**: Wrap in `(select auth.uid())`
+
+### Issue: Real-time updates cause UI lag
+**Cause**: Subscribing to entire table without filters
+**Solution**: Add specific filters to subscriptions

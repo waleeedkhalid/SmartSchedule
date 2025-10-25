@@ -1,474 +1,594 @@
-// import {
-//   TimeSlot,
-//   CourseOffering,
-//   Section,
-//   SWEStudent,
-//   FacultyAvailability,
-//   Conflict,
-//   SectionMeeting,
-// } from "@/types";
-// import { TimeSlotManager } from "./TimeSlotManager";
+import { TimeSlotManager } from "./TimeSlotManager";
+import { TimeSlot } from "@/types";
+import type {
+  ScheduleConflict,
+  ConflictType,
+  AffectedEntity,
+  ScheduledSection,
+  ScheduledExam,
+  SchedulerCourse,
+  SectionTimeSlot,
+} from "@/types/scheduler";
 
-// /**
-//  * ConflictChecker - Phase 3: Conflict Detection
-//  *
-//  * Detects all types of scheduling conflicts:
-//  * - Time conflicts (overlapping class times)
-//  * - Exam conflicts (students taking multiple exams at same time)
-//  * - Faculty conflicts (instructor assigned to multiple sections simultaneously)
-//  * - Room conflicts (same room booked for multiple sections)
-//  * - Prerequisite violations (students taking courses without prerequisites)
-//  * - Capacity conflicts (section enrollment exceeding capacity)
-//  */
-// export class ConflictChecker {
-//   private timeManager: TimeSlotManager;
+/**
+ * ConflictChecker - Phase 5: Comprehensive Conflict Detection
+ *
+ * Detects all types of schedule conflicts:
+ * - Student schedule conflicts (same time, multiple courses)
+ * - Faculty double-booking
+ * - Room conflicts
+ * - Exam conflicts
+ * - Prerequisite violations
+ * - Capacity violations
+ * - Constraint violations
+ */
+export class ConflictChecker {
+  private timeManager: TimeSlotManager;
 
-//   constructor() {
-//     this.timeManager = new TimeSlotManager();
-//   }
+  constructor() {
+    this.timeManager = new TimeSlotManager();
+  }
 
-//   /**
-//    * Check for time conflicts between two sections
-//    * Only reports ERROR if both time AND room conflict (same time + same room)
-//    * Reports WARNING if only time conflicts (different rooms)
-//    */
-//   checkSectionTimeConflict(
-//     section1: Section,
-//     section2: Section
-//   ): Conflict | null {
-//     // Get meeting times for both sections
-//     // Prefer normalized meetings if present, else derive from legacy times
-//     const times1: SectionMeeting[] =
-//       section1.meetings || legacyTimesToMeetings(section1.times);
-//     const times2: SectionMeeting[] =
-//       section2.meetings || legacyTimesToMeetings(section2.times);
+  // =====================================================
+  // TIME SLOT CONFLICTS
+  // =====================================================
 
-//     for (const time1 of times1) {
-//       for (const time2 of times2) {
-//         const slot1: TimeSlot = normalizeMeetingToDisplay(time1);
-//         const slot2: TimeSlot = normalizeMeetingToDisplay(time2);
+  /**
+   * Check if two time slots overlap
+   */
+  checkTimeSlotConflict(slot1: TimeSlot, slot2: TimeSlot): boolean {
+    return this.timeManager.doTimeSlotsOverlap(slot1, slot2);
+  }
 
-//         if (this.timeManager.doTimeSlotsOverlap(slot1, slot2)) {
-//           // Check if same room - only ERROR if both time AND room conflict
-//           const sameRoom =
-//             section1.room && section2.room && section1.room === section2.room;
+  /**
+   * Check if two section time slots overlap
+   */
+  checkSectionTimeSlotsOverlap(slot1: SectionTimeSlot, slot2: SectionTimeSlot): boolean {
+    // Different days don't conflict
+    if (slot1.day !== slot2.day) return false;
 
-//           return {
-//             id: `conflict-${section1.id}-${section2.id}-time`,
-//             type: "TIME",
-//             severity: sameRoom ? "ERROR" : "WARNING",
-//             message: sameRoom
-//               ? `Time and room conflict: ${section1.courseCode} and ${section2.courseCode} meet at the same time in ${section1.room}`
-//               : `Time conflict: ${section1.courseCode} and ${section2.courseCode} meet at the same time (different rooms)`,
-//             affected: [
-//               { id: section1.id, label: section1.courseCode },
-//               { id: section2.id, label: section2.courseCode },
-//             ],
-//             detectedAt: new Date().toISOString(),
-//           };
-//         }
-//       }
-//     }
+    // Convert times to minutes for comparison
+    const start1 = this.timeToMinutes(slot1.start_time);
+    const end1 = this.timeToMinutes(slot1.end_time);
+    const start2 = this.timeToMinutes(slot2.start_time);
+    const end2 = this.timeToMinutes(slot2.end_time);
 
-//     return null;
-//   }
+    // Check for overlap
+    return start1 < end2 && start2 < end1;
+  }
 
-//   /**
-//    * Check for exam conflicts between courses
-//    */
-//   checkExamConflict(
-//     course1: CourseOffering,
-//     course2: CourseOffering
-//   ): Conflict[] {
-//     const conflicts: Conflict[] = [];
+  /**
+   * Check if a collection of time slots has any internal conflicts
+   */
+  hasInternalConflicts(slots: TimeSlot[]): {
+    hasConflict: boolean;
+    conflicts: Array<{ slot1: TimeSlot; slot2: TimeSlot }>;
+  } {
+    const result = this.timeManager.validateSlotCollection(slots);
+    return {
+      hasConflict: !result.valid,
+      conflicts: result.conflicts,
+    };
+  }
 
-//     // Check midterm conflicts
-//     if (course1.exams?.midterm && course2.exams?.midterm) {
-//       const exam1 = course1.exams.midterm;
-//       const exam2 = course2.exams.midterm;
+  // =====================================================
+  // STUDENT SCHEDULE CONFLICTS
+  // =====================================================
 
-//       if (exam1.date === exam2.date && exam1.time === exam2.time) {
-//         conflicts.push({
-//           id: `conflict-${course1.code}-${course2.code}-midterm`,
-//           type: "TIME",
-//           severity: "ERROR",
-//           message: `Midterm exam conflict: ${course1.code} and ${course2.code} scheduled at same time`,
-//           affected: [
-//             { id: course1.code, label: `${course1.code} Midterm` },
-//             { id: course2.code, label: `${course2.code} Midterm` },
-//           ],
-//           detectedAt: new Date().toISOString(),
-//         });
-//       }
-//     }
+  /**
+   * Check for student schedule conflicts - multiple courses at the same time
+   */
+  checkStudentScheduleConflicts(
+    studentId: string,
+    sections: ScheduledSection[]
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
+    
+    // Compare each section with every other section
+    for (let i = 0; i < sections.length; i++) {
+      for (let j = i + 1; j < sections.length; j++) {
+        const section1 = sections[i];
+        const section2 = sections[j];
 
-//     // Check midterm2 conflicts (optional exam)
-//     if (course1.exams?.midterm2 && course2.exams?.midterm2) {
-//       const exam1 = course1.exams.midterm2;
-//       const exam2 = course2.exams.midterm2;
+        // Check if time slots overlap
+        const hasOverlap = this.sectionsHaveTimeConflict(section1, section2);
 
-//       if (exam1.date === exam2.date && exam1.time === exam2.time) {
-//         conflicts.push({
-//           id: `conflict-${course1.code}-${course2.code}-midterm2`,
-//           type: "TIME",
-//           severity: "ERROR",
-//           message: `Second midterm exam conflict: ${course1.code} and ${course2.code} scheduled at same time`,
-//           affected: [
-//             { id: course1.code, label: `${course1.code} Midterm 2` },
-//             { id: course2.code, label: `${course2.code} Midterm 2` },
-//           ],
-//           detectedAt: new Date().toISOString(),
-//         });
-//       }
-//     }
+        if (hasOverlap) {
+          conflicts.push({
+            type: "time_overlap",
+            severity: "critical",
+            title: "Student Schedule Conflict",
+            description: `Student has overlapping classes: ${section1.course_code} (${section1.course_name}) and ${section2.course_code} (${section2.course_name})`,
+            affected_entities: [
+              { type: "student", id: studentId },
+              { type: "section", id: section1.section_id, name: section1.course_code },
+              { type: "section", id: section2.section_id, name: section2.course_code },
+            ],
+            resolution_suggestions: [
+              `Move ${section1.course_code} to a different time slot`,
+              `Move ${section2.course_code} to a different time slot`,
+              "Find alternative sections for one of the courses",
+            ],
+            auto_resolvable: true,
+          });
+        }
+      }
+    }
 
-//     // Check final exam conflicts
-//     if (course1.exams?.final && course2.exams?.final) {
-//       const exam1 = course1.exams.final;
-//       const exam2 = course2.exams.final;
+    return conflicts;
+  }
 
-//       if (exam1.date === exam2.date && exam1.time === exam2.time) {
-//         conflicts.push({
-//           id: `conflict-${course1.code}-${course2.code}-final`,
-//           type: "TIME",
-//           severity: "ERROR",
-//           message: `Final exam conflict: ${course1.code} and ${course2.code} scheduled at same time`,
-//           affected: [
-//             { id: course1.code, label: `${course1.code} Final` },
-//             { id: course2.code, label: `${course2.code} Final` },
-//           ],
-//           detectedAt: new Date().toISOString(),
-//         });
-//       }
-//     }
+  /**
+   * Check if two sections have time conflicts
+   */
+  private sectionsHaveTimeConflict(
+    section1: ScheduledSection,
+    section2: ScheduledSection
+  ): boolean {
+    for (const slot1 of section1.time_slots) {
+      for (const slot2 of section2.time_slots) {
+        if (this.checkSectionTimeSlotsOverlap(slot1, slot2)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
-//     return conflicts;
-//   }
+  // =====================================================
+  // FACULTY CONFLICTS
+  // =====================================================
 
-//   /**
-//    * Check for faculty conflicts (instructor teaching multiple sections at same time)
-//    */
-//   checkFacultyConflict(
-//     sections: Section[],
-//     faculty: FacultyAvailability
-//   ): Conflict[] {
-//     const conflicts: Conflict[] = [];
+  /**
+   * Check for faculty double-booking
+   */
+  checkFacultyConflicts(
+    facultySchedule: Map<string, ScheduledSection[]>
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
 
-//     // Find all sections assigned to this faculty
-//     const facultySections = sections.filter(
-//       (s) => s.instructor === faculty.instructorName
-//     );
+    for (const [instructorName, sections] of facultySchedule.entries()) {
+      // Check each section against every other section for this faculty
+      for (let i = 0; i < sections.length; i++) {
+        for (let j = i + 1; j < sections.length; j++) {
+          const section1 = sections[i];
+          const section2 = sections[j];
 
-//     // Check for time conflicts between faculty's sections
-//     for (let i = 0; i < facultySections.length; i++) {
-//       for (let j = i + 1; j < facultySections.length; j++) {
-//         const conflict = this.checkSectionTimeConflict(
-//           facultySections[i],
-//           facultySections[j]
-//         );
+          if (this.sectionsHaveTimeConflict(section1, section2)) {
+            conflicts.push({
+              type: "faculty_conflict",
+              severity: "critical",
+              title: "Faculty Double-Booking",
+              description: `Instructor ${instructorName} is assigned to overlapping sections: ${section1.course_code} and ${section2.course_code}`,
+              affected_entities: [
+                { type: "faculty", id: instructorName, name: instructorName },
+                { type: "section", id: section1.section_id, name: section1.course_code },
+                { type: "section", id: section2.section_id, name: section2.course_code },
+              ],
+              resolution_suggestions: [
+                "Assign a different instructor to one of the sections",
+                `Reschedule ${section1.course_code} to a different time`,
+                `Reschedule ${section2.course_code} to a different time`,
+              ],
+              auto_resolvable: true,
+            });
+          }
+        }
+      }
+    }
 
-//         if (conflict) {
-//           conflicts.push({
-//             id: `conflict-faculty-${faculty.instructorId}`,
-//             type: "INSTRUCTOR",
-//             severity: "ERROR",
-//             message: `Faculty conflict: ${faculty.instructorName} assigned to multiple sections at same time`,
-//             affected: [
-//               { id: faculty.instructorId, label: faculty.instructorName },
-//               {
-//                 id: facultySections[i].id,
-//                 label: facultySections[i].courseCode,
-//               },
-//               {
-//                 id: facultySections[j].id,
-//                 label: facultySections[j].courseCode,
-//               },
-//             ],
-//             detectedAt: new Date().toISOString(),
-//           });
-//         }
-//       }
-//     }
+    return conflicts;
+  }
 
-//     // Check if faculty is available for assigned sections
-//     for (const section of facultySections) {
-//       const times = section.meetings || legacyTimesToMeetings(section.times);
-//       for (const time of times) {
-//         const slot: TimeSlot = normalizeMeetingToDisplay(time);
+  // =====================================================
+  // ROOM CONFLICTS
+  // =====================================================
 
-//         if (!this.timeManager.isFacultyAvailable(faculty, slot)) {
-//           conflicts.push({
-//             id: `conflict-availability-${faculty.instructorId}-${section.id}`,
-//             type: "INSTRUCTOR",
-//             severity: "WARNING",
-//             message: `Faculty availability issue: ${faculty.instructorName} not available at assigned time`,
-//             affected: [
-//               { id: faculty.instructorId, label: faculty.instructorName },
-//               { id: section.id, label: section.courseCode },
-//             ],
-//             detectedAt: new Date().toISOString(),
-//           });
-//         }
-//       }
-//     }
+  /**
+   * Check for room conflicts - same room booked at overlapping times
+   */
+  checkRoomConflict(
+    room: string,
+    timeSlot: TimeSlot,
+    existingBookings: Array<{
+      room: string;
+      timeSlot: TimeSlot;
+    }>
+  ): boolean {
+    return existingBookings.some(
+      (booking) =>
+        booking.room === room &&
+        this.timeManager.doTimeSlotsOverlap(timeSlot, booking.timeSlot)
+    );
+  }
 
-//     return conflicts;
-//   }
+  /**
+   * Check for room conflicts in scheduled sections
+   */
+  checkRoomConflicts(sections: ScheduledSection[]): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
+    const roomSchedule: Map<string, Array<{ section: ScheduledSection; timeSlot: SectionTimeSlot }>> = new Map();
 
-//   /**
-//    * Check for room conflicts (same room booked for multiple sections at same time)
-//    */
-//   checkRoomConflict(sections: Section[]): Conflict[] {
-//     const conflicts: Conflict[] = [];
-//     const roomBookings: Map<
-//       string,
-//       Array<{ section: Section; time: SectionMeeting }>
-//     > = new Map();
+    // Build room schedule
+    for (const section of sections) {
+      if (!section.room_number) continue;
 
-//     // Collect all room bookings
-//     for (const section of sections) {
-//       const times = section.meetings || legacyTimesToMeetings(section.times);
-//       const room = section.room;
+      for (const timeSlot of section.time_slots) {
+        if (!roomSchedule.has(section.room_number)) {
+          roomSchedule.set(section.room_number, []);
+        }
+        roomSchedule.get(section.room_number)!.push({ section, timeSlot });
+      }
+    }
 
-//       for (const time of times) {
-//         if (!room) continue; // Skip if no room assigned
+    // Check for conflicts in each room
+    for (const [room, bookings] of roomSchedule.entries()) {
+      for (let i = 0; i < bookings.length; i++) {
+        for (let j = i + 1; j < bookings.length; j++) {
+          const booking1 = bookings[i];
+          const booking2 = bookings[j];
 
-//         if (!roomBookings.has(room)) {
-//           roomBookings.set(room, []);
-//         }
-//         roomBookings.get(room)!.push({ section, time });
-//       }
-//     }
+          if (this.checkSectionTimeSlotsOverlap(booking1.timeSlot, booking2.timeSlot)) {
+            conflicts.push({
+              type: "room_conflict",
+              severity: "error",
+              title: "Room Conflict",
+              description: `Room ${room} is double-booked for ${booking1.section.course_code} and ${booking2.section.course_code} on ${booking1.timeSlot.day}`,
+              affected_entities: [
+                { type: "room", id: room, name: room },
+                { type: "section", id: booking1.section.section_id, name: booking1.section.course_code },
+                { type: "section", id: booking2.section.section_id, name: booking2.section.course_code },
+              ],
+              resolution_suggestions: [
+                `Assign a different room to ${booking1.section.course_code}`,
+                `Assign a different room to ${booking2.section.course_code}`,
+                `Reschedule one of the sections to a different time`,
+              ],
+              auto_resolvable: true,
+            });
+          }
+        }
+      }
+    }
 
-//     // Check for overlapping bookings in same room
-//     for (const [room, bookings] of roomBookings.entries()) {
-//       for (let i = 0; i < bookings.length; i++) {
-//         for (let j = i + 1; j < bookings.length; j++) {
-//           const booking1 = bookings[i];
-//           const booking2 = bookings[j];
+    return conflicts;
+  }
 
-//           const slot1: TimeSlot = normalizeMeetingToDisplay(booking1.time);
-//           const slot2: TimeSlot = normalizeMeetingToDisplay(booking2.time);
+  // =====================================================
+  // EXAM CONFLICTS
+  // =====================================================
 
-//           if (this.timeManager.doTimeSlotsOverlap(slot1, slot2)) {
-//             conflicts.push({
-//               id: `conflict-room-${room}-${booking1.section.id}-${booking2.section.id}`,
-//               type: "ROOM",
-//               severity: "ERROR",
-//               message: `Room conflict: ${room} double-booked`,
-//               affected: [
-//                 {
-//                   id: booking1.section.id,
-//                   label: `${booking1.section.courseCode} in ${room}`,
-//                 },
-//                 {
-//                   id: booking2.section.id,
-//                   label: `${booking2.section.courseCode} in ${room}`,
-//                 },
-//               ],
-//               detectedAt: new Date().toISOString(),
-//             });
-//           }
-//         }
-//       }
-//     }
+  /**
+   * Check for exam conflicts - student has overlapping exams
+   */
+  checkExamConflicts(
+    studentId: string,
+    exams: ScheduledExam[]
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
 
-//     return conflicts;
-//   }
+    for (let i = 0; i < exams.length; i++) {
+      for (let j = i + 1; j < exams.length; j++) {
+        const exam1 = exams[i];
+        const exam2 = exams[j];
 
-//   /**
-//    * Check for student schedule conflicts
-//    */
-//   checkStudentScheduleConflict(
-//     student: SWEStudent,
-//     sections: Section[]
-//   ): Conflict[] {
-//     const conflicts: Conflict[] = [];
+        // Check if exams are on the same date
+        if (exam1.date === exam2.date) {
+          const time1 = this.timeToMinutes(exam1.time);
+          const time2 = this.timeToMinutes(exam2.time);
+          const end1 = time1 + exam1.duration;
+          const end2 = time2 + exam2.duration;
 
-//     // Get sections the student is enrolled in (simplified - in real system would track enrollment)
-//     // For now, we check all sections they could potentially be in
+          // Check for time overlap
+          if (time1 < end2 && time2 < end1) {
+            conflicts.push({
+              type: "exam_overlap",
+              severity: "critical",
+              title: "Exam Conflict",
+              description: `Student has overlapping exams: ${exam1.course_code} and ${exam2.course_code} on ${exam1.date}`,
+              affected_entities: [
+                { type: "student", id: studentId },
+                { type: "exam", id: exam1.id, name: `${exam1.course_code} ${exam1.type}` },
+                { type: "exam", id: exam2.id, name: `${exam2.course_code} ${exam2.type}` },
+              ],
+              resolution_suggestions: [
+                `Reschedule ${exam1.course_code} ${exam1.type} to a different date/time`,
+                `Reschedule ${exam2.course_code} ${exam2.type} to a different date/time`,
+                "Contact academic affairs for special arrangement",
+              ],
+              auto_resolvable: false,
+            });
+          }
+        }
+      }
+    }
 
-//     // Check for time conflicts between sections
-//     for (let i = 0; i < sections.length; i++) {
-//       for (let j = i + 1; j < sections.length; j++) {
-//         const conflict = this.checkSectionTimeConflict(
-//           sections[i],
-//           sections[j]
-//         );
+    return conflicts;
+  }
 
-//         if (conflict) {
-//           conflicts.push({
-//             id: `conflict-student-${student.id}-${sections[i].id}-${sections[j].id}`,
-//             type: "TIME",
-//             severity: "ERROR",
-//             message: `Student schedule conflict: ${student.name} has overlapping classes`,
-//             affected: [
-//               { id: student.id, label: student.name },
-//               { id: sections[i].id, label: sections[i].courseCode },
-//               { id: sections[j].id, label: sections[j].courseCode },
-//             ],
-//             detectedAt: new Date().toISOString(),
-//           });
-//         }
-//       }
-//     }
+  // =====================================================
+  // PREREQUISITE VIOLATIONS
+  // =====================================================
 
-//     return conflicts;
-//   }
+  /**
+   * Check for prerequisite violations
+   */
+  checkPrerequisiteViolations(
+    studentId: string,
+    enrolledCourses: string[],
+    completedCourses: string[],
+    courseData: Map<string, SchedulerCourse>
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
 
-//   /**
-//    * Check for capacity conflicts (enrollment exceeds section capacity)
-//    */
-//   checkCapacityConflict(
-//     section: Section,
-//     enrolledCount: number
-//   ): Conflict | null {
-//     const capacity = section.capacity || 30; // Default capacity if not set
+    for (const courseCode of enrolledCourses) {
+      const course = courseData.get(courseCode);
+      if (!course || !course.prerequisites || course.prerequisites.length === 0) {
+        continue;
+      }
 
-//     if (enrolledCount > capacity) {
-//       return {
-//         id: `conflict-capacity-${section.id}`,
-//         type: "RULE",
-//         severity: "WARNING",
-//         message: `Capacity exceeded: ${section.courseCode} (${enrolledCount}/${capacity})`,
-//         affected: [{ id: section.id, label: section.courseCode }],
-//         detectedAt: new Date().toISOString(),
-//       };
-//     }
+      const missingPrereqs = course.prerequisites.filter(
+        (prereq) => !completedCourses.includes(prereq)
+      );
 
-//     return null;
-//   }
+      if (missingPrereqs.length > 0) {
+        conflicts.push({
+          type: "prerequisite_violation",
+          severity: "error",
+          title: "Prerequisite Violation",
+          description: `Student is enrolled in ${courseCode} (${course.name}) without completing prerequisite(s): ${missingPrereqs.join(", ")}`,
+          affected_entities: [
+            { type: "student", id: studentId },
+            { type: "course", id: courseCode, name: course.name },
+          ],
+          resolution_suggestions: [
+            `Remove ${courseCode} from student's schedule`,
+            "Verify student's transcript for completed prerequisites",
+            "Request prerequisite waiver from department",
+          ],
+          auto_resolvable: false,
+        });
+      }
+    }
 
-//   /**
-//    * Check all conflicts for a collection of sections
-//    */
-//   checkAllConflicts(
-//     sections: Section[],
-//     courses: CourseOffering[],
-//     faculty: FacultyAvailability[]
-//   ): Conflict[] {
-//     const conflicts: Conflict[] = [];
+    return conflicts;
+  }
 
-//     // Check section time conflicts
-//     for (let i = 0; i < sections.length; i++) {
-//       for (let j = i + 1; j < sections.length; j++) {
-//         const conflict = this.checkSectionTimeConflict(
-//           sections[i],
-//           sections[j]
-//         );
-//         if (conflict) {
-//           conflicts.push(conflict);
-//         }
-//       }
-//     }
+  // =====================================================
+  // CAPACITY VIOLATIONS
+  // =====================================================
 
-//     // Check exam conflicts
-//     for (let i = 0; i < courses.length; i++) {
-//       for (let j = i + 1; j < courses.length; j++) {
-//         const examConflicts = this.checkExamConflict(courses[i], courses[j]);
-//         conflicts.push(...examConflicts);
-//       }
-//     }
+  /**
+   * Check for section capacity violations
+   */
+  checkCapacityViolations(
+    sections: Array<{
+      section_id: string;
+      course_code: string;
+      capacity: number;
+      enrolled_count: number;
+    }>
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
 
-//     // Check faculty conflicts
-//     for (const f of faculty) {
-//       const facultyConflicts = this.checkFacultyConflict(sections, f);
-//       conflicts.push(...facultyConflicts);
-//     }
+    for (const section of sections) {
+      if (section.enrolled_count > section.capacity) {
+        const overCapacity = section.enrolled_count - section.capacity;
+        const percentOver = Math.round((overCapacity / section.capacity) * 100);
 
-//     // Check room conflicts
-//     const roomConflicts = this.checkRoomConflict(sections);
-//     conflicts.push(...roomConflicts);
+        conflicts.push({
+          type: "capacity_exceeded",
+          severity: percentOver > 20 ? "error" : "warning",
+          title: "Section Capacity Exceeded",
+          description: `Section ${section.section_id} for ${section.course_code} has ${section.enrolled_count} students enrolled but capacity is ${section.capacity} (${percentOver}% over capacity)`,
+          affected_entities: [
+            { type: "section", id: section.section_id, name: section.course_code },
+          ],
+          resolution_suggestions: [
+            "Create an additional section for this course",
+            `Increase room capacity (need room for ${section.enrolled_count} students)`,
+            "Move some students to a different section",
+          ],
+          auto_resolvable: overCapacity <= 5, // Auto-resolvable if only slightly over
+        });
+      }
+    }
 
-//     return conflicts;
-//   }
+    return conflicts;
+  }
 
-//   /**
-//    * Get conflict summary statistics
-//    */
-//   getConflictSummary(conflicts: Conflict[]): {
-//     total: number;
-//     byType: Record<string, number>;
-//     bySeverity: Record<string, number>;
-//     critical: Conflict[];
-//   } {
-//     const byType: Record<string, number> = {};
-//     const bySeverity: Record<string, number> = {};
-//     const critical: Conflict[] = [];
+  // =====================================================
+  // CONSTRAINT VIOLATIONS
+  // =====================================================
 
-//     for (const conflict of conflicts) {
-//       // Count by type
-//       byType[conflict.type] = (byType[conflict.type] || 0) + 1;
+  /**
+   * Check for excessive daily load
+   */
+  checkExcessiveDailyLoad(
+    studentId: string,
+    sections: ScheduledSection[],
+    maxDailyHours: number
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
+    const dailyHours: Map<string, number> = new Map();
 
-//       // Count by severity
-//       bySeverity[conflict.severity] = (bySeverity[conflict.severity] || 0) + 1;
+    // Calculate hours per day
+    for (const section of sections) {
+      for (const slot of section.time_slots) {
+        const hours = this.calculateHours(slot.start_time, slot.end_time);
+        const current = dailyHours.get(slot.day) || 0;
+        dailyHours.set(slot.day, current + hours);
+      }
+    }
 
-//       // Collect critical conflicts
-//       if (conflict.severity === "ERROR") {
-//         critical.push(conflict);
-//       }
-//     }
+    // Check for violations
+    for (const [day, hours] of dailyHours.entries()) {
+      if (hours > maxDailyHours) {
+        const coursesOnDay = sections
+          .filter((s) => s.time_slots.some((t) => t.day === day))
+          .map((s) => s.course_code);
 
-//     return {
-//       total: conflicts.length,
-//       byType,
-//       bySeverity,
-//       critical,
-//     };
-//   }
-// }
+        conflicts.push({
+          type: "excessive_daily_load",
+          severity: "warning",
+          title: "Excessive Daily Load",
+          description: `Student has ${hours.toFixed(1)} hours of classes on ${day}, exceeding the maximum of ${maxDailyHours} hours`,
+          affected_entities: [
+            { type: "student", id: studentId },
+            ...coursesOnDay.map((code) => ({ type: "course" as const, id: code, name: code })),
+          ],
+          resolution_suggestions: [
+            "Redistribute courses across different days",
+            "Consider student preferences for class distribution",
+            "Review scheduling constraints",
+          ],
+          auto_resolvable: true,
+        });
+      }
+    }
 
-// // --- Helpers for new normalized model ---
-// function minutesToString(m: number): string {
-//   const h = Math.floor(m / 60)
-//     .toString()
-//     .padStart(2, "0");
-//   const mm = (m % 60).toString().padStart(2, "0");
-//   return `${h}:${mm}`;
-// }
+    return conflicts;
+  }
 
-// const DAY_MAP: Record<number, string> = {
-//   1: "Sunday",
-//   2: "Monday",
-//   3: "Tuesday",
-//   4: "Wednesday",
-//   5: "Thursday",
-// };
+  /**
+   * Check for missing required courses
+   */
+  checkMissingRequiredCourses(
+    studentId: string,
+    studentLevel: number,
+    enrolledCourses: string[],
+    requiredCourses: string[]
+  ): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
+    const missingCourses = requiredCourses.filter(
+      (courseCode) => !enrolledCourses.includes(courseCode)
+    );
 
-// function dayNumberToName(day: number): string {
-//   return DAY_MAP[day] || "Sunday";
-// }
+    if (missingCourses.length > 0) {
+      conflicts.push({
+        type: "missing_required_course",
+        severity: "error",
+        title: "Missing Required Courses",
+        description: `Student (Level ${studentLevel}) is missing ${missingCourses.length} required course(s): ${missingCourses.join(", ")}`,
+        affected_entities: [
+          { type: "student", id: studentId },
+          ...missingCourses.map((code) => ({ type: "course" as const, id: code, name: code })),
+        ],
+        resolution_suggestions: [
+          "Add missing required courses to student's schedule",
+          "Verify student's academic standing and exemptions",
+          "Check if courses are offered this term",
+        ],
+        auto_resolvable: false,
+      });
+    }
 
-// function normalizeMeetingToDisplay(m: SectionMeeting): TimeSlot {
-//   return {
-//     day: dayNumberToName(m.day),
-//     startTime: minutesToString(m.startMinutes),
-//     endTime: minutesToString(m.endMinutes),
-//   };
-// }
+    return conflicts;
+  }
 
-// function legacyTimesToMeetings(
-//   times: { day: string; start: string; end: string }[]
-// ): SectionMeeting[] {
-//   return times.map((t) => ({
-//     day: nameToDayNumber(t.day),
-//     startMinutes: stringToMinutes(t.start),
-//     endMinutes: stringToMinutes(t.end),
-//   }));
-// }
+  // =====================================================
+  // COMPREHENSIVE DETECTION
+  // =====================================================
 
-// function stringToMinutes(hhmm: string): number {
-//   const [h, m] = hhmm.split(":").map(Number);
-//   return h * 60 + m;
-// }
+  /**
+   * Run comprehensive conflict detection on a schedule
+   */
+  detectAllConflicts(params: {
+    studentId: string;
+    studentLevel: number;
+    sections: ScheduledSection[];
+    exams: ScheduledExam[];
+    completedCourses: string[];
+    requiredCourses: string[];
+    courseData: Map<string, SchedulerCourse>;
+    maxDailyHours?: number;
+  }): ScheduleConflict[] {
+    const conflicts: ScheduleConflict[] = [];
 
-// function nameToDayNumber(name: string): number {
-//   const map: Record<string, number> = {
-//     Sunday: 1,
-//     Monday: 2,
-//     Tuesday: 3,
-//     Wednesday: 4,
-//     Thursday: 5,
-//   };
-//   return map[name] || 1;
-// }
+    // 1. Student schedule conflicts (time overlaps)
+    conflicts.push(...this.checkStudentScheduleConflicts(params.studentId, params.sections));
+
+    // 2. Exam conflicts
+    conflicts.push(...this.checkExamConflicts(params.studentId, params.exams));
+
+    // 3. Prerequisite violations
+    const enrolledCourses = params.sections.map((s) => s.course_code);
+    conflicts.push(
+      ...this.checkPrerequisiteViolations(
+        params.studentId,
+        enrolledCourses,
+        params.completedCourses,
+        params.courseData
+      )
+    );
+
+    // 4. Missing required courses
+    conflicts.push(
+      ...this.checkMissingRequiredCourses(
+        params.studentId,
+        params.studentLevel,
+        enrolledCourses,
+        params.requiredCourses
+      )
+    );
+
+    // 5. Excessive daily load (if maxDailyHours specified)
+    if (params.maxDailyHours) {
+      conflicts.push(
+        ...this.checkExcessiveDailyLoad(params.studentId, params.sections, params.maxDailyHours)
+      );
+    }
+
+    return conflicts;
+  }
+
+  // =====================================================
+  // UTILITIES
+  // =====================================================
+
+  /**
+   * Get a summary of all conflicts
+   */
+  summarizeConflicts(conflicts: ScheduleConflict[]): {
+    total: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+    autoResolvable: number;
+  } {
+    const byType: Record<string, number> = {};
+    const bySeverity: Record<string, number> = {};
+    let autoResolvable = 0;
+
+    conflicts.forEach((conflict) => {
+      byType[conflict.type] = (byType[conflict.type] || 0) + 1;
+      bySeverity[conflict.severity] = (bySeverity[conflict.severity] || 0) + 1;
+      if (conflict.auto_resolvable) {
+        autoResolvable++;
+      }
+    });
+
+    return {
+      total: conflicts.length,
+      byType,
+      bySeverity,
+      autoResolvable,
+    };
+  }
+
+  /**
+   * Convert time string (HH:MM) to minutes since midnight
+   */
+  private timeToMinutes(time: string): number {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  }
+
+  /**
+   * Calculate duration between two times in hours
+   */
+  private calculateHours(startTime: string, endTime: string): number {
+    const start = this.timeToMinutes(startTime);
+    const end = this.timeToMinutes(endTime);
+    return (end - start) / 60;
+  }
+}

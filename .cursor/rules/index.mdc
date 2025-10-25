@@ -1,0 +1,311 @@
+---
+alwaysApply: true
+description: SmartSchedule project overview and quick reference for data fetching patterns
+---
+
+# SmartSchedule Project Overview
+
+## Project Structure
+
+SmartSchedule is a Next.js 15 application with:
+- **Framework**: Next.js 15 App Router with TypeScript
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth with RLS
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React hooks + Server Components
+
+## Key Directories
+
+```
+/Users/waleedkhalid/Documents/Projects/SmartSchedule/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── (auth)/            # Auth pages (login, signup)
+│   │   ├── api/               # API routes
+│   │   ├── committee/         # Committee dashboard
+│   │   ├── faculty/           # Faculty dashboard
+│   │   └── student/           # Student dashboard
+│   ├── components/            # React components
+│   │   ├── ui/               # shadcn/ui components
+│   │   ├── committee/        # Committee-specific
+│   │   ├── faculty/          # Faculty-specific
+│   │   └── student/          # Student-specific
+│   ├── lib/                   # Utilities and helpers
+│   │   ├── supabase/         # Supabase clients
+│   │   └── auth/             # Auth utilities
+│   └── types/                 # TypeScript type definitions
+├── supabase/
+│   └── migrations/           # Database migrations
+└── .cursor/
+    └── rules/                # Cursor AI rules (you are here!)
+```
+
+## Critical Performance Rules
+
+### 🚨 ALWAYS Do These:
+
+1. **Wrap `auth.uid()` in subquery for RLS policies**
+   ```sql
+   -- ✅ GOOD (10-100x faster)
+   CREATE POLICY "select_own" ON students
+     FOR SELECT USING (id = (select auth.uid()));
+   ```
+
+2. **Use React.cache() for Server Components**
+   ```typescript
+   export const getCourses = cache(async () => {
+     const supabase = await createServerClient();
+     return await supabase.from("course").select("*");
+   });
+   ```
+
+3. **Select only required columns**
+   ```typescript
+   // ✅ GOOD
+   .select("id, name, email")
+   
+   // ❌ BAD
+   .select("*")
+   ```
+
+4. **Use cached auth functions**
+   ```typescript
+   import { getAuthenticatedUser } from "@/lib/auth/cached-auth";
+   const user = await getAuthenticatedUser(); // Cached!
+   ```
+
+5. **Parallel fetching with Promise.all()**
+   ```typescript
+   const [courses, students] = await Promise.all([
+     getCourses(),
+     getStudents()
+   ]);
+   ```
+
+## File References
+
+### Authentication
+- [lib/supabase/server.ts](mdc:lib/supabase/server.ts) - Server-side Supabase client
+- [lib/supabase/client.ts](mdc:lib/supabase/client.ts) - Client-side Supabase client
+- [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts) - Cached auth functions (ALWAYS USE THESE)
+- [lib/auth/redirect-by-role.ts](mdc:lib/auth/redirect-by-role.ts) - Role-based redirects
+
+### Database Schema
+- See [supabase/migrations/](mdc:supabase/migrations/) for all tables
+
+### Key Tables
+- `users` - User accounts with roles (student, faculty, committee)
+- `students` - Student profiles
+- `faculty` - Faculty profiles
+- `committee_members` - Committee membership
+- `course` - Course catalog
+- `section` - Course sections
+- `section_enrollment` - Student enrollments
+- `academic_term` - Academic terms/semesters
+
+## User Roles
+
+1. **student** - Students viewing schedules and enrolling
+2. **faculty** - Faculty viewing schedules and managing availability
+3. **scheduling_committee** - Creates schedules, manages conflicts
+4. **teaching_load_committee** - Manages faculty workload
+5. **registrar** - System administration
+
+## Data Fetching Quick Reference
+
+### Server Components (Preferred)
+```typescript
+import { cache } from "react";
+import { createServerClient } from "@/lib/supabase/server";
+
+const getData = cache(async () => {
+  const supabase = await createServerClient();
+  const { data } = await supabase.from("table").select("*");
+  return data;
+});
+
+export default async function Page() {
+  const data = await getData();
+  return <Component data={data} />;
+}
+```
+
+### Client Components (When Needed)
+```typescript
+"use client";
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+
+export function Component() {
+  const [data, setData] = useState([]);
+  const supabase = createBrowserClient();
+  
+  useEffect(() => {
+    supabase.from("table").select("*").then(({ data }) => {
+      setData(data);
+    });
+  }, []);
+  
+  return <div>{/* render */}</div>;
+}
+```
+
+### Server Actions (Mutations)
+```typescript
+"use server";
+import { revalidatePath } from "next/cache";
+import { createServerClient } from "@/lib/supabase/server";
+
+export async function createItem(formData: FormData) {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from("table").insert({
+    name: formData.get("name"),
+  });
+  
+  if (error) throw error;
+  revalidatePath("/path");
+  return { success: true };
+}
+```
+
+## Common Patterns
+
+### Protected Page Pattern
+```typescript
+import { redirect } from "next/navigation";
+import { getAuthenticatedUser, getUserProfile } from "@/lib/auth/cached-auth";
+
+export default async function ProtectedPage() {
+  const user = await getAuthenticatedUser();
+  if (!user) redirect("/login");
+  
+  const profile = await getUserProfile();
+  if (profile?.role !== "required_role") {
+    redirect("/unauthorized");
+  }
+  
+  return <PageContent />;
+}
+```
+
+### Dashboard Pattern
+```typescript
+// Server Component - fetches data
+export default async function DashboardPage() {
+  const [stats, courses, students] = await Promise.all([
+    getStats(),
+    getCourses(),
+    getStudents(),
+  ]);
+  
+  return <DashboardClient stats={stats} courses={courses} students={students} />;
+}
+
+// Client Component - handles interactivity
+"use client";
+export function DashboardClient({ stats, courses, students }) {
+  // Interactive UI here
+}
+```
+
+## Performance Monitoring
+
+### Check Query Performance
+```typescript
+if (process.env.NODE_ENV === "development") {
+  const start = performance.now();
+  const data = await supabase.from("table").select("*");
+  const end = performance.now();
+  
+  if (end - start > 100) {
+    console.warn(`Slow query: ${end - start}ms`);
+  }
+}
+```
+
+### Use Supabase Dashboard
+Check query performance at:
+`Settings > Database > Performance`
+
+## Related Rules
+
+Access detailed rules with these patterns:
+
+- **Data Fetching**: See [data-fetching.mdc](mdc:.cursor/rules/data-fetching.mdc)
+- **Supabase Queries**: See [supabase-queries.mdc](mdc:.cursor/rules/supabase-queries.mdc)
+- **Authentication**: See [authentication-security.mdc](mdc:.cursor/rules/authentication-security.mdc)
+- **Caching & Performance**: See [caching-performance.mdc](mdc:.cursor/rules/caching-performance.mdc)
+- **API & Errors**: See [api-error-handling.mdc](mdc:.cursor/rules/api-error-handling.mdc)
+
+## Quick Troubleshooting
+
+### Slow Queries?
+1. Check if `auth.uid()` is wrapped in subquery (RLS policies)
+2. Add indexes on frequently queried columns
+3. Use `.select()` with specific columns, not `*`
+4. Check for N+1 queries (use joins instead)
+
+### Auth Issues?
+1. Use cached functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts)
+2. Check RLS policies allow the operation
+3. Verify user has correct role
+4. Check session is valid
+
+### Cache Not Working?
+1. Ensure using `React.cache()` for Server Components
+2. Call `revalidatePath()` after mutations
+3. Check cache tags are correct
+4. Verify not using `export const dynamic = "force-dynamic"`
+
+## Documentation
+
+- Performance guide: [docs/performance.md](mdc:docs/performance.md)
+- RLS fix: [RLS-PERFORMANCE-FIX.md](mdc:RLS-PERFORMANCE-FIX.md)
+- Test guide: [RLS-PERFORMANCE-TEST-GUIDE.md](mdc:RLS-PERFORMANCE-TEST-GUIDE.md)
+
+## Recent Critical Fixes Applied
+
+✅ **RLS Performance Optimization** (Oct 25, 2025)
+- Fixed 54 `auth.uid()` issues (wrapped in subqueries)
+- Consolidated 96 duplicate policies
+- Added 12+ critical indexes
+- **Result**: 10-100x faster queries
+
+See [RLS-PERFORMANCE-FIX.md](mdc:RLS-PERFORMANCE-FIX.md) for details.
+
+## Environment Variables Required
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+## Commands
+
+```bash
+# Development
+npm run dev
+
+# Build
+npm run build
+
+# Database migrations
+supabase db push
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+```
+
+---
+
+**When in doubt**, follow these principles:
+1. Server Components for data fetching
+2. React.cache() for deduplication
+3. Cached auth functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts)
+4. Parallel fetching with Promise.all()
+5. Select only needed columns
+6. Validate user input
+7. Handle errors gracefully

@@ -1,0 +1,540 @@
+---
+description: Caching strategies and performance optimization patterns
+globs: *.ts,*.tsx,lib/**/*,app/**/*
+---
+
+# Caching & Performance Optimization
+
+## React Cache (Request-Level Memoization)
+
+### CRITICAL: Use React.cache() for Server Functions
+
+**Purpose:** Deduplicate data fetching within a single request/render
+
+```typescript
+// ✅ GOOD: Cached function (called once per request)
+import { cache } from "react";
+import { createServerClient } from "@/lib/supabase/server";
+
+export const getCourses = cache(async () => {
+  console.log("Fetching courses..."); // Only logs once per request
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("course")
+    .select("*")
+    .order("course_code");
+  
+  if (error) throw error;
+  return data;
+});
+
+// ❌ BAD: Not cached (called multiple times)
+export async function getCourses() {
+  console.log("Fetching courses..."); // Logs every time
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("course")
+    .select("*")
+    .order("course_code");
+  
+  if (error) throw error;
+  return data;
+}
+```
+
+### When to Use React.cache()
+
+```typescript
+// ✅ USE for: Authentication functions
+export const getAuthenticatedUser = cache(async () => {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
+
+// ✅ USE for: Database queries
+export const getActiveTerm = cache(async () => {
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from("academic_term")
+    .select("*")
+    .eq("is_active", true)
+    .single();
+  return data;
+});
+
+// ✅ USE for: Expensive computations
+export const calculateScheduleStats = cache(async (termId: string) => {
+  // Complex calculation
+  const sections = await getSections(termId);
+  const enrollments = await getEnrollments(termId);
+  // ... expensive logic
+  return stats;
+});
+
+// ❌ DON'T USE for: Mutations (insert/update/delete)
+// ❌ DON'T USE for: Real-time data
+// ❌ DON'T USE for: Client Components
+```
+
+## useMemo and useCallback (Client Components)
+
+### useMemo for Expensive Calculations
+
+```typescript
+// ✅ GOOD: Memoize expensive computation
+"use client";
+
+import { useMemo } from "react";
+
+export function ScheduleStats({ sections, enrollments }) {
+  const stats = useMemo(() => {
+    // Expensive calculation
+    return sections.reduce((acc, section) => {
+      const sectionEnrollments = enrollments.filter(
+        e => e.section_id === section.section_id
+      );
+      return {
+        ...acc,
+        [section.section_id]: {
+          enrolled: sectionEnrollments.length,
+          capacity: section.capacity,
+          utilization: (sectionEnrollments.length / section.capacity) * 100,
+        }
+      };
+    }, {});
+  }, [sections, enrollments]); // Only recalculate if these change
+  
+  return <StatsDisplay stats={stats} />;
+}
+
+// ❌ BAD: Recalculate on every render
+export function ScheduleStats({ sections, enrollments }) {
+  const stats = sections.reduce((acc, section) => {
+    // Recalculates even if data hasn't changed
+    // ...
+  }, {});
+  
+  return <StatsDisplay stats={stats} />;
+}
+```
+
+### useCallback for Event Handlers
+
+```typescript
+// ✅ GOOD: Memoize callback to prevent child re-renders
+"use client";
+
+import { useCallback } from "react";
+
+export function CourseList({ courses }) {
+  const handleCourseClick = useCallback((courseId: string) => {
+    console.log("Course clicked:", courseId);
+    // ... handle click
+  }, []); // Stable function reference
+  
+  return (
+    <div>
+      {courses.map(course => (
+        <CourseCard
+          key={course.course_code}
+          course={course}
+          onClick={handleCourseClick} // Same reference on each render
+        />
+      ))}
+    </div>
+  );
+}
+
+// ❌ BAD: New function on every render
+export function CourseList({ courses }) {
+  return (
+    <div>
+      {courses.map(course => (
+        <CourseCard
+          key={course.course_code}
+          course={course}
+          onClick={(id) => console.log(id)} // New function each time
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+## React.memo for Component Memoization
+
+```typescript
+// ✅ GOOD: Memoize expensive component
+"use client";
+
+import { memo } from "react";
+
+export const SectionCard = memo(function SectionCard({ section, enrollments }) {
+  // Expensive rendering logic
+  const stats = calculateStats(section, enrollments);
+  
+  return (
+    <Card>
+      {/* Complex UI */}
+    </Card>
+  );
+});
+
+// Component only re-renders if props change
+```
+
+## Next.js Caching Strategies
+
+### 1. Full Route Cache (Static Pages)
+
+```typescript
+// ✅ GOOD: Static page with revalidation
+// Regenerates every hour
+export const revalidate = 3600; // seconds
+
+export default async function CourseCatalogPage() {
+  const courses = await getCourses();
+  return <CourseCatalog courses={courses} />;
+}
+```
+
+### 2. Data Cache (fetch)
+
+```typescript
+// ✅ GOOD: Cache fetch requests
+const data = await fetch("https://api.example.com/data", {
+  next: { 
+    revalidate: 3600, // Cache for 1 hour
+    tags: ["courses"] // For on-demand revalidation
+  }
+});
+```
+
+### 3. On-Demand Revalidation
+
+```typescript
+// ✅ GOOD: Invalidate cache after mutation
+"use server";
+
+import { revalidatePath, revalidateTag } from "next/cache";
+
+export async function createCourse(formData: FormData) {
+  const supabase = await createServerClient();
+  
+  await supabase.from("course").insert({
+    course_code: formData.get("code"),
+    course_name: formData.get("name"),
+  });
+  
+  // Revalidate specific path
+  revalidatePath("/committee/courses");
+  
+  // Or revalidate by tag
+  revalidateTag("courses");
+}
+```
+
+### 4. Opt Out of Caching
+
+```typescript
+// ✅ GOOD: Force dynamic rendering for real-time data
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function DashboardPage() {
+  // Always fresh data
+  const liveData = await getRealTimeData();
+  return <Dashboard data={liveData} />;
+}
+```
+
+## Custom Hook Memoization
+
+```typescript
+// ✅ GOOD: Memoized custom hook
+"use client";
+
+import { useMemo } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+
+export function useDashboardData() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Memoize Supabase client (stable reference)
+  const supabase = useMemo(() => createBrowserClient(), []);
+  
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Parallel fetching
+      const [courses, students, sections] = await Promise.all([
+        supabase.from("course").select("*"),
+        supabase.from("students").select("*"),
+        supabase.from("section").select("*"),
+      ]);
+      
+      setData({ courses, students, sections });
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+  
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+  
+  return { data, loading, refetch: fetchData };
+}
+```
+
+## Performance Best Practices
+
+### 1. Avoid Prop Drilling
+
+```typescript
+// ❌ BAD: Prop drilling causes unnecessary re-renders
+function App() {
+  const [user, setUser] = useState(null);
+  return (
+    <Layout user={user}>
+      <Dashboard user={user}>
+        <Profile user={user} />
+      </Dashboard>
+    </Layout>
+  );
+}
+
+// ✅ GOOD: Use Context for shared state
+const UserContext = createContext(null);
+
+function App() {
+  const [user, setUser] = useState(null);
+  return (
+    <UserContext.Provider value={user}>
+      <Layout>
+        <Dashboard>
+          <Profile /> {/* Gets user from context */}
+        </Dashboard>
+      </Layout>
+    </UserContext.Provider>
+  );
+}
+```
+
+### 2. Code Splitting
+
+```typescript
+// ✅ GOOD: Lazy load heavy components
+import dynamic from "next/dynamic";
+
+const HeavyChart = dynamic(() => import("@/components/HeavyChart"), {
+  loading: () => <Skeleton />,
+  ssr: false, // Don't server-render if not needed
+});
+
+export function Dashboard() {
+  return (
+    <div>
+      <LightComponents />
+      <HeavyChart /> {/* Loaded only when needed */}
+    </div>
+  );
+}
+```
+
+### 3. Image Optimization
+
+```typescript
+// ✅ GOOD: Use Next.js Image component
+import Image from "next/image";
+
+export function UserAvatar({ src, alt }) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={40}
+      height={40}
+      priority={false} // Lazy load
+      quality={75} // Optimize quality
+    />
+  );
+}
+
+// ❌ BAD: Standard img tag
+<img src={src} alt={alt} />
+```
+
+### 4. Debouncing and Throttling
+
+```typescript
+// ✅ GOOD: Debounce search input
+"use client";
+
+import { useMemo, useState } from "react";
+import { debounce } from "lodash";
+
+export function SearchBar() {
+  const [query, setQuery] = useState("");
+  
+  const debouncedSearch = useMemo(
+    () => debounce(async (q: string) => {
+      // Expensive search operation
+      const results = await searchCourses(q);
+      setResults(results);
+    }, 300), // Wait 300ms after typing stops
+    []
+  );
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    debouncedSearch(value);
+  };
+  
+  return <input value={query} onChange={handleChange} />;
+}
+```
+
+## Database Query Optimization
+
+### 1. Indexes
+
+```sql
+-- ✅ GOOD: Add indexes for frequently queried columns
+CREATE INDEX idx_students_email ON students(email);
+CREATE INDEX idx_enrollment_student_id ON enrollment(student_id);
+CREATE INDEX idx_section_term_id ON section(term_id);
+
+-- For RLS performance
+CREATE INDEX idx_users_role ON users(role) 
+WHERE role IN ('scheduling_committee', 'teaching_load_committee', 'registrar');
+```
+
+### 2. Avoid N+1 Queries
+
+```typescript
+// ❌ BAD: N+1 query problem
+const sections = await getSections();
+const sectionsWithCourses = await Promise.all(
+  sections.map(async (section) => ({
+    ...section,
+    course: await getCourse(section.course_id), // N queries
+  }))
+);
+
+// ✅ GOOD: Single query with join
+const { data: sections } = await supabase
+  .from("section")
+  .select(`
+    *,
+    course:course_id (
+      course_code,
+      course_name
+    )
+  `);
+```
+
+### 3. Pagination
+
+```typescript
+// ✅ GOOD: Paginate large datasets
+const PAGE_SIZE = 50;
+
+const { data, count } = await supabase
+  .from("students")
+  .select("*", { count: "exact" })
+  .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+```
+
+## Monitoring Performance
+
+### Client-Side Performance Monitoring
+
+```typescript
+// ✅ GOOD: Track render performance
+"use client";
+
+import { useEffect } from "react";
+
+export function PerformanceMonitor({ componentName, children }) {
+  useEffect(() => {
+    const startTime = performance.now();
+    
+    return () => {
+      const endTime = performance.now();
+      const renderTime = endTime - startTime;
+      
+      if (renderTime > 100) {
+        console.warn(
+          `Slow render detected in ${componentName}: ${renderTime}ms`
+        );
+      }
+    };
+  }, [componentName]);
+  
+  return <>{children}</>;
+}
+```
+
+### Server-Side Performance Monitoring
+
+```typescript
+// ✅ GOOD: Track query performance
+export async function monitoredQuery() {
+  const start = performance.now();
+  
+  try {
+    const data = await supabase.from("table").select("*");
+    return data;
+  } finally {
+    const duration = performance.now() - start;
+    
+    if (duration > 1000) {
+      console.warn(`Slow query: ${duration}ms`);
+    }
+  }
+}
+```
+
+## Performance Checklist
+
+✅ Use React.cache() for Server Component data fetching
+✅ Use useMemo/useCallback in Client Components
+✅ Use React.memo for expensive components
+✅ Implement proper Next.js caching strategies
+✅ Revalidate cache after mutations
+✅ Add database indexes for frequently queried columns
+✅ Avoid N+1 queries with proper joins
+✅ Paginate large datasets
+✅ Code split heavy components
+✅ Debounce user input
+✅ Optimize images with next/image
+✅ Monitor performance in development
+
+❌ Don't over-memoize (adds overhead)
+❌ Don't forget dependencies in useMemo/useCallback
+❌ Don't cache mutations
+❌ Don't fetch in loops
+❌ Don't ignore slow query warnings
+❌ Don't load all data at once
+❌ Don't skip pagination for large datasets
+
+## Common Performance Issues
+
+### Issue: Component re-renders too often
+**Solution**: Use React.memo, useMemo, useCallback
+
+### Issue: Page loads slowly
+**Solution**: Check waterfall in Network tab, use parallel fetching
+
+### Issue: Search is laggy
+**Solution**: Debounce input, add indexes
+
+### Issue: Dashboard takes 3-5 seconds
+**Solution**: Apply RLS optimization (wrap auth.uid() in subquery)
+
+### Issue: Memory leaks
+**Solution**: Clean up subscriptions, event listeners in useEffect

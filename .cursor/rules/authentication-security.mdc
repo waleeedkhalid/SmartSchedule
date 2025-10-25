@@ -1,0 +1,443 @@
+---
+description: Authentication patterns and security best practices
+globs: *.ts,*.tsx,lib/auth/**/*,app/**/*
+---
+
+# Authentication & Security Best Practices
+
+## Authentication Setup
+
+### Server-Side Authentication (Server Components & Server Actions)
+
+```typescript
+// ✅ GOOD: Use createServerClient from [lib/supabase/server.ts](mdc:lib/supabase/server.ts)
+import { createServerClient } from "@/lib/supabase/server";
+
+export default async function ProtectedPage() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    redirect("/login");
+  }
+  
+  // ... rest of page
+}
+```
+
+### Client-Side Authentication (Client Components)
+
+```typescript
+// ✅ GOOD: Use createBrowserClient from [lib/supabase/client.ts](mdc:lib/supabase/client.ts)
+"use client";
+
+import { createBrowserClient } from "@/lib/supabase/client";
+
+export function UserProfile() {
+  const supabase = createBrowserClient();
+  
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      // Handle user data
+    });
+  }, []);
+  
+  // ... component logic
+}
+```
+
+## Cached Authentication Functions
+
+### CRITICAL: Use Cached Auth Functions
+
+Always use cached authentication functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts):
+
+```typescript
+// ✅ GOOD: Use cached authentication (deduplicates within request)
+import {
+  getAuthenticatedUser,
+  getUserProfile,
+  getCommitteeMembership,
+} from "@/lib/auth/cached-auth";
+
+export default async function DashboardPage() {
+  const user = await getAuthenticatedUser(); // Cached with React.cache()
+  const profile = await getUserProfile();     // Cached
+  const membership = await getCommitteeMembership(user.id); // Cached
+  
+  // These functions can be called multiple times in the same request
+  // without additional database queries
+}
+
+// ❌ BAD: Direct Supabase calls (not cached, called multiple times)
+const supabase = await createServerClient();
+const { data: { user } } = await supabase.auth.getUser(); // Called each time
+```
+
+## Role-Based Access Control (RBAC)
+
+### Role Checking
+
+```typescript
+// ✅ GOOD: Centralized role checking
+import { getUserProfile } from "@/lib/auth/cached-auth";
+import { redirectByRole } from "@/lib/auth/redirect-by-role";
+
+export default async function ProtectedPage() {
+  const profile = await getUserProfile();
+  
+  // Check if user has required role
+  if (profile?.role !== "scheduling_committee") {
+    redirect(redirectByRole(profile?.role));
+  }
+  
+  // ... page logic
+}
+
+// ✅ GOOD: Multiple role check
+const ALLOWED_ROLES = ["scheduling_committee", "teaching_load_committee", "registrar"];
+
+if (!profile?.role || !ALLOWED_ROLES.includes(profile.role)) {
+  redirect("/unauthorized");
+}
+```
+
+### Committee Membership Checking
+
+```typescript
+// ✅ GOOD: Check committee membership
+import { getCommitteeMembership } from "@/lib/auth/cached-auth";
+
+const membership = await getCommitteeMembership(user.id);
+
+if (!membership) {
+  redirect("/committee/scheduler/setup");
+}
+
+// Use membership data
+console.log(membership.committee_type); // 'scheduling' | 'teaching_load'
+```
+
+## Row Level Security (RLS) Best Practices
+
+### CRITICAL: Optimize RLS Policies
+
+**Always wrap auth.uid() in subquery for performance:**
+
+```sql
+-- ❌ BAD: Slow - re-evaluated for EVERY row
+CREATE POLICY "select_own" ON students
+  FOR SELECT USING (id = auth.uid());
+
+-- ✅ GOOD: Fast - evaluated ONCE per query
+CREATE POLICY "select_own" ON students
+  FOR SELECT USING (id = (select auth.uid()));
+```
+
+### RLS Policy Patterns
+
+#### Student Access Pattern
+```sql
+-- Students can only access their own data
+CREATE POLICY "students_view_own" ON students
+  FOR SELECT
+  USING (id = (select auth.uid()));
+
+CREATE POLICY "students_update_own" ON students
+  FOR UPDATE
+  USING (id = (select auth.uid()))
+  WITH CHECK (id = (select auth.uid()));
+```
+
+#### Faculty Access Pattern
+```sql
+-- Faculty can access their own data
+CREATE POLICY "faculty_view_own" ON faculty
+  FOR SELECT
+  USING (id = (select auth.uid()));
+
+-- Faculty can view sections they teach
+CREATE POLICY "faculty_view_sections" ON section
+  FOR SELECT
+  USING (
+    instructor_id = (select auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM users
+      WHERE id = (select auth.uid())
+      AND role = 'faculty'
+    )
+  );
+```
+
+#### Committee Access Pattern
+```sql
+-- Committee members can access all data
+CREATE POLICY "committee_manage_all" ON section
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = (select auth.uid())
+      AND role IN ('scheduling_committee', 'teaching_load_committee', 'registrar')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = (select auth.uid())
+      AND role IN ('scheduling_committee', 'teaching_load_committee', 'registrar')
+    )
+  );
+```
+
+#### Combined Access Pattern (Students OR Committee)
+```sql
+-- ✅ GOOD: Single consolidated policy
+CREATE POLICY "view_enrollments" ON enrollment
+  FOR SELECT
+  USING (
+    student_id = (select auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM users
+      WHERE id = (select auth.uid())
+      AND role IN ('scheduling_committee', 'registrar')
+    )
+  );
+
+-- ❌ BAD: Multiple permissive policies (slower)
+CREATE POLICY "students_view_own" ON enrollment
+  FOR SELECT USING (student_id = auth.uid());
+
+CREATE POLICY "committee_view_all" ON enrollment
+  FOR SELECT USING (role = 'committee');
+```
+
+## Security Best Practices
+
+### 1. Never Trust Client Input
+
+```typescript
+// ❌ BAD: Trust user-provided role
+export async function updateUserRole(userId: string, role: string) {
+  const supabase = await createServerClient();
+  await supabase.from("users").update({ role }).eq("id", userId);
+}
+
+// ✅ GOOD: Verify admin privileges first
+export async function updateUserRole(userId: string, role: string) {
+  const supabase = await createServerClient();
+  const profile = await getUserProfile();
+  
+  // Only admins can change roles
+  if (profile?.role !== "registrar") {
+    throw new Error("Unauthorized");
+  }
+  
+  // Validate role is valid
+  const VALID_ROLES = ["student", "faculty", "scheduling_committee"];
+  if (!VALID_ROLES.includes(role)) {
+    throw new Error("Invalid role");
+  }
+  
+  await supabase.from("users").update({ role }).eq("id", userId);
+}
+```
+
+### 2. Validate User Ownership
+
+```typescript
+// ✅ GOOD: Verify user owns the resource
+"use server";
+
+export async function updateStudentData(studentId: string, data: any) {
+  const user = await getAuthenticatedUser();
+  
+  // Verify user is updating their own data
+  if (user.id !== studentId) {
+    throw new Error("Unauthorized: Can only update own data");
+  }
+  
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from("students")
+    .update(data)
+    .eq("id", studentId);
+  
+  if (error) throw error;
+  
+  revalidatePath("/student/profile");
+}
+```
+
+### 3. Protect Sensitive Data
+
+```typescript
+// ✅ GOOD: Don't expose sensitive fields
+export async function getPublicProfile(userId: string) {
+  const supabase = await createServerClient();
+  
+  // Only select public fields
+  const { data } = await supabase
+    .from("users")
+    .select("id, name, email, role")
+    .eq("id", userId)
+    .single();
+  
+  return data;
+}
+
+// ❌ BAD: Expose all fields (might include sensitive data)
+const { data } = await supabase
+  .from("users")
+  .select("*")
+  .eq("id", userId)
+  .single();
+```
+
+### 4. Rate Limiting for Sensitive Operations
+
+```typescript
+// ✅ GOOD: Add rate limiting for login attempts
+import { ratelimit } from "@/lib/rate-limit";
+
+export async function loginAction(email: string, password: string) {
+  // Check rate limit (e.g., 5 attempts per 15 minutes)
+  const { success } = await ratelimit.limit(email);
+  
+  if (!success) {
+    throw new Error("Too many login attempts. Try again later.");
+  }
+  
+  const supabase = await createServerClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  if (error) throw error;
+}
+```
+
+## Session Management
+
+### Server-Side Session Handling
+
+```typescript
+// ✅ GOOD: Refresh session on protected routes
+export default async function ProtectedLayout({ children }) {
+  const supabase = await createServerClient();
+  
+  // This will refresh the session if needed
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    redirect("/login");
+  }
+  
+  return <>{children}</>;
+}
+```
+
+### Client-Side Session Monitoring
+
+```typescript
+// ✅ GOOD: Listen for auth state changes
+"use client";
+
+import { useEffect } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+
+export function AuthProvider({ children }) {
+  const router = useRouter();
+  const supabase = createBrowserClient();
+  
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        router.push("/login");
+      }
+      if (event === "SIGNED_IN") {
+        router.refresh(); // Refresh server components
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [supabase, router]);
+  
+  return <>{children}</>;
+}
+```
+
+## Common Security Issues to Avoid
+
+### ❌ Don't: Expose User IDs in URLs
+```typescript
+// ❌ BAD: User ID in URL (can be manipulated)
+router.push(`/student/${userId}/profile`);
+
+// ✅ GOOD: No user ID needed (use session)
+router.push("/student/profile");
+```
+
+### ❌ Don't: Trust req.body Without Validation
+```typescript
+// ❌ BAD: No validation
+export async function POST(req: Request) {
+  const body = await req.json();
+  await supabase.from("students").insert(body);
+}
+
+// ✅ GOOD: Validate input
+import { z } from "zod";
+
+const schema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  student_number: z.string().length(7),
+});
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const validated = schema.parse(body); // Throws if invalid
+  await supabase.from("students").insert(validated);
+}
+```
+
+### ❌ Don't: Hardcode Admin Checks
+```typescript
+// ❌ BAD: Hardcoded user ID
+if (userId === "some-uuid-here") {
+  // admin logic
+}
+
+// ✅ GOOD: Role-based check
+const profile = await getUserProfile();
+if (profile?.role === "registrar") {
+  // admin logic
+}
+```
+
+## Security Checklist
+
+✅ Use cached auth functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts)
+✅ Always wrap auth.uid() in subquery for RLS policies
+✅ Verify user identity before mutations
+✅ Validate all user input with schemas (e.g., Zod)
+✅ Use role-based access control for admin features
+✅ Never expose sensitive data in API responses
+✅ Implement rate limiting for sensitive operations
+✅ Monitor auth state changes in client components
+✅ Refresh sessions appropriately
+✅ Use Server Actions for mutations (not API routes)
+
+❌ Don't trust client-provided user IDs
+❌ Don't expose internal IDs in URLs
+❌ Don't skip input validation
+❌ Don't hardcode admin user IDs
+❌ Don't return all fields with SELECT *
+❌ Don't forget to check permissions
+❌ Don't ignore RLS policy performance
+❌ Don't mix cached and non-cached auth functions

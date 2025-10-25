@@ -12,6 +12,9 @@ export * from './api';
 // Schedule generation types
 export * from './schedule';
 
+// Scheduler system types
+export * from './scheduler';
+
 // =====================================================
 // FACULTY TYPES
 // =====================================================

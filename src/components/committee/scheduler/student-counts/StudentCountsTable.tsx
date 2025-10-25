@@ -1,5 +1,28 @@
+/**
+ * Student Counts Table Component
+ * Display detailed enrollment data by course with capacity management
+ */
+
 "use client";
 
+import { useState, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -8,383 +31,408 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-
-type StudentCount = {
-  code: string;
-  name: string;
-  level: number;
-  total_students: number;
-};
+  Search,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
+import type { StudentEnrollmentData } from "@/types/scheduler";
 
 interface StudentCountsTableProps {
-  studentCounts: StudentCount[];
-  onCreate?: (data: StudentCount) => void;
-  onUpdate?: (code: string, data: Partial<StudentCount>) => void;
-  onDelete?: (code: string) => void;
+  data: StudentEnrollmentData[];
+  termCode: string;
+  termName: string;
+  onDataUpdated: () => void;
 }
 
-const DEFAULT_DRAFT: StudentCount = {
-  code: "",
-  name: "",
-  level: 4,
-  total_students: 0,
-};
-
 export function StudentCountsTable({
-  studentCounts,
-  onCreate,
-  onUpdate,
-  onDelete,
+  data,
+  termCode,
+  termName,
+  onDataUpdated,
 }: StudentCountsTableProps) {
-  const [open, setOpen] = useState(false);
-  const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [draft, setDraft] = useState<StudentCount>(DEFAULT_DRAFT);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [capacityFilter, setCapacityFilter] = useState<string>("all");
 
-  // Debug log
-  console.log("Current student count draft:", draft);
-
-  const reset = () => {
-    setEditingCode(null);
-    setDraft(DEFAULT_DRAFT);
-  };
-
-  const handleEdit = (sc: StudentCount) => {
-    setEditingCode(sc.code);
-    setDraft({ ...sc });
-    setOpen(true);
-  };
-
-  const handleDelete = (code: string) => {
-    if (!onDelete) return;
-    if (confirm(`Delete student count for ${code}?`)) {
-      onDelete(code);
-      console.log("❌ Deleting student count:", code);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (
-      !draft.code ||
-      !draft.name ||
-      draft.level < 1 ||
-      draft.total_students < 0
-    ) {
-      alert("Please fill in all required fields with valid values");
-      return;
-    }
-
-    if (editingCode) {
-      // Update existing
-      if (onUpdate) {
-        onUpdate(editingCode, draft);
-        console.log("✅ Updated student count:", draft);
-      }
-    } else {
-      // Create new
-      if (onCreate) {
-        onCreate(draft);
-        console.log("✅ Created student count:", draft);
-      }
-    }
-
-    reset();
-    setOpen(false);
-  };
-
-  // Intelligent section planner
-  // - Ideal size: 25
-  // - Allow up to 27 (overflow tolerance)
-  // - Avoid small sections: minimum 18
-  const IDEAL_SIZE = 25;
-  const MAX_SIZE = 27;
-  const MIN_SIZE = 18;
-
-  const computeSectionPlan = (total: number) => {
-    if (total <= 0) {
-      return { count: 0, sizes: [] as number[] };
-    }
-
-    const minSections = Math.ceil(total / MAX_SIZE);
-    const maxSections = Math.max(1, Math.floor(total / MIN_SIZE));
-
-    let bestSections = Math.max(1, Math.round(total / IDEAL_SIZE));
-    let bestDistance = Math.abs(total / bestSections - IDEAL_SIZE);
-
-    for (let s = minSections; s <= Math.max(minSections, maxSections); s++) {
-      const avg = total / s;
-      if (avg >= MIN_SIZE && avg <= MAX_SIZE) {
-        const distance = Math.abs(avg - IDEAL_SIZE);
-        if (distance <= bestDistance) {
-          bestDistance = distance;
-          bestSections = s;
-        }
-      }
-    }
-
-    // Compute size distribution (balanced: some base, some base+1)
-    const base = Math.floor(total / bestSections);
-    let extra = total % bestSections; // number of sections that get +1
-    const sizes: number[] = Array.from({ length: bestSections }, () => base);
-    for (let i = 0; i < sizes.length && extra > 0; i++, extra--) {
-      sizes[i] = sizes[i] + 1;
-    }
-
-    // If any size is below MIN_SIZE, reduce sections and recompute once
-    if (sizes.length > 1 && sizes[sizes.length - 1] < MIN_SIZE) {
-      const s = Math.max(1, bestSections - 1);
-      const newBase = Math.floor(total / s);
-      let newExtra = total % s;
-      const newSizes: number[] = Array.from({ length: s }, () => newBase);
-      for (let i = 0; i < newSizes.length && newExtra > 0; i++, newExtra--) {
-        newSizes[i] = newSizes[i] + 1;
-      }
-      return { count: s, sizes: newSizes };
-    }
-
-    return { count: bestSections, sizes };
-  };
-
-  const summary = useMemo(() => {
-    const rows = (studentCounts || []).map((course) => {
-      const plan = computeSectionPlan(course.total_students);
-      return {
-        code: course.code,
-        name: course.name,
-        level: course.level,
-        total: course.total_students,
-        sections: plan.count,
-        sizes: plan.sizes,
-      };
-    });
-
-    const totals = rows.reduce(
-      (acc, r) => {
-        acc.students += r.total;
-        acc.sections += r.sections;
-        return acc;
-      },
-      { students: 0, sections: 0 }
+  // Get unique levels
+  const uniqueLevels = useMemo(() => {
+    const levels = new Set(
+      data.map((item) => item.level).filter((l): l is number => l !== null)
     );
+    return Array.from(levels).sort();
+  }, [data]);
 
-    return { rows, totals };
-  }, [studentCounts]);
+  // Filter data
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      const matchesSearch =
+        item.course_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.course_name.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesLevel =
+        levelFilter === "all" || item.level?.toString() === levelFilter;
+
+      const matchesType =
+        typeFilter === "all" || item.course_type === typeFilter;
+
+      // Capacity filter logic
+      let matchesCapacity = true;
+      if (capacityFilter === "under") {
+        matchesCapacity = item.enrolled_students < item.total_students * 0.7;
+      } else if (capacityFilter === "over") {
+        matchesCapacity = item.enrolled_students > item.total_students * 0.9;
+      } else if (capacityFilter === "critical") {
+        matchesCapacity = item.enrolled_students > item.total_students;
+      }
+
+      return matchesSearch && matchesLevel && matchesType && matchesCapacity;
+    });
+  }, [data, searchTerm, levelFilter, typeFilter, capacityFilter]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalStudents = filteredData.reduce(
+      (sum, item) => sum + item.total_students,
+      0
+    );
+    const totalEnrolled = filteredData.reduce(
+      (sum, item) => sum + item.enrolled_students,
+      0
+    );
+    const totalSectionsNeeded = filteredData.reduce(
+      (sum, item) => sum + item.sections_needed,
+      0
+    );
+    const avgUtilization =
+      totalEnrolled > 0 ? (totalEnrolled / totalStudents) * 100 : 0;
+
+    return {
+      totalStudents,
+      totalEnrolled,
+      totalSectionsNeeded,
+      avgUtilization,
+    };
+  }, [filteredData]);
+
+  const getCapacityStatus = (item: StudentEnrollmentData) => {
+    const utilization = item.enrolled_students / item.total_students;
+    if (utilization > 1.0) {
+      return { status: "over", icon: AlertTriangle, color: "destructive" };
+    } else if (utilization > 0.9) {
+      return { status: "high", icon: TrendingUp, color: "warning" };
+    } else if (utilization < 0.5) {
+      return { status: "low", icon: TrendingDown, color: "secondary" };
+    } else {
+      return { status: "ok", icon: CheckCircle2, color: "default" };
+    }
+  };
+
+  const handleExport = () => {
+    // Create CSV content
+    const headers = [
+      "Course Code",
+      "Course Name",
+      "Type",
+      "Level",
+      "Total Students",
+      "Enrolled",
+      "Sections Needed",
+      "Utilization %",
+    ];
+    
+    const rows = filteredData.map((item) => [
+      item.course_code,
+      item.course_name,
+      item.course_type,
+      item.level || "N/A",
+      item.total_students,
+      item.enrolled_students,
+      item.sections_needed,
+      ((item.enrolled_students / item.total_students) * 100).toFixed(1),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `student-counts-${termCode}-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Student Counts by Course</CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                onClick={() => {
-                  reset();
-                  setOpen(true);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Student Count
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCode ? "Edit Student Count" : "Add Student Count"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Course Code <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={draft.code}
-                    onChange={(e) =>
-                      setDraft((prev) => ({
-                        ...prev,
-                        code: e.target.value.toUpperCase(),
-                      }))
-                    }
-                    placeholder="e.g., SWE211"
-                    disabled={!!editingCode}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Course Name <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={draft.name}
-                    onChange={(e) =>
-                      setDraft((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="e.g., Introduction to Software Engineering"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Level <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={draft.level}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          level: parseInt(e.target.value) || 1,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Total Students <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={draft.total_students}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          total_students: parseInt(e.target.value) || 0,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      reset();
-                      setOpen(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleSubmit}
-                    disabled={
-                      !draft.code ||
-                      !draft.name ||
-                      draft.level < 1 ||
-                      draft.total_students < 0
-                    }
-                  >
-                    {editingCode ? "Update" : "Create"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <div>
+            <CardTitle>Enrollment by Course</CardTitle>
+            <CardDescription>
+              Student enrollment counts and section capacity planning for {termName}
+            </CardDescription>
+          </div>
+          <Button onClick={handleExport} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
+      <CardContent className="space-y-6">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.totalStudents}</div>
+              <p className="text-xs text-muted-foreground">Total Student Slots</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.totalEnrolled}</div>
+              <p className="text-xs text-muted-foreground">Students Enrolled</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.totalSectionsNeeded}</div>
+              <p className="text-xs text-muted-foreground">Sections Needed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">
+                {stats.avgUtilization.toFixed(1)}%
+              </div>
+              <p className="text-xs text-muted-foreground">Avg Utilization</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="All Levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Levels</SelectItem>
+              {uniqueLevels.map((level) => (
+                <SelectItem key={level} value={level.toString()}>
+                  Level {level}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="REQUIRED">Required</SelectItem>
+              <SelectItem value="ELECTIVE">Elective</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="All Capacities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Capacities</SelectItem>
+              <SelectItem value="under">Under-utilized</SelectItem>
+              <SelectItem value="over">Near Capacity</SelectItem>
+              <SelectItem value="critical">Over Capacity</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Results count */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <p>
+            Showing {filteredData.length} of {data.length} courses
+          </p>
+        </div>
+
+        {/* Table */}
+        <div className="border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Course Code</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead className="text-right">Students</TableHead>
-                <TableHead className="text-right">
-                  Recommended Sections
-                </TableHead>
-                <TableHead className="text-right">Section Size Plan</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead className="text-center">Level</TableHead>
+                <TableHead className="text-center">Type</TableHead>
+                <TableHead className="text-center">Total Students</TableHead>
+                <TableHead className="text-center">Enrolled</TableHead>
+                <TableHead className="text-center">Sections</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Utilization</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {summary.rows.map((course) => {
-                const sizeGroups = course.sizes
-                  .sort((a, b) => b - a)
-                  .reduce<Record<number, number>>((acc, size) => {
-                    acc[size] = (acc[size] || 0) + 1;
-                    return acc;
-                  }, {});
-                const planLabel = Object.entries(sizeGroups)
-                  .sort((a, b) => Number(b[0]) - Number(a[0]))
-                  .map(([size, count]) => `${count}×${size}`)
-                  .join(", ");
+              {filteredData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <p className="text-muted-foreground">No courses found</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredData.map((item) => {
+                  const capacityStatus = getCapacityStatus(item);
+                  const StatusIcon = capacityStatus.icon;
+                  const utilization =
+                    (item.enrolled_students / item.total_students) * 100;
 
-                // Find original student count data for this course
-                const originalData = studentCounts.find(
-                  (sc) => sc.code === course.code
-                );
-
-                return (
-                  <TableRow key={course.code}>
-                    <TableCell className="font-medium">{course.code}</TableCell>
-                    <TableCell>{course.name}</TableCell>
-                    <TableCell>Level {course.level}</TableCell>
-                    <TableCell className="text-right">{course.total}</TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">{course.sections}</span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">{planLabel || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            originalData && handleEdit(originalData)
+                  return (
+                    <TableRow key={item.course_code} className="hover:bg-muted/50">
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{item.course_code}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {item.course_name}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.level || "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant={
+                            item.course_type === "REQUIRED"
+                              ? "default"
+                              : "secondary"
                           }
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(course.code)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              <TableRow className="bg-muted/50">
-                <TableCell colSpan={3} className="font-medium">
-                  Total
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {summary.totals.students}
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {summary.totals.sections}
-                </TableCell>
-                <TableCell />
-                <TableCell />
-              </TableRow>
+                          {item.course_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center font-medium">
+                        {item.total_students}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.enrolled_students}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{item.sections_needed}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <StatusIcon
+                            className={`h-4 w-4 ${
+                              capacityStatus.status === "over"
+                                ? "text-destructive"
+                                : capacityStatus.status === "high"
+                                  ? "text-yellow-600"
+                                  : capacityStatus.status === "low"
+                                    ? "text-muted-foreground"
+                                    : "text-green-600"
+                            }`}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm font-medium">
+                            {utilization.toFixed(0)}%
+                          </span>
+                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all ${
+                                utilization > 100
+                                  ? "bg-destructive"
+                                  : utilization > 90
+                                    ? "bg-yellow-500"
+                                    : "bg-primary"
+                              }`}
+                              style={{
+                                width: `${Math.min(utilization, 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </div>
+
+        {/* Elective Preferences Summary */}
+        {filteredData.some(
+          (item) =>
+            item.course_type === "ELECTIVE" &&
+            item.preference_counts &&
+            item.preference_counts.length > 0
+        ) && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Elective Preferences</h3>
+            <div className="space-y-3">
+              {filteredData
+                .filter(
+                  (item) =>
+                    item.course_type === "ELECTIVE" &&
+                    item.preference_counts &&
+                    item.preference_counts.length > 0
+                )
+                .map((item) => (
+                  <Card key={item.course_code}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium">{item.course_code}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {item.course_name}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          {item.preference_counts
+                            ?.sort((a, b) => a.preference_rank - b.preference_rank)
+                            .slice(0, 5)
+                            .map((pref) => (
+                              <div
+                                key={pref.preference_rank}
+                                className="text-center"
+                              >
+                                <div className="text-xs text-muted-foreground">
+                                  #{pref.preference_rank}
+                                </div>
+                                <Badge variant="outline">
+                                  {pref.student_count}
+                                </Badge>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,0 +1,296 @@
+---
+description: Data fetching patterns and best practices for the SmartSchedule application
+globs: *.ts,*.tsx,app/**/*
+---
+
+# Data Fetching Patterns
+
+## Core Principles
+
+1. **Server Components First**: Default to Server Components for data fetching
+2. **Client Components Only When Needed**: Use Client Components only for interactivity
+3. **React.cache() for Deduplication**: Wrap data fetching functions with React.cache()
+4. **Parallel Fetching**: Use Promise.all() for independent queries
+
+## Server Component Data Fetching
+
+```typescript
+// ✅ GOOD: Server Component with cached data fetching
+import { cache } from "react";
+import { createServerClient } from "@/lib/supabase/server";
+
+const getCourses = cache(async () => {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("course")
+    .select("*")
+    .order("course_code");
+  
+  if (error) throw error;
+  return data;
+});
+
+export default async function CoursesPage() {
+  const courses = await getCourses();
+  return <CourseList courses={courses} />;
+}
+```
+
+## Client Component Data Fetching
+
+```typescript
+// ✅ GOOD: Custom hook for client-side data fetching
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+
+export function useCourses() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const fetchCourses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const supabase = createBrowserClient();
+      const { data, error } = await supabase
+        .from("course")
+        .select("*")
+        .order("course_code");
+      
+      if (error) throw error;
+      setData(data);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+  
+  return { data, loading, error, refetch: fetchCourses };
+}
+```
+
+## Parallel Data Fetching
+
+```typescript
+// ✅ GOOD: Parallel fetching with Promise.all
+export default async function DashboardPage() {
+  const [courses, students, sections] = await Promise.all([
+    getCourses(),
+    getStudents(),
+    getSections(),
+  ]);
+  
+  return (
+    <Dashboard 
+      courses={courses}
+      students={students}
+      sections={sections}
+    />
+  );
+}
+```
+
+## Critical Performance Rules
+
+### 1. Always Use React.cache() for Server Functions
+```typescript
+// ❌ BAD: No caching - function called multiple times
+async function getUser(id: string) {
+  const supabase = await createServerClient();
+  return await supabase.from("users").select().eq("id", id).single();
+}
+
+// ✅ GOOD: Cached - function result reused within request
+import { cache } from "react";
+
+const getUser = cache(async (id: string) => {
+  const supabase = await createServerClient();
+  return await supabase.from("users").select().eq("id", id).single();
+});
+```
+
+### 2. Optimize Supabase Queries
+
+```typescript
+// ❌ BAD: Over-fetching data
+const { data } = await supabase
+  .from("section")
+  .select("*");
+
+// ✅ GOOD: Select only needed columns
+const { data } = await supabase
+  .from("section")
+  .select(`
+    section_id,
+    course_id,
+    capacity,
+    course:course_id (
+      course_code,
+      course_name
+    )
+  `);
+```
+
+### 3. Use Indexes for Performance
+```typescript
+// ✅ GOOD: Query on indexed columns
+const { data } = await supabase
+  .from("students")
+  .select("*")
+  .eq("id", userId); // 'id' is indexed
+
+// ⚠️ CAREFUL: Query on non-indexed columns can be slow
+const { data } = await supabase
+  .from("students")
+  .select("*")
+  .eq("email", userEmail); // Consider adding index on 'email'
+```
+
+## Error Handling
+
+```typescript
+// ✅ GOOD: Comprehensive error handling
+async function fetchData() {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase.from("table").select();
+    
+    if (error) {
+      console.error("Supabase error:", error);
+      throw new Error(`Failed to fetch data: ${error.message}`);
+    }
+    
+    if (!data) {
+      return [];
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    throw error;
+  }
+}
+```
+
+## Data Mutation Patterns
+
+### Server Actions
+```typescript
+// ✅ GOOD: Server Action with revalidation
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createServerClient } from "@/lib/supabase/server";
+
+export async function createCourse(formData: FormData) {
+  const supabase = await createServerClient();
+  
+  const { data, error } = await supabase
+    .from("course")
+    .insert({
+      course_code: formData.get("code"),
+      course_name: formData.get("name"),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  
+  revalidatePath("/committee/courses");
+  return { success: true, data };
+}
+```
+
+### Optimistic Updates
+```typescript
+// ✅ GOOD: Optimistic UI update
+"use client";
+
+import { useOptimistic } from "react";
+
+export function CourseList({ courses }) {
+  const [optimisticCourses, addOptimistic] = useOptimistic(
+    courses,
+    (state, newCourse) => [...state, newCourse]
+  );
+  
+  async function handleCreate(formData) {
+    const newCourse = { course_code: formData.get("code"), /* ... */ };
+    addOptimistic(newCourse); // Update UI immediately
+    await createCourse(formData); // Update server
+  }
+  
+  return <div>{/* render optimisticCourses */}</div>;
+}
+```
+
+## Real-time Subscriptions
+
+```typescript
+// ✅ GOOD: Real-time subscription with cleanup
+"use client";
+
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+
+export function useRealtimeEnrollments(sectionId: string) {
+  const [enrollments, setEnrollments] = useState([]);
+  
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    
+    const channel = supabase
+      .channel(`section-${sectionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "section_enrollment",
+          filter: `section_id=eq.${sectionId}`,
+        },
+        (payload) => {
+          // Handle INSERT, UPDATE, DELETE
+          setEnrollments((current) => {
+            // Update logic here
+          });
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sectionId]);
+  
+  return enrollments;
+}
+```
+
+## Don'ts
+
+❌ **Don't fetch data in Client Components unless necessary**
+❌ **Don't fetch data in useEffect without cleanup**
+❌ **Don't ignore error handling**
+❌ **Don't over-fetch data (select all columns)**
+❌ **Don't create waterfalls (sequential fetching)**
+❌ **Don't forget to use React.cache() in Server Components**
+❌ **Don't mix Server and Client data fetching patterns**
+
+## Dos
+
+✅ **Do use Server Components for initial data**
+✅ **Do use parallel fetching with Promise.all()**
+✅ **Do implement proper error boundaries**
+✅ **Do use React.cache() for deduplication**
+✅ **Do select only needed columns**
+✅ **Do add indexes for frequently queried columns**
+✅ **Do use Suspense for loading states**
+✅ **Do implement optimistic updates for better UX**

@@ -31,4 +31,10 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "7acde56893@webxios.proL",
     role: "registrar",
   },
+  {
+    full_name: "Abdulaziz",
+    email: "e1680ded34@webxios.pro",
+    password: "e1680ded34@webxios.proL",
+    role: "scheduling_committee",
+  }
 ];
