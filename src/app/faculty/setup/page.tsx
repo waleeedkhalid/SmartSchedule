@@ -1,12 +1,10 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import FacultySetupForm from "./faculty-setup-form";
 
 export default async function FacultySetupPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },
@@ -32,11 +30,11 @@ export default async function FacultySetupPage() {
 
   const { data: faculty } = await supabase
     .from("faculty")
-    .select("faculty_number, title")
+    .select("faculty_id, title")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (faculty && faculty.faculty_number) {
+  if (faculty && faculty.faculty_id) {
     redirect("/faculty/dashboard");
   }
 
@@ -50,7 +48,7 @@ export default async function FacultySetupPage() {
           userId={user.id}
           fullName={fullName}
           email={email}
-          initialFacultyNumber={faculty?.faculty_number}
+          initialFacultyId={faculty?.faculty_id}
           initialTitle={faculty?.title}
         />
       </div>

@@ -50,7 +50,7 @@ export default function TeachingLoadDashboardPage() {
 
         // Get teaching load committee data from the database
         const { data: userData, error } = await supabase
-          .from("user")
+          .from("users")
           .select("full_name,email,role")
           .eq("id", user.id)
           .maybeSingle();
@@ -69,7 +69,7 @@ export default function TeachingLoadDashboardPage() {
 
         // Get faculty count
         const { count: facultyCount } = await supabase
-          .from("user")
+          .from("users")
           .select("*", { count: "exact", head: true })
           .eq("role", "faculty");
 

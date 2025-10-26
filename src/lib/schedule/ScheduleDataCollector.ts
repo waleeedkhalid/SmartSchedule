@@ -46,7 +46,7 @@ export class ScheduleDataCollector {
     const supabase = await createClient();
     
     const { data, error } = await supabase
-      .from("user")
+      .from("users")
       .select("id, name, email")
       .eq("role", "faculty");
 

@@ -1,11 +1,9 @@
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import FacultyAvailabilityClient from "./FacultyAvailabilityClient";
 
 export default async function FacultyAvailabilityPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   // Check authentication
   const {

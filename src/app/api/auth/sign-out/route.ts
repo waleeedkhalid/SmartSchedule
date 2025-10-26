@@ -3,13 +3,11 @@
  * POST: End user session
  */
 
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { successResponse, errorResponse } from "@/lib/api";
 
 export async function POST() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const { error } = await supabase.auth.signOut();
 

@@ -4,11 +4,17 @@ This directory contains Cursor AI rules that help with code generation, data fet
 
 ## Available Rules
 
-### 1. `index.mdc` (Always Applied)
+### 1. `index.mdc` (Always Applied) ⭐ UPDATED Oct 25, 2025
 **Quick reference and project overview**
 - Applied to: All files
-- Contains: Project structure, critical performance rules, quick troubleshooting
+- Contains: 
+  - **⚠️ CRITICAL: Timetabling System Understanding** (NEW)
+  - Project structure
+  - Critical performance rules
+  - Quick troubleshooting
+  - Common pattern examples
 - Purpose: Provides context for every AI interaction
+- **Key Addition:** Now includes comprehensive explanation that SmartSchedule is a TIMETABLING system, not an enrollment system, with code examples to prevent common mistakes
 
 ### 2. `data-fetching.mdc`
 **Data fetching patterns and best practices**
@@ -218,7 +224,21 @@ Review and update rules when:
 
 ---
 
+## Recent Updates
+
+### October 25, 2025
+- ✅ **Major Update to `index.mdc`:** Added comprehensive timetabling system understanding
+- ✅ Critical section explaining SmartSchedule is NOT an enrollment system
+- ✅ Added table purpose matrix (elective_preferences, schedules, enrollment)
+- ✅ Added common mistake examples with ✅ CORRECT / ❌ WRONG patterns
+- ✅ Links to detailed documentation (TIMETABLING-SYSTEM-GUIDE.md)
+- ✅ Updated user roles to reflect read-only viewing during semester
+
+**Impact:** Every AI interaction now understands the fundamental architecture to prevent building enrollment-like features.
+
+---
+
 **Last Updated:** October 25, 2025  
 **Total Rules:** 6  
-**Coverage:** Data fetching, Supabase, Auth, Caching, APIs, Error handling
+**Coverage:** Data fetching, Supabase, Auth, Caching, APIs, Error handling, **System Architecture**
 

@@ -12,7 +12,7 @@
 import React, { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Users, Calendar } from "lucide-react";
+import { BookOpen, Users, Calendar, Clock } from "lucide-react";
 
 // Custom hooks
 import { useDashboardData } from "@/components/committee/scheduler/hooks/useDashboardData";
@@ -44,82 +44,37 @@ export default function SchedulerDashboardPage() {
     updatingSettings,
   } = useFeedbackSettings(initialFeedbackSettings);
 
-  // Memoize action cards configuration
+  // Memoize action cards configuration - Student Management and Timeline
   const actionCards = useMemo(() => [
     {
-      title: "Course Management",
-      description: "Manage courses, sections, and course offerings",
-      icon: BookOpen,
-      features: [
-        "View and edit course catalog",
-        "Manage course sections",
-        "Set course prerequisites",
-        "Configure course offerings",
-      ],
-      href: "/committee/scheduler/courses",
-      buttonText: "Manage Courses",
-      variant: "default" as const,
-      borderColorClass: "border-2 hover:border-primary",
-    },
-    {
-      title: "Student Enrollment",
-      description: "Track enrollment and manage section capacities",
+      title: "Student Management",
+      description: "Manage students, enrollments, and irregular student cases",
       icon: Users,
       features: [
-        "View enrollment by course and level",
-        "Monitor section capacities",
-        "Track elective preferences",
-        "Export enrollment reports",
+        "View student statistics and enrollment metrics",
+        "Search and filter student list by level and status",
+        "Track and manage irregular students",
+        "Coordinate with Registrar for student cases",
       ],
-      href: "/committee/scheduler/student-counts",
-      buttonText: "View Enrollment",
+      href: "/committee/scheduler/students",
+      buttonText: "Manage Students",
       variant: "default" as const,
       borderColorClass: "border-2 hover:border-blue-500",
     },
     {
-      title: "Schedule Generation",
-      description: "Generate and manage academic schedules",
-      icon: Calendar,
+      title: "Academic Timeline",
+      description: "Track academic phases, milestones, and important dates",
+      icon: Clock,
       features: [
-        "Generate automated schedules",
-        "Review and edit schedules",
-        "Resolve conflicts",
-        "Export schedule data",
+        "Monitor phase progression and task completion",
+        "View upcoming deadlines and events",
+        "Track scheduling workflow progress",
+        "Stay updated on academic calendar",
       ],
-      href: "/committee/scheduler/generate",
-      buttonText: "Generate Schedule",
-      variant: "outline" as const,
-      borderColorClass: "",
-    },
-    {
-      title: "Exam Management",
-      description: "Schedule and manage exam dates and times",
-      icon: BookOpen,
-      features: [
-        "Schedule midterm exams",
-        "Plan final exam periods",
-        "Avoid exam conflicts",
-        "Manage exam rooms",
-      ],
-      href: "/committee/scheduler/exams",
-      buttonText: "Manage Exams",
-      variant: "outline" as const,
-      borderColorClass: "",
-    },
-    {
-      title: "Rules & Settings",
-      description: "Configure scheduling rules and system settings",
-      icon: BookOpen,
-      features: [
-        "Set scheduling constraints",
-        "Configure time slots",
-        "Manage room assignments",
-        "System preferences",
-      ],
-      href: "/committee/scheduler/rules",
-      buttonText: "Configure Rules",
-      variant: "outline" as const,
-      borderColorClass: "",
+      href: "/committee/scheduler/timeline",
+      buttonText: "View Timeline",
+      variant: "default" as const,
+      borderColorClass: "border-2 hover:border-purple-500",
     },
   ], []);
 
@@ -238,20 +193,26 @@ export default function SchedulerDashboardPage() {
       </div>
 
       {/* Main Actions - Memoized Components */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {actionCards.map((card) => (
-          <ActionCard
-            key={card.title}
-            title={card.title}
-            description={card.description}
-            icon={card.icon}
-            features={card.features}
-            href={card.href}
-            buttonText={card.buttonText}
-            variant={card.variant}
-            borderColorClass={card.borderColorClass}
-          />
-        ))}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Scheduler Tools</h2>
+        <p className="text-muted-foreground mb-6">
+          Core scheduling committee features for managing students and tracking academic progress
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {actionCards.map((card) => (
+            <ActionCard
+              key={card.title}
+              title={card.title}
+              description={card.description}
+              icon={card.icon}
+              features={card.features}
+              href={card.href}
+              buttonText={card.buttonText}
+              variant={card.variant}
+              borderColorClass={card.borderColorClass}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Feedback Controls - Memoized Component */}

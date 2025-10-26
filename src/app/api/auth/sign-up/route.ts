@@ -3,9 +3,8 @@
  * POST: Create new user account
  */
 
-import { cookies } from "next/headers";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { successResponse, validationErrorResponse, errorResponse } from "@/lib/api";
 import { USER_ROLES, type UserRole } from "@/lib/auth/constants";
 
@@ -32,8 +31,7 @@ export async function POST(request: Request) {
   }
 
   const { email, password, fullName, role } = parsed.data;
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
   const origin =
     request.headers.get("origin") ??
     (request.headers.get("referer")

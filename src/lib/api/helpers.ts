@@ -1,19 +1,19 @@
 /**
  * API Route Helper Functions
  * Common utilities for API endpoints
+ * ✅ CORRECT PATTERN: Uses async createServerClient()
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import type { ApiResponse } from "@/types";
 
 /**
  * Get authenticated user from request
+ * ✅ UPDATED: Now uses async createServerClient()
  */
 export async function getAuthenticatedUser() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = await createServerClient();
 
   const {
     data: { user },

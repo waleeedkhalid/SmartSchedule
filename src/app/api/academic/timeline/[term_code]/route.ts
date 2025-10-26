@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@/lib/supabase';
+import { createServerClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/academic/timeline/[term_code]
@@ -13,8 +12,7 @@ export async function GET(
 ) {
   try {
     const { term_code } = await params;
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
     const searchParams = request.nextUrl.searchParams;
     
     // Check if user is authenticated

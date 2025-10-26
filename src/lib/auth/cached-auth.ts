@@ -1,11 +1,11 @@
 /**
  * Cached authentication utilities
  * Implements React.cache() pattern from performance.md for request-level memoization
+ * ✅ CORRECT PATTERN: Uses async createServerClient() with no parameters
  */
 
 import { cache } from "react";
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/auth/redirect-by-role";
 
 interface UserProfile {
@@ -19,8 +19,7 @@ interface UserProfile {
  * Get authenticated user (memoized per request)
  */
 export const getAuthenticatedUser = cache(async () => {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = await createServerClient();
 
   const {
     data: { user },
@@ -39,8 +38,7 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
     return null;
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = await createServerClient();
 
   const { data: profile } = await supabase
     .from("users")
@@ -64,12 +62,11 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
  * Get committee membership (memoized per request)
  */
 export const getCommitteeMembership = cache(async (userId: string) => {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = await createServerClient();
 
   const { data: membership } = await supabase
     .from("committee_members")
-    .select("id")
+    .select("id, committee_type, created_at")
     .eq("id", userId)
     .maybeSingle();
 

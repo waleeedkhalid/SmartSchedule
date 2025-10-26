@@ -23,7 +23,7 @@ import { QuickActions } from "@/components/faculty/QuickActions";
 interface FacultyDashboardClientProps {
   fullName: string;
   email: string;
-  facultyNumber: string;
+  facultyId: string;
   title: string;
   status: string;
 }
@@ -38,7 +38,7 @@ interface FacultyStatus {
   canViewFeedback: boolean;
   hasPendingSuggestions: boolean;
   facultyInfo: {
-    facultyNumber: string;
+    facultyId: string;
     title: string;
     status: string;
   };
@@ -47,7 +47,7 @@ interface FacultyStatus {
 export default function FacultyDashboardClient({
   fullName,
   email,
-  facultyNumber,
+  facultyId,
   title,
   status,
 }: FacultyDashboardClientProps) {
@@ -196,9 +196,9 @@ export default function FacultyDashboardClient({
           <div className="grid gap-6 md:grid-cols-3 mt-6">
             <div className="space-y-2 rounded-lg bg-muted/30 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Faculty Number
+                Faculty ID
               </p>
-              <p className="text-xl font-bold">{facultyNumber || "Pending"}</p>
+              <p className="text-xl font-bold">{facultyId || "Pending"}</p>
             </div>
             <div className="space-y-2 rounded-lg bg-muted/30 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

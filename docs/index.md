@@ -1,8 +1,41 @@
 # SmartSchedule Documentation
 
-> **Last Updated:** 2025-10-24 (Auto-generated)
+> **Last Updated:** 2025-10-25 (Documentation cleanup complete)
 
-Welcome to the comprehensive documentation for **SmartSchedule** - An intelligent academic scheduling system for universities and educational institutions.
+Welcome to the **official and only** documentation for **SmartSchedule** - An intelligent academic scheduling system for universities and educational institutions.
+
+> ⚠️ **Important:** This is the single source of truth for SmartSchedule documentation. All documentation must reside in the `/docs` directory. Root-level .md files and other scattered documentation have been removed.
+
+---
+
+## 🎯 NEW: Understanding SmartSchedule as a Timetabling System
+
+> **⚠️ CRITICAL:** Before working on any student-related features, **READ THIS FIRST**
+
+SmartSchedule is a **TIMETABLING/SCHEDULING SYSTEM**, not a traditional enrollment system.
+
+### 📘 Start Here
+**[Timetabling System Guide](./TIMETABLING-SYSTEM-GUIDE.md)** - Complete guide explaining:
+- What type of system SmartSchedule is (timetabling vs enrollment)
+- System timeline (pre-semester → semester → post-semester)
+- How data flows through the system
+- Common misconceptions and corrections
+- Developer guidelines with code examples
+
+### 📊 Student Schema Documentation (NEW - Oct 25, 2025)
+**[Student Schema Summary](./schema/STUDENT-SCHEMA-SUMMARY.md)** - Quick reference for developers:
+- All 9 student-related tables explained
+- Common query patterns
+- Integration examples
+- RLS policies summary
+
+### Key Concept
+```
+Pre-Semester:  Students submit PREFERENCES → Scheduler GENERATES timetables → Committee PUBLISHES
+Semester:      Students VIEW schedules (READ-ONLY)
+```
+
+**NOT:** Real-time enrollment, first-come-first-served, student-built schedules
 
 ---
 
@@ -44,6 +77,31 @@ Comprehensive feature documentation organized by persona:
 
 **Auto-synced with:** `src/app/` and `src/components/`
 
+### [Quick Start Guide](./features/quick-start-guide.md) ⭐ NEW
+Task-based quick reference for all user roles:
+- Faculty: Set availability, view schedule, submit feedback
+- Scheduler Committee: Generate schedules, manage courses, resolve conflicts
+- Teaching Load Committee: Monitor workload, assign faculty
+- Registrar: Manage timeline, handle special cases
+- Students: View schedule, submit preferences
+- Common troubleshooting tips
+
+**Updated:** October 25, 2025
+
+---
+
+### [Performance Guide](./performance.md) ⚡ UPDATED
+Complete performance optimization guide:
+- **🚨 Critical RLS Performance Fix** (Oct 25, 2025) - 10-100x improvement
+- Redis caching strategies
+- Memoization patterns
+- Materialized views
+- Progressive computation
+- Scalability techniques
+- Performance monitoring
+
+**Major Update:** October 25, 2025 - RLS optimization applied
+
 ---
 
 ### [System Architecture](./system/architecture.md)
@@ -53,6 +111,36 @@ High-level system design and architecture:
 - Data flow diagrams
 - Integration points
 - Security model
+
+### [Implementation History](./system/implementation-history.md) ⭐ NEW
+Complete development history and phase tracking:
+- Phase 2-8: All major implementations documented
+- Critical Performance Fix (Oct 25, 2025)
+- Feature-specific implementations
+- Code metrics and statistics
+- Current system state
+- Future enhancements
+
+**Updated:** October 25, 2025
+
+---
+
+### [Documentation Migration Tool](./system/documentation-migration-tool.md) 🛠️ NEW
+Automated tool to migrate unofficial documentation:
+- Detects `.md` files in wrong locations
+- Interactive and automatic modes
+- Smart categorization
+- Dry-run support for safe testing
+- NPM scripts: `npm run docs:migrate`
+
+**Commands:**
+```bash
+npm run docs:migrate:dry   # Preview changes
+npm run docs:migrate       # Interactive mode
+npm run docs:migrate:auto  # Automatic mode
+```
+
+**Created:** October 25, 2025
 
 ---
 
@@ -136,11 +224,13 @@ Archived documentation from previous versions:
 
 ## 📊 Key Metrics
 
-- **API Endpoints:** 11 routes
-- **Database Tables:** 12 tables
-- **User Roles:** 5 roles
-- **Features:** 20+ major features
-- **UI Components:** 39+ reusable components
+- **API Endpoints:** 40+ routes
+- **Database Tables:** 22 tables
+- **User Roles:** 5 roles (student, faculty, scheduler, teaching load, registrar)
+- **Features:** 30+ major features (all phases complete)
+- **UI Components:** 150+ reusable components
+- **Total Lines of Code:** 50,000+
+- **Performance:** Optimized (10-100x faster after Oct 25 fix)
 
 ---
 
@@ -262,6 +352,14 @@ The "Last Updated" timestamp in this file is automatically updated whenever any 
 
 ### Documentation Guidelines
 
+**CRITICAL RULES:**
+1. ✅ **ALL documentation MUST go in `/docs` directory**
+2. ❌ **NEVER create .md files in the project root**
+3. ❌ **NEVER create unofficial documentation directories** (like `openspec/`, `src/docs/`, etc.)
+4. 📝 **Update `/docs` whenever you implement a feature or change**
+
+### Documentation Organization
+
 1. **Do not manually edit auto-generated docs** in:
    - `docs/schema/overview.md`
    - `docs/api/overview.md`
@@ -270,11 +368,26 @@ The "Last Updated" timestamp in this file is automatically updated whenever any 
 2. **Safe to edit manually**:
    - `docs/system/architecture.md`
    - `docs/system/workflows.md`
+   - `docs/design/` - Design system documentation
    - This file (`docs/index.md`) - but timestamp will be auto-updated
 
 3. **Adding new documentation**:
-   - Place custom docs in `docs/system/`
-   - Update this index with links
+   - **Features**: Add to `docs/features/`
+   - **System docs**: Add to `docs/system/`
+   - **API docs**: Add to `docs/api/`
+   - **Design docs**: Add to `docs/design/`
+   - Always update this index with links to new docs
+
+### When to Update Docs
+
+Update documentation immediately when you:
+- ✅ Add or modify a feature
+- ✅ Change the database schema
+- ✅ Add or modify API endpoints
+- ✅ Change system architecture
+- ✅ Update the design system
+- ✅ Fix critical bugs that affect behavior
+- ✅ Add new workflows or processes
 
 ---
 
@@ -332,5 +445,29 @@ See [LICENSE](../LICENSE) file for details.
 
 ---
 
-*This documentation hub is maintained automatically. Last generated: 2025-10-24*
+*This documentation hub is maintained automatically. Last generated: 2025-10-25*
+
+---
+
+## 🆕 Recent Updates (October 25, 2025)
+
+### Documentation Cleanup
+- ✅ Removed 72 unofficial documentation files from project root
+- ✅ Consolidated all documentation into `/docs` directory
+- ✅ Established single source of truth
+- ✅ Added implementation history tracking
+- ✅ Created comprehensive quick-start guide
+
+### Critical Performance Fix
+- ✅ Fixed 54 RLS policy performance issues
+- ✅ Consolidated 96 duplicate policies
+- ✅ Added 12+ performance indexes
+- ✅ Result: 10-100x faster queries across the board
+
+### New Documentation
+- 📄 [Quick Start Guide](./features/quick-start-guide.md) - Task-based guides for all roles
+- 📄 [Implementation History](./system/implementation-history.md) - Complete development timeline
+- 📄 [Documentation Cleanup Summary](./DOCUMENTATION-CLEANUP.md) - Cleanup details
+
+See [DOCUMENTATION-CLEANUP.md](./DOCUMENTATION-CLEANUP.md) for complete cleanup details.
 

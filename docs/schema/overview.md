@@ -1,7 +1,28 @@
 # Database Schema Overview
 
 > **Auto-generated from:** `src/data/main.sql`  
-> **Last Updated:** 2025-10-24
+> **Last Updated:** 2025-10-25
+
+## 🎯 System Type: TIMETABLING/SCHEDULING SYSTEM
+
+**Critical Understanding:** SmartSchedule is a **TIMETABLING SYSTEM**, not a traditional enrollment system.
+
+### Pre-Semester Phase (System Active):
+1. Students submit **elective preferences** (not enrollment)
+2. Faculty submit **availability**
+3. Teaching Load Committee assigns **faculty to sections**
+4. Scheduling Committee runs **GENERATOR** to create timetables
+5. Schedules are **PUBLISHED**
+6. Registrar sets **exam schedules**
+
+### Semester Phase (System Passive):
+- Students **VIEW** their generated schedules (READ-ONLY)
+- Faculty **VIEW** their teaching schedules (READ-ONLY)
+- Students provide **feedback** for next cycle
+
+**Key Point:** By the time semester starts, all scheduling is COMPLETE. The system shows what was generated, not what is being enrolled.
+
+---
 
 ## Extensions
 
@@ -234,101 +255,303 @@ The system checks if `NOW()` is between `start_date` and `end_date` for these ev
 
 ---
 
-## Student Features Module
+## Student Module
 
-### `electives`
-Available elective courses for students.
+### 🎓 Student Profile & Identity
+
+### `students`
+Core student profile extending the users table.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique elective ID |
-| `title` | TEXT | NOT NULL | Elective title |
-| `description` | TEXT | | Detailed description |
-| `code` | TEXT | NOT NULL, UNIQUE | Unique course code |
-| `credits` | INTEGER | NOT NULL, CHECK (credits > 0) | Credit hours |
-| `level` | INTEGER | NOT NULL, CHECK (level >= 4 AND level <= 8) | Academic level (4-8) |
-| `prerequisites` | TEXT[] | | Array of prerequisite course codes |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | Creation timestamp |
+| `id` | UUID | PRIMARY KEY, REFERENCES users(id) ON DELETE CASCADE | Student identifier (same as user ID) |
+| `student_number` | TEXT | UNIQUE, NOT NULL | Official student number |
+| `level` | INT | NOT NULL, CHECK (level BETWEEN 1 AND 8) | Current academic level (1-8) |
+| `current_term` | TEXT | REFERENCES academic_term(code) | Current enrolled term |
+| `status` | TEXT | DEFAULT 'active', CHECK (status IN ('active','inactive','suspended','graduated','withdrawn')) | Student status |
+| `setup_completed` | BOOLEAN | DEFAULT false | Whether initial setup is done |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Account creation timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
+**Purpose:** Stores core student identity and current academic standing.
+
 **Indexes:**
-- `idx_electives_code` on `code`
-- `idx_electives_level` on `level`
+- `idx_students_number` on `student_number`
+- `idx_students_level` on `level`
+- `idx_students_term` on `current_term`
+- `idx_students_status` on `status` WHERE status = 'active'
 
 **Row Level Security:** Enabled
-- Everyone can view
-- Committee members can manage
+- Students can view/update their own profile
+- Committee/Registrar can view/manage all
 
 ---
 
-### `student_electives`
-Junction table for student elective preferences.
+### 📚 Elective Preference System (Pre-Semester)
+
+### `elective_preferences`
+Student elective course preferences submitted BEFORE scheduling.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique preference ID |
-| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student reference |
-| `elective_id` | UUID | NOT NULL, REFERENCES electives(id) ON DELETE CASCADE | Elective reference |
-| `preference_order` | INTEGER | NOT NULL, CHECK (preference_order > 0) | Priority ranking |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | Creation timestamp |
+| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student who submitted preference |
+| `course_code` | TEXT | NOT NULL, REFERENCES course(code) ON DELETE CASCADE | Desired elective course |
+| `term_code` | TEXT | NOT NULL, REFERENCES academic_term(code) ON DELETE CASCADE | Target term |
+| `preference_order` | INT | NOT NULL, CHECK (preference_order BETWEEN 1 AND 10) | Priority rank (1=highest) |
+| `status` | TEXT | DEFAULT 'pending', CHECK (status IN ('pending','approved','rejected','assigned')) | Processing status |
+| `submitted_at` | TIMESTAMPTZ | | When preferences were submitted |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
-**Unique Constraint:** (student_id, elective_id)
+**Purpose:** Captures student elective preferences used as INPUT to the schedule generator.
+
+**Unique Constraints:**
+- `(student_id, term_code, preference_order)` - One rank per student per term
+- `(student_id, course_code, term_code)` - One preference per course per term
 
 **Indexes:**
-- `idx_student_electives_student` on `student_id`
-- `idx_student_electives_elective` on `elective_id`
-- `idx_student_electives_order` on `(student_id, preference_order)`
+- `idx_elective_prefs_student` on `student_id`
+- `idx_elective_prefs_term` on `term_code`
+- `idx_elective_prefs_status` on `status`
+- `idx_elective_prefs_course` on `course_code`
 
 **Row Level Security:** Enabled
-- Students can CRUD their own preferences
-- Committee members can view all
+- Students can CRUD their own preferences (before deadline)
+- Committee can view all and update status
+
+**Workflow:**
+1. Student submits preferences (preference_order 1-10)
+2. Scheduler reads preferences
+3. Scheduler assigns courses based on preferences + constraints
+4. Status updated to 'assigned' or 'rejected'
 
 ---
 
-### `feedback`
-Student feedback submissions.
+### `elective_package`
+Groupings of elective courses with credit requirements.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique feedback ID |
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Package identifier |
+| `name` | TEXT | NOT NULL | Package name (e.g., "Web Development Track") |
+| `description` | TEXT | | Package description |
+| `min_credits` | INT | NOT NULL | Minimum credits required from this package |
+| `max_credits` | INT | NOT NULL | Maximum credits allowed from this package |
+| `is_active` | BOOLEAN | DEFAULT true | Whether package is currently offered |
+| `display_order` | INT | | Display order in UI |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+**Purpose:** Groups related electives with credit requirements.
+
+**Indexes:**
+- `idx_elective_package_active` on `is_active` WHERE is_active = true
+- `idx_elective_package_order` on `display_order`
+
+---
+
+### `package_course`
+Junction table linking courses to elective packages.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique ID |
+| `package_id` | UUID | NOT NULL, REFERENCES elective_package(id) ON DELETE CASCADE | Package reference |
+| `course_code` | TEXT | NOT NULL, REFERENCES course(code) ON DELETE CASCADE | Course in package |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Creation timestamp |
+
+**Purpose:** Defines which courses belong to which packages.
+
+**Unique Constraint:** `(package_id, course_code)`
+
+**Indexes:**
+- `idx_package_course_package` on `package_id`
+- `idx_package_course_code` on `course_code`
+
+---
+
+### `student_package_progress`
+Tracks student progress toward package completion.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique ID |
+| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student reference |
+| `package_id` | UUID | NOT NULL, REFERENCES elective_package(id) ON DELETE CASCADE | Package reference |
+| `credits_completed` | INT | DEFAULT 0 | Credits completed in this package |
+| `credits_enrolled` | INT | DEFAULT 0 | Credits currently enrolled |
+| `is_fulfilled` | BOOLEAN | DEFAULT false | Whether package requirement is met |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last calculation timestamp |
+
+**Purpose:** Automatically calculated package fulfillment tracking.
+
+**Unique Constraint:** `(student_id, package_id)`
+
+**Indexes:**
+- `idx_student_package_progress_student` on `student_id`
+- `idx_student_package_progress_package` on `package_id`
+
+---
+
+### 📅 Generated Schedules (Post-Generation)
+
+### `schedules`
+**GENERATED** student schedules (OUTPUT of the scheduler).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Schedule identifier |
+| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student this schedule belongs to |
+| `term_code` | TEXT | REFERENCES academic_term(code) | Academic term |
+| `data` | JSONB | NOT NULL | Generated schedule data (sections, times, rooms) |
+| `version` | INT | DEFAULT 1 | Schedule version (for regenerations) |
+| `is_published` | BOOLEAN | DEFAULT false | Whether visible to student |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Generation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+**Purpose:** Stores the FINAL generated schedules created by the scheduler.
+
+**Important:** This is READ-ONLY for students. Created by the scheduling committee.
+
+**Schedule Data Format (JSONB):**
+```json
+{
+  "sections": [
+    {
+      "section_id": "SWE101-01",
+      "course_code": "SWE101",
+      "course_name": "Intro to Programming",
+      "instructor": "Dr. Smith",
+      "room": "A201",
+      "times": [
+        {"day": "SUNDAY", "start": "08:00", "end": "09:30"},
+        {"day": "TUESDAY", "start": "08:00", "end": "09:30"}
+      ],
+      "credits": 3,
+      "type": "REQUIRED"
+    }
+  ],
+  "stats": {
+    "total_credits": 18,
+    "required_courses": 5,
+    "elective_courses": 1,
+    "preferences_met": 4,
+    "total_preferences": 5
+  }
+}
+```
+
+**Indexes:**
+- `idx_schedules_student` on `student_id`
+- `idx_schedules_term` on `term_code`
+- `idx_schedules_published` on `is_published` WHERE is_published = true
+- `idx_schedules_data` (GIN) for JSONB queries
+
+**Row Level Security:** Enabled
+- Students can view their own PUBLISHED schedules only
+- Committee can manage all schedules
+
+---
+
+### `enrollment`
+Historical course completion tracking (NOT real-time enrollment).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Enrollment record ID |
+| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student reference |
+| `course_code` | TEXT | NOT NULL, REFERENCES course(code) ON DELETE CASCADE | Course taken |
+| `term_code` | TEXT | NOT NULL, REFERENCES academic_term(code) ON DELETE CASCADE | Term taken |
+| `status` | TEXT | DEFAULT 'enrolled', CHECK (status IN ('enrolled','completed','dropped','failed','withdrawn')) | Enrollment status |
+| `grade` | DECIMAL(5,2) | | Numeric grade (0-100) |
+| `grade_letter` | TEXT | CHECK (grade_letter IN ('A+','A','B+','B','C+','C','D+','D','F','W','I','P')) | Letter grade |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Record creation |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update |
+
+**Purpose:** Historical record of courses taken and grades earned.
+
+**Important:** This represents PAST enrollments, not current semester enrollment. Used for:
+- Transcript generation
+- GPA calculation
+- Prerequisite checking
+- Graduation requirements
+
+**Unique Constraint:** `(student_id, course_code, term_code)`
+
+**Indexes:**
+- `idx_enrollment_student` on `student_id`
+- `idx_enrollment_term` on `term_code`
+- `idx_enrollment_course` on `course_code`
+- `idx_enrollment_status` on `status`
+
+**Row Level Security:** Enabled
+- Students can view their own enrollment history
+- Committee/Registrar can view/manage all
+
+---
+
+### 💬 Feedback System
+
+### `feedback`
+Student feedback on generated schedules.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Feedback ID |
 | `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student who submitted |
 | `schedule_id` | UUID | REFERENCES schedules(id) ON DELETE SET NULL | Related schedule (optional) |
-| `feedback_text` | TEXT | NOT NULL, CHECK (char_length(feedback_text) >= 10) | Feedback content (min 10 chars) |
-| `rating` | INTEGER | NOT NULL, CHECK (rating >= 1 AND rating <= 5) | Rating (1-5) |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | Submission timestamp |
+| `rating` | INT | NOT NULL, CHECK (rating BETWEEN 1 AND 5) | Schedule rating (1-5 stars) |
+| `feedback_text` | TEXT | NOT NULL | Detailed feedback (min 10 chars) |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Submission timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
+
+**Purpose:** Collects student feedback to improve future schedule generation.
 
 **Indexes:**
 - `idx_feedback_student` on `student_id`
 - `idx_feedback_schedule` on `schedule_id`
+- `idx_feedback_rating` on `rating`
 - `idx_feedback_created` on `created_at DESC`
 
 **Row Level Security:** Enabled
 - Students can CRUD their own feedback
-- Committee members can view all
+- Committee can view all feedback
 
 ---
 
-### `schedules`
-Student schedule storage.
+### 🚨 Irregular Students Tracking
+
+### `irregular_students`
+Tracks students with special scheduling needs or issues.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique schedule ID |
-| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Student reference |
-| `data` | JSONB | NOT NULL | Schedule data in JSON format |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | Creation timestamp |
+| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Record ID |
+| `student_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | Affected student |
+| `term_code` | TEXT | NOT NULL, REFERENCES academic_term(code) ON DELETE CASCADE | Term |
+| `reason` | TEXT | NOT NULL | Why student is irregular |
+| `courses_needed` | TEXT[] | DEFAULT '{}' | Specific courses needed |
+| `status` | TEXT | DEFAULT 'pending', CHECK (status IN ('pending','notified','resolved')) | Case status |
+| `reported_by` | UUID | NOT NULL, REFERENCES users(id) | Committee member who reported |
+| `notified_at` | TIMESTAMPTZ | | When student was notified |
+| `resolved_at` | TIMESTAMPTZ | | When issue was resolved |
+| `notes` | TEXT | | Additional notes |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Report timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last update timestamp |
 
+**Purpose:** Tracks students who need special attention (failed courses, missing prerequisites, etc.).
+
+**Unique Constraint:** `(student_id, term_code)`
+
 **Indexes:**
-- `idx_schedules_student` on `student_id`
-- `idx_schedules_created` on `created_at DESC`
-- `idx_schedules_data` (GIN index) for JSONB queries
+- `idx_irregular_students_student` on `student_id`
+- `idx_irregular_students_term` on `term_code`
+- `idx_irregular_students_status` on `status`
 
 **Row Level Security:** Enabled
-- Students can view their own schedules
-- Committee members can manage all
+- Committee/Registrar can view/manage
+- Students CANNOT view (handled via notifications)
 
 ---
 
@@ -386,20 +609,150 @@ The schema includes sample elective courses:
 ## Relationships
 
 ```
-users (1) ─── (*) student_electives
-electives (1) ─── (*) student_electives
+users (1) ─── (1) students
+users (1) ─── (*) elective_preferences
+users (1) ─── (*) enrollment (historical records)
+users (1) ─── (*) schedules (generated by system)
 users (1) ─── (*) feedback
-schedules (1) ─── (*) feedback
-users (1) ─── (*) schedules
+users (1) ─── (*) student_package_progress
+users (1) ─── (*) irregular_students
 
+course (1) ─── (*) elective_preferences
+course (1) ─── (*) enrollment
+course (1) ─── (*) package_course
 course (1) ─── (*) section
 course (1) ─── (*) exam
-users (1) ─── (*) section (instructor_id)
+
+academic_term (1) ─── (*) elective_preferences
+academic_term (1) ─── (*) enrollment
+academic_term (1) ─── (*) schedules
+academic_term (1) ─── (*) irregular_students
+academic_term (1) ─── (*) term_events
+academic_term (1) ─── (1) students (current_term)
+
+elective_package (1) ─── (*) package_course
+elective_package (1) ─── (*) student_package_progress
+
+users (faculty) (1) ─── (*) section (instructor_id)
 room (1) ─── (*) section
 section (1) ─── (*) section_time
 
-academic_term (1) ─── (*) term_events
+schedules (1) ─── (*) feedback (optional)
 ```
+
+---
+
+## 📊 Timetabling System Data Flow
+
+### Pre-Semester Phase (Data Collection)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    DATA COLLECTION                        │
+└──────────────────────────────────────────────────────────┘
+
+    STUDENTS                FACULTY               REGISTRAR
+       ↓                       ↓                      ↓
+┌─────────────┐      ┌─────────────────┐    ┌──────────────┐
+│  Elective   │      │     Faculty      │    │   Academic   │
+│ Preferences │      │  Availability    │    │    Terms     │
+└──────┬──────┘      └────────┬─────────┘    └──────┬───────┘
+       │                      │                      │
+       │                      │                      │
+       v                      v                      v
+┌───────────────────────────────────────────────────────────┐
+│              SCHEDULING COMMITTEE INPUT                    │
+│   • elective_preferences                                  │
+│   • faculty_availability                                  │
+│   • academic_term                                         │
+│   • course (catalog)                                      │
+│   • students (level, status)                              │
+│   • enrollment (historical - for prerequisites)           │
+│   • elective_package (requirements)                       │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+                            v
+┌───────────────────────────────────────────────────────────┐
+│                  SCHEDULE GENERATOR                        │
+│                  (Algorithm Runs)                          │
+│                                                            │
+│  1. Collect constraints & preferences                      │
+│  2. Assign required courses to sections                    │
+│  3. Allocate time slots & rooms                            │
+│  4. Assign electives based on preferences                  │
+│  5. Check conflicts (time, room, capacity)                 │
+│  6. Optimize (minimize gaps, balance load)                 │
+│  7. Generate final schedule for each student               │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+                            v
+┌───────────────────────────────────────────────────────────┐
+│                  GENERATED OUTPUT                          │
+│                                                            │
+│   • schedules (per student, JSONB data)                    │
+│   • section (with instructor assignments)                  │
+│   • section_time (time slots)                              │
+│   • elective_preferences (status updated)                  │
+│   • irregular_students (if any issues)                     │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+                            v
+┌───────────────────────────────────────────────────────────┐
+│                 COMMITTEE REVIEW                           │
+│                                                            │
+│   • Check conflicts                                        │
+│   • Verify preferences satisfied                           │
+│   • Review irregular students                              │
+│   • Adjust if needed → Re-run generator                    │
+│   • Approve → PUBLISH                                      │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+                            v
+```
+
+### Semester Phase (Read-Only Viewing)
+
+```
+┌───────────────────────────────────────────────────────────┐
+│               PUBLISHED SCHEDULES                          │
+│           (schedules.is_published = true)                  │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+                 ┌──────────┴──────────┐
+                 v                     v
+         ┌─────────────┐       ┌─────────────┐
+         │  STUDENTS   │       │   FACULTY   │
+         │  View Their │       │  View Their │
+         │  Schedule   │       │  Teaching   │
+         │  (READ)     │       │  Schedule   │
+         └──────┬──────┘       └─────────────┘
+                │
+                v
+         ┌─────────────┐
+         │  Provide    │
+         │  Feedback   │
+         └──────┬──────┘
+                │
+                v
+         ┌─────────────┐
+         │  feedback   │
+         │  table      │
+         └─────────────┘
+```
+
+### Key Table Purposes
+
+| Table | Phase | Purpose | Modified By |
+|-------|-------|---------|-------------|
+| `students` | Both | Student profile | Registrar, Student |
+| `elective_preferences` | Pre-Semester | Input for scheduler | Student, Scheduler |
+| `faculty_availability` | Pre-Semester | Input for scheduler | Faculty |
+| `section` | Pre-Semester | Generated sections | Teaching Load Committee |
+| `section_time` | Pre-Semester | Time allocations | Scheduler |
+| `schedules` | Pre-Semester → Semester | Generated schedules (OUTPUT) | Scheduler |
+| `enrollment` | Post-Semester | Historical records | Registrar |
+| `feedback` | Semester | Student feedback | Student |
+| `irregular_students` | Pre-Semester | Special cases | Committee |
 
 ---
 

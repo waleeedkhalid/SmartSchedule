@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/faculty/availability
@@ -8,8 +8,7 @@ import { createServerClient } from "@/lib/supabase";
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
 
     // Get authenticated user
     const {
@@ -102,8 +101,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
 
     // Get authenticated user
     const {

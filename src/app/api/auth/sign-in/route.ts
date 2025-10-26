@@ -3,9 +3,8 @@
  * POST: Authenticate user and create session
  */
 
-import { cookies } from "next/headers";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { successResponse, errorResponse, validationErrorResponse } from "@/lib/api";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
 import { USER_ROLES, ensureValidRole } from "@/lib/auth/constants";
@@ -34,8 +33,7 @@ export async function POST(request: Request) {
 
   const { email, password, role: requestedRole, fullName } = parsed.data;
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email,

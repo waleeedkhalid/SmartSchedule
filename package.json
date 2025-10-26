@@ -13,7 +13,10 @@
     "docs:generate": "tsx scripts/generate-docs.ts",
     "docs:schema": "tsx scripts/generate-docs.ts --schema",
     "docs:api": "tsx scripts/generate-docs.ts --api",
-    "docs:features": "tsx scripts/generate-docs.ts --features"
+    "docs:features": "tsx scripts/generate-docs.ts --features",
+    "docs:migrate": "node scripts/migrate-docs.js",
+    "docs:migrate:dry": "node scripts/migrate-docs.js --dry-run",
+    "docs:migrate:auto": "node scripts/migrate-docs.js --auto"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

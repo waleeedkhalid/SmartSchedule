@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 const COMMITTEE_TYPE = "registrar" as const;
 const DASHBOARD_PATH = "/committee/registrar/dashboard";
@@ -30,8 +30,7 @@ async function completeRegistrarSetup(formData: FormData) {
     redirect("/committee/registrar/setup");
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,8 +52,7 @@ async function completeRegistrarSetup(formData: FormData) {
 }
 
 export default async function RegistrarSetupPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },

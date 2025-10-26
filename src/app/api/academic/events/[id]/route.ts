@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@/lib/supabase';
+import { createServerClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/academic/events/[id]
@@ -12,8 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
     
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -70,8 +69,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
     
     // Check if user is authenticated and has committee role
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -185,8 +183,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
     
     // Check if user is authenticated and has committee role
     const { data: { user }, error: authError } = await supabase.auth.getUser();

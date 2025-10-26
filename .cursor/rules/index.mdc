@@ -5,6 +5,76 @@ description: SmartSchedule project overview and quick reference for data fetchin
 
 # SmartSchedule Project Overview
 
+## 🎯 CRITICAL: System Type Understanding
+
+> **⚠️ READ THIS FIRST - SmartSchedule is a TIMETABLING/SCHEDULING SYSTEM**
+
+### What This Means
+
+SmartSchedule is **NOT** a traditional enrollment system like Banner or PeopleSoft.
+
+**Correct Understanding:**
+- Students submit **PREFERENCES** (ranked 1-10) for elective courses
+- System runs a **GENERATOR ALGORITHM** to create optimal schedules
+- Schedules are **PUBLISHED** before semester starts
+- Students **VIEW** their generated schedules (READ-ONLY during semester)
+
+**NOT:**
+- ❌ Real-time course enrollment
+- ❌ First-come-first-served registration
+- ❌ Students building their own schedules
+- ❌ Live enrollment during semester
+
+### Key Data Tables
+
+| Table | Purpose | Phase | Modified By |
+|-------|---------|-------|-------------|
+| `elective_preferences` | Student wishes (INPUT) | Pre-Semester | Student |
+| `schedules` | Generated timetables (OUTPUT) | Pre-Semester | Scheduler |
+| `enrollment` | Historical records (grades) | Post-Semester | Registrar |
+
+**Critical Distinction:**
+```typescript
+// ✅ CORRECT: Show student preferences
+const preferences = await supabase
+  .from("elective_preferences")
+  .select("*")
+  .eq("student_id", user.id);
+
+// ✅ CORRECT: Show generated schedule (read-only)
+const schedule = await supabase
+  .from("schedules")
+  .select("*")
+  .eq("student_id", user.id)
+  .eq("is_published", true);
+
+// ❌ WRONG: Trying to "enroll" student in course
+// This is NOT an enrollment system!
+```
+
+### System Timeline
+
+**Pre-Semester (System ACTIVE):**
+1. Students submit `elective_preferences`
+2. Faculty submit availability
+3. Committee assigns faculty to sections
+4. **SCHEDULER RUNS** → Creates `schedules` for ALL students
+5. Committee **PUBLISHES** schedules
+
+**Semester (System PASSIVE):**
+- Students VIEW schedules (read-only)
+- Faculty VIEW teaching schedules (read-only)
+
+**Post-Semester:**
+- Registrar enters grades → `enrollment` table
+
+### Documentation
+
+**Full details:** [docs/TIMETABLING-SYSTEM-GUIDE.md](mdc:docs/TIMETABLING-SYSTEM-GUIDE.md)  
+**Student Schema:** [docs/schema/STUDENT-SCHEMA-SUMMARY.md](mdc:docs/schema/STUDENT-SCHEMA-SUMMARY.md)
+
+---
+
 ## Project Structure
 
 SmartSchedule is a Next.js 15 application with:
@@ -93,23 +163,40 @@ SmartSchedule is a Next.js 15 application with:
 ### Database Schema
 - See [supabase/migrations/](mdc:supabase/migrations/) for all tables
 
-### Key Tables
+### Key Tables (Timetabling System)
+
+**User & Profile:**
 - `users` - User accounts with roles (student, faculty, committee)
-- `students` - Student profiles
+- `students` - Student profiles (level, status, current_term)
 - `faculty` - Faculty profiles
-- `committee_members` - Committee membership
-- `course` - Course catalog
-- `section` - Course sections
-- `section_enrollment` - Student enrollments
+
+**Pre-Semester (Input):**
+- `elective_preferences` - Student course preferences (INPUT to scheduler)
+- `faculty_availability` - Faculty availability windows
+- `course` - Course catalog (REQUIRED + ELECTIVE)
+- `section` - Course sections with assigned faculty/rooms
+- `section_time` - Time slots for sections
+
+**Generated (Output):**
+- `schedules` - Generated student timetables (JSONB, OUTPUT from scheduler)
+
+**Historical:**
+- `enrollment` - Past course completions with grades (for transcripts)
 - `academic_term` - Academic terms/semesters
+
+**Supporting:**
+- `elective_package` - Elective course groups
+- `student_package_progress` - Package completion tracking
+- `irregular_students` - Special cases tracking
+- `feedback` - Student schedule feedback
 
 ## User Roles
 
-1. **student** - Students viewing schedules and enrolling
-2. **faculty** - Faculty viewing schedules and managing availability
-3. **scheduling_committee** - Creates schedules, manages conflicts
-4. **teaching_load_committee** - Manages faculty workload
-5. **registrar** - System administration
+1. **student** - Submit preferences, VIEW generated schedules (read-only)
+2. **faculty** - Set availability, VIEW teaching schedules (read-only)
+3. **scheduling_committee** - Run generator, publish schedules, manage conflicts
+4. **teaching_load_committee** - Assign faculty to sections, manage workload
+5. **registrar** - Manage terms, enter grades, handle special cases
 
 ## Data Fetching Quick Reference
 
@@ -169,6 +256,62 @@ export async function createItem(formData: FormData) {
 ```
 
 ## Common Patterns
+
+### ⚠️ Timetabling System Patterns (Avoid Common Mistakes)
+
+```typescript
+// ❌ WRONG: Building real-time enrollment
+async function enrollStudent(studentId: string, courseCode: string) {
+  // This is NOT an enrollment system!
+  // Students don't enroll; scheduler assigns courses
+}
+
+// ✅ CORRECT: Collecting preferences
+async function submitPreferences(studentId: string, preferences: Array<{course_code: string, order: number}>) {
+  // Save to elective_preferences table
+  // Will be used as INPUT to scheduler
+  await supabase.from("elective_preferences").insert(preferences);
+}
+
+// ❌ WRONG: Letting student modify schedule
+async function dropCourse(studentId: string, courseCode: string) {
+  // Schedules are READ-ONLY during semester!
+  // Only committee can modify
+}
+
+// ✅ CORRECT: Showing generated schedule
+async function getStudentSchedule(studentId: string, termCode: string) {
+  const { data } = await supabase
+    .from("schedules")
+    .select("*")
+    .eq("student_id", studentId)
+    .eq("term_code", termCode)
+    .eq("is_published", true)
+    .single();
+  return data; // JSONB with sections, times, rooms
+}
+
+// ❌ WRONG: Using enrollment for current semester
+async function getCurrentCourses(studentId: string) {
+  // enrollment is HISTORICAL (past grades)
+  return await supabase
+    .from("enrollment")
+    .select("*")
+    .eq("student_id", studentId);
+}
+
+// ✅ CORRECT: Get current courses from generated schedule
+async function getCurrentCourses(studentId: string, termCode: string) {
+  const schedule = await supabase
+    .from("schedules")
+    .select("data")
+    .eq("student_id", studentId)
+    .eq("term_code", termCode)
+    .eq("is_published", true)
+    .single();
+  return schedule?.data?.sections || []; // Parse JSONB
+}
+```
 
 ### Protected Page Pattern
 ```typescript
@@ -259,8 +402,18 @@ Access detailed rules with these patterns:
 
 ## Documentation
 
+**System Understanding (MUST READ):**
+- **Timetabling System Guide:** [docs/TIMETABLING-SYSTEM-GUIDE.md](mdc:docs/TIMETABLING-SYSTEM-GUIDE.md) ⭐
+- **Student Schema Summary:** [docs/schema/STUDENT-SCHEMA-SUMMARY.md](mdc:docs/schema/STUDENT-SCHEMA-SUMMARY.md) ⭐
+
+**Schema & Architecture:**
+- Database Schema: [docs/schema/overview.md](mdc:docs/schema/overview.md)
+- System Architecture: [docs/system/architecture.md](mdc:docs/system/architecture.md)
+- Workflows: [docs/system/workflows.md](mdc:docs/system/workflows.md)
+
+**Performance & Optimization:**
 - Performance guide: [docs/performance.md](mdc:docs/performance.md)
-- RLS fix: [RLS-PERFORMANCE-FIX.md](mdc:RLS-PERFORMANCE-FIX.md)
+- RLS Performance Fix: [RLS-PERFORMANCE-FIX.md](mdc:RLS-PERFORMANCE-FIX.md)
 - Test guide: [RLS-PERFORMANCE-TEST-GUIDE.md](mdc:RLS-PERFORMANCE-TEST-GUIDE.md)
 
 ## Recent Critical Fixes Applied
@@ -302,10 +455,20 @@ npm run lint
 ---
 
 **When in doubt**, follow these principles:
-1. Server Components for data fetching
-2. React.cache() for deduplication
-3. Cached auth functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts)
-4. Parallel fetching with Promise.all()
-5. Select only needed columns
-6. Validate user input
-7. Handle errors gracefully
+
+**System Architecture:**
+1. ⚠️ Remember: This is a TIMETABLING system, not enrollment
+2. Students submit preferences → Scheduler generates → Students view
+3. Use `schedules` for current semester (generated JSONB)
+4. Use `enrollment` for historical records only
+
+**Code Quality:**
+5. Server Components for data fetching
+6. React.cache() for deduplication
+7. Cached auth functions from [lib/auth/cached-auth.ts](mdc:lib/auth/cached-auth.ts)
+8. Parallel fetching with Promise.all()
+9. Select only needed columns
+10. Validate user input
+11. Handle errors gracefully
+
+**See:** [docs/TIMETABLING-SYSTEM-GUIDE.md](mdc:docs/TIMETABLING-SYSTEM-GUIDE.md) for complete understanding

@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const { data: profile } = await supabase
-    .from("user")
+    .from("users")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();

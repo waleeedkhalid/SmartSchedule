@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 // /api/student/profile?userId=...
 export async function GET(request: NextRequest) {
@@ -14,8 +13,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   // Verify the requesting user is authenticated
   const {

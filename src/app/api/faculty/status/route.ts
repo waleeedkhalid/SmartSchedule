@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/faculty/status
@@ -8,8 +7,7 @@ import { createServerClient } from "@/lib/supabase";
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
 
     // Get current user
     const {
@@ -77,7 +75,7 @@ export async function GET(request: NextRequest) {
       canViewFeedback: activeTerm?.feedback_open === false && (coursesCount || 0) > 0, // Can view after feedback closes
       hasPendingSuggestions,
       facultyInfo: {
-        facultyNumber: faculty.faculty_number,
+        facultyId: faculty.faculty_id,
         title: faculty.title,
         status: faculty.status,
       },

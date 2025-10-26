@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
 import { FacultySidebar } from "@/components/faculty/Sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -12,8 +11,7 @@ interface FacultyLayoutProps {
 }
 
 export default async function FacultyLayout({ children }: FacultyLayoutProps) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },
@@ -39,7 +37,7 @@ export default async function FacultyLayout({ children }: FacultyLayoutProps) {
 
   const { data: faculty } = await supabase
     .from("faculty")
-    .select("faculty_number, title, status")
+    .select("faculty_id, title, status")
     .eq("id", user.id)
     .maybeSingle();
 

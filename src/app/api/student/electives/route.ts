@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Course } from "@/types";
 
@@ -11,8 +10,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
 
     // Get the current user
     const {

@@ -34,7 +34,7 @@ interface FacultySetupFormProps {
   userId: string;
   fullName: string;
   email: string;
-  initialFacultyNumber?: string | null;
+  initialFacultyId?: string | null;
   initialTitle?: string | null;
 }
 
@@ -44,7 +44,7 @@ export default function FacultySetupForm({
   userId,
   fullName,
   email,
-  initialFacultyNumber,
+  initialFacultyId,
   initialTitle,
 }: FacultySetupFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -61,7 +61,7 @@ export default function FacultySetupForm({
     resolver: zodResolver(facultySetupFormSchema),
     mode: "onChange",
     defaultValues: {
-      facultyId: initialFacultyNumber ?? "",
+      facultyId: initialFacultyId ?? "",
       title: (initialTitle as FacultyTitle) ?? undefined,
     },
   });
@@ -72,7 +72,7 @@ export default function FacultySetupForm({
     startTransition(async () => {
       const { error } = await supabase.from("faculty").upsert({
         id: userId,
-        faculty_number: data.facultyId,
+        faculty_id: data.facultyId,
         title: data.title,
       });
 

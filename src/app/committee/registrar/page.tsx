@@ -1,14 +1,12 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 const DASHBOARD_PATH = "/committee/registrar/dashboard";
 const SETUP_PATH = "/committee/registrar/setup";
 
 export default async function RegistrarLandingPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },

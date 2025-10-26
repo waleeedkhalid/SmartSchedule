@@ -7,8 +7,10 @@ export function useToast() {
   const { push, dismiss } = useToastContext();
 
   const toast = useCallback(
-    (options: { title?: string; description?: string }) => {
-      push(options);
+    (options: { title?: string; description?: string, variant?: "default" | "destructive" }) => {
+      push({
+        ...options,
+      });
     },
     [push]
   );

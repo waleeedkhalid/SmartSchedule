@@ -1,14 +1,12 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
 
 const DASHBOARD_PATH = "/committee/teaching-load/dashboard";
 const SETUP_PATH = "/committee/teaching-load/setup";
 
 export default async function TeachingLoadLandingPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },

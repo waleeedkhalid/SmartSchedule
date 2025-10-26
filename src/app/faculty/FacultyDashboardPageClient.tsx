@@ -55,7 +55,7 @@ export default function FacultyDashboardPageClient() {
         }
 
         const { data: userData, error } = await supabase
-          .from("user")
+          .from("users")
           .select("full_name,email,role")
           .eq("id", user.id)
           .maybeSingle();

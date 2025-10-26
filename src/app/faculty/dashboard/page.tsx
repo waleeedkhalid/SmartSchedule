@@ -1,12 +1,10 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 import FacultyDashboardClient from "./FacultyDashboardClient";
 
 export default async function FacultyDashboardPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },
@@ -32,7 +30,7 @@ export default async function FacultyDashboardPage() {
 
   const { data: faculty } = await supabase
     .from("faculty")
-    .select("faculty_number, title, status")
+    .select("faculty_id, title, status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -43,14 +41,14 @@ export default async function FacultyDashboardPage() {
   const fullName = profile?.full_name ?? user.user_metadata?.full_name ?? "";
   const email = profile?.email ?? user.email ?? "";
   const title = faculty.title ?? "Faculty";
-  const facultyNumber = faculty.faculty_number ?? "Pending";
+  const facultyId = faculty.faculty_id ?? "Pending";
   const status = faculty.status ?? "active";
 
   return (
     <FacultyDashboardClient
       fullName={fullName}
       email={email}
-      facultyNumber={facultyNumber}
+      facultyId={facultyId}
       title={title}
       status={status}
     />

@@ -51,7 +51,7 @@ export default function RegistrarDashboardPage() {
 
         // Get registrar data from the database
         const { data: userData, error } = await supabase
-          .from("user")
+          .from("users")
           .select("full_name,email,role")
           .eq("id", user.id)
           .maybeSingle();

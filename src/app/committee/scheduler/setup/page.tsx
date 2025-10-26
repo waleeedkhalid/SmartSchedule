@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 const COMMITTEE_TYPE = "scheduling_committee" as const;
 const DASHBOARD_PATH = "/committee/scheduler/dashboard";
@@ -30,8 +30,7 @@ async function completeSchedulerSetup(formData: FormData) {
     redirect("/committee/scheduler/setup");
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,8 +52,7 @@ async function completeSchedulerSetup(formData: FormData) {
 }
 
 export default async function SchedulerSetupPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },

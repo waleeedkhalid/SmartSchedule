@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@/lib/supabase';
+import { createServerClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/academic/terms
@@ -11,8 +10,7 @@ import { createServerClient } from '@/lib/supabase';
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore);
+        const supabase = await createServerClient();
     const searchParams = request.nextUrl.searchParams;
     
     // Check if user is authenticated

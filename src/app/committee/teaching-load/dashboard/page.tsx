@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ClipboardList,
@@ -25,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { redirectByRole, type UserRole } from "@/lib/auth/redirect-by-role";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase/server";
 
 const COMMITTEE_TYPE = "teaching_load_committee" as const;
 const SETUP_PATH = "/committee/teaching-load/setup";
@@ -36,8 +35,7 @@ type Profile = {
 };
 
 export default async function TeachingLoadDashboardPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+    const supabase = await createServerClient();
 
   const {
     data: { user },
