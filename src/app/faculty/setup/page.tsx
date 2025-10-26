@@ -35,7 +35,7 @@ export default async function FacultySetupPage() {
     .maybeSingle();
 
   if (faculty && faculty.faculty_id) {
-    redirect("/faculty/dashboard");
+    redirect("/faculty");
   }
 
   const fullName = profile?.full_name ?? user.user_metadata?.full_name ?? "";

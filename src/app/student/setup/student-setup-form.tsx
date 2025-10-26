@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import {
   studentSetupFormSchema,
   type StudentSetupFormData,
@@ -65,6 +65,7 @@ export default function StudentSetupForm({
 
   const onSubmit = (data: StudentSetupFormData) => {
     startTransition(async () => {
+      const supabase = createBrowserClient();
       const { error } = await supabase.from("students").upsert({
         id: userId,
         student_number: data.studentNumber,

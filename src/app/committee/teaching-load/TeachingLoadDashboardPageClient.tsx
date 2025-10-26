@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useDashboardCache } from "@/lib/dashboard-cache";
 
 interface TeachingLoadData {
   name: string;
@@ -32,13 +33,20 @@ interface TeachingLoadData {
 }
 
 export default function TeachingLoadDashboardPage() {
+  const cache = useDashboardCache();
   const [teachingLoadData, setTeachingLoadData] =
     useState<TeachingLoadData | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double-fetch on mount (React StrictMode)
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchTeachingLoadData = async () => {
       try {
+        const supabase = createBrowserClient();
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -48,15 +56,34 @@ export default function TeachingLoadDashboardPage() {
           return;
         }
 
-        // Get teaching load committee data from the database
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("full_name,email,role")
-          .eq("id", user.id)
-          .maybeSingle();
+        // Check cache first
+        const cacheKey = `teaching-load-dashboard-${user.id}`;
+        const cached = cache.get<TeachingLoadData>(cacheKey, 30000); // 30s TTL
+        
+        if (cached) {
+          setTeachingLoadData(cached);
+          setLoading(false);
+          return;
+        }
 
-        if (error || !userData) {
-          console.error("Error fetching teaching load data:", error);
+        // Parallel queries for better performance
+        const [
+          { data: userData, error: userError },
+          { count: facultyCount }
+        ] = await Promise.all([
+          supabase
+            .from("users")
+            .select("full_name,email,role")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("users")
+            .select("*", { count: "exact", head: true })
+            .eq("role", "faculty")
+        ]);
+
+        if (userError || !userData) {
+          console.error("Error fetching teaching load data:", userError);
           setLoading(false);
           return;
         }
@@ -67,13 +94,7 @@ export default function TeachingLoadDashboardPage() {
           role?: string | null;
         };
 
-        // Get faculty count
-        const { count: facultyCount } = await supabase
-          .from("users")
-          .select("*", { count: "exact", head: true })
-          .eq("role", "faculty");
-
-        setTeachingLoadData({
+        const result = {
           name:
             profile.full_name ??
             user.user_metadata?.full_name ??
@@ -83,7 +104,10 @@ export default function TeachingLoadDashboardPage() {
           totalFaculty: facultyCount || 0,
           averageLoad: 0, // TODO: Calculate from actual data
           conflictsDetected: 0, // TODO: Calculate from actual conflicts
-        });
+        };
+
+        setTeachingLoadData(result);
+        cache.set(cacheKey, result);
       } catch (error) {
         console.error("Error fetching teaching load data:", error);
       } finally {
@@ -92,7 +116,7 @@ export default function TeachingLoadDashboardPage() {
     };
 
     fetchTeachingLoadData();
-  }, []);
+  }, [cache]);
 
   if (loading) {
     return (

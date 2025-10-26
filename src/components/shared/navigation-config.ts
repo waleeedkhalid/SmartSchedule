@@ -135,7 +135,7 @@ export const studentNavItems: NavItem[] = [
 export const facultyNavItems: NavItem[] = [
   {
     label: "Dashboard",
-    href: "/faculty/dashboard",
+    href: "/faculty",
     icon: BarChart3,
     description: "Overview and quick actions",
   },

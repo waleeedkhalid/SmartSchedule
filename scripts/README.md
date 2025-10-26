@@ -6,35 +6,6 @@ This directory contains utility scripts for the SmartSchedule project.
 
 ## Documentation Scripts
 
-### `migrate-docs.js` ⭐ NEW
-
-Automatically migrate unofficial documentation to the official `/docs` structure.
-
-**Usage:**
-```bash
-# Preview what would be moved (safe, no changes)
-npm run docs:migrate:dry
-
-# Interactive mode (recommended)
-npm run docs:migrate
-
-# Automatic mode
-npm run docs:migrate:auto
-
-# Show help
-node scripts/migrate-docs.js --help
-```
-
-**Features:**
-- ✅ Detects `.md` files in wrong locations
-- ✅ Smart categorization based on filename
-- ✅ Interactive and automatic modes
-- ✅ Dry-run support for safe testing
-- ✅ Prevents overwriting existing files
-
-**Documentation:** See [docs/system/documentation-migration-tool.md](../docs/system/documentation-migration-tool.md)
-
----
 
 ### `generate-docs.ts`
 
@@ -63,18 +34,6 @@ Analyze color usage in the codebase.
 ```bash
 npx tsx scripts/analyze-colors.ts
 ```
-
----
-
-### `fix-supabase-imports.js`
-
-Fix Supabase client import paths (legacy).
-
----
-
-### `fix-remaining-imports.js`
-
-Fix remaining import issues (legacy).
 
 ---
 
@@ -111,11 +70,11 @@ Always test with `--dry-run` or similar safe mode first when applicable.
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| **Documentation Migration** | `npm run docs:migrate` | Move unofficial docs to `/docs` |
 | **Generate Docs** | `npm run docs:generate` | Auto-generate documentation |
 | **Check Colors** | `npx tsx scripts/analyze-colors.ts` | Analyze color usage |
+| **Check RLS Performance** | `psql -f scripts/check-rls-performance.sql` | Check RLS performance issues |
 
 ---
 
-**Last Updated:** October 25, 2025
+**Last Updated:** October 26, 2025
 

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
 import {
   facultySetupFormSchema,
   facultyTitles,
@@ -70,6 +70,7 @@ export default function FacultySetupForm({
 
   const onSubmit = (data: FacultySetupFormData) => {
     startTransition(async () => {
+      const supabase = createBrowserClient();
       const { error } = await supabase.from("faculty").upsert({
         id: userId,
         faculty_id: data.facultyId,
@@ -89,7 +90,7 @@ export default function FacultySetupForm({
         description: "Your faculty details have been registered successfully.",
       });
 
-      router.replace("/faculty/dashboard");
+      router.replace("/faculty");
     });
   };
 

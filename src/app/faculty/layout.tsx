@@ -46,7 +46,7 @@ export default async function FacultyLayout({ children }: FacultyLayoutProps) {
           className="sticky top-0 z-40 border-b bg-white dark:bg-gray-950 shadow-sm"
         />
         <main className="flex-1">
-          <div className="container mx-auto w-full max-w-7xl px-4 py-8">
+          <div className="container mx-auto max-w-7xl px-4 py-8">
             {children}
           </div>
         </main>

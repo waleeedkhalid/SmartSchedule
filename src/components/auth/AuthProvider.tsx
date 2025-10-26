@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import AuthContext from "./auth-context";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
 import type {
   AuthContextValue,
   AuthResult,
@@ -26,6 +26,8 @@ function useProvideAuth(): AuthContextValue {
 
   // Subscribe to auth state changes
   useEffect(() => {
+    const supabase = createBrowserClient();
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -51,6 +53,7 @@ function useProvideAuth(): AuthContextValue {
    * Sign in with magic link (OTP)
    */
   const signInWithOtp = useCallback(async (email: string): Promise<AuthResult> => {
+    const supabase = createBrowserClient();
     const result = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -66,6 +69,7 @@ function useProvideAuth(): AuthContextValue {
    */
   const signInWithPassword = useCallback(
     async ({ email, password }: SignInWithPasswordOptions): Promise<AuthResult> => {
+      const supabase = createBrowserClient();
       const result = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -80,6 +84,7 @@ function useProvideAuth(): AuthContextValue {
    */
   const signUpWithPassword = useCallback(
     async ({ email, password, fullName, role }: SignUpWithPasswordOptions): Promise<AuthResult> => {
+      const supabase = createBrowserClient();
       const result = await supabase.auth.signUp({
         email,
         password,
@@ -100,6 +105,7 @@ function useProvideAuth(): AuthContextValue {
    * Sign out the current user
    */
   const signOut = useCallback(async () => {
+    const supabase = createBrowserClient();
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);

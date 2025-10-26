@@ -3,8 +3,9 @@
  * Implements memoization and error handling patterns from performance.md
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useDashboardCache } from "@/lib/dashboard-cache";
 import type { DashboardStats, SchedulerData, UpcomingEvent, FeedbackSettings } from "../types";
 
 interface UseDashboardDataReturn {
@@ -18,6 +19,8 @@ interface UseDashboardDataReturn {
 }
 
 export function useDashboardData(): UseDashboardDataReturn {
+  const cache = useDashboardCache();
+  const fetchedRef = useRef(false);
   const [schedulerData, setSchedulerData] = useState<SchedulerData | null>(null);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
@@ -34,11 +37,28 @@ export function useDashboardData(): UseDashboardDataReturn {
       setLoading(true);
       setError(null);
 
+      const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = `scheduler-dashboard-${user.id}`;
+      const cachedData = cache.get<{
+        schedulerData: SchedulerData;
+        dashboardStats: DashboardStats;
+        upcomingEvents: UpcomingEvent[];
+      }>(cacheKey, 30000); // 30s TTL
+      
+      if (cachedData) {
+        setSchedulerData(cachedData.schedulerData);
+        setDashboardStats(cachedData.dashboardStats);
+        setUpcomingEvents(cachedData.upcomingEvents);
         setLoading(false);
         return;
       }
@@ -193,13 +213,43 @@ export function useDashboardData(): UseDashboardDataReturn {
 
       // Set upcoming events
       setUpcomingEvents(events || []);
+
+      // Cache the results
+      cache.set(cacheKey, {
+        schedulerData: {
+          name:
+            profile.full_name ?? user.user_metadata?.full_name ?? "Scheduler",
+          email: profile.email ?? user.email ?? "",
+          role: profile.role ?? "scheduling_committee",
+          totalCourses: courseCount || 0,
+          totalStudents: studentCount || 0,
+          totalSections: sectionCount || 0,
+          publishedSections: publishedSectionCount || 0,
+          lastGeneratedAt,
+          scheduleStatus,
+        },
+        dashboardStats: {
+          totalCourses: courseCount || 0,
+          totalStudents: studentCount || 0,
+          totalSections: sectionCount || 0,
+          publishedSections: publishedSectionCount || 0,
+          totalEnrollments: enrollmentCount || 0,
+          unresolvedConflicts: conflictCount || 0,
+          conflictsBySeverity,
+          scheduleStatus,
+          lastGeneratedAt,
+          preferenceSubmissionRate,
+          totalPreferences: preferenceCount || 0,
+        },
+        upcomingEvents: events || [],
+      });
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
     } finally {
       setLoading(false);
     }
-  }, []); // Empty deps - function doesn't depend on external values
+  }, [cache]); // Add cache to deps
 
   // Memoize fetch feedback settings
   const fetchFeedbackSettings = useCallback(async () => {
@@ -220,6 +270,10 @@ export function useDashboardData(): UseDashboardDataReturn {
 
   // Initial data fetch
   useEffect(() => {
+    // Prevent double-fetch on mount (React StrictMode)
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    
     fetchDashboardData();
     fetchFeedbackSettings();
   }, [fetchDashboardData, fetchFeedbackSettings]);

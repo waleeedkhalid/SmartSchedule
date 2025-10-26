@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
   
   // ✅ PERFORMANCE: Experimental features for optimization
   experimental: {
-    // Optimize CSS
-    optimizeCss: true,
     // Enable parallel routes
     parallelServerCompiles: true,
   },
@@ -27,9 +25,6 @@ const nextConfig: NextConfig = {
 
   // ✅ PERFORMANCE: Enable compression
   compress: true,
-
-  // ✅ PERFORMANCE: SWC minification (faster than Terser)
-  swcMinify: true,
 
   // ✅ PERFORMANCE: Optimize production bundle
   productionBrowserSourceMaps: false, // Disable source maps in production

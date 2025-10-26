@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,6 +108,7 @@ export default function LoginPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        const supabase = createBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {

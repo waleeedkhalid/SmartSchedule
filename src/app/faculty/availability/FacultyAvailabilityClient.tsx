@@ -8,16 +8,20 @@ import { AlertCircle, Calendar, CheckCircle } from "lucide-react";
 
 interface FacultyAvailabilityClientProps {
   activeTerm: AcademicTerm | null;
+  initialAvailability: Record<string, boolean>;
+  lastSaved: string | null;
 }
 
 export default function FacultyAvailabilityClient({
   activeTerm,
+  initialAvailability,
+  lastSaved,
 }: FacultyAvailabilityClientProps) {
   const permission = canSubmitSuggestions(activeTerm);
   const isOpen = activeTerm?.is_faculty_availability_open ?? false;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Compact Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -54,10 +58,12 @@ export default function FacultyAvailabilityClient({
         </Alert>
       )}
 
-      {/* Availability Form */}
+      {/* Availability Form - NO LOADING, data already fetched */}
       <FacultyAvailability
         canSubmit={permission.allowed}
         lockReason={permission.reason}
+        initialAvailability={initialAvailability}
+        initialLastSaved={lastSaved}
       />
     </div>
   );

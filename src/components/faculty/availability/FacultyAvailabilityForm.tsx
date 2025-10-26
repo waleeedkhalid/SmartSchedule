@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, Clock, Calendar, AlertCircle, Loader2, CheckSquare, Square } from "lucide-react";
+import { CheckCircle2, Clock, Calendar, AlertCircle, CheckSquare, Square, Loader2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -43,43 +43,24 @@ type SlotKey = `${(typeof daysFull)[number]}-${string}`;
 interface FacultyAvailabilityProps {
   canSubmit?: boolean;
   lockReason?: string;
+  initialAvailability?: Record<string, boolean>;
+  initialLastSaved?: string | null;
 }
 
 export function FacultyAvailability({ 
   canSubmit = true, 
-  lockReason 
+  lockReason,
+  initialAvailability = {},
+  initialLastSaved = null
 }: FacultyAvailabilityProps) {
-  const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  // ✅ NO LOADING STATE - data passed as props from server
+  const [availability, setAvailability] = useState<Record<string, boolean>>(initialAvailability);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(initialLastSaved);
 
-  // Fetch existing availability on mount
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch("/api/faculty/availability");
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setAvailability(result.data.availability_data || {});
-          setLastSaved(result.data.lastUpdated);
-        }
-      } catch (err) {
-        console.error("Error fetching availability:", err);
-        setError("Failed to load availability data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAvailability();
-  }, []);
+  // ✅ REMOVED: useEffect that fetches data (already fetched server-side)
 
   const toggle = (key: SlotKey) => {
     if (!canSubmit) return;
@@ -171,18 +152,7 @@ export function FacultyAvailability({
   const totalAvailable = Object.values(availability).filter(Boolean).length;
   const totalSlots = daysFull.length * timeSlots.length;
 
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading availability data...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // ✅ REMOVED: Loading state (no double loading!)
 
   return (
     <TooltipProvider>

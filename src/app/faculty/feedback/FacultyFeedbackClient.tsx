@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -9,22 +8,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
   MessageSquare,
-  ArrowLeft,
   Star,
   TrendingUp,
   Users,
   BarChart3,
   Lock,
-  AlertCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface TextFeedback {
   text: string;
@@ -62,53 +56,21 @@ interface FeedbackData {
   };
 }
 
-export default function FacultyFeedbackClient() {
-  const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [feedbackLocked, setFeedbackLocked] = useState(false);
+interface FacultyFeedbackClientProps {
+  feedbackData: FeedbackData | null;
+  feedbackLocked: boolean;
+  error: string | null;
+}
 
-  useEffect(() => {
-    const fetchFeedback = async () => {
-      try {
-        const response = await fetch("/api/faculty/feedback");
-        const data = await response.json();
-
-        if (data.success) {
-          setFeedbackData(data.data);
-        } else {
-          if (response.status === 403) {
-            setFeedbackLocked(true);
-          }
-          setError(data.error || "Failed to fetch feedback");
-        }
-      } catch (err) {
-        console.error("Error fetching feedback:", err);
-        setError("Failed to load feedback");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFeedback();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-5 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+export default function FacultyFeedbackClient({
+  feedbackData,
+  feedbackLocked,
+  error,
+}: FacultyFeedbackClientProps) {
+  // ✅ OPTIMIZED: Use useMemo for computed values
+  const hasFeedback = useMemo(() => {
+    return feedbackData?.courseFeedback && feedbackData.courseFeedback.length > 0;
+  }, [feedbackData]);
 
   if (feedbackLocked) {
     return (
@@ -146,24 +108,19 @@ export default function FacultyFeedbackClient() {
   if (error && !feedbackLocked) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/faculty/dashboard">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Course Feedback</h1>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Student Feedback</h1>
         </div>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (!feedbackData || !feedbackData.courseFeedback || feedbackData.courseFeedback.length === 0) {
+  if (!hasFeedback) {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -197,7 +154,7 @@ export default function FacultyFeedbackClient() {
       </div>
 
       {/* Overall Stats */}
-      {feedbackData.overallStats && (
+      {feedbackData?.overallStats && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-2">
             <CardContent className="pt-6">
@@ -268,7 +225,7 @@ export default function FacultyFeedbackClient() {
 
       {/* Course Feedback Details */}
       <div className="space-y-6">
-        {feedbackData.courseFeedback.map((course) => (
+        {feedbackData?.courseFeedback.map((course) => (
           <Card key={course.sectionId} className="border-2 shadow-sm">
             <CardHeader className="border-b bg-muted/30">
               <div className="flex items-start justify-between">
@@ -394,4 +351,3 @@ export default function FacultyFeedbackClient() {
     </div>
   );
 }
-

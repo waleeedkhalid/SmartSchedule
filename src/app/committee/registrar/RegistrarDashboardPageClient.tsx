@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   UserCheck,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useDashboardCache } from "@/lib/dashboard-cache";
 
 interface RegistrarData {
   name: string;
@@ -32,14 +33,21 @@ interface RegistrarData {
 }
 
 export default function RegistrarDashboardPage() {
+  const cache = useDashboardCache();
   const [registrarData, setRegistrarData] = useState<RegistrarData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double-fetch on mount (React StrictMode)
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchRegistrarData = async () => {
       try {
+        const supabase = createBrowserClient();
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -49,15 +57,33 @@ export default function RegistrarDashboardPage() {
           return;
         }
 
-        // Get registrar data from the database
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("full_name,email,role")
-          .eq("id", user.id)
-          .maybeSingle();
+        // Check cache first
+        const cacheKey = `registrar-dashboard-${user.id}`;
+        const cached = cache.get<RegistrarData>(cacheKey, 30000); // 30s TTL
+        
+        if (cached) {
+          setRegistrarData(cached);
+          setLoading(false);
+          return;
+        }
 
-        if (error || !userData) {
-          console.error("Error fetching registrar data:", error);
+        // Parallel queries for better performance
+        const [
+          { data: userData, error: userError },
+          { count: studentCount }
+        ] = await Promise.all([
+          supabase
+            .from("users")
+            .select("full_name,email,role")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("students")
+            .select("*", { count: "exact", head: true })
+        ]);
+
+        if (userError || !userData) {
+          console.error("Error fetching registrar data:", userError);
           setLoading(false);
           return;
         }
@@ -68,12 +94,7 @@ export default function RegistrarDashboardPage() {
           role?: string | null;
         };
 
-        // Get student count
-        const { count: studentCount } = await supabase
-          .from("students")
-          .select("*", { count: "exact", head: true });
-
-        setRegistrarData({
+        const result = {
           name:
             profile.full_name ?? user.user_metadata?.full_name ?? "Registrar",
           email: profile.email ?? user.email ?? "",
@@ -81,7 +102,10 @@ export default function RegistrarDashboardPage() {
           totalStudents: studentCount || 0,
           pendingOverrides: 0, // TODO: Calculate from actual override requests
           closedSections: 0, // TODO: Calculate from actual closed sections
-        });
+        };
+
+        setRegistrarData(result);
+        cache.set(cacheKey, result);
       } catch (error) {
         console.error("Error fetching registrar data:", error);
       } finally {
@@ -90,7 +114,7 @@ export default function RegistrarDashboardPage() {
     };
 
     fetchRegistrarData();
-  }, []);
+  }, [cache]);
 
   if (loading) {
     return (

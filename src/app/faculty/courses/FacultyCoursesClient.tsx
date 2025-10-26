@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -9,18 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
   Users,
   Clock,
-  ArrowLeft,
   Calendar,
   MapPin,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface CourseSection {
   id: string;
@@ -45,63 +40,21 @@ interface CourseSection {
   }>;
 }
 
-export default function FacultyCoursesClient() {
-  const [courses, setCourses] = useState<CourseSection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface FacultyCoursesClientProps {
+  courses: CourseSection[];
+}
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await fetch("/api/faculty/courses");
-        const data = await response.json();
+export default function FacultyCoursesClient({ courses }: FacultyCoursesClientProps) {
+  // ✅ OPTIMIZED: Use useMemo for computed values
+  const coursesWithUtilization = useMemo(() => {
+    return courses.map(course => ({
+      ...course,
+      utilizationPercentage: Math.round((course.enrolledCount / course.capacity) * 100),
+      sortedTimes: [...course.times].sort((a, b) => a.start_time.localeCompare(b.start_time))
+    }));
+  }, [courses]);
 
-        if (data.success) {
-          setCourses(data.data.sections || []);
-        } else {
-          setError(data.error || "Failed to fetch courses");
-        }
-      } catch (err) {
-        console.error("Error fetching courses:", err);
-        setError("Failed to load courses");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCourses();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-5 w-96" />
-        </div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const totalCourses = courses.length;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -109,12 +62,12 @@ export default function FacultyCoursesClient() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
         <p className="text-muted-foreground">
-          {courses.length} {courses.length === 1 ? "course" : "courses"} assigned this term
+          {totalCourses} {totalCourses === 1 ? "course" : "courses"} assigned this term
         </p>
       </div>
 
       {/* Courses List */}
-      {courses.length === 0 ? (
+      {totalCourses === 0 ? (
         <Card className="border-2">
           <CardContent className="py-12">
             <div className="text-center">
@@ -130,7 +83,7 @@ export default function FacultyCoursesClient() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {courses.map((course) => (
+          {coursesWithUtilization.map((course) => (
             <Card
               key={course.id}
               className="border-2 bg-white dark:bg-gray-950 shadow-sm transition-all hover:shadow-lg"
@@ -187,7 +140,7 @@ export default function FacultyCoursesClient() {
                         {course.enrolledCount} / {course.capacity}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {Math.round((course.enrolledCount / course.capacity) * 100)}% capacity
+                        {course.utilizationPercentage}% capacity
                       </p>
                     </div>
                   </div>
@@ -211,13 +164,13 @@ export default function FacultyCoursesClient() {
                 </div>
 
                 {/* Schedule Times */}
-                {course.times.length > 0 && (
+                {course.sortedTimes.length > 0 && (
                   <div>
                     <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
                       Class Schedule
                     </h4>
                     <div className="grid gap-3 md:grid-cols-2">
-                      {course.times.map((time) => (
+                      {course.sortedTimes.map((time) => (
                         <div
                           key={time.id}
                           className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3"
@@ -251,4 +204,3 @@ export default function FacultyCoursesClient() {
     </div>
   );
 }
-

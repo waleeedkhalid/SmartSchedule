@@ -1,18 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, ArrowLeft, BookOpen } from "lucide-react";
+import { Calendar, Clock, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ScheduleItem {
@@ -34,73 +30,34 @@ interface ScheduleByDay {
   THURSDAY: ScheduleItem[];
 }
 
+interface FacultyScheduleClientProps {
+  schedule: ScheduleByDay;
+}
+
 const DAYS = [
   { key: "SUNDAY", label: "Sunday" },
   { key: "MONDAY", label: "Monday" },
   { key: "TUESDAY", label: "Tuesday" },
   { key: "WEDNESDAY", label: "Wednesday" },
   { key: "THURSDAY", label: "Thursday" },
-];
+] as const;
 
-export default function FacultyScheduleClient() {
-  const [schedule, setSchedule] = useState<ScheduleByDay | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function FacultyScheduleClient({ schedule }: FacultyScheduleClientProps) {
+  // ✅ OPTIMIZED: Use useMemo for computed values
+  const hasSchedule = useMemo(() => {
+    return Object.values(schedule).some((day) => day.length > 0);
+  }, [schedule]);
 
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const response = await fetch("/api/faculty/schedule");
-        const data = await response.json();
-
-        if (data.success) {
-          setSchedule(data.data.scheduleByDay);
-        } else {
-          setError(data.error || "Failed to fetch schedule");
-        }
-      } catch (err) {
-        console.error("Error fetching schedule:", err);
-        setError("Failed to load schedule");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSchedule();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-5 w-96" />
-        </div>
-        <div className="grid gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Teaching Schedule</h1>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const hasSchedule = schedule && Object.values(schedule).some((day) => day.length > 0);
+  const sortedSchedule = useMemo(() => {
+    const result: Record<string, ScheduleItem[]> = {};
+    DAYS.forEach(({ key }) => {
+      const daySchedule = schedule[key as keyof ScheduleByDay] || [];
+      result[key] = [...daySchedule].sort((a, b) => 
+        a.startTime.localeCompare(b.startTime)
+      );
+    });
+    return result;
+  }, [schedule]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -128,7 +85,7 @@ export default function FacultyScheduleClient() {
       ) : (
         <div className="grid gap-4">
           {DAYS.map(({ key, label }) => {
-            const daySchedule = schedule[key as keyof ScheduleByDay] || [];
+            const daySchedule = sortedSchedule[key] || [];
 
             return (
               <Card
@@ -162,41 +119,39 @@ export default function FacultyScheduleClient() {
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      {daySchedule
-                        .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                        .map((item, idx) => (
-                          <div
-                            key={`${item.sectionId}-${idx}`}
-                            className="rounded-lg border bg-gradient-to-r from-primary/5 to-transparent p-4 transition-all hover:shadow-md"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <BookOpen className="h-4 w-4 text-primary" />
-                                  <h4 className="font-semibold text-base">
-                                    {item.courseName}
-                                  </h4>
+                      {daySchedule.map((item, idx) => (
+                        <div
+                          key={`${item.sectionId}-${idx}`}
+                          className="rounded-lg border bg-gradient-to-r from-primary/5 to-transparent p-4 transition-all hover:shadow-md"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <BookOpen className="h-4 w-4 text-primary" />
+                                <h4 className="font-semibold text-base">
+                                  {item.courseName}
+                                </h4>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {item.courseCode} • {item.credits} credits
+                              </p>
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="h-4 w-4" />
+                                  <span className="font-medium">
+                                    {item.startTime} - {item.endTime}
+                                  </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {item.courseCode} • {item.credits} credits
-                                </p>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span className="font-medium">
-                                      {item.startTime} - {item.endTime}
-                                    </span>
-                                  </div>
-                                  {item.roomId && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      Room {item.roomId}
-                                    </Badge>
-                                  )}
-                                </div>
+                                {item.roomId && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Room {item.roomId}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
@@ -208,4 +163,3 @@ export default function FacultyScheduleClient() {
     </div>
   );
 }
-

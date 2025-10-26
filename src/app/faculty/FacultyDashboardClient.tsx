@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
 import {
@@ -26,21 +25,20 @@ interface FacultyDashboardClientProps {
   facultyId: string;
   title: string;
   status: string;
-}
-
-interface FacultyStatus {
-  activeTerm: string | null;
-  termName: string | null;
-  termType: string | null;
-  assignedCoursesCount: number;
-  schedulePublished: boolean;
-  feedbackOpen: boolean;
-  canViewFeedback: boolean;
-  hasPendingSuggestions: boolean;
-  facultyInfo: {
-    facultyId: string;
-    title: string;
-    status: string;
+  facultyStatus: {
+    activeTerm: string | null;
+    termName: string | null;
+    termType: string | null;
+    assignedCoursesCount: number;
+    schedulePublished: boolean;
+    feedbackOpen: boolean;
+    canViewFeedback: boolean;
+    hasPendingSuggestions: boolean;
+    facultyInfo: {
+      facultyId: string;
+      title: string;
+      status: string;
+    };
   };
 }
 
@@ -50,66 +48,39 @@ export default function FacultyDashboardClient({
   facultyId,
   title,
   status,
+  facultyStatus,
 }: FacultyDashboardClientProps) {
-  const [facultyStatus, setFacultyStatus] = useState<FacultyStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ✅ OPTIMIZED: Use useMemo for computed values
+  const showScheduleAlert = useMemo(() => {
+    return facultyStatus && !facultyStatus.schedulePublished;
+  }, [facultyStatus]);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const response = await fetch("/api/faculty/status");
-        const data = await response.json();
+  const showFeedbackAlert = useMemo(() => {
+    return facultyStatus?.canViewFeedback;
+  }, [facultyStatus]);
 
-        if (data.success) {
-          setFacultyStatus(data.data);
-        } else {
-          setError(data.error || "Failed to fetch status");
-        }
-      } catch (err) {
-        console.error("Error fetching faculty status:", err);
-        setError("Failed to load faculty status");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const displayTitle = useMemo(() => {
+    return `${title} ${fullName}`;
+  }, [title, fullName]);
 
-    fetchStatus();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-5 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+  const termInfo = useMemo(() => {
+    return facultyStatus?.termName
+      ? `Academic Term: ${facultyStatus.termName}`
+      : "Manage your teaching schedule and course information";
+  }, [facultyStatus]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header Section */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {title} {fullName}
+          Welcome back, {displayTitle}
         </h1>
-        <p className="text-muted-foreground">
-          {facultyStatus?.termName
-            ? `Academic Term: ${facultyStatus.termName}`
-            : "Manage your teaching schedule and course information"}
-        </p>
+        <p className="text-muted-foreground">{termInfo}</p>
       </div>
 
       {/* Alert Messages */}
-      {facultyStatus && !facultyStatus.schedulePublished && (
+      {showScheduleAlert && (
         <Alert className="border-2 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950 shadow-sm">
           <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold">
@@ -122,7 +93,7 @@ export default function FacultyDashboardClient({
         </Alert>
       )}
 
-      {facultyStatus?.canViewFeedback && (
+      {showFeedbackAlert && (
         <Alert className="border-2 border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950 shadow-sm">
           <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
@@ -139,14 +110,12 @@ export default function FacultyDashboardClient({
       <QuickActions />
 
       {/* Status Cards */}
-      {facultyStatus && (
-        <FacultyStatusCards
-          assignedCoursesCount={facultyStatus.assignedCoursesCount}
-          schedulePublished={facultyStatus.schedulePublished}
-          canViewFeedback={facultyStatus.canViewFeedback}
-          feedbackOpen={facultyStatus.feedbackOpen}
-        />
-      )}
+      <FacultyStatusCards
+        assignedCoursesCount={facultyStatus.assignedCoursesCount}
+        schedulePublished={facultyStatus.schedulePublished}
+        canViewFeedback={facultyStatus.canViewFeedback}
+        feedbackOpen={facultyStatus.feedbackOpen}
+      />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -218,4 +187,3 @@ export default function FacultyDashboardClient({
     </div>
   );
 }
-

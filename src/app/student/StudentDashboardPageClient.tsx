@@ -1,7 +1,7 @@
 // Student Dashboard - Main Entry Point
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -22,6 +22,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/use-auth";
+import { useDashboardCache } from "@/lib/dashboard-cache";
 
 interface StudentData {
   name: string;
@@ -33,12 +34,28 @@ interface StudentData {
 
 export default function StudentDashboardPageClient() {
   const { user } = useAuth();
+  const cache = useDashboardCache();
   const [studentData, setStudentData] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
-  useMemo(() => {
+  useEffect(() => {
+    // Prevent double-fetch on mount (React StrictMode)
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchStudentData = async () => {
       if (!user?.email) {
+        setLoading(false);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = `student-dashboard-${user.id}`;
+      const cached = cache.get<StudentData>(cacheKey, 30000); // 30s TTL
+      
+      if (cached) {
+        setStudentData(cached);
         setLoading(false);
         return;
       }
@@ -50,30 +67,34 @@ export default function StudentDashboardPageClient() {
         const data = await response.json();
 
         if (data.success) {
-          setStudentData({
+          const studentData = {
             name: data.student.name,
             studentId: data.student.studentId,
             level: data.student.level,
             hasSubmittedPreferences: false,
             currentSchedule: null,
-          });
+          };
+          setStudentData(studentData);
+          cache.set(cacheKey, studentData);
         }
       } catch (error) {
         console.error("Error fetching student data:", error);
-        setStudentData({
+        const fallbackData = {
           name: user.user_metadata?.full_name || "Student",
           studentId: user.email?.split("@")[0] || "Unknown",
           level: 6,
           hasSubmittedPreferences: false,
           currentSchedule: null,
-        });
+        };
+        setStudentData(fallbackData);
+        cache.set(cacheKey, fallbackData);
       } finally {
         setLoading(false);
       }
     };
 
     fetchStudentData();
-  }, [user]);
+  }, [user, cache]);
 
   if (loading) {
     return (

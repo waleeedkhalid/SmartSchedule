@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
 import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 
 interface AuthDialogProps {
@@ -45,6 +45,7 @@ export function AuthDialog({
     setIsLoading(true);
 
     try {
+      const supabase = createBrowserClient();
       if (mode === "signin") {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
