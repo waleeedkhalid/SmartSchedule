@@ -58,7 +58,8 @@ export default function NavAuth(): React.ReactElement {
         >
           {user.email}
         </span>
-        <Link href={dashboardHref}>
+        {/* ✅ PERFORMANCE: Prefetch dashboard route */}
+        <Link href={dashboardHref} prefetch={true}>
           <Button variant="secondary" size="sm">
             Dashboard
           </Button>
@@ -75,15 +76,15 @@ export default function NavAuth(): React.ReactElement {
     );
   }
 
-  // Guest state
+  // Guest state - ✅ PERFORMANCE: Prefetch login/signup routes
   return (
     <div className="flex items-center gap-3">
-      <Link href="/login">
+      <Link href="/login" prefetch={true}>
         <Button variant="outline" size="sm">
           Log in
         </Button>
       </Link>
-      <Link href="/sign-up">
+      <Link href="/sign-up" prefetch={true}>
         <Button size="sm">Register</Button>
       </Link>
     </div>

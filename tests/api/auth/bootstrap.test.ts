@@ -7,7 +7,9 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(new Map())),
 }));
 
-vi.mock("@/utils/supabase/server");
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: vi.fn(),
+}));
 
 // Mock redirect-by-role
 vi.mock("@/lib/auth/redirect-by-role", () => ({
@@ -30,7 +32,7 @@ describe("API /api/auth/bootstrap", () => {
       from: vi.fn(),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -75,7 +77,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -88,7 +90,7 @@ describe("API /api/auth/bootstrap", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/student/dashboard");
+    expect(body.data.redirect).toBe("/student/dashboard");
   });
 
   it("accepts empty request without content-type", async () => {
@@ -120,7 +122,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -162,7 +164,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -177,7 +179,7 @@ describe("API /api/auth/bootstrap", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/faculty/dashboard");
+    expect(body.data.redirect).toBe("/faculty/dashboard");
   });
 
   it("uses fullName from payload when provided", async () => {
@@ -211,7 +213,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -263,7 +265,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -276,7 +278,7 @@ describe("API /api/auth/bootstrap", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/student/dashboard");
+    expect(body.data.redirect).toBe("/student/dashboard");
   });
 
   it("uses role from user_metadata when profile is missing", async () => {
@@ -308,7 +310,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -321,7 +323,7 @@ describe("API /api/auth/bootstrap", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/faculty/dashboard");
+    expect(body.data.redirect).toBe("/faculty/dashboard");
   });
 
   it("prioritizes profile role over metadata role", async () => {
@@ -353,7 +355,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -366,7 +368,7 @@ describe("API /api/auth/bootstrap", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/faculty/dashboard");
+    expect(body.data.redirect).toBe("/faculty/dashboard");
   });
 
   it("returns 400 when upsert fails", async () => {
@@ -398,7 +400,7 @@ describe("API /api/auth/bootstrap", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/bootstrap", {
       method: "POST",
@@ -452,7 +454,7 @@ describe("API /api/auth/bootstrap", () => {
         }),
       };
 
-      vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+      vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
       const request = new Request("http://localhost:3000/api/auth/bootstrap", {
         method: "POST",
@@ -465,7 +467,7 @@ describe("API /api/auth/bootstrap", () => {
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(body.redirect).toBe(`/${role}/dashboard`);
+      expect(body.data.redirect).toBe(`/${role}/dashboard`);
     }
   });
 });

@@ -472,3 +472,6 @@ npm run lint
 11. Handle errors gracefully
 
 **See:** [docs/TIMETABLING-SYSTEM-GUIDE.md](mdc:docs/TIMETABLING-SYSTEM-GUIDE.md) for complete understanding
+
+# Supabase API Keys
+- we use PUBLISHABLE_KEY instead of ANON_KEY

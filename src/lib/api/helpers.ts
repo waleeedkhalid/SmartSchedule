@@ -66,15 +66,45 @@ export function unauthorizedResponse(): NextResponse<ApiResponse> {
 
 /**
  * Create validation error response
+ * Handles both string messages and Zod error objects
  */
 export function validationErrorResponse(
-  details?: unknown
+  messageOrDetails?: string | unknown
 ): NextResponse<ApiResponse> {
+  // If it's a string, use it directly
+  if (typeof messageOrDetails === "string") {
+    return NextResponse.json(
+      {
+        success: false,
+        error: messageOrDetails,
+      },
+      { status: 400 }
+    );
+  }
+  
+  // If it's a Zod error, extract first error message
+  if (messageOrDetails && typeof messageOrDetails === "object" && "issues" in messageOrDetails) {
+    const zodError = messageOrDetails as { issues: Array<{ path: string[]; message: string }> };
+    const firstIssue = zodError.issues[0];
+    if (firstIssue) {
+      const fieldName = firstIssue.path.join(".");
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Validation failed: ${fieldName} - ${firstIssue.message}`,
+          details: zodError.issues,
+        },
+        { status: 400 }
+      );
+    }
+  }
+  
+  // Default response
   return NextResponse.json(
     {
       success: false,
       error: "Validation failed",
-      ...(details && { details }),
+      ...(messageOrDetails && { details: messageOrDetails }),
     },
     { status: 400 }
   );

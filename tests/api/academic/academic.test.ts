@@ -19,6 +19,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const SKIP_INTEGRATION_TESTS = !process.env.RUN_INTEGRATION_TESTS;
 
 // Test configuration
 const TEST_TERM_CODE = '471'; // Fall 2024/2025
@@ -38,13 +39,14 @@ async function authenticatedFetch(url: string, options: RequestInit = {}) {
 
   return fetch(url, {
     ...options,
-    headers
+    headers,
+    credentials: 'include', // Include cookies for session-based auth
   });
 }
 
 describe('Academic Terms API', () => {
   describe('GET /api/academic/terms', () => {
-    it('should return all academic terms', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return all academic terms', async () => {
       const response = await authenticatedFetch(`${API_BASE_URL}/api/academic/terms`);
       
       expect(response.status).toBe(200);
@@ -57,7 +59,7 @@ describe('Academic Terms API', () => {
       expect(data.count).toBeGreaterThan(0);
     });
 
-    it('should filter for active terms only', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter for active terms only', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/terms?active=true`
       );
@@ -73,7 +75,7 @@ describe('Academic Terms API', () => {
       });
     });
 
-    it('should filter for terms with open registration', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter for terms with open registration', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/terms?registration_open=true`
       );
@@ -89,7 +91,7 @@ describe('Academic Terms API', () => {
       });
     });
 
-    it('should return 401 if not authenticated', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return 401 if not authenticated', async () => {
       const response = await fetch(`${API_BASE_URL}/api/academic/terms`);
       expect(response.status).toBe(401);
     });
@@ -98,7 +100,7 @@ describe('Academic Terms API', () => {
 
 describe('Academic Events API', () => {
   describe('GET /api/academic/events', () => {
-    it('should return all events', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return all events', async () => {
       const response = await authenticatedFetch(`${API_BASE_URL}/api/academic/events`);
       
       expect(response.status).toBe(200);
@@ -111,7 +113,7 @@ describe('Academic Events API', () => {
       expect(data.count).toBeGreaterThan(0);
     });
 
-    it('should filter events by term code', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter events by term code', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events?term_code=${TEST_TERM_CODE}`
       );
@@ -127,7 +129,7 @@ describe('Academic Events API', () => {
       });
     });
 
-    it('should filter events by event type', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter events by event type', async () => {
       const eventType = 'registration';
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events?event_type=${eventType}`
@@ -144,7 +146,7 @@ describe('Academic Events API', () => {
       });
     });
 
-    it('should filter events by category', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter events by category', async () => {
       const category = 'exam';
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events?category=${category}`
@@ -161,7 +163,7 @@ describe('Academic Events API', () => {
       });
     });
 
-    it('should filter for upcoming events', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should filter for upcoming events', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events?upcoming=true&days_ahead=60`
       );
@@ -183,14 +185,14 @@ describe('Academic Events API', () => {
       });
     });
 
-    it('should return 401 if not authenticated', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return 401 if not authenticated', async () => {
       const response = await fetch(`${API_BASE_URL}/api/academic/events`);
       expect(response.status).toBe(401);
     });
   });
 
   describe('POST /api/academic/events', () => {
-    it('should create a new event (committee only)', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should create a new event (committee only)', async () => {
       const newEvent = {
         term_code: TEST_TERM_CODE,
         title: 'Test Event',
@@ -226,7 +228,7 @@ describe('Academic Events API', () => {
       }
     });
 
-    it('should reject event with invalid date range', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should reject event with invalid date range', async () => {
       const invalidEvent = {
         term_code: TEST_TERM_CODE,
         title: 'Invalid Event',
@@ -248,7 +250,7 @@ describe('Academic Events API', () => {
       expect([400, 403]).toContain(response.status);
     });
 
-    it('should reject event with missing required fields', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should reject event with missing required fields', async () => {
       const incompleteEvent = {
         term_code: TEST_TERM_CODE,
         title: 'Incomplete Event',
@@ -269,7 +271,7 @@ describe('Academic Events API', () => {
   });
 
   describe('GET /api/academic/events/[id]', () => {
-    it('should return a single event by ID', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return a single event by ID', async () => {
       // First, get any event ID
       const listResponse = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events?term_code=${TEST_TERM_CODE}`
@@ -291,7 +293,7 @@ describe('Academic Events API', () => {
       }
     });
 
-    it('should return 404 for non-existent event', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return 404 for non-existent event', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/events/${fakeId}`
@@ -302,7 +304,7 @@ describe('Academic Events API', () => {
   });
 
   describe('PATCH /api/academic/events/[id]', () => {
-    it('should update an event (committee only)', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should update an event (committee only)', async () => {
       if (!createdEventId) {
         // Skip if we don't have a created event
         return;
@@ -333,7 +335,7 @@ describe('Academic Events API', () => {
   });
 
   describe('DELETE /api/academic/events/[id]', () => {
-    it('should delete an event (committee only)', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should delete an event (committee only)', async () => {
       if (!createdEventId) {
         // Skip if we don't have a created event
         return;
@@ -365,7 +367,7 @@ describe('Academic Events API', () => {
 
 describe('Academic Timeline API', () => {
   describe('GET /api/academic/timeline/[term_code]', () => {
-    it('should return comprehensive timeline for a term', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return comprehensive timeline for a term', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/timeline/${TEST_TERM_CODE}`
       );
@@ -405,7 +407,7 @@ describe('Academic Timeline API', () => {
       expect(data.data.statistics).toHaveProperty('by_category');
     });
 
-    it('should enrich events with status information', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should enrich events with status information', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/timeline/${TEST_TERM_CODE}`
       );
@@ -432,7 +434,7 @@ describe('Academic Timeline API', () => {
       });
     });
 
-    it('should respect days_ahead parameter for upcoming events', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should respect days_ahead parameter for upcoming events', async () => {
       const daysAhead = 15;
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/timeline/${TEST_TERM_CODE}?days_ahead=${daysAhead}`
@@ -454,7 +456,7 @@ describe('Academic Timeline API', () => {
       });
     });
 
-    it('should return 404 for non-existent term', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return 404 for non-existent term', async () => {
       const response = await authenticatedFetch(
         `${API_BASE_URL}/api/academic/timeline/999`
       );
@@ -462,7 +464,7 @@ describe('Academic Timeline API', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 401 if not authenticated', async () => {
+    it.skipIf(SKIP_INTEGRATION_TESTS)('should return 401 if not authenticated', async () => {
       const response = await fetch(
         `${API_BASE_URL}/api/academic/timeline/${TEST_TERM_CODE}`
       );

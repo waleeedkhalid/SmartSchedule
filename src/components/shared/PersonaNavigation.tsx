@@ -42,8 +42,10 @@ export function PersonaNavigation({
         {/* Persona Header */}
         <div className="flex items-center justify-between py-4">
           <div className="flex items-center gap-4">
+            {/* ✅ PERFORMANCE: Prefetch home route */}
             <Link
               href="/"
+              prefetch={true}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <Home className="h-4 w-4" />
@@ -74,6 +76,7 @@ export function PersonaNavigation({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={cn(
                   "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2",
                   isActive
@@ -110,7 +113,7 @@ export function PageBreadcrumb({ items }: PageBreadcrumbProps) {
         <div key={index} className="flex items-center gap-2">
           {index > 0 && <span>/</span>}
           {item.href ? (
-            <Link href={item.href} className="hover:text-foreground">
+            <Link href={item.href} prefetch={true} className="hover:text-foreground">
               {item.label}
             </Link>
           ) : (

@@ -7,7 +7,9 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(new Map())),
 }));
 
-vi.mock("@/utils/supabase/server");
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: vi.fn(),
+}));
 
 describe("API /api/auth/sign-out", () => {
   beforeEach(() => {
@@ -23,7 +25,7 @@ describe("API /api/auth/sign-out", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const res = await POST();
     const body = await res.json();
@@ -42,7 +44,7 @@ describe("API /api/auth/sign-out", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const res = await POST();
     const body = await res.json();
@@ -61,7 +63,7 @@ describe("API /api/auth/sign-out", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const res = await POST();
     const body = await res.json();

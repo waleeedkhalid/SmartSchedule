@@ -2,37 +2,62 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUserAndRedirect = async () => {
       try {
+        const supabase = createBrowserClient();
+        
+        // Get authenticated user
         const {
           data: { user },
+          error: authError,
         } = await supabase.auth.getUser();
 
+        if (authError) {
+          console.error("Auth error:", authError);
+          setError(`Authentication error: ${authError.message}`);
+          setTimeout(() => router.push("/login"), 2000);
+          return;
+        }
+
         if (!user) {
+          console.log("No user found, redirecting to login");
           router.push("/login");
           return;
         }
 
+        console.log("User authenticated:", user.id);
+
         // Get user role from the database
-        const { data: userData, error } = await supabase
+        const { data: userData, error: dbError } = await supabase
           .from("users")
           .select("role")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (error || !userData) {
-          console.error("Error fetching user role:", error);
-          router.push("/login");
+        if (dbError) {
+          console.error("Database error fetching user role:", dbError);
+          setError(`Database error: ${dbError.message}`);
+          setTimeout(() => router.push("/login"), 2000);
           return;
         }
+
+        if (!userData) {
+          console.error("No user data found in database for user:", user.id);
+          setError("User profile not found. Please contact support.");
+          setTimeout(() => router.push("/login"), 3000);
+          return;
+        }
+
+        console.log("User role:", userData.role);
 
         // Redirect based on role
         switch (userData.role) {
@@ -52,11 +77,14 @@ export default function DashboardPage() {
             router.push("/committee/registrar");
             break;
           default:
-            router.push("/login");
+            console.error("Unknown role:", userData.role);
+            setError(`Unknown role: ${userData.role}`);
+            setTimeout(() => router.push("/login"), 2000);
         }
       } catch (error) {
-        console.error("Error checking user:", error);
-        router.push("/login");
+        console.error("Unexpected error checking user:", error);
+        setError(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
+        setTimeout(() => router.push("/login"), 2000);
       } finally {
         setLoading(false);
       }
@@ -64,6 +92,20 @@ export default function DashboardPage() {
 
     checkUserAndRedirect();
   }, [router]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md mx-auto p-6">
+          <div className="text-red-500 text-xl font-semibold">Error</div>
+          <p className="text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">
+            Redirecting to login...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

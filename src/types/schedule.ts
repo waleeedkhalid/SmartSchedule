@@ -6,6 +6,35 @@
 import type { DayOfWeek } from '@/types/database';
 
 // =====================================================
+// STUDENT SCHEDULE VIEW TYPES
+// =====================================================
+
+export interface ScheduleSection {
+  course_code: string;
+  course_name: string;
+  section_id: string;
+  instructor?: string;
+  room?: string;
+  type: 'REQUIRED' | 'ELECTIVE';
+  credits?: number;
+  times: ScheduleTimeSlot[];
+}
+
+export interface ScheduleTimeSlot {
+  day: string; // 'SUNDAY', 'MONDAY', etc.
+  start_time: string; // '08:00'
+  end_time: string; // '09:30'
+}
+
+export interface StudentSchedule {
+  id: string;
+  term_code: string;
+  version?: number;
+  published_at?: string;
+  sections: ScheduleSection[];
+}
+
+// =====================================================
 // SCHEDULE GENERATION TYPES
 // =====================================================
 

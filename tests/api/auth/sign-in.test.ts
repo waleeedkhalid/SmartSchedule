@@ -8,7 +8,9 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(new Map())),
 }));
 
-vi.mock("@/utils/supabase/server");
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: vi.fn(),
+}));
 
 // Mock redirect-by-role
 vi.mock("@/lib/auth/redirect-by-role", () => ({
@@ -80,7 +82,7 @@ describe("API /api/auth/sign-in", () => {
       from: vi.fn(),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",
@@ -131,7 +133,7 @@ describe("API /api/auth/sign-in", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",
@@ -147,8 +149,8 @@ describe("API /api/auth/sign-in", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.redirect).toBe("/student/dashboard");
-    expect(body.role).toBe("student");
+    expect(body.data.redirect).toBe("/student/dashboard");
+    expect(body.data.role).toBe("student");
     expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
       email: "test@example.com",
       password: "password123",
@@ -187,7 +189,7 @@ describe("API /api/auth/sign-in", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",
@@ -203,7 +205,7 @@ describe("API /api/auth/sign-in", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.role).toBe("student");
+    expect(body.data.role).toBe("student");
   });
 
   it("uses requested role when provided", async () => {
@@ -238,7 +240,7 @@ describe("API /api/auth/sign-in", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",
@@ -255,8 +257,8 @@ describe("API /api/auth/sign-in", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.role).toBe("faculty");
-    expect(body.redirect).toBe("/faculty/dashboard");
+    expect(body.data.role).toBe("faculty");
+    expect(body.data.redirect).toBe("/faculty/dashboard");
   });
 
   it("returns 500 when user retrieval fails", async () => {
@@ -273,7 +275,7 @@ describe("API /api/auth/sign-in", () => {
       from: vi.fn(),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",
@@ -324,7 +326,7 @@ describe("API /api/auth/sign-in", () => {
       }),
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-in", {
       method: "POST",

@@ -84,6 +84,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className="theme-ksu-royal">
+      <head>
+        {/* ✅ PERFORMANCE: DNS Prefetch for external resources */}
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        
+        {/* ✅ PERFORMANCE: Preconnect to critical origins */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
@@ -91,12 +100,13 @@ export default function RootLayout({
           {/* PRD 3.1 - Global Header with brand logo */}
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2" prefetch={true}>
                 <Image
                   src="/icon.png"
                   alt="SmartSchedule"
                   width={32}
                   height={32}
+                  priority
                 />
                 <span className="text-xl font-bold">SmartSchedule</span>
               </Link>

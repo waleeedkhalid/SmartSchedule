@@ -7,7 +7,9 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(new Map())),
 }));
 
-vi.mock("@/utils/supabase/server");
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: vi.fn(),
+}));
 
 describe("API /api/auth/sign-up", () => {
   beforeEach(() => {
@@ -152,7 +154,7 @@ describe("API /api/auth/sign-up", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-up", {
       method: "POST",
@@ -173,7 +175,7 @@ describe("API /api/auth/sign-up", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.message).toBe("Check your email to verify your account.");
+    expect(body.data.message).toBe("Check your email to verify your account.");
     expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
       email: "newuser@example.com",
       password: "password123",
@@ -196,7 +198,7 @@ describe("API /api/auth/sign-up", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-up", {
       method: "POST",
@@ -239,7 +241,7 @@ describe("API /api/auth/sign-up", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-up", {
       method: "POST",
@@ -281,7 +283,7 @@ describe("API /api/auth/sign-up", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-up", {
       method: "POST",
@@ -314,7 +316,7 @@ describe("API /api/auth/sign-up", () => {
       },
     };
 
-    vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
     const request = new Request("http://localhost:3000/api/auth/sign-up", {
       method: "POST",
@@ -360,7 +362,7 @@ describe("API /api/auth/sign-up", () => {
         },
       };
 
-      vi.mocked(createServerClient).mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServerClient>);
+      vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
 
       const request = new Request("http://localhost:3000/api/auth/sign-up", {
         method: "POST",

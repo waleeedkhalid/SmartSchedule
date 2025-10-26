@@ -163,7 +163,7 @@ export default function FacultyFeedbackClient() {
     );
   }
 
-  if (!feedbackData || feedbackData.courseFeedback.length === 0) {
+  if (!feedbackData || !feedbackData.courseFeedback || feedbackData.courseFeedback.length === 0) {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -197,72 +197,74 @@ export default function FacultyFeedbackClient() {
       </div>
 
       {/* Overall Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      {feedbackData.overallStats && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Courses</p>
+                  <p className="text-2xl font-bold">
+                    {feedbackData.overallStats.totalCourses}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Courses</p>
-                <p className="text-2xl font-bold">
-                  {feedbackData.overallStats.totalCourses}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-                <Star className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <Card className="border-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <Star className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Avg Rating</p>
+                  <p className="text-2xl font-bold">
+                    {feedbackData.overallStats.averageRating.toFixed(1)}
+                    <span className="text-sm text-muted-foreground">/5.0</span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Avg Rating</p>
-                <p className="text-2xl font-bold">
-                  {feedbackData.overallStats.averageRating.toFixed(1)}
-                  <span className="text-sm text-muted-foreground">/5.0</span>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                <MessageSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <Card className="border-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                  <MessageSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Responses</p>
+                  <p className="text-2xl font-bold">
+                    {feedbackData.overallStats.totalResponses}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Responses</p>
-                <p className="text-2xl font-bold">
-                  {feedbackData.overallStats.totalResponses}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <Card className="border-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Response Rate</p>
+                  <p className="text-2xl font-bold">
+                    {feedbackData.overallStats.responseRate}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Response Rate</p>
-                <p className="text-2xl font-bold">
-                  {feedbackData.overallStats.responseRate}%
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Course Feedback Details */}
       <div className="space-y-6">
