@@ -19,7 +19,7 @@
  * 6. User redirected to appropriate dashboard
  * 
  * Data Collection:
- * - Students: academic level, enrollment year, expected graduation (optional)
+ * - Students: academic level (determines required courses and schedule)
  * - Other roles: minimal setup (department already defaulted)
  */
 
@@ -40,7 +40,7 @@ export default async function OnboardingPage() {
   // Get user's role and onboarding status
   const { data: userRole, error: roleError } = await supabase
     .from('user_roles')
-    .select('role, name, onboarding_completed, level, enrollment_year')
+    .select('role, name, onboarding_completed, level')
     .eq('user_id', user.id)
     .single();
   

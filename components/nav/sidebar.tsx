@@ -113,8 +113,8 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: CheckSquare,
     },
     {
-      title: "Settings",
-      href: "/dashboard/settings",
+      title: "Admin Settings",
+      href: "/dashboard/admin/settings",
       icon: Settings,
     },
   ],
@@ -172,6 +172,58 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Import/Export",
       href: "/dashboard/import-export",
       icon: Upload,
+    },
+    {
+      title: "Admin Settings",
+      href: "/dashboard/admin/settings",
+      icon: Settings,
+    },
+  ],
+  admin: [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Courses",
+      href: "/dashboard/courses",
+      icon: BookOpen,
+    },
+    {
+      title: "Sections",
+      href: "/dashboard/sections",
+      icon: FileText,
+    },
+    {
+      title: "Instructors",
+      href: "/dashboard/instructors",
+      icon: Users,
+    },
+    {
+      title: "Rooms",
+      href: "/dashboard/rooms",
+      icon: MapPin,
+    },
+    {
+      title: "Exams",
+      href: "/dashboard/exams",
+      icon: Calendar,
+    },
+    {
+      title: "Student Groups",
+      href: "/dashboard/student-groups",
+      icon: GraduationCap,
+    },
+    {
+      title: "Import/Export",
+      href: "/dashboard/import-export",
+      icon: Upload,
+    },
+    {
+      title: "Admin Settings",
+      href: "/dashboard/admin/settings",
+      icon: Settings,
     },
   ],
 };
@@ -264,7 +316,7 @@ export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
         >
           <Settings className="h-5 w-5" />
-          <span>Settings</span>
+          <span>Profile</span>
         </Link>
         <form action="/api/auth/signout" method="post">
           <button

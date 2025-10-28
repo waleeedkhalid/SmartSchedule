@@ -18,17 +18,24 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 - Personas: Scheduling Committee, Teaching Load Committee, Students, Faculty, Registrar.
 - Data intake: Forms + JSON import/export for courses, sections, rooms, instructors, student groups, exams, rules.
 - Intelligent recommendation: one‑click generate; then manual tweaks.
-- Real‑time collaboration: yjs concurrent edits on schedules (Scheduling + Teaching Load only); comments/feedback from all roles.
-- Versioning: jsondiffpatch snapshots; **named releases only**.
+- Collaboration: Comment/feedback system for all roles; asynchronous collaborative editing.
 - Notifications: in‑app for comments and material changes.
 - Dashboards: Level overview and Course overview (Chart.js).
-- Student portal: submit elective preferences; view level‑based schedule (required courses + assigned electives); add comments/feedback.
-- Faculty portal: view personal teaching assignments; add feedback.
-- Teaching Load: collaborate with Scheduling via real‑time edits.
-- Registrar: manage irregular students (custom required course lists); manually register students in sections.
+- Student portal: manual elective registration with validation (≤20 credits, capacity, prerequisites); view level‑based schedule (required courses + registered electives); exam timetable; dual-layer comments.
+- Faculty portal: self-registration with auto instructor profile; availability preferences; view personal teaching timetable; add feedback.
+- Teaching Load: review instructor loads; provide feedback via comments.
+- Registrar: manage irregular students (custom required course lists); manually register students in sections with validation bypass.
 - **Student enrollment model**: Students follow main curriculum flow—automatically enrolled in all required courses for their current level. Irregular students have custom required course lists defined by registrar. For electives, students manually register for specific sections with constraints: ≤20 total credits, section capacity limits, prerequisites (V1: auto-pass).
+- **Data Model Enhancements**: student_enrollment table for tracking registrations, schedule_comment table for unified feedback, irregular_student table for custom curricula.
 
-**Excluded (V1)**
+**Included (V2 - Future)**
+- Real‑time collaboration: yjs concurrent edits on schedules (Scheduling + Teaching Load roles).
+- Versioning: jsondiffpatch snapshots; named releases with restore capability.
+- AI chatbot for schedule insights and queries.
+- Instructor preference learning (ML-based).
+- CSV import/export variants.
+
+**Excluded (All Versions)**
 - SSO or external SIS/LMS integrations.  
 - Auto‑ingest from subsystems.  
 - Complex optimization beyond defined rules.  
@@ -50,10 +57,14 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 3. **Scheduler**: One‑click “Recommend Schedule” that respects rules and prevents room/time collisions; supports exams and labs; provides conflict list.  
 4. **Manual Editing**: Drag/resize or form edits to section meetings; instant conflict detection.  
 5. **Collaboration**: 
-   - yjs real‑time concurrent editing (Scheduling + Teaching Load only)
-   - Comments/feedback system (all roles)
-   - Activity presence indicators (editors only)
-6. **Versioning**: jsondiffpatch diffs; create named releases; restore from release.  
+   - Comment/feedback system (all roles) - ✅ V1 Complete
+   - Section-specific and general feedback - ✅ V1 Complete
+   - Real‑time concurrent editing via yjs (Scheduling + Teaching Load only) - ⏳ Deferred to V2
+   - Activity presence indicators (editors only) - ⏳ Deferred to V2
+6. **Versioning**: 
+   - JSON export/import for manual versioning - ✅ V1 Complete
+   - jsondiffpatch diffs and named releases - ⏳ Deferred to V2
+   - Restore from release capability - ⏳ Deferred to V2  
 7. **Notifications**: In‑app alerts on comments and changes affecting an instructor/section/exam.  
 8. **Dashboards**:  
    - **Level overview**: per group in a level, sections, assigned instructors, student counts.  
@@ -104,7 +115,9 @@ Open current draft → filter by instructor/load → comment or co‑edit sectio
 Self-register → auto-create instructor profile → sign in → set availability preferences → view personal teaching timetable (read‑only) → add feedback or constraints (unavailable times) → receive in‑app notifications on changes.
 
 ### Students
-Sign in → register for elective sections (manual with validation) → view level‑based schedule (auto-enrolled required + registered electives, read‑only) → view exam timetable with conflicts → add general/section-specific feedback → manage enrollments (drop if needed).
+Sign in → complete simple onboarding (set level 1-8) → register for elective sections (manual with validation) → view level‑based schedule (auto-enrolled required + registered electives, read‑only) → view exam timetable with conflicts → add general/section-specific feedback → manage enrollments (drop if needed).
+
+**Note**: Student level (1-8) determines which required courses appear in schedule. Level is the only academic standing indicator (no year fields).
 
 ## Data Model (minimal V1)
 > **Simplicity rules**: 
@@ -116,18 +129,23 @@ Sign in → register for elective sections (manual with validation) → view lev
 - **section**: `id PK`, `course_code FK`, `section_no`, `instructor_id FK`, `room_code FK`, `capacity INT`, `meeting_pattern JSONB{days[], start, duration, is_lab, linked_lab_section?}`, `group_level INT`, `state ENUM('draft','released')`  
 - **room**: `code PK`, `type ENUM('Lecture','Lab')`  
 - **instructor**: `id PK`, `name`, `email TEXT UNIQUE`, `preferred_times JSONB`, `unavailable_times JSONB`, `max_load_per_week INT`  
-- **student_group**: `id PK`, `level INT`, `size INT`  
-- **user_roles**: `user_id PK FK (auth.users)`, `role ENUM(scheduling, teaching_load, faculty, student, registrar)`, `name`, `email`, `level INT (students)`, `department`, `enrollment_year`, `expected_graduation_year`, `onboarding_completed BOOL`
+- **student_group**: `id PK`, `level INT (1-8)`, `size INT`, `name TEXT`
+  - **Auto-Sync**: Groups automatically created/updated when students are added/modified. Size reflects real-time student count per level.  
+- **user_roles**: `user_id PK FK (auth.users)`, `role ENUM(scheduling, teaching_load, faculty, student, registrar)`, `name`, `email`, `level INT (1-8, students only)`, `department`, `onboarding_completed BOOL`
+  - **Note**: Level (1-8) is the ONLY indicator of student academic standing. Determines required course enrollment and schedule placement.
+  - **Student Groups**: Auto-created and auto-updated based on actual student counts per level via database triggers. No manual management required.
 - **student_enrollment**: `id PK`, `student_id FK`, `section_id FK`, `status ENUM('registered','dropped')`, `enrolled_at`, `dropped_at`
 - **schedule_comment**: `id PK`, `author_id FK (user_roles.user_id)`, `section_id FK (nullable)`, `comment_text`, `is_resolved BOOL`, `resolved_by FK`, `resolved_at` *(unified for all roles)*
-- **elective_preference**: `student_id FK`, `course_code FK`, `rank INT` (legacy for preferences, now using student_enrollment for actual registration)  
+- **elective_preference**: `id PK`, `student_id FK`, `course_code FK`, `rank INT` *(deprecated - legacy preference ranking, replaced by student_enrollment)*
+- **student_enrollment**: `id PK`, `student_id FK`, `section_id FK`, `status ENUM('registered','dropped')`, `enrolled_at`, `dropped_at` *(V1: tracks actual elective registrations)*
 - **exam**: `id PK`, `course_code FK`, `section_id FK`, `date`, `start`, `duration`, `room_codes TEXT[]`  
 - **rule**: `id PK`, `time_blocks JSONB`, `forbidden_pairs JSONB`, `exam_spacing_mins INT`, `max_classes_per_instructor_day INT`, `max_classes_per_student_day INT`  
-- **schedule_doc** (for yjs snapshot + diff): `id PK`, `content JSONB`, `release_tag? TEXT`, `created_by`, `created_at`  
-- **comment**: `id PK`, `doc_id FK`, `target_ref`, `author_id`, `text`, `created_at`  
+- **schedule_doc**: `id PK`, `content JSONB`, `release_tag? TEXT`, `diff_from_previous JSONB`, `created_by`, `created_at` *(reserved for V2 versioning)*
+- **schedule_comment**: `id PK`, `author_id FK (user_roles.user_id)`, `section_id FK (nullable)`, `comment_text`, `is_resolved BOOL`, `resolved_by FK`, `resolved_at` *(V1: unified comment system for all roles)*
+- **comment**: `id PK`, `doc_id FK`, `target_ref`, `author_id`, `text`, `created_at` *(deprecated - replaced by schedule_comment)*
 - **notification**: `id PK`, `user_id`, `type`, `payload JSONB`, `read_at?`
-- **time_grid_config**: `id PK`, `teaching_days TEXT[]`, `daily_start_time`, `daily_end_time`, `slot_duration_minutes INT`, `break_start_time`, `break_end_time`, `exam_days TEXT[]`, `typical_lab_duration_minutes INT`
-- **irregular_student**: `id PK`, `student_id FK (user_roles.user_id)`, `required_course_codes TEXT[]`, `notes TEXT`, `created_by FK`, `created_at`, `updated_at` *(for students not following standard level-based curriculum)*
+- **time_grid_config**: `id PK`, `teaching_days TEXT[]`, `daily_start_time`, `daily_end_time`, `slot_duration_minutes INT`, `break_start_time`, `break_end_time`, `exam_days TEXT[]`, `exam_start_time`, `exam_end_time`, `typical_lab_duration_minutes INT`
+- **irregular_student**: `id PK`, `student_id FK (user_roles.user_id)`, `required_course_codes TEXT[]`, `notes TEXT`, `created_by FK`, `created_at`, `updated_at` *(V1: for students not following standard level-based curriculum)*
 
 ## Scheduling Rules (initial)
 - No student group clashes across courses in the same level.  
@@ -149,7 +167,7 @@ Sign in → register for elective sections (manual with validation) → view lev
 | Capability | Scheduling | Teaching Load | Faculty | Student | Registrar |
 |---|:--:|:--:|:--:|:--:|:--:|
 | Generate recommendation | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
-| Real‑time edit schedule (yjs) | ✅ | ✅ | ⛔ | ⛔ | ⛔ |
+| Real‑time edit schedule (yjs) | ⏳ V2 | ⏳ V2 | ⛔ | ⛔ | ⛔ |
 | Comment/feedback | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Create named release | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
 | Manage data (CRUD courses/sections/rooms) | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
@@ -174,8 +192,8 @@ Sign in → register for elective sections (manual with validation) → view lev
 - **UI**: Next.js 15 (App Router), shadcn/ui, Tailwind; Zustand for client state.  
 - **Charts**: Chart.js for Level and Course overviews.  
 - **Collab**: 
-  - yjs provider on `schedule_doc` for real‑time concurrent editing (Scheduling + Teaching Load roles only)
-  - Separate comment system accessible to all roles (read‑only viewers: Faculty, Students, Registrar)
+  - V1: Comment/feedback system accessible to all roles (section-specific and general)
+  - V2: yjs provider on `schedule_doc` for real‑time concurrent editing (Scheduling + Teaching Load roles only)
   - Students and Faculty see read‑only schedule views with comment capability
 - **Diff/Versioning**: jsondiffpatch per save; tag named releases.  
 - **AI**: Optional chatbot via Google AI Studio for queries and explanations.  

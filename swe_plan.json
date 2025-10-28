@@ -1,0 +1,144 @@
+{
+    "total_credit_hours": 137,
+    "study_plan": [
+      {
+        "level": 1,
+        "courses": [
+          { "code": "ENGL 100", "title": "English Language", "credit_hours": 6 },
+          { "code": "MATH 101", "title": "Differential Calculus", "credit_hours": 3 },
+          { "code": "CHEM 101", "title": "General Chemistry (1)", "credit_hours": 4 },
+          { "code": "ARAB 100", "title": "Writing Skills", "credit_hours": 2 },
+          { "code": "ENT 101", "title": "Entrepreneurship", "credit_hours": 1 }
+        ]
+      },
+      {
+        "level": 2,
+        "courses": [
+          { "code": "STAT 101", "title": "Introduction to Probability & Statistics", "credit_hours": 3 },
+          { "code": "EPH 101", "title": "Fitness and Health Education", "credit_hours": 1 },
+          { "code": "CT 101", "title": "IT Skills", "credit_hours": 3 },
+          { "code": "CUR 101", "title": "University Skills", "credit_hours": 3 },
+          { "code": "ENGL 110", "title": "English", "credit_hours": 6, "prerequisite": "ENGL 100" }
+        ]
+      },
+      {
+        "level": 3,
+        "courses": [
+          { "code": "CSC 111", "title": "Computer Programming I", "credit_hours": 4, "prerequisite": "CT 101" },
+          { "code": "MATH 106", "title": "Integral Calculus", "credit_hours": 3, "prerequisite": "MATH 101" },
+          { "code": "MATH 151", "title": "Discrete Mathematics", "credit_hours": 3, "prerequisite": "MATH 101" },
+          { "code": "PHYS 103", "title": "General Physics I", "credit_hours": 4 }
+        ]
+      },
+      {
+        "year": 2,
+        "level": 4,
+        "courses": [
+          { "code": "SWE 211", "title": "Introduction to Software Engineering", "credit_hours": 3, "prerequisite": "MATH 151, CSC 111" },
+          { "code": "CSC 113", "title": "Computer Programming II", "credit_hours": 4, "prerequisite": "CSC 111" },
+          { "code": "MATH 244", "title": "Linear Algebra", "credit_hours": 3, "prerequisite": "MATH 106" },
+          { "code": "CEN 303", "title": "Computer Communications and Networks", "credit_hours": 3 },
+          { "code": "PHYS 104", "title": "General Physics II", "credit_hours": 4, "prerequisite": "PHYS 103" }
+        ]
+      },
+      {
+        "level": 5,
+        "courses": [
+          { "code": "SWE 314", "title": "Software Security Engineering", "credit_hours": 3, "prerequisite": "CEN 303" },
+          { "code": "SWE 312", "title": "Software Requirements Engineering", "credit_hours": 3, "prerequisite": "CSC 113, SWE 211" },
+          { "code": "CSC 212", "title": "Data Structures", "credit_hours": 3, "prerequisite": "CSC 113" },
+          { "code": "CSC 220", "title": "Computer Organization", "credit_hours": 3, "prerequisite": "CSC 111" }
+        ]
+      },
+      {
+        "level": 6,
+        "courses": [
+          { "code": "SWE 381", "title": "Web Application Development", "credit_hours": 3, "prerequisite": "SWE 211" },
+          { "code": "SWE 321", "title": "Software Design and Architecture", "credit_hours": 3, "prerequisite": "SWE 312, SWE 314" },
+          { "code": "SWE 333", "title": "Software Quality Assurance", "credit_hours": 2, "prerequisite": "SWE 312" },
+          { "code": "IS 230", "title": "Introduction to Database Systems", "credit_hours": 3, "prerequisite": "CSC 212" },
+          { "code": "CSC 227", "title": "Operating Systems", "credit_hours": 3, "prerequisite": "CSC 212, CSC 220" }
+        ]
+      },
+      {
+        "level": 7,
+        "courses": [
+          { "code": "SWE 444", "title": "Software Construction Laboratory", "credit_hours": 2, "prerequisite": "SWE 321, SWE 333" },
+          { "code": "SWE 434", "title": "Software Testing & Validation", "credit_hours": 3, "prerequisite": "SWE 333" },
+          { "code": "SWE 496", "title": "Graduation Project I", "credit_hours": 3, "prerequisite": "SWE 321" },
+          { "code": "SWE 477", "title": "Software Engineering Code of Ethics & Professional Practice", "credit_hours": 2 },
+          { "code": "SWE 482", "title": "Human-Computer Interaction", "credit_hours": 3, "prerequisite": "SWE 381" },
+          { "code": "IC 107", "title": "Professional Ethics", "credit_hours": 2 }
+        ]
+      },
+      {
+        "level": 8,
+        "courses": [
+          { "code": "SWE 466", "title": "Software Project Management", "credit_hours": 3, "prerequisite": "SWE 333" },
+          { "code": "SWE 455", "title": "Software Maintenance & Evolution", "credit_hours": 2, "prerequisite": "SWE 434" },
+          { "code": "SWE 497", "title": "Graduation Project II", "credit_hours": 3, "prerequisite": "SWE 496" },
+          { "code": "IC 108", "title": "Contemporary Issues", "credit_hours": 2 }
+        ]
+      }
+    ],
+    "elective_groups": [
+        {
+        "group_name": "Department Electives",
+        "required_credit_hours": 9,
+        "courses": [
+              { "code": "SWE 481", "title": "Advanced Web Applications Engineering", "credit_hours": 3, "prerequisite": "SWE 312, SWE 381" },
+              { "code": "SWE 483", "title": "Mobile Application Development", "credit_hours": 3, "prerequisite": "CSC 113" },
+              { "code": "SWE 484", "title": "Multimedia Computing", "credit_hours": 3, "prerequisite": "SWE 314" },
+              { "code": "SWE 485", "title": "Selected Topics in Software Engineering", "credit_hours": 3 },
+              { "code": "SWE 486", "title": "Cloud Computing and Big Data", "credit_hours": 3, "prerequisite": "CEN 303, IS 230" },
+              { "code": "SWE 488", "title": "Complex Systems Engineering", "credit_hours": 3 },
+              { "code": "CEN 316", "title": "Computer Architecture", "credit_hours": 3, "prerequisite": "CSC 220" },
+              { "code": "CEN 445", "title": "Network Protocols & Algorithms", "credit_hours": 3, "prerequisite": "CEN 303" },
+              { "code": "CEN 318", "title": "Embedded Systems Design", "credit_hours": 3, "prerequisite": "CEN 303" },
+              { "code": "CSC 215", "title": "Procedural Language", "credit_hours": 3, "prerequisite": "CSC 111" },
+              { "code": "CSC 311", "title": "Algorithms", "credit_hours": 3, "prerequisite": "CSC 212" },
+              { "code": "CSC 361", "title": "Artificial Intelligence", "credit_hours": 3, "prerequisite": "CSC 212" },
+              { "code": "CSC 476", "title": "Computer Graphics", "credit_hours": 3, "prerequisite": "CSC 212" },
+              { "code": "CSC 478", "title": "Digital Image Processing", "credit_hours": 3, "prerequisite": "CSC 361" },
+              { "code": "IS 385", "title": "Enterprise Resource Planning Systems", "credit_hours": 3, "prerequisite": "IS 230" },
+              { "code": "IS 485", "title": "ERP Systems Lab", "credit_hours": 3, "prerequisite": "IS 385" }
+            ]
+          },
+          {
+            "group_name": "Math and Statistics Electives",
+            "required_credit_hours": 6,
+            "courses": [
+              { "code": "MATH 200", "title": "Differential and Integral Calculus", "credit_hours": 3, "prerequisite": "MATH 106" },
+              { "code": "MATH 254", "title": "Numerical Analysis", "credit_hours": 3, "prerequisite": "MATH 244" },
+              { "code": "OPER 122", "title": "Introduction to Operations Research", "credit_hours": 3 }
+            ]
+          },
+          {
+            "group_name": "General Science Electives",
+            "required_credit_hours": 3,
+            "courses": [
+              { "code": "BIOL 145", "title": "Biology", "credit_hours": 3 },
+              { "code": "BCH 101", "title": "General Biochemistry", "credit_hours": 4 },
+              { "code": "MIC 140", "title": "General Microbiology", "credit_hours": 3 },
+              { "code": "GPH 201", "title": "Principles of Geophysics", "credit_hours": 3 },
+              { "code": "PHYS 201", "title": "Mathematical Physics I", "credit_hours": 3 }
+            ]
+          },
+          {
+            "group_name": "University Requirements Electives",
+            "required_credit_hours": 4,
+            "courses": [
+              { "code": "QURN 100", "title": "The Holy Quran", "credit_hours": 2 },
+              { "code": "IC 100", "title": "Studies in the Prophet Biography", "credit_hours": 2 },
+              { "code": "IC 101", "title": "Principles of Islamic Culture", "credit_hours": 2 },
+              { "code": "IC 102", "title": "Family in Islam", "credit_hours": 2 },
+              { "code": "IC 103", "title": "Economic System in Islam", "credit_hours": 2 },
+              { "code": "IC 104", "title": "Islamic Political System", "credit_hours": 2 },
+              { "code": "IC 105", "title": "Human Rights", "credit_hours": 2 },
+              { "code": "IC 106", "title": "Medical Jurisprudence", "credit_hours": 2 },
+              { "code": "IC 109", "title": "Development Role of Women", "credit_hours": 2 }
+            ]
+          }
+    ]
+}
+  

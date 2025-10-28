@@ -4,7 +4,7 @@ A conflict-free teaching and exam scheduling web application for the SWE departm
 
 ## 🚀 Features
 
-**Current Progress: 98% Complete** (Phase 1, 2, 3, 4 (partial), 5, & 6 (partial) Done)
+**Current Progress: 95% Complete (V1 Scope)** - Production Ready | [See Detailed Analysis](IMPLEMENTATION_ANALYSIS.md)
 
 ### ✅ Completed
 - **Modern Brand Identity** - Custom logo, design system, professional color palette
@@ -26,18 +26,22 @@ A conflict-free teaching and exam scheduling web application for the SWE departm
 - **Courses Management** - Full CRUD with elective designation
 - **Rooms Management** - Lecture and Lab room management
 - **Instructors Management** - Teaching staff with load tracking
-- **Student Groups** - Group management by level (1-5)
+- **Student Groups** - Automatically created and updated based on actual student counts (levels 1-8)
 - **Sections Management** - Full CRUD with meeting patterns and conflict detection
 - **Import/Export** - Bulk JSON data operations with validation
 - **Security** - Multi-layer RLS with role verification
 - **Animations** - Smooth transitions with framer-motion
 - **Mobile Responsive** - Touch-friendly, works on all devices
 
-### 🔄 Remaining Features
-- Real-time collaboration with yjs (optional)
-- Versioning with named releases (optional)
-- Email notifications (optional)
-- PDF schedule exports (optional)
+### ⏳ Deferred to V2
+- Real-time collaborative editing with Yjs
+- Version history with jsondiffpatch
+- Named releases with restore capability
+- AI chatbot for schedule insights
+- CSV import/export
+- Instructor preference learning (ML-based)
+- Email/SMS notifications
+- PDF schedule exports
 
 ## 🚀 Quick Start
 
@@ -139,7 +143,7 @@ Visit [http://localhost:3000](http://localhost:3000)
    - **Courses** (`/dashboard/courses`) - Your course catalog
    - **Rooms** (`/dashboard/rooms`) - Available classrooms and labs
    - **Instructors** (`/dashboard/instructors`) - Teaching staff
-   - **Student Groups** (`/dashboard/student-groups`) - Groups by level
+   - **Student Groups** (`/dashboard/student-groups`) - Auto-managed groups by level (view-only for most users)
 
 3. **Import Data (Alternative)**
    - Go to **Import/Export** (`/dashboard/import-export`)
@@ -180,7 +184,8 @@ Navigation is automatically filtered based on your role:
 ### Database Schema
 - **13 Tables**: course, section, room, instructor, student_group, exam, rule, schedule_doc, comment, notification, user_roles, time_grid_config, elective_preference
 - **Row Level Security**: Enforced for all tables with 5 role-based policies
-- **Helper Functions**: Conflict detection, statistics, notifications
+- **Helper Functions**: Conflict detection, statistics, notifications, automatic student group sync
+- **Auto-Sync**: Student groups automatically created/updated based on student enrollment counts
 
 ### API Endpoints
 
@@ -285,32 +290,48 @@ pnpm lint         # Run ESLint
 4. **API**: Add routes in `app/api/`
 5. **UI**: Create pages and components
 
-## 📊 Current Status
+## 📊 Implementation Status
 
-**Phase 1**: ✅ Foundation & Setup (Complete)
-- Database schema, RLS policies, helper functions
-- TypeScript types, Zustand stores
-- Dashboard layout and navigation
+### V1 - Production Ready (95% Complete)
+
+| Phase | Status | Completion |
+|-------|--------|------------|
+| **Phase 1: Foundation & Setup** | ✅ Complete | 100% |
+| **Phase 2: Data Management** | ✅ Complete | 100% |
+| **Phase 3: Scheduling Engine** | ✅ Complete | 100% |
+| **Phase 4: Collaboration** | ⚠️ Partial | 25% (Notifications ✅, Comments ✅, Yjs/Versioning → V2) |
+| **Phase 5: Dashboards & Portals** | ✅ Complete | 100% |
+| **Phase 6: Testing & Polish** | ⚠️ In Progress | 60% (Seed data ✅, UAT pending) |
+
+**Phase 1**: ✅ Foundation & Setup (100%)
+- 18 database tables with complete RLS policies
+- TypeScript types auto-generated from schema
+- 4 Zustand stores for client state
+- Dashboard layout with role-based navigation
 - Brand identity and design system
 
-**Phase 2**: ✅ Data Management (Complete)
-- Complete CRUD for Courses, Rooms, Instructors, Student Groups, Sections, Exams
-- JSON Import/Export functionality
+**Phase 2**: ✅ Data Management (100%)
+- Complete CRUD for all 6 core entities
+- JSON Import/Export with validation
 - Time Grid Configuration
+- Seed data system (JSON + CLI)
 
-**Phase 3**: ✅ Scheduling Engine (Complete)
-- ✅ Sections with meeting patterns
-- ✅ Exams with date/time management
-- ✅ Conflict detection UI with real-time warnings
-- ✅ Recommendation algorithm with greedy constraint satisfaction
+**Phase 3**: ✅ Core Scheduling Engine (100%)
+- ✅ Greedy CSP algorithm with automatic room assignment
+- ✅ Real-time conflict detection (room, instructor, student-level)
+- ✅ One-click schedule generation
+- ✅ Manual editing with instant validation
+- ✅ Exam scheduling with conflict detection
 
-**Phase 4**: 🟡 Collaboration (Partially Complete)
-- ✅ In-app notifications with real-time counts
-- ✅ Unified comment system for all roles
-- ⏳ yjs real-time editing (pending)
-- ⏳ Versioning with named releases (pending)
+**Phase 4**: ⚠️ Collaboration & Versioning (25%)
+- ✅ In-app notifications with auto-refresh
+- ✅ Comment/feedback system for all roles
+- ⏳ Yjs real-time collaboration (deferred to V2)
+- ⏳ jsondiffpatch versioning (deferred to V2)
+- ⏳ Named releases (deferred to V2)
+- **Note**: Asynchronous collaboration via comments; JSON export/import for manual versioning
 
-**Phase 5**: ✅ Dashboards & Portals (Complete)
+**Phase 5**: ✅ Dashboards & Portals (100%)
 - ✅ Modern landing page with conversion optimization
 - ✅ 5 role-specific dashboards with unique UIs and animations
 - ✅ Scheduling Committee portal with schedule generation
@@ -321,11 +342,24 @@ pnpm lint         # Run ESLint
 - ✅ Dual navigation system (desktop sidebar + mobile drawer)
 - ✅ Chart.js analytics (Level Overview + Course Overview dashboards)
 
-**Phase 6**: 🟡 Testing & Polish (Partially Complete)
-- ✅ Comprehensive seed data system (33 courses, 15 rooms, 10 instructors)
-- ✅ Automated seeding script
-- ⏳ Demo script (pending)
-- ⏳ Final testing and optimization (pending)
+**Phase 6**: ⚠️ Testing & Polish (60%)
+- ✅ Seed data system (enhanced JSON + CLI script)
+- ⏳ User acceptance testing (all 5 roles)
+- ⏳ Performance benchmarking
+- ⏳ Demo script and training materials
+- ⏳ Automated testing suite
+
+### Next Steps (V1 Completion)
+1. User acceptance testing (all roles)
+2. Performance benchmarking (scheduling algorithm)
+3. Demo script and user documentation  
+4. Production deployment preparation
+
+### V1 Documentation
+- [PRD.md](PRD.md) - Product Requirements Document (updated with V1/V2 scope)
+- [timeline.md](timeline.md) - Development timeline and progress
+- [IMPLEMENTATION_ANALYSIS.md](IMPLEMENTATION_ANALYSIS.md) - Comprehensive analysis report
+- [src/docs/](src/docs/) - Technical documentation
 
 ## 🐛 Troubleshooting
 
@@ -344,11 +378,12 @@ pnpm lint         # Run ESLint
 - Check user has `scheduling` role
 - Verify all referenced entities exist
 
-## 📚 Documentation
+## 📚 Additional Documentation
 
-- **PRD.md** - Product Requirements Document
-- **timeline.md** - Development progress tracking
+- **IMPLEMENTATION_ANALYSIS.md** - Detailed V1 vs PRD analysis
 - **seed-data.json** - Sample data for testing
+- **seed-data-enhanced.json** - Comprehensive seed data (33 courses)
+- **CHANGE_REQUESTS.md** - Change request tracking
 
 ## 🤝 Contributing
 

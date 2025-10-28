@@ -93,7 +93,7 @@ export default async function StudentDashboardPage() {
                   {studentLevel ? `Level ${studentLevel}` : 'Not Set'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Current academic year
+                  Current academic standing
                 </p>
               </CardContent>
             </Card>

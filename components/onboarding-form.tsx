@@ -6,28 +6,25 @@
  * Trigger Conditions:
  * - User logs in for the first time
  * - onboarding_completed flag is FALSE in database
- * - Required profile fields are missing (level, enrollment_year for students)
+ * - Required profile fields are missing (level for students)
  * 
  * Flow Logic:
  * 1. Detect incomplete profile via middleware
  * 2. Redirect to /onboarding page
- * 3. Display multi-step form (this component)
- * 4. Collect: Academic Level, Program (prefilled), Graduation Year (optional)
+ * 3. Display simple form (this component)
+ * 4. Collect: Academic Level (for students), Program (prefilled)
  * 5. Submit via Supabase client-side mutation
  * 6. Mark onboarding_completed = TRUE
  * 7. Redirect to appropriate dashboard
  * 
  * Validation:
  * - All required fields validated client-side
- * - Academic level: 4-8 (undergraduate programs typically years 1-5, but we support 1-8)
- * - Enrollment year: current year - 10 to current year
- * - Expected graduation: current year to current year + 10
+ * - Academic level: 1-8 (level determines which courses student takes)
  * - Confirmation checkbox must be checked
  * 
  * User Experience:
  * - Shows only once per user (onboarding_completed flag)
- * - Progress indicator for multi-step feel
- * - Friendly microcopy and instructions
+ * - Simple, clear interface
  * - Smooth transition after completion
  * - Inline error states (no alert popups)
  * 
@@ -39,7 +36,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createClient } from "@/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,8 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { GraduationCap, CheckCircle, ArrowRight } from "lucide-react";
+import { GraduationCap, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface OnboardingFormProps {
@@ -65,88 +61,35 @@ interface OnboardingFormProps {
 export function OnboardingForm({ userId, userName, userRole }: OnboardingFormProps) {
   // Form state
   const [academicLevel, setAcademicLevel] = useState<string>("");
-  const [enrollmentYear, setEnrollmentYear] = useState<string>("");
-  const [graduationYear, setGraduationYear] = useState<string>("");
   const [confirmed, setConfirmed] = useState(false);
   
   // UI state
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const router = useRouter();
   const supabase = createClient();
   
-  // Calculate current year for year dropdowns (client-side only to avoid hydration mismatch)
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
-  
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
-  
-  // Generate year options (6-year ranges)
-  const enrollmentYearOptions = currentYear ? Array.from(
-    { length: 6 }, // Last 6 years
-    (_, i) => currentYear - 5 + i
-  ).reverse() : []; // Most recent first
-  
-  const graduationYearOptions = currentYear ? Array.from(
-    { length: 6 }, // Next 6 years
-    (_, i) => currentYear + i
-  ) : [];
-  
-  // Academic level options
-  const levelOptions = [4, 5, 6, 7, 8];
-  
-  // Total steps (for progress bar)
-  const totalSteps = userRole === 'student' ? 3 : 2;
+  // Academic level options (1-8 for flexibility)
+  const levelOptions = [1, 2, 3, 4, 5, 6, 7, 8];
   
   /**
-   * Validate current step before proceeding
+   * Validate form before submission
    * Returns true if validation passes, false otherwise
    */
-  function validateStep(): boolean {
+  function validateForm(): boolean {
     const newErrors: { [key: string]: string } = {};
     
-    if (currentStep === 1 && userRole === 'student') {
-      if (!academicLevel) {
-        newErrors.academicLevel = "Please select your academic level";
-      }
+    if (userRole === 'student' && !academicLevel) {
+      newErrors.academicLevel = "Please select your academic level";
     }
     
-    if (currentStep === 2 && userRole === 'student') {
-      if (!enrollmentYear) {
-        newErrors.enrollmentYear = "Please select your enrollment year";
-      }
-    }
-    
-    if (currentStep === totalSteps) {
-      if (!confirmed) {
-        newErrors.confirmed = "Please confirm that your information is accurate";
-      }
+    if (!confirmed) {
+      newErrors.confirmed = "Please confirm that your information is accurate";
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }
-  
-  /**
-   * Handle next step button
-   * Validates current step before advancing
-   */
-  function handleNext() {
-    if (validateStep()) {
-      setCurrentStep(currentStep + 1);
-      setErrors({}); // Clear errors when moving to next step
-    }
-  }
-  
-  /**
-   * Handle previous step button
-   */
-  function handleBack() {
-    setCurrentStep(currentStep - 1);
-    setErrors({}); // Clear errors when going back
   }
   
   /**
@@ -156,11 +99,11 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
    * 1. Validate all required fields
    * 2. Update user_roles table with profile data
    * 3. Set onboarding_completed = TRUE
-   * 4. Refresh session to update cached profile
+   * 4. Trigger auto-sync of student groups (happens automatically via DB trigger)
    * 5. Redirect to appropriate dashboard based on role
    */
   async function handleSubmit() {
-    if (!validateStep()) {
+    if (!validateForm()) {
       return;
     }
     
@@ -173,18 +116,13 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         updated_at: new Date().toISOString(),
       };
       
-      // Add student-specific fields
+      // Add student-specific fields (only level now!)
       if (userRole === 'student') {
         updateData.level = parseInt(academicLevel);
-        updateData.enrollment_year = parseInt(enrollmentYear);
-        
-        // Optional graduation year
-        if (graduationYear) {
-          updateData.expected_graduation_year = parseInt(graduationYear);
-        }
       }
       
       // Update user profile in database
+      // Note: Student groups will auto-update via database trigger
       const { error: updateError } = await supabase
         .from('user_roles')
         .update(updateData)
@@ -218,43 +156,29 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     }
   }
   
-  // Calculate progress percentage
-  const progressPercentage = (currentStep / totalSteps) * 100;
-  
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <GraduationCap className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl">Welcome to SmartSchedule!</CardTitle>
-                <CardDescription>Let's set up your profile, {userName.split(' ')[0]}</CardDescription>
-              </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <GraduationCap className="h-6 w-6 text-blue-600" />
             </div>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Step {currentStep} of {totalSteps}</span>
-              <span>{Math.round(progressPercentage)}% Complete</span>
+            <div>
+              <CardTitle className="text-2xl">Welcome to SmartSchedule!</CardTitle>
+              <CardDescription>Let's set up your profile, {userName.split(' ')[0]}</CardDescription>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
           </div>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          {/* Step 1: Academic Level (Students Only) */}
-          {currentStep === 1 && userRole === 'student' && (
-            <div className="space-y-4 animate-in fade-in duration-300">
+          {/* Student Academic Level */}
+          {userRole === 'student' && (
+            <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold mb-2">Academic Level</h3>
+                <h3 className="text-lg font-semibold mb-2">Academic Information</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  What year are you currently in? This helps us show you the right courses and schedule.
+                  Tell us your current academic level so we can show you the right courses and schedule.
                 </p>
               </div>
               
@@ -269,7 +193,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   <SelectContent>
                     {levelOptions.map(level => (
                       <SelectItem key={level} value={level.toString()}>
-                        Level {level}
+                        Level {level} {level <= 5 ? `(Year ${Math.ceil(level / 2)})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -277,24 +201,8 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 {errors.academicLevel && (
                   <p className="text-sm text-red-500">{errors.academicLevel}</p>
                 )}
-              </div>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Your academic level determines which courses appear in your schedule. 
-                  You'll be automatically enrolled in required courses for your level.
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Step 2: Enrollment Details (Students) */}
-          {currentStep === 2 && userRole === 'student' && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Enrollment Information</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Help us understand your academic timeline.
+                <p className="text-xs text-muted-foreground">
+                  Level indicates which semester you're in. Level 1 = First semester, Level 2 = Second semester, etc.
                 </p>
               </div>
               
@@ -314,140 +222,82 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 </p>
               </div>
               
-              {/* Enrollment Year (Required) */}
-              <div className="space-y-2">
-                <Label htmlFor="enrollment">
-                  Enrollment Year <span className="text-red-500">*</span>
-                </Label>
-                <Select value={enrollmentYear} onValueChange={setEnrollmentYear} disabled={!currentYear}>
-                  <SelectTrigger id="enrollment" className={errors.enrollmentYear ? 'border-red-500' : ''}>
-                    <SelectValue placeholder={currentYear ? "When did you start?" : "Loading..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {enrollmentYearOptions.map(year => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.enrollmentYear && (
-                  <p className="text-sm text-red-500">{errors.enrollmentYear}</p>
-                )}
-              </div>
-              
-              {/* Expected Graduation Year (Optional) */}
-              <div className="space-y-2">
-                <Label htmlFor="graduation">Expected Graduation Year (Optional)</Label>
-                <Select value={graduationYear} onValueChange={setGraduationYear} disabled={!currentYear}>
-                  <SelectTrigger id="graduation">
-                    <SelectValue placeholder={currentYear ? "Select year (optional)" : "Loading..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {graduationYearOptions.map(year => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  This helps us plan your academic journey (leave blank if not sure)
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Your level determines which required courses you'll be automatically enrolled in. 
+                  You can register for elective courses separately.
                 </p>
               </div>
             </div>
           )}
           
-          {/* Final Step: Confirmation (All Users) */}
-          {currentStep === totalSteps && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Review & Confirm</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Please review your information before continuing.
-                </p>
-              </div>
-              
-              {/* Summary */}
-              <div className="bg-gray-50 border rounded-lg p-4 space-y-2">
-                {userRole === 'student' && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Academic Level:</span>
-                      <span className="text-sm">Level {academicLevel}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Program:</span>
-                      <span className="text-sm">Software Engineering</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Enrollment Year:</span>
-                      <span className="text-sm">{enrollmentYear}</span>
-                    </div>
-                    {graduationYear && (
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">Expected Graduation:</span>
-                        <span className="text-sm">{graduationYear}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-              
-              {/* Confirmation Checkbox */}
-              <div className="flex items-start space-x-3 pt-4">
-                <input
-                  type="checkbox"
-                  id="confirm"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="confirm" className="text-sm leading-relaxed cursor-pointer">
-                  I confirm that the information provided above is accurate and complete. 
-                  I understand that this information will be used to personalize my SmartSchedule experience.
-                </label>
-              </div>
-              {errors.confirmed && (
-                <p className="text-sm text-red-500 ml-7">{errors.confirmed}</p>
+          {/* Summary Section */}
+          <div className="space-y-4 pt-4 border-t">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Confirm Your Information</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Please review before continuing.
+              </p>
+            </div>
+            
+            {/* Summary */}
+            <div className="bg-gray-50 border rounded-lg p-4 space-y-2">
+              {userRole === 'student' ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Academic Level:</span>
+                    <span className="text-sm">Level {academicLevel || '(Not selected)'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Program:</span>
+                    <span className="text-sm">Software Engineering</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Role:</span>
+                  <span className="text-sm capitalize">{userRole.replace('_', ' ')}</span>
+                </div>
               )}
             </div>
-          )}
-          
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1 || isSubmitting}
-            >
-              Back
-            </Button>
             
-            {currentStep < totalSteps ? (
-              <Button onClick={handleNext}>
-                Next
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="min-w-[120px]"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Complete Setup
-                  </>
-                )}
-              </Button>
+            {/* Confirmation Checkbox */}
+            <div className="flex items-start space-x-3 pt-2">
+              <input
+                type="checkbox"
+                id="confirm"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="confirm" className="text-sm leading-relaxed cursor-pointer">
+                I confirm that the information provided above is accurate.
+              </label>
+            </div>
+            {errors.confirmed && (
+              <p className="text-sm text-red-500 ml-7">{errors.confirmed}</p>
             )}
+          </div>
+          
+          {/* Submit Button */}
+          <div className="flex justify-end pt-6 border-t">
+            <Button 
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="min-w-[160px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Complete Setup
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

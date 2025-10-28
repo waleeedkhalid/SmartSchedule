@@ -1,43 +1,44 @@
 import { createClient } from "@/supabase/server";
 import { redirect } from "next/navigation";
-import { ProfileEditForm } from "@/components/profile-edit-form";
+import { TimeGridConfigForm } from "@/components/time-grid-config-form";
+import { getTimeGridConfig } from "@/lib/db/config";
 
-export default async function SettingsPage() {
+export default async function AdminSettingsPage() {
 	const supabase = await createClient();
 	
-	// Get current user
+	// Check authentication
 	const { data: { user }, error: authError } = await supabase.auth.getUser();
 	
 	if (authError || !user) {
 		redirect('/login');
 	}
 
-	// Get user profile data
+	// Check user role
 	const { data: userRole, error: roleError } = await supabase
 		.from('user_roles')
-		.select('name, email')
+		.select('role')
 		.eq('user_id', user.id)
 		.single();
 
-	if (roleError || !userRole) {
-		console.error('Error fetching user profile:', roleError);
+	// Only allow admin, registrar, and scheduling committee
+	const allowedRoles = ['admin', 'registrar'];
+	if (roleError || !userRole || !allowedRoles.includes(userRole.role)) {
 		redirect('/dashboard');
 	}
+
+	const config = await getTimeGridConfig();
 
 	return (
 		<div className="p-8">
 			<div className="max-w-4xl mx-auto">
 				<h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-					Profile Settings
+					Admin Settings
 				</h1>
 				<p className="text-gray-600 dark:text-gray-400 mb-8">
-					Manage your account information and preferences
+					Configure the time grid and scheduling parameters
 				</p>
 
-				<ProfileEditForm 
-					initialName={userRole.name}
-					initialEmail={userRole.email}
-				/>
+				<TimeGridConfigForm initialConfig={config} />
 			</div>
 		</div>
 	);

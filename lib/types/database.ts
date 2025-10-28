@@ -277,6 +277,44 @@ export type Database = {
         }
         Relationships: []
       }
+      irregular_student: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          required_course_codes: string[]
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          required_course_codes?: string[]
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          required_course_codes?: string[]
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "irregular_student_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "user_roles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       notification: {
         Row: {
           created_at: string | null
@@ -650,8 +688,6 @@ export type Database = {
           created_at: string | null
           department: string | null
           email: string
-          enrollment_year: number | null
-          expected_graduation_year: number | null
           level: number | null
           name: string
           onboarding_completed: boolean | null
@@ -663,8 +699,6 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email: string
-          enrollment_year?: number | null
-          expected_graduation_year?: number | null
           level?: number | null
           name: string
           onboarding_completed?: boolean | null
@@ -676,8 +710,6 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email?: string
-          enrollment_year?: number | null
-          expected_graduation_year?: number | null
           level?: number | null
           name?: string
           onboarding_completed?: boolean | null
@@ -768,12 +800,7 @@ export type Database = {
         Returns: boolean
       }
       complete_onboarding: {
-        Args: {
-          p_enrollment_year?: number
-          p_expected_graduation_year?: number
-          p_level?: number
-          p_user_id: string
-        }
+        Args: { p_level?: number; p_user_id: string }
         Returns: Json
       }
       create_instructor_for_user: {
@@ -844,6 +871,10 @@ export type Database = {
       get_instructor_load: { Args: { p_instructor_id: string }; Returns: Json }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
       get_section_conflicts: { Args: { p_section_id: string }; Returns: Json }
+      get_student_required_courses: {
+        Args: { p_student_id: string }
+        Returns: string[]
+      }
       get_student_total_credits: {
         Args: { p_student_id: string }
         Returns: Json
@@ -860,7 +891,9 @@ export type Database = {
         Args: { check_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      is_irregular_student: { Args: { p_student_id: string }; Returns: boolean }
       needs_onboarding: { Args: { p_user_id: string }; Returns: boolean }
+      sync_student_groups: { Args: never; Returns: undefined }
       time_ranges_overlap: {
         Args: {
           duration1: number

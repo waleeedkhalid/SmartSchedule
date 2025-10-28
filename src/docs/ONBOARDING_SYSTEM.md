@@ -16,53 +16,50 @@ The SmartSchedule onboarding system ensures that all new users provide essential
 
 **Migration:** `supabase/migrations/20251028110001_user_onboarding_fields.sql`
 
-**New Columns in `user_roles` Table:**
+**Fields in `user_roles` Table:**
 - `department` (TEXT): Academic department/program (default: "Software Engineering")
-- `enrollment_year` (INT): Year the user enrolled (2020-2030)
-- `expected_graduation_year` (INT): Expected graduation year, optional (2020-2035)
+- `level` (INT): Academic level 1-8 for students (determines required courses)
 - `onboarding_completed` (BOOLEAN): Flag indicating if user has completed onboarding (default: FALSE)
+
+**Note:** As of October 29, 2025, the system was simplified to use ONLY `level` (1-8) for student academic standing. Previous fields `enrollment_year` and `expected_graduation_year` were removed to eliminate confusion.
 
 **Helper Functions:**
 
 1. `needs_onboarding(user_id UUID) RETURNS BOOLEAN`
    - Checks if a user needs to complete onboarding
    - Returns TRUE if onboarding_completed is FALSE or required fields are missing
-   - For students: checks for level and enrollment_year
+   - For students: checks for level only
 
-2. `complete_onboarding(user_id UUID, level INT, enrollment_year INT, expected_graduation_year INT) RETURNS JSON`
-   - Validates and updates user profile
+2. `complete_onboarding(user_id UUID, level INT) RETURNS JSON`
+   - Validates and updates user profile (only level parameter needed)
    - Sets onboarding_completed = TRUE
    - Returns success/error status
+   - Level must be between 1 and 8
 
 ### Frontend Components
 
 **File:** `components/onboarding-form.tsx`
 
-A multi-step form component built with shadcn/ui:
+A simplified, single-page form component built with shadcn/ui:
 
-**Step 1 (Students Only):** Academic Level
-- Select level 1-8 (typically years 1-5 for undergrad)
-- Explains how level affects course enrollment
-- Visual indicators and helpful descriptions
+**For Students:**
+- **Academic Level** (Required): Select level 1-8
+  - Helpful text explains level indicates semester (Level 1 = First semester, Level 2 = Second semester, etc.)
+  - Shows optional year mapping (Level 1-2 = Year 1, Level 3-4 = Year 2, etc.)
+- **Program**: Software Engineering (prefilled, disabled)
 
-**Step 2 (Students Only):** Enrollment Details
-- Program: Software Engineering (prefilled, disabled)
-- Enrollment Year: When student joined (required)
-- Expected Graduation Year: Optional field for planning
-
-**Step 3 (All Users):** Review & Confirm
+**Confirmation Section (All Users):**
 - Summary of entered information
 - Confirmation checkbox with data accuracy acknowledgment
 - Submit button that saves profile and redirects
 
 **Features:**
-- Progress bar showing completion percentage
-- Step counter (Step X of Y)
+- Simple, single-page interface (no multi-step complexity)
 - Inline validation with helpful error messages
 - No popup alerts (validation errors show inline)
-- Smooth fade animations between steps
 - Loading states during submission
 - Success toast notification
+- Faster onboarding experience (1 page vs 3 steps)
 
 ### Routing
 
@@ -91,15 +88,15 @@ The middleware intercepts requests to dashboard routes and checks onboarding sta
 if (user && request.nextUrl.pathname.startsWith("/dashboard")) {
   const { data: userRole } = await supabase
     .from('user_roles')
-    .select('onboarding_completed, level, enrollment_year, role')
+    .select('onboarding_completed, level, role')
     .eq('user_id', user.id)
     .single();
   
   // Check if onboarding needed
   let needsOnboarding = !userRole.onboarding_completed;
   
-  // For students, also check required fields
-  if (userRole.role === 'student' && (!userRole.level || !userRole.enrollment_year)) {
+  // For students, also check level is set
+  if (userRole.role === 'student' && !userRole.level) {
     needsOnboarding = true;
   }
   
@@ -123,9 +120,10 @@ if (user && request.nextUrl.pathname.startsWith("/dashboard")) {
    - User redirected to /onboarding
 
 3. **Onboarding Process**
-   - User sees welcoming interface with progress bar
-   - Completes multi-step form (2-3 steps depending on role)
-   - Each step validated before proceeding
+   - User sees welcoming interface
+   - Completes simple single-page form
+   - For students: Select academic level (1-8)
+   - For other roles: Minimal setup (department already defaulted)
    - Final confirmation required
 
 4. **Profile Update**
@@ -154,19 +152,10 @@ if (user && request.nextUrl.pathname.startsWith("/dashboard")) {
 - Required field
 - Must be integer 1-8
 - Error: "Please select your academic level"
-
-**Enrollment Year (Students):**
-- Required field
-- Must be between (current year - 10) and current year
-- Error: "Please select your enrollment year"
-
-**Expected Graduation Year (Students):**
-- Optional field
-- If provided, must be between current year and (current year + 10)
-- No error if left empty
+- Explanation: Level indicates which semester (Level 1 = First semester, Level 2 = Second semester, etc.)
 
 **Confirmation Checkbox:**
-- Required on final step
+- Required before submission
 - Must be checked before submission
 - Error: "Please confirm that your information is accurate"
 
@@ -174,8 +163,6 @@ if (user && request.nextUrl.pathname.startsWith("/dashboard")) {
 
 **Schema Constraints:**
 ```sql
-CHECK (enrollment_year >= 2020 AND enrollment_year <= 2030)
-CHECK (expected_graduation_year >= 2020 AND expected_graduation_year <= 2035)
 CHECK (level >= 1 AND level <= 8)
 ```
 
@@ -239,9 +226,10 @@ CREATE POLICY "Users can update own profile fields"
 1. Create new account with role = 'student'
 2. Login
 3. Verify redirect to /onboarding
-4. Complete all steps with valid data
-5. Verify redirect to /dashboard/student
-6. Check database: onboarding_completed = TRUE, level and enrollment_year set
+4. Select academic level (e.g., Level 3)
+5. Check confirmation box and submit
+6. Verify redirect to /dashboard/student
+7. Check database: onboarding_completed = TRUE, level set
 
 **Scenario 2: Validation Errors**
 1. Start onboarding
@@ -256,29 +244,29 @@ CREATE POLICY "Users can update own profile fields"
 3. Try to manually navigate to /onboarding
 4. Verify redirect back to dashboard
 
-**Scenario 4: Optional Fields**
-1. Complete onboarding
-2. Leave graduation year empty
+**Scenario 4: Non-Student Roles**
+1. Login with faculty or other non-student role
+2. Verify simpler onboarding (no level selection)
 3. Verify successful submission
-4. Check database: expected_graduation_year is NULL (allowed)
+4. Check database: onboarding_completed = TRUE, level is NULL (expected for non-students)
 
 ### Database Testing
 
 **Check Existing Users:**
 ```sql
 -- Verify existing users marked as completed
-SELECT user_id, role, onboarding_completed, level, enrollment_year
+SELECT user_id, role, onboarding_completed, level
 FROM user_roles
-WHERE created_at < '2025-10-28';
+WHERE created_at < '2025-10-29';
 -- Should all have onboarding_completed = TRUE
 ```
 
 **Check New Users:**
 ```sql
 -- Verify new users need onboarding
-SELECT user_id, role, onboarding_completed
+SELECT user_id, role, onboarding_completed, level
 FROM user_roles
-WHERE created_at >= '2025-10-28';
+WHERE created_at >= '2025-10-29';
 -- Should have onboarding_completed = FALSE (unless manually completed)
 ```
 
@@ -287,12 +275,10 @@ WHERE created_at >= '2025-10-28';
 -- Test needs_onboarding function
 SELECT needs_onboarding('user-uuid-here');
 
--- Test complete_onboarding function
+-- Test complete_onboarding function (simplified - only level parameter)
 SELECT complete_onboarding(
   'user-uuid-here',
-  3,  -- level
-  2024,  -- enrollment_year
-  2027  -- expected_graduation_year
+  3  -- level (1-8)
 );
 ```
 
@@ -318,26 +304,22 @@ To add additional onboarding fields:
    - Add validation logic
    - Include in UPDATE statement
 
-### Changing Step Count
-
-To add/remove steps:
-
-1. Update `totalSteps` calculation in OnboardingForm
-2. Add/remove step rendering logic
-3. Update progress calculation
-4. Update navigation logic
-
 ### Role-Specific Customization
 
 The system already supports role-specific flows:
 
 ```typescript
-const totalSteps = userRole === 'student' ? 3 : 2;
+// Students see level selection, other roles see minimal setup
+{userRole === 'student' && (
+  <div>
+    {/* Level selection UI */}
+  </div>
+)}
 ```
 
-To add custom steps for other roles:
+To add custom fields for other roles:
 1. Add role check in component
-2. Render role-specific step content
+2. Render role-specific field
 3. Update validation logic
 4. Update submission to include role-specific data
 
@@ -434,7 +416,22 @@ console.log('Onboarding status:', userRole);
 
 ---
 
-**Last Updated:** October 28, 2025
-**Version:** 1.0
+**Last Updated:** October 29, 2025
+**Version:** 2.0 - Simplified to Level-Only System
 **Author:** SmartSchedule Development Team
+
+## Changelog
+
+### Version 2.0 (October 29, 2025)
+- **BREAKING CHANGE**: Removed `enrollment_year` and `expected_graduation_year` fields
+- Simplified to use ONLY `level` (1-8) for student academic standing
+- Updated `complete_onboarding()` function to only accept level parameter
+- Changed from multi-step to single-page form (faster onboarding)
+- Updated all validation logic and UI components
+- Student groups now automatically sync based on level
+
+### Version 1.0 (October 28, 2025)
+- Initial onboarding system implementation
+- Multi-step form with year fields
+- Progress bar and step navigation
 
