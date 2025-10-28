@@ -540,7 +540,51 @@ SmartSchedule is a web app for the SWE department to generate conflict-free teac
 - Updated sidebar navigation with Exams link
 - Created database migration for exam conflict functions
 
+**October 29, 2025 - Morning:**
+- **Implemented Registrar-Specific Features (Role Clarification)**
+- Updated PRD to clarify registrar role vs scheduling committee responsibilities
+- **Role Separation:**
+  - Scheduling Committee: Manages all data (courses, sections, rooms, instructors, exams), generates schedules, creates releases, import/export
+  - Registrar: Only manages irregular students and manual student registration (2 focused features)
+- **Database Changes:**
+  - New migration: `20251029000001_irregular_students.sql`
+  - Added `irregular_student` table for students with custom required course lists
+  - Added helper functions: `is_irregular_student()`, `get_student_required_courses()`
+  - Comprehensive RLS policies for registrar-only access
+- **Backend Implementation:**
+  - Created `lib/db/irregular-students.ts` - Full CRUD with validation
+  - Validates course codes exist, prevents duplicates, enforces student role
+  - Functions for managing irregular vs regular students
+- **API Routes:**
+  - `/api/registrar/irregular-students` - GET all, POST create
+  - `/api/registrar/irregular-students/[id]` - GET one, PATCH update, DELETE
+  - `/api/registrar/student-enrollments` - GET filtered, POST register, DELETE drop
+  - Manual registration supports validation bypass for special cases
+- **Frontend Components:**
+  - `IrregularStudentForm` - Multi-select course picker with search, notes field
+  - `IrregularStudentsTable` - Table view with edit/delete actions
+  - `ManualStudentRegistration` - Student + section selectors, bypass validation option, enrollment list
+- **Registrar Dashboard:**
+  - Completely redesigned - simplified from scheduling features to 2 core functions
+  - Removed: stats grid, validation checks, release history, export links, quick access
+  - Added: Irregular students management, manual student registration
+- **Navigation Updates:**
+  - Removed from registrar sidebar: Courses, Sections, Rooms, Instructors, Student Groups, Exams, Level Overview, Course Overview, Import/Export
+  - Registrar now only has: Dashboard (main), Notifications
+  - All data management moved to scheduling committee role
+- **Features Implemented:**
+  - Irregular students: Students with custom required course lists (not level-based)
+  - Manual registration: Register any student in any section with optional validation bypass
+  - Course search and selection with autocomplete
+  - Real-time enrollment tracking and credit calculations
+  - Full audit trail with created_by and timestamps
+- **Documentation Updates:**
+  - Updated PRD.md with registrar role clarification and permission matrix
+  - Added irregular_student to data model
+  - Updated user journeys for registrar workflow
+  - Timeline updated with implementation details
+
 ---
 
-*Last Updated: October 28, 2025 - Late Night (Faculty Features Complete)*
+*Last Updated: October 29, 2025 - Morning (Registrar Features Implemented)*
 

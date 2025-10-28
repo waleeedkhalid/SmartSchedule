@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTransition, useEffect, useRef, useMemo, useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -117,6 +117,7 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 
 export default function RegisterForm() {
   const [isPending, startTransition] = useTransition()
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -133,8 +134,9 @@ export default function RegisterForm() {
 
   const password = form.watch('password')
 
-  // Auto-focus name field on mount
+  // Set mounted state for client-only rendering
   useEffect(() => {
+    setIsMounted(true)
     nameInputRef.current?.focus()
   }, [])
 
@@ -294,7 +296,7 @@ export default function RegisterForm() {
                     disabled={isPending}
                   />
                 </FormControl>
-                {password && (
+                {isMounted && password && (
                   <div className="space-y-2 mt-2">
                     <div className="flex items-center gap-2">
                       <Progress value={passwordStrength} className="h-2 flex-1" />
@@ -309,33 +311,33 @@ export default function RegisterForm() {
                   <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                     <li
                       className={
-                        password.length >= 8 ? 'text-green-600' : ''
+                        isMounted && password.length >= 8 ? 'text-green-600' : ''
                       }
                     >
                       At least 8 characters
                     </li>
                     <li
                       className={
-                        /[A-Z]/.test(password) ? 'text-green-600' : ''
+                        isMounted && /[A-Z]/.test(password) ? 'text-green-600' : ''
                       }
                     >
                       One uppercase letter
                     </li>
                     <li
                       className={
-                        /[a-z]/.test(password) ? 'text-green-600' : ''
+                        isMounted && /[a-z]/.test(password) ? 'text-green-600' : ''
                       }
                     >
                       One lowercase letter
                     </li>
                     <li
-                      className={/\d/.test(password) ? 'text-green-600' : ''}
+                      className={isMounted && /\d/.test(password) ? 'text-green-600' : ''}
                     >
                       One number
                     </li>
                     <li
                       className={
-                        /[\W_]/.test(password) ? 'text-green-600' : ''
+                        isMounted && /[\W_]/.test(password) ? 'text-green-600' : ''
                       }
                     >
                       One special character

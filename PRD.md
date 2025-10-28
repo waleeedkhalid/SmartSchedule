@@ -25,8 +25,8 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 - Student portal: submit elective preferences; view level‑based schedule (required courses + assigned electives); add comments/feedback.
 - Faculty portal: view personal teaching assignments; add feedback.
 - Teaching Load: collaborate with Scheduling via real‑time edits.
-- Registrar: publish "Released" schedule; export JSON.
-- **Student enrollment model**: Students follow main curriculum flow—automatically enrolled in all required courses for their current level. No dropped/missed courses. For electives, students manually register for specific sections with constraints: ≤20 total credits, section capacity limits, prerequisites (V1: auto-pass).
+- Registrar: manage irregular students (custom required course lists); manually register students in sections.
+- **Student enrollment model**: Students follow main curriculum flow—automatically enrolled in all required courses for their current level. Irregular students have custom required course lists defined by registrar. For electives, students manually register for specific sections with constraints: ≤20 total credits, section capacity limits, prerequisites (V1: auto-pass).
 
 **Excluded (V1)**
 - SSO or external SIS/LMS integrations.  
@@ -37,11 +37,11 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 ## User Personas / Target Audience
 | Persona | Primary needs |
 |---|---|
-| Scheduling Committee | Define rules, generate schedules, resolve conflicts, publish releases |
+| Scheduling Committee | Define rules, generate schedules, resolve conflicts, create named releases, manage all data (courses, sections, rooms, instructors, exams), import/export |
 | Teaching Load Committee | Review loads, suggest edits, co‑edit schedule |
 | Students | Submit elective preferences, view level‑based schedule (read‑only), comment/provide feedback |
 | Faculty | Self-register, set availability preferences, review personal timetable (read‑only), provide feedback/constraints |
-| Registrar | Final validation and publication, archive and export |
+| Registrar | Manage irregular students (custom course lists), manually register students in sections |
 
 ## Functional Requirements (prioritized)
 ### Must‑have (MVP)
@@ -71,7 +71,9 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
    - Comment/feedback on assignments
    - Availability constraints submission (preferred/unavailable time slots)
    - No admin intervention required for initial setup
-11. **Registrar**: mark schedule as "Released"; export JSON.
+11. **Registrar features**:
+   - Manage irregular students: input student ID and custom required course lists for students who don't follow standard level-based curriculum
+   - Manual student registration: register any student in any section (bypass normal validation rules for special cases)
 
 ### Nice‑to‑have (post‑MVP)
 - AI chatbot for rule queries and schedule insights (Google AI Studio).  
@@ -89,13 +91,14 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 
 ## User Journeys
 ### Scheduling Committee
-1) Import JSON or create datasets → 2) Define rules → 3) Click **Recommend** → 4) Review conflicts list → 5) Manual tweaks with comments → 6) Create **Named Release** → 7) Notify Registrar.
+1) Import JSON or create datasets → 2) Define rules → 3) Click **Recommend** → 4) Review conflicts list → 5) Manual tweaks with comments → 6) Create **Named Release** → 7) Publish schedule.
 
 ### Teaching Load
 Open current draft → filter by instructor/load → comment or co‑edit sections within rules → watch notifications.
 
 ### Registrar
-Open latest named release → run validations (rooms unique per slot, no clashes) → set state to **Released** → export JSON.
+1) **Irregular Students**: Add student ID → specify custom required courses (for students not following standard curriculum) → save.
+2) **Manual Registration**: Select student → select section → register (bypass validation for special cases like overrides, exceptions).
 
 ### Faculty
 Self-register → auto-create instructor profile → sign in → set availability preferences → view personal teaching timetable (read‑only) → add feedback or constraints (unavailable times) → receive in‑app notifications on changes.
@@ -124,6 +127,7 @@ Sign in → register for elective sections (manual with validation) → view lev
 - **comment**: `id PK`, `doc_id FK`, `target_ref`, `author_id`, `text`, `created_at`  
 - **notification**: `id PK`, `user_id`, `type`, `payload JSONB`, `read_at?`
 - **time_grid_config**: `id PK`, `teaching_days TEXT[]`, `daily_start_time`, `daily_end_time`, `slot_duration_minutes INT`, `break_start_time`, `break_end_time`, `exam_days TEXT[]`, `typical_lab_duration_minutes INT`
+- **irregular_student**: `id PK`, `student_id FK (user_roles.user_id)`, `required_course_codes TEXT[]`, `notes TEXT`, `created_by FK`, `created_at`, `updated_at` *(for students not following standard level-based curriculum)*
 
 ## Scheduling Rules (initial)
 - No student group clashes across courses in the same level.  
@@ -148,9 +152,11 @@ Sign in → register for elective sections (manual with validation) → view lev
 | Real‑time edit schedule (yjs) | ✅ | ✅ | ⛔ | ⛔ | ⛔ |
 | Comment/feedback | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Create named release | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
-| Publish "Released" | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
-| JSON import/export | ✅ | ⛔ | ⛔ | ⛔ | ✅ (export) |
+| Manage data (CRUD courses/sections/rooms) | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
+| JSON import/export | ✅ | ⛔ | ⛔ | ⛔ | ⛔ |
 | Submit elective prefs | ⛔ | ⛔ | ⛔ | ✅ | ⛔ |
+| Manage irregular students | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
+| Manual student registration | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
 | View personal timetable (read‑only) | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Success Metrics

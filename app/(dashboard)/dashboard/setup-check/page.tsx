@@ -17,7 +17,6 @@ export default async function SetupCheckPage() {
     const { error } = await supabase.from('course').select('*', { count: 'exact', head: true });
     if (!error) {
       checks.connection = true;
-      checks.tables.push('course');
     }
   } catch (e) {
     checks.connection = false;
@@ -27,7 +26,8 @@ export default async function SetupCheckPage() {
   const requiredTables = [
     'course', 'room', 'instructor', 'student_group', 'section',
     'exam', 'rule', 'schedule_doc', 'comment', 'notification',
-    'user_roles', 'time_grid_config', 'elective_preference'
+    'user_roles', 'time_grid_config', 'elective_preference',
+    'student_enrollment', 'schedule_comment', 'irregular_student'
   ];
 
   for (const table of requiredTables) {

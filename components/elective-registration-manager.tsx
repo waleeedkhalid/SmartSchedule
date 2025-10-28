@@ -413,10 +413,15 @@ export function ElectiveRegistrationManager() {
                           <Button
                             size="sm"
                             onClick={() => handleEnroll(section)}
-                            disabled={
-                              section.is_full || 
+                            disabled={!!(section.is_full || 
                               actionLoading === section.section_id ||
                               (creditStats && creditStats.total + section.course_credits > 20)
+                            )}
+                            title={
+                              section.is_full ? 'Section is full' :
+                              actionLoading === section.section_id ? 'Loading...' :
+                              (creditStats && creditStats.total + section.course_credits > 20) ? 'You cannot register for this section' :
+                              undefined
                             }
                           >
                             Register

@@ -874,6 +874,10 @@ export type Database = {
         Args: { p_section_id: string; p_user_id: string }
         Returns: boolean
       }
+      user_owns_instructor_profile: {
+        Args: { p_instructor_id: string }
+        Returns: boolean
+      }
       validate_enrollment: {
         Args: { p_section_id: string; p_student_id: string }
         Returns: Json

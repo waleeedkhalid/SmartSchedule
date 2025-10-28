@@ -50,37 +50,37 @@ const navigation: NavigationItem[] = [
     name: "Courses", 
     href: "/dashboard/courses", 
     icon: BookOpen, 
-    roles: ['scheduling', 'teaching_load', 'registrar'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "Sections", 
     href: "/dashboard/sections", 
     icon: Calendar, 
-    roles: ['scheduling', 'teaching_load', 'registrar'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "Rooms", 
     href: "/dashboard/rooms", 
     icon: DoorOpen, 
-    roles: ['scheduling', 'registrar'] 
+    roles: ['scheduling'] 
   },
   { 
     name: "Instructors", 
     href: "/dashboard/instructors", 
     icon: Users, 
-    roles: ['scheduling', 'teaching_load', 'registrar'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "Student Groups", 
     href: "/dashboard/student-groups", 
     icon: GraduationCap, 
-    roles: ['scheduling', 'registrar'] 
+    roles: ['scheduling'] 
   },
   { 
     name: "Exams", 
     href: "/dashboard/exams", 
     icon: CalendarCheck, 
-    roles: ['scheduling', 'registrar'] 
+    roles: ['scheduling'] 
   },
   { 
     name: "Elective Stats", 
@@ -92,13 +92,13 @@ const navigation: NavigationItem[] = [
     name: "Level Overview", 
     href: "/dashboard/level-overview", 
     icon: TrendingUp, 
-    roles: ['scheduling', 'teaching_load', 'registrar'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "Course Overview", 
     href: "/dashboard/course-overview", 
     icon: BookOpen, 
-    roles: ['scheduling', 'teaching_load', 'registrar'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "My Schedule", 
@@ -116,7 +116,7 @@ const navigation: NavigationItem[] = [
     name: "Import/Export", 
     href: "/dashboard/import-export", 
     icon: Download, 
-    roles: ['scheduling', 'registrar'] 
+    roles: ['scheduling'] 
   },
   { 
     name: "Notifications", 
