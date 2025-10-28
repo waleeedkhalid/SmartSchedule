@@ -1,16 +1,16 @@
 "use client";
 
-import { useTransition, useEffect } from "react";
-import Link from "next/link";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { login } from "../actions";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Icons } from "@/components/ui/icons";
+import { useTransition, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { login } from '../actions'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Icons } from '@/components/ui/icons'
 import {
   Form,
   FormControl,
@@ -18,10 +18,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
+} from '@/components/ui/form'
+import { PasswordInput } from '@/components/ui/password-input'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z
@@ -38,6 +38,8 @@ export default function LoginForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  
   const redirectTo = searchParams.get('redirect') || '/dashboard'
   const confirmationMessage = searchParams.get('confirmed')
 
@@ -51,12 +53,7 @@ export default function LoginForm() {
 
   // Auto-focus email field on mount
   useEffect(() => {
-    const emailInput = document.querySelector(
-      'input[name="email"]'
-    ) as HTMLInputElement
-    if (emailInput) {
-      emailInput.focus()
-    }
+    emailInputRef.current?.focus()
   }, [])
 
   // Show confirmation toast if user just confirmed email
@@ -66,36 +63,39 @@ export default function LoginForm() {
     }
   }, [confirmationMessage])
 
-  async function onSubmit(values: z.infer<typeof loginSchema>) {
-    startTransition(async () => {
-      const response = await login(values)
+  const onSubmit = useCallback(
+    async (values: z.infer<typeof loginSchema>) => {
+      startTransition(async () => {
+        const response = await login(values)
 
-      if (response.error) {
-        // More specific error messages
-        const errorMessage = response.error.toLowerCase()
-        if (
-          errorMessage.includes('invalid') ||
-          errorMessage.includes('credentials')
-        ) {
-          toast.error('Invalid email or password. Please try again.')
-        } else if (
-          errorMessage.includes('email') &&
-          errorMessage.includes('confirm')
-        ) {
-          toast.error('Please confirm your email address before signing in.')
-        } else {
-          toast.error(
-            'Unable to sign in. Please check your credentials and try again.'
-          )
+        if (response.error) {
+          // More specific error messages
+          const errorMessage = response.error.toLowerCase()
+          if (
+            errorMessage.includes('invalid') ||
+            errorMessage.includes('credentials')
+          ) {
+            toast.error('Invalid email or password. Please try again.')
+          } else if (
+            errorMessage.includes('email') &&
+            errorMessage.includes('confirm')
+          ) {
+            toast.error('Please confirm your email address before signing in.')
+          } else {
+            toast.error(
+              'Unable to sign in. Please check your credentials and try again.'
+            )
+          }
+          return
         }
-        return
-      }
 
-      queryClient.invalidateQueries({ queryKey: ['user'] })
-      router.push(redirectTo)
-      toast.success('Welcome back!')
-    })
-  }
+        queryClient.invalidateQueries({ queryKey: ['user'] })
+        router.push(redirectTo)
+        toast.success('Welcome back!')
+      })
+    },
+    [queryClient, redirectTo, router]
+  )
 
   return (
     <div className="grid gap-6">
@@ -123,6 +123,10 @@ export default function LoginForm() {
                     placeholder="your.email@example.com"
                     autoComplete="email"
                     {...field}
+                    ref={(e) => {
+                      field.ref(e)
+                      emailInputRef.current = e
+                    }}
                     disabled={isPending}
                   />
                 </FormControl>

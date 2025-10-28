@@ -1,14 +1,14 @@
 "use client";
 
-import { useTransition, useState, useEffect } from "react";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { signup } from "../actions";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Icons } from "@/components/ui/icons";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useTransition, useEffect, useRef, useMemo, useCallback } from 'react'
+import Link from 'next/link'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { signup } from '../actions'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Icons } from '@/components/ui/icons'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Form,
   FormControl,
@@ -17,145 +17,169 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "@/components/ui/form";
+} from '@/components/ui/form'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { PasswordInput } from '@/components/ui/password-input'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 const signupSchema = z
   .object({
     name: z
       .string()
-      .min(2, { message: "Full name must be at least 2 characters" })
-      .max(50, { message: "Full name cannot exceed 50 characters" })
-      .regex(/^[a-zA-Z\s]+$/, { message: "Name can only contain letters and spaces" }),
+      .min(2, { message: 'Full name must be at least 2 characters' })
+      .max(50, { message: 'Full name cannot exceed 50 characters' })
+      .regex(/^[a-zA-Z\s]+$/, {
+        message: 'Name can only contain letters and spaces',
+      }),
 
     email: z
       .string()
-      .min(1, "Email is required")
-      .email({ message: "Please enter a valid email address" }),
+      .min(1, 'Email is required')
+      .email({ message: 'Please enter a valid email address' }),
 
-    role: z.enum(["scheduling", "teaching_load", "faculty", "student", "registrar"], {
-      required_error: "Please select a role",
-    }),
+    role: z.enum(
+      ['scheduling', 'teaching_load', 'faculty', 'student', 'registrar'],
+      {
+        required_error: 'Please select a role',
+      }
+    ),
 
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters" })
+      .min(8, { message: 'Password must be at least 8 characters' })
       .regex(/[A-Z]/, {
-        message: "Password must include at least one uppercase letter",
+        message: 'Password must include at least one uppercase letter',
       })
       .regex(/[a-z]/, {
-        message: "Password must include at least one lowercase letter",
+        message: 'Password must include at least one lowercase letter',
       })
-      .regex(/\d/, { message: "Password must include at least one number" })
+      .regex(/\d/, { message: 'Password must include at least one number' })
       .regex(/[\W_]/, {
-        message: "Password must include at least one special character",
+        message: 'Password must include at least one special character',
       }),
 
-    confirmPassword: z.string().min(1, "Please confirm your password"),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
 
-// Password strength calculator
+/**
+ * Calculates password strength based on length and character variety
+ * @param password - The password to evaluate
+ * @returns Strength score from 0-100
+ */
 function calculatePasswordStrength(password: string): number {
-  let strength = 0;
-  if (password.length >= 8) strength += 20;
-  if (password.length >= 12) strength += 20;
-  if (/[a-z]/.test(password)) strength += 15;
-  if (/[A-Z]/.test(password)) strength += 15;
-  if (/\d/.test(password)) strength += 15;
-  if (/[\W_]/.test(password)) strength += 15;
-  return Math.min(strength, 100);
+  let strength = 0
+  if (password.length >= 8) strength += 20
+  if (password.length >= 12) strength += 20
+  if (/[a-z]/.test(password)) strength += 15
+  if (/[A-Z]/.test(password)) strength += 15
+  if (/\d/.test(password)) strength += 15
+  if (/[\W_]/.test(password)) strength += 15
+  return Math.min(strength, 100)
 }
 
+/**
+ * Gets label and color class for password strength indicator
+ * @param strength - Password strength score (0-100)
+ * @returns Object with label text and Tailwind color class
+ */
 function getPasswordStrengthLabel(strength: number): {
-  label: string;
-  color: string;
+  label: string
+  color: string
 } {
-  if (strength === 0) return { label: "", color: "" };
-  if (strength < 40) return { label: "Weak", color: "text-red-600" };
-  if (strength < 70) return { label: "Fair", color: "text-orange-600" };
-  if (strength < 90) return { label: "Good", color: "text-yellow-600" };
-  return { label: "Strong", color: "text-green-600" };
+  if (strength === 0) return { label: '', color: '' }
+  if (strength < 40) return { label: 'Weak', color: 'text-red-600' }
+  if (strength < 70) return { label: 'Fair', color: 'text-orange-600' }
+  if (strength < 90) return { label: 'Good', color: 'text-yellow-600' }
+  return { label: 'Strong', color: 'text-green-600' }
 }
 
-const roleDescriptions: Record<string, string> = {
-  scheduling: "Manage course schedules and timetables",
-  teaching_load: "Oversee faculty teaching assignments",
-  faculty: "View schedules and manage teaching preferences",
-  student: "Access your personal schedule and courses",
-  registrar: "Full administrative access to the system",
-};
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  scheduling: 'Manage course schedules and timetables',
+  teaching_load: 'Oversee faculty teaching assignments',
+  faculty: 'View schedules and manage teaching preferences',
+  student: 'Access your personal schedule and courses',
+  registrar: 'Full administrative access to the system',
+} as const
 
 export default function RegisterForm() {
-  const [isPending, startTransition] = useTransition();
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const router = useRouter();
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      role: "student",
-      password: "",
-      confirmPassword: "",
+      name: '',
+      email: '',
+      role: 'student',
+      password: '',
+      confirmPassword: '',
     },
-  });
+  })
 
-  const password = form.watch("password");
+  const password = form.watch('password')
 
   // Auto-focus name field on mount
   useEffect(() => {
-    const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
-    if (nameInput) {
-      nameInput.focus();
-    }
-  }, []);
+    nameInputRef.current?.focus()
+  }, [])
 
-  // Update password strength
-  useEffect(() => {
-    setPasswordStrength(calculatePasswordStrength(password || ""));
-  }, [password]);
+  // Memoize password strength calculation
+  const passwordStrength = useMemo(
+    () => calculatePasswordStrength(password || ''),
+    [password]
+  )
 
-  async function onSubmit(values: z.infer<typeof signupSchema>) {
-    startTransition(async () => {
-      // Remove confirmPassword before sending to server
-      const { confirmPassword, ...signupData } = values;
-      const response = await signup(signupData);
+  // Memoize strength label calculation
+  const strengthInfo = useMemo(
+    () => getPasswordStrengthLabel(passwordStrength),
+    [passwordStrength]
+  )
 
-      if (response.error) {
-        const errorMessage = response.error.toLowerCase();
-        if (errorMessage.includes("already") || errorMessage.includes("exists")) {
-          toast.error("An account with this email already exists.");
-        } else if (errorMessage.includes("email")) {
-          toast.error("Invalid email address. Please try again.");
-        } else {
-          toast.error("Unable to create account. Please try again later.");
+  const onSubmit = useCallback(
+    async (values: z.infer<typeof signupSchema>) => {
+      startTransition(async () => {
+        // Remove confirmPassword before sending to server
+        const { confirmPassword, ...signupData } = values
+        const response = await signup(signupData)
+
+        if (response.error) {
+          const errorMessage = response.error.toLowerCase()
+          if (
+            errorMessage.includes('already') ||
+            errorMessage.includes('exists')
+          ) {
+            toast.error('An account with this email already exists.')
+          } else if (errorMessage.includes('email')) {
+            toast.error('Invalid email address. Please try again.')
+          } else {
+            toast.error('Unable to create account. Please try again later.')
+          }
+          return
         }
-        return;
-      }
 
-      toast.success("Account created! Please check your email to confirm your address.");
-      router.push("/login");
-    });
-  }
-
-  const strengthInfo = getPasswordStrengthLabel(passwordStrength);
+        toast.success(
+          'Account created! Please check your email to confirm your address.'
+        )
+        router.push('/login')
+      })
+    },
+    [router]
+  )
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -172,6 +196,10 @@ export default function RegisterForm() {
                     placeholder="John Doe"
                     autoComplete="name"
                     {...field}
+                    ref={(e) => {
+                      field.ref(e)
+                      nameInputRef.current = e
+                    }}
                     disabled={isPending}
                   />
                 </FormControl>
@@ -245,7 +273,7 @@ export default function RegisterForm() {
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  {field.value && roleDescriptions[field.value]}
+                  {field.value && ROLE_DESCRIPTIONS[field.value]}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -279,19 +307,37 @@ export default function RegisterForm() {
                 <FormDescription className="text-xs space-y-1">
                   <div>Password must contain:</div>
                   <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                    <li className={password.length >= 8 ? "text-green-600" : ""}>
+                    <li
+                      className={
+                        password.length >= 8 ? 'text-green-600' : ''
+                      }
+                    >
                       At least 8 characters
                     </li>
-                    <li className={/[A-Z]/.test(password) ? "text-green-600" : ""}>
+                    <li
+                      className={
+                        /[A-Z]/.test(password) ? 'text-green-600' : ''
+                      }
+                    >
                       One uppercase letter
                     </li>
-                    <li className={/[a-z]/.test(password) ? "text-green-600" : ""}>
+                    <li
+                      className={
+                        /[a-z]/.test(password) ? 'text-green-600' : ''
+                      }
+                    >
                       One lowercase letter
                     </li>
-                    <li className={/\d/.test(password) ? "text-green-600" : ""}>
+                    <li
+                      className={/\d/.test(password) ? 'text-green-600' : ''}
+                    >
                       One number
                     </li>
-                    <li className={/[\W_]/.test(password) ? "text-green-600" : ""}>
+                    <li
+                      className={
+                        /[\W_]/.test(password) ? 'text-green-600' : ''
+                      }
+                    >
                       One special character
                     </li>
                   </ul>
@@ -323,8 +369,8 @@ export default function RegisterForm() {
           <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
             <Icons.info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
-              You'll receive a confirmation email after registration. Please verify your email
-              address to activate your account.
+              You'll receive a confirmation email after registration. Please
+              verify your email address to activate your account.
             </AlertDescription>
           </Alert>
 
@@ -345,7 +391,9 @@ export default function RegisterForm() {
       </Form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-muted-foreground mb-3">Already have an account?</p>
+        <p className="text-sm text-muted-foreground mb-3">
+          Already have an account?
+        </p>
         <Button variant="outline" asChild className="w-full">
           <Link href="/login">
             <Icons.login className="mr-2 h-4 w-4" />

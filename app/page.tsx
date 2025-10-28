@@ -123,7 +123,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center justify-center gap-8 text-center">
               <div className="flex flex-col items-center space-y-2">
                 <Badge variant="secondary" className="text-xs font-semibold">
-                  Next.js 14+
+                  Next.js 15+
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   Blazing Fast Performance
