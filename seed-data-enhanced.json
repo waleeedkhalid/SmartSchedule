@@ -1,0 +1,136 @@
+{
+  "version": "2.0",
+  "exported_at": "2025-10-28T22:00:00Z",
+  "description": "Enhanced comprehensive seed data for SmartSchedule V1 - SWE Department (30+ courses, sections, exams)",
+  "data": {
+    "courses": [
+      {"code": "CS101", "name": "Introduction to Programming", "level": 1, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS102", "name": "Data Structures", "level": 1, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS103", "name": "Computer Organization", "level": 1, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "MATH101", "name": "Calculus I", "level": 1, "credits": 4, "type": "core", "is_elective": false},
+      {"code": "MATH102", "name": "Discrete Mathematics", "level": 1, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "ENG101", "name": "Technical Writing", "level": 1, "credits": 3, "type": "general", "is_elective": false},
+      
+      {"code": "CS201", "name": "Algorithms", "level": 2, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS202", "name": "Database Systems", "level": 2, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS203", "name": "Object-Oriented Programming", "level": 2, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS204", "name": "Web Development", "level": 2, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS205", "name": "Mobile App Development", "level": 2, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "MATH201", "name": "Linear Algebra", "level": 2, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "STAT201", "name": "Probability & Statistics", "level": 2, "credits": 3, "type": "core", "is_elective": false},
+      
+      {"code": "CS301", "name": "Software Engineering", "level": 3, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS302", "name": "Computer Networks", "level": 3, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS303", "name": "Operating Systems", "level": 3, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS304", "name": "Machine Learning", "level": 3, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS305", "name": "Cloud Computing", "level": 3, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS306", "name": "Cybersecurity", "level": 3, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS307", "name": "Data Mining", "level": 3, "credits": 3, "type": "elective", "is_elective": true},
+      
+      {"code": "CS401", "name": "Compiler Design", "level": 4, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS402", "name": "Computer Graphics", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS403", "name": "Artificial Intelligence", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS404", "name": "Distributed Systems", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS405", "name": "Software Testing", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS406", "name": "DevOps & CI/CD", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS407", "name": "Blockchain Technology", "level": 4, "credits": 3, "type": "elective", "is_elective": true},
+      
+      {"code": "CS501", "name": "Graduation Project I", "level": 5, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS502", "name": "Graduation Project II", "level": 5, "credits": 3, "type": "core", "is_elective": false},
+      {"code": "CS503", "name": "Research Methodology", "level": 5, "credits": 2, "type": "core", "is_elective": false},
+      {"code": "CS504", "name": "Professional Ethics", "level": 5, "credits": 2, "type": "core", "is_elective": false},
+      {"code": "CS505", "name": "Advanced Topics in AI", "level": 5, "credits": 3, "type": "elective", "is_elective": true},
+      {"code": "CS506", "name": "Big Data Analytics", "level": 5, "credits": 3, "type": "elective", "is_elective": true}
+    ],
+    "rooms": [
+      {"name": "A101", "type": "lecture", "capacity": 50},
+      {"name": "A102", "type": "lecture", "capacity": 50},
+      {"name": "A103", "type": "lecture", "capacity": 45},
+      {"name": "A104", "type": "lecture", "capacity": 40},
+      {"name": "B201", "type": "lecture", "capacity": 60},
+      {"name": "B202", "type": "lecture", "capacity": 55},
+      {"name": "B203", "type": "lecture", "capacity": 50},
+      {"name": "C301", "type": "lecture", "capacity": 35},
+      {"name": "C302", "type": "lecture", "capacity": 40},
+      {"name": "LAB-101", "type": "lab", "capacity": 30},
+      {"name": "LAB-102", "type": "lab", "capacity": 30},
+      {"name": "LAB-103", "type": "lab", "capacity": 25},
+      {"name": "LAB-201", "type": "lab", "capacity": 30},
+      {"name": "LAB-202", "type": "lab", "capacity": 28},
+      {"name": "LAB-301", "type": "lab", "capacity": 25}
+    ],
+    "instructors": [
+      {
+        "name": "Dr. Ahmed Hassan",
+        "email": "ahmed.hassan@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Fatima Ali",
+        "email": "fatima.ali@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Mohammed Khan",
+        "email": "mohammed.khan@university.edu",
+        "max_load_per_week": 15
+      },
+      {
+        "name": "Dr. Sarah Ibrahim",
+        "email": "sarah.ibrahim@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Omar Abdullah",
+        "email": "omar.abdullah@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Aisha Mahmoud",
+        "email": "aisha.mahmoud@university.edu",
+        "max_load_per_week": 10
+      },
+      {
+        "name": "Dr. Youssef Karim",
+        "email": "youssef.karim@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Layla Nasser",
+        "email": "layla.nasser@university.edu",
+        "max_load_per_week": 10
+      },
+      {
+        "name": "Dr. Khalid Saleh",
+        "email": "khalid.saleh@university.edu",
+        "max_load_per_week": 12
+      },
+      {
+        "name": "Dr. Nadia Rashid",
+        "email": "nadia.rashid@university.edu",
+        "max_load_per_week": 12
+      }
+    ],
+    "student_groups": [
+      {"level": 1, "size": 48, "name": "Level 1 - Section A"},
+      {"level": 1, "size": 45, "name": "Level 1 - Section B"},
+      {"level": 2, "size": 42, "name": "Level 2 - Section A"},
+      {"level": 2, "size": 40, "name": "Level 2 - Section B"},
+      {"level": 3, "size": 38, "name": "Level 3 - Main Group"},
+      {"level": 4, "size": 35, "name": "Level 4 - Main Group"},
+      {"level": 5, "size": 30, "name": "Level 5 - Main Group"}
+    ],
+    "sections": [],
+    "exams": []
+  },
+  "notes": [
+    "This is enhanced seed data with 33 courses across 5 levels",
+    "Includes 15 rooms (9 lecture halls, 6 labs)",
+    "10 instructors with varying workload capacities",
+    "7 student groups with realistic sizes",
+    "Sections and exams should be generated through the scheduling system",
+    "Use Import/Export functionality to load this data",
+    "Elective courses: CS204, CS205, CS304-CS307, CS402-CS407, CS505-CS506"
+  ]
+}
+

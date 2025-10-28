@@ -1,0 +1,332 @@
+/**
+ * Student Exam Timetable Component
+ * 
+ * Purpose: Display exam schedule with conflict detection
+ * 
+ * Features:
+ * - List of all exams sorted by date/time
+ * - Conflict warnings for overlapping exams
+ * - Countdown to next exam
+ * - Room and duration information
+ * - Grouped by date for clarity
+ * 
+ * Data Flow:
+ * 1. Fetch exams from API (includes conflict detection)
+ * 2. Group by date
+ * 3. Calculate time until next exam
+ * 4. Display with warnings for conflicts
+ */
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar, Clock, MapPin, AlertTriangle, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+
+interface ExamData {
+  id: string;
+  course_code: string;
+  course_title: string;
+  section_no: string | null;
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:MM:SS
+  duration_minutes: number;
+  end_time: string;
+  room_codes: string[];
+  has_conflict: boolean;
+  conflicting_exams: {
+    course_code: string;
+    course_title: string;
+  }[];
+}
+
+interface ExamsResponse {
+  exams: ExamData[];
+  total_exams: number;
+  has_conflicts: boolean;
+  is_mock?: boolean;
+}
+
+export function StudentExamTimetable() {
+  const [examsData, setExamsData] = useState<ExamsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [nextExam, setNextExam] = useState<ExamData | null>(null);
+
+  useEffect(() => {
+    fetchExams();
+  }, []);
+
+  /**
+   * Fetch exam timetable from API
+   */
+  async function fetchExams() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/student/exams');
+      
+      if (res.ok) {
+        const data = await res.json();
+        setExamsData(data);
+        
+        // Find next upcoming exam
+        if (data.exams && data.exams.length > 0) {
+          const now = new Date();
+          const upcoming = data.exams.find((exam: ExamData) => {
+            const examDate = new Date(`${exam.date}T${exam.start_time}`);
+            return examDate > now;
+          });
+          setNextExam(upcoming || null);
+        }
+      } else {
+        toast.error('Failed to load exam timetable');
+      }
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+      toast.error('Failed to load exam timetable');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Group exams by date for organized display
+   */
+  function groupExamsByDate(exams: ExamData[]) {
+    const grouped: { [date: string]: ExamData[] } = {};
+    
+    exams.forEach(exam => {
+      if (!grouped[exam.date]) {
+        grouped[exam.date] = [];
+      }
+      grouped[exam.date].push(exam);
+    });
+    
+    // Sort exams within each date by time
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    });
+    
+    return grouped;
+  }
+
+  /**
+   * Format date for display
+   */
+  function formatExamDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
+  /**
+   * Format time for display (remove seconds)
+   */
+  function formatTime(timeStr: string): string {
+    return timeStr.substring(0, 5);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading exam timetable...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!examsData || examsData.total_exams === 0) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
+          <p className="text-lg font-semibold">No Exams Scheduled</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Exam dates will appear here once published
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const groupedExams = groupExamsByDate(examsData.exams);
+  const examDates = Object.keys(groupedExams).sort();
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Exam Timetable
+          </CardTitle>
+          <CardDescription>
+            {examsData.total_exams} exams scheduled
+            {examsData.has_conflicts && (
+              <span className="text-yellow-600 font-medium ml-2">
+                ⚠️ Conflicts detected
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        {nextExam && (
+          <CardContent>
+            <Alert className="border-blue-200 bg-blue-50">
+              <CheckCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription>
+                <span className="font-semibold">Next Exam:</span> {nextExam.course_code} on{' '}
+                {formatExamDate(nextExam.date)} at {formatTime(nextExam.start_time)}
+                <span className="ml-2 text-xs">
+                  ({formatDistanceToNow(new Date(`${nextExam.date}T${nextExam.start_time}`), { addSuffix: true })})
+                </span>
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Mock Data Notice */}
+      {examsData.is_mock && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <span className="font-medium">Demonstration Data:</span> This is sample exam data. 
+            Real exam dates will appear once published by the registrar.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Global Conflict Warning */}
+      {examsData.has_conflicts && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You have exam schedule conflicts. Please contact the registrar immediately.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Exams Grouped by Date */}
+      {examDates.map(date => (
+        <Card key={date}>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {formatExamDate(date)}
+            </CardTitle>
+            <CardDescription>
+              {groupedExams[date].length} exam{groupedExams[date].length !== 1 ? 's' : ''} on this date
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {groupedExams[date].map(exam => (
+                <div
+                  key={exam.id}
+                  className={`p-4 border rounded-lg ${
+                    exam.has_conflict ? 'border-red-300 bg-red-50' : 'bg-white'
+                  }`}
+                >
+                  {/* Exam Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-lg">
+                          {exam.course_code}
+                        </span>
+                        {exam.section_no && (
+                          <Badge variant="secondary">
+                            Section {exam.section_no}
+                          </Badge>
+                        )}
+                        {exam.has_conflict && (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Conflict
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {exam.course_title}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Exam Details */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Time</p>
+                        <p className="text-muted-foreground">
+                          {formatTime(exam.start_time)} - {formatTime(exam.end_time)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Duration</p>
+                        <p className="text-muted-foreground">
+                          {exam.duration_minutes} minutes ({(exam.duration_minutes / 60).toFixed(1)} hours)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Room{exam.room_codes.length > 1 ? 's' : ''}</p>
+                        <p className="text-muted-foreground">
+                          {exam.room_codes.join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Conflict Details */}
+                  {exam.has_conflict && exam.conflicting_exams.length > 0 && (
+                    <Alert variant="destructive" className="mt-3">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <span className="font-medium">Conflicts with:</span>{' '}
+                        {exam.conflicting_exams.map(c => c.course_code).join(', ')}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Exam Preparation Tips */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Exam Preparation Tips</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>• Arrive at least 15 minutes before the exam start time</li>
+            <li>• Bring your student ID and any required materials</li>
+            <li>• Check the room location in advance to avoid delays</li>
+            <li>• Review exam policies and allowed materials with your instructor</li>
+            <li>• Report any conflicts to the registrar at least one week in advance</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

@@ -1,0 +1,297 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Backgrounds & Surfaces */
+    --background: 210 20% 98%;
+    --foreground: 210 14% 40%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 14% 40%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 14% 40%;
+    
+    /* Primary - Blue Brand Color */
+    --primary: 210 75% 50%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Slate Neutral */
+    --secondary: 210 18% 90%;
+    --secondary-foreground: 210 16% 30%;
+    
+    /* Muted - Subtle Backgrounds */
+    --muted: 210 20% 95%;
+    --muted-foreground: 210 12% 50%;
+    
+    /* Accent - Teal Highlights */
+    --accent: 180 65% 45%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive - Error States */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 210 18% 90%;
+    --input: 210 18% 90%;
+    --ring: 210 75% 50%;
+    
+    /* Chart Colors */
+    --chart-1: 210 75% 50%;
+    --chart-2: 180 65% 45%;
+    --chart-3: 145 65% 45%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 0 72% 51%;
+    
+    /* Border Radius */
+    --radius: 0.5rem;
+    
+    /* SmartSchedule Brand Colors - Blue Scale */
+    --brand-blue-50: 210 100% 97%;
+    --brand-blue-100: 210 95% 92%;
+    --brand-blue-200: 210 90% 85%;
+    --brand-blue-300: 210 85% 72%;
+    --brand-blue-400: 210 80% 60%;
+    --brand-blue-500: 210 75% 50%;
+    --brand-blue-600: 210 80% 42%;
+    --brand-blue-700: 210 85% 35%;
+    --brand-blue-800: 210 90% 28%;
+    --brand-blue-900: 210 95% 20%;
+    
+    /* Slate Scale */
+    --slate-50: 210 20% 98%;
+    --slate-100: 210 20% 95%;
+    --slate-200: 210 18% 90%;
+    --slate-300: 210 16% 80%;
+    --slate-400: 210 14% 65%;
+    --slate-500: 210 12% 50%;
+    --slate-600: 210 14% 40%;
+    --slate-700: 210 16% 30%;
+    --slate-800: 210 18% 20%;
+    --slate-900: 210 20% 12%;
+    
+    /* Teal Accent Scale */
+    --teal-50: 180 60% 97%;
+    --teal-100: 180 55% 90%;
+    --teal-500: 180 65% 45%;
+    --teal-600: 180 70% 38%;
+    --teal-900: 180 75% 18%;
+    
+    /* Semantic Colors */
+    --success: 145 65% 45%;
+    --success-light: 145 60% 95%;
+    --warning: 38 92% 50%;
+    --warning-light: 38 90% 95%;
+    --error: 0 72% 51%;
+    --error-light: 0 70% 97%;
+    --info: 200 95% 50%;
+    --info-light: 200 90% 96%;
+  }
+  
+  .dark {
+    /* Backgrounds & Surfaces */
+    --background: 210 20% 12%;
+    --foreground: 210 20% 95%;
+    --card: 210 18% 20%;
+    --card-foreground: 210 20% 95%;
+    --popover: 210 18% 20%;
+    --popover-foreground: 210 20% 95%;
+    
+    /* Primary - Lighter Blue for Dark Mode */
+    --primary: 210 80% 60%;
+    --primary-foreground: 210 20% 12%;
+    
+    /* Secondary */
+    --secondary: 210 16% 30%;
+    --secondary-foreground: 210 20% 95%;
+    
+    /* Muted */
+    --muted: 210 18% 20%;
+    --muted-foreground: 210 14% 65%;
+    
+    /* Accent - Lighter Teal for Dark Mode */
+    --accent: 180 60% 55%;
+    --accent-foreground: 210 20% 12%;
+    
+    /* Destructive */
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 20% 95%;
+    
+    /* Borders & Inputs */
+    --border: 210 16% 30%;
+    --input: 210 16% 30%;
+    --ring: 210 80% 60%;
+    
+    /* Chart Colors - Adjusted for Dark Mode */
+    --chart-1: 210 80% 60%;
+    --chart-2: 180 60% 55%;
+    --chart-3: 145 60% 55%;
+    --chart-4: 38 92% 55%;
+    --chart-5: 0 72% 60%;
+    
+    /* Brand Blue - Dark Mode Adjusted */
+    --brand-blue-50: 210 50% 20%;
+    --brand-blue-100: 210 60% 25%;
+    --brand-blue-200: 210 70% 30%;
+    --brand-blue-300: 210 75% 40%;
+    --brand-blue-400: 210 80% 50%;
+    --brand-blue-500: 210 80% 60%;
+    --brand-blue-600: 210 85% 70%;
+    --brand-blue-700: 210 90% 75%;
+    --brand-blue-800: 210 95% 80%;
+    --brand-blue-900: 210 100% 90%;
+    
+    /* Slate Scale - Dark Mode */
+    --slate-50: 210 20% 12%;
+    --slate-100: 210 18% 20%;
+    --slate-200: 210 16% 30%;
+    --slate-300: 210 14% 40%;
+    --slate-400: 210 14% 50%;
+    --slate-500: 210 12% 60%;
+    --slate-600: 210 14% 70%;
+    --slate-700: 210 16% 80%;
+    --slate-800: 210 18% 90%;
+    --slate-900: 210 20% 95%;
+    
+    /* Teal Accent - Dark Mode */
+    --teal-50: 180 75% 18%;
+    --teal-100: 180 70% 25%;
+    --teal-500: 180 60% 55%;
+    --teal-600: 180 55% 65%;
+    --teal-900: 180 60% 90%;
+    
+    /* Semantic Colors - Dark Mode */
+    --success: 145 60% 55%;
+    --success-light: 145 60% 20%;
+    --warning: 38 92% 55%;
+    --warning-light: 38 80% 20%;
+    --error: 0 72% 60%;
+    --error-light: 0 60% 20%;
+    --info: 200 90% 60%;
+    --info-light: 200 80% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl font-bold;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl font-bold;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  h5 {
+    @apply text-lg md:text-xl font-medium;
+  }
+  
+  h6 {
+    @apply text-base md:text-lg font-medium;
+  }
+}
+
+@layer utilities {
+  /* Brand Color Utilities */
+  .text-brand-blue {
+    color: hsl(var(--brand-blue-600));
+  }
+  
+  .bg-brand-blue {
+    background-color: hsl(var(--brand-blue-600));
+  }
+  
+  .border-brand-blue {
+    border-color: hsl(var(--brand-blue-600));
+  }
+  
+  .text-brand-teal {
+    color: hsl(var(--teal-600));
+  }
+  
+  .bg-brand-teal {
+    background-color: hsl(var(--teal-600));
+  }
+  
+  /* Gradient Utilities */
+  .gradient-blue {
+    background: linear-gradient(135deg, hsl(var(--brand-blue-500)) 0%, hsl(var(--brand-blue-700)) 100%);
+  }
+  
+  .gradient-blue-teal {
+    background: linear-gradient(135deg, hsl(var(--brand-blue-500)) 0%, hsl(var(--teal-500)) 100%);
+  }
+  
+  .gradient-subtle {
+    background: linear-gradient(180deg, hsl(var(--brand-blue-50)) 0%, transparent 100%);
+  }
+  
+  /* Grid Pattern */
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, hsl(var(--slate-200)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--slate-200)) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
+  .dark .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, hsl(var(--slate-800)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--slate-800)) 1px, transparent 1px);
+  }
+  
+  /* Semantic Color Utilities */
+  .text-success {
+    color: hsl(var(--success));
+  }
+  
+  .bg-success {
+    background-color: hsl(var(--success));
+  }
+  
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+  
+  .bg-warning {
+    background-color: hsl(var(--warning));
+  }
+  
+  .text-error {
+    color: hsl(var(--error));
+  }
+  
+  .bg-error {
+    background-color: hsl(var(--error));
+  }
+  
+  .text-info {
+    color: hsl(var(--info));
+  }
+  
+  .bg-info {
+    background-color: hsl(var(--info));
+  }
+}

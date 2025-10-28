@@ -1,0 +1,242 @@
+{
+  "version": "1.0",
+  "exported_at": "2025-10-27T12:00:00Z",
+  "description": "Sample seed data for SmartSchedule V1 - SWE Department",
+  "data": {
+    "courses": [
+      {
+        "code": "CS101",
+        "title": "Introduction to Programming",
+        "level": 1,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "CS102",
+        "title": "Data Structures",
+        "level": 1,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "MATH101",
+        "title": "Calculus I",
+        "level": 1,
+        "credits": 4,
+        "weekly_hours": 4,
+        "is_elective": false
+      },
+      {
+        "code": "CS201",
+        "title": "Algorithms",
+        "level": 2,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "CS202",
+        "title": "Database Systems",
+        "level": 2,
+        "credits": 3,
+        "weekly_hours": 4,
+        "is_elective": false
+      },
+      {
+        "code": "CS203",
+        "title": "Web Development",
+        "level": 2,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": true
+      },
+      {
+        "code": "CS301",
+        "title": "Software Engineering",
+        "level": 3,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "CS302",
+        "title": "Computer Networks",
+        "level": 3,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "CS303",
+        "title": "Machine Learning",
+        "level": 3,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": true
+      },
+      {
+        "code": "CS401",
+        "title": "Operating Systems",
+        "level": 4,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": false
+      },
+      {
+        "code": "CS402",
+        "title": "Compiler Design",
+        "level": 4,
+        "credits": 3,
+        "weekly_hours": 3,
+        "is_elective": true
+      },
+      {
+        "code": "CS501",
+        "title": "Graduation Project I",
+        "level": 5,
+        "credits": 3,
+        "weekly_hours": 2,
+        "is_elective": false
+      }
+    ],
+    "rooms": [
+      {
+        "code": "A101",
+        "type": "Lecture"
+      },
+      {
+        "code": "A102",
+        "type": "Lecture"
+      },
+      {
+        "code": "A103",
+        "type": "Lecture"
+      },
+      {
+        "code": "B201",
+        "type": "Lecture"
+      },
+      {
+        "code": "B202",
+        "type": "Lecture"
+      },
+      {
+        "code": "LAB-101",
+        "type": "Lab"
+      },
+      {
+        "code": "LAB-102",
+        "type": "Lab"
+      },
+      {
+        "code": "LAB-103",
+        "type": "Lab"
+      },
+      {
+        "code": "LAB-201",
+        "type": "Lab"
+      },
+      {
+        "code": "LAB-202",
+        "type": "Lab"
+      }
+    ],
+    "instructors": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "Dr. Ahmed Hassan",
+        "email": "ahmed.hassan@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 12
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "name": "Dr. Fatima Ali",
+        "email": "fatima.ali@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 12
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "Dr. Mohammed Khan",
+        "email": "mohammed.khan@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 15
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440004",
+        "name": "Dr. Sarah Ibrahim",
+        "email": "sarah.ibrahim@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 12
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440005",
+        "name": "Dr. Omar Abdullah",
+        "email": "omar.abdullah@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 12
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440006",
+        "name": "Dr. Aisha Mahmoud",
+        "email": "aisha.mahmoud@university.edu",
+        "preferred_times": [],
+        "unavailable_times": [],
+        "max_load_per_week": 10
+      }
+    ],
+    "student_groups": [
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "level": 1,
+        "size": 45,
+        "name": "Level 1 - Section A"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440002",
+        "level": 1,
+        "size": 42,
+        "name": "Level 1 - Section B"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440003",
+        "level": 2,
+        "size": 38,
+        "name": "Level 2 - Section A"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440004",
+        "level": 2,
+        "size": 40,
+        "name": "Level 2 - Section B"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440005",
+        "level": 3,
+        "size": 35,
+        "name": "Level 3 - Main Group"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440006",
+        "level": 4,
+        "size": 32,
+        "name": "Level 4 - Main Group"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440007",
+        "level": 5,
+        "size": 28,
+        "name": "Level 5 - Main Group"
+      }
+    ]
+  }
+}
+
