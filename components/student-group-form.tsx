@@ -24,7 +24,7 @@ import Link from "next/link";
 
 const formSchema = z.object({
   name: z.string().min(2).max(100),
-  level: z.coerce.number().min(1).max(5),
+  level: z.coerce.number().min(4).max(8),
   size: z.coerce.number().min(1).max(500),
 });
 
@@ -45,7 +45,7 @@ export function StudentGroupForm({ group, isEditing = false }: StudentGroupFormP
       size: group.size,
     } : {
       name: "",
-      level: 1,
+      level: 4,
       size: 30,
     },
   });
@@ -123,7 +123,7 @@ export function StudentGroupForm({ group, isEditing = false }: StudentGroupFormP
                         <Input type="number" min="1" max="5" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Year level (1-5)
+                        Level (4-8)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

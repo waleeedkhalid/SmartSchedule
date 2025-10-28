@@ -3,14 +3,21 @@
  * 
  * Purpose: List elective sections available for student registration
  * 
+ * IMPORTANT: Electives have NO level restrictions! Students can register for any elective
+ * regardless of their level, as long as they meet prerequisites and credit requirements.
+ * 
  * Section Data Includes:
- * - Course information (title, credits, level)
+ * - Course information (title, credits, level - for organization only)
  * - Instructor details
  * - Meeting times and room
  * - Capacity and enrollment counts
  * - Seat availability
  * 
- * Filtering: Sections are filtered to student's level and above
+ * Filtering:
+ * - Prerequisites (validated at enrollment time)
+ * - Credit limits (max 20 total)
+ * - Section capacity
+ * - Elective group requirements
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,14 +26,13 @@ import { getAvailableElectiveSections } from '@/lib/db/student-enrollments';
 
 /**
  * GET /api/student/available-sections
- * Fetch elective sections available for registration
+ * Fetch all elective sections available for registration
  * 
  * Query Parameters:
- * - level: Filter to specific level (optional, defaults to student's level)
  * - available_only: If 'true', only show sections with available seats
  * 
  * Returns:
- * - 200: Array of available elective sections with capacity info
+ * - 200: Array of all elective sections with capacity info
  * - 401: Not authenticated
  * - 403: Not a student
  * - 500: Server error
@@ -44,10 +50,10 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Verify user is a student and get their level
+    // Verify user is a student
     const { data: userRole, error: roleError } = await supabase
       .from('user_roles')
-      .select('role, level')
+      .select('role')
       .eq('user_id', user.id)
       .single();
     
@@ -60,15 +66,11 @@ export async function GET(request: NextRequest) {
     
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const levelParam = searchParams.get('level');
     const availableOnly = searchParams.get('available_only') === 'true';
     
-    // Determine which level to filter by
-    const filterLevel = levelParam ? parseInt(levelParam) : userRole.level;
-    
-    // Fetch available sections
-    // Function returns sections for elective courses with enrollment counts
-    let sections = await getAvailableElectiveSections(filterLevel || undefined);
+    // Fetch ALL available elective sections (no level filtering!)
+    // Students can register for any elective if they meet prerequisites and credit limits
+    let sections = await getAvailableElectiveSections();
     
     // Filter to only sections with available seats if requested
     if (availableOnly) {

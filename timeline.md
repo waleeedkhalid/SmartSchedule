@@ -5,6 +5,134 @@ SmartSchedule is a web app for the SWE department to generate conflict-free teac
 
 ---
 
+## October 28, 2025 - Production Data Readiness
+
+### Overview
+Removed all mock data fallbacks from API routes and implemented proper empty state handling to prepare the application for production deployment. The system now exclusively uses real database data.
+
+### Changes Made
+
+**API Routes**:
+- `app/api/student/schedule/route.ts`: Removed `generateMockSchedule()` function (200+ lines)
+  - Removed `?mock=true` query parameter support
+  - Returns structured empty state with helpful messages when no data exists
+  - Empty response includes `is_empty: true` and `setup_required: true` flags
+- `app/api/student/exams/route.ts`: Removed `generateMockExams()` function (165+ lines)
+  - Removed `?mock=true` query parameter support
+  - Returns structured empty state for missing exam data
+
+**UI Components**:
+- `components/student-schedule-view.tsx`:
+  - Removed `is_mock` prop and related UI
+  - Implemented proper empty state with helpful guidance
+  - Added "What to do next" section with action items
+- `components/student-exam-timetable.tsx`:
+  - Removed `is_mock` prop and related UI
+  - Implemented proper empty state with exam information
+  - Added "Exam Information" section with guidance
+
+**New Utilities**:
+- `lib/utils/production-check.ts`: Production readiness validation
+  - `checkProductionReadiness()`: Validates minimum data requirements
+  - `isProductionReady()`: Quick readiness check
+  - `getReadinessSummary()`: Human-readable summary
+  - Checks for minimum: 10 courses, 5 instructors, 5 rooms, 5 sections, 1 student group
+  - Returns data counts and validation warnings
+
+**Documentation**:
+- `src/docs/SWE_SCHEDULING_SCOPE.md`: Updated mock data section to production data section
+- `.env.example`: Created (blocked by gitignore, needs manual creation)
+  - Production mode configuration
+  - Supabase connection variables
+  - Feature flags (ENABLE_DEMO_MODE=false)
+
+### Impact
+- **No Mock Data Confusion**: Students never see fake/demo data
+- **Clear Empty States**: Helpful guidance when data is missing
+- **Production Ready**: Application behavior matches real-world usage
+- **Better UX**: Proper empty states vs confusing mock data
+- **Validation**: Can verify production readiness before deployment
+- **Maintainability**: ~400 lines of mock data code removed
+- **Data Integrity**: Only real database data is displayed
+
+### Migration Notes
+- All existing mock data fallbacks removed
+- Empty state responses return `is_empty: true` and `setup_required: true`
+- Production validation checks can be integrated into admin dashboard
+- Seed data files (`seed-data.json`, `seed-data-enhanced.json`) remain for setup
+
+### Next Steps
+- Add production readiness check to admin dashboard
+- Create deployment checklist documentation
+- Verify all empty states with cleared database
+- Test with seed data for proper data display
+
+---
+
+## October 28, 2025 - SWE Scheduling Scope Implementation
+
+### Overview
+Implemented filtering to schedule only SWE department courses (levels 4-8) via the automated algorithm, while maintaining external department courses as reference data.
+
+### Changes Made
+
+**Database Layer** (`lib/db/`):
+- Added `getSWECoursesForScheduling()` - Filter SWE courses levels 4-8
+- Added `getExternalCourses()` - Get non-SWE courses
+- Added `isSWESchedulableCourse()` - Helper to check schedulability
+- Added `getSWESectionsForScheduling()` - Filter sections for algorithm
+
+**Scheduling Algorithm** (`app/api/scheduling/generate/route.ts`):
+- Updated to filter sections before scheduling
+- Now only processes SWE courses in levels 4-8
+- External courses bypass the algorithm
+
+**Student Schedule** (`lib/db/student-schedule.ts`):
+- Added `is_swe_scheduled` metadata to each section
+- Distinguishes algorithm-scheduled vs pre-scheduled courses
+- Enables proper UI rendering
+
+**UI Components**:
+- `student-schedule-view.tsx`: Added three-color badge system (blue=SWE, purple=external, green=elective)
+- `courses-table.tsx`: Added "Scheduling" column with "SWE Algorithm" vs "External/Manual" badges
+- `sections-table.tsx`: Added "Scheduling" column with "Algorithm" vs "Manual" badges
+
+**Mock Data** (`app/api/student/schedule/route.ts`):
+- Updated to include external department courses (MATH, CEN, IS)
+- Added `is_swe_scheduled` flag to all mock sections
+- Demonstrates combined schedule view
+
+**Documentation**:
+- Created `src/docs/SWE_SCHEDULING_SCOPE.md` - Comprehensive implementation guide
+- Updated `PRD.md` - Added "Scheduling Scope" section
+
+### Impact
+- **Scheduling Algorithm**: Now focused on SWE courses only (levels 4-8)
+- **Performance**: Reduced computational overhead by filtering courses
+- **User Experience**: Clear visual distinction between course types
+- **Data Model**: Non-breaking change - added metadata only
+- **Scalability**: Foundation for future multi-department support
+
+### Files Modified
+- `lib/db/courses.ts` - Added helper functions
+- `lib/db/sections.ts` - Added SWE section filter
+- `lib/db/student-schedule.ts` - Added schedulability metadata
+- `app/api/scheduling/generate/route.ts` - Filter sections
+- `app/api/student/schedule/route.ts` - Updated mock data
+- `components/student-schedule-view.tsx` - Three-color badge system
+- `components/courses-table.tsx` - Scheduling indicator column
+- `components/sections-table.tsx` - Scheduling indicator column
+- `PRD.md` - Added scheduling scope section
+- `src/docs/SWE_SCHEDULING_SCOPE.md` - New documentation
+
+### Study Plan Alignment
+Based on SWE study plan:
+- **Levels 1-3**: Foundation courses (external departments) - Pre-scheduled
+- **Levels 4-8**: Core SWE courses - Algorithm-scheduled
+- First SWE course: SWE 211 (Level 4, Year 2 Semester 4)
+
+---
+
 ## Progress Tracking
 
 ### ✅ Phase 1: Foundation & Setup (In Progress)

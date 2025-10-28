@@ -146,7 +146,7 @@ export function CourseForm({ course, isEditing = false }: CourseFormProps) {
                         <Input type="number" min="1" max="5" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Year level (1-5)
+                        level (1-5)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

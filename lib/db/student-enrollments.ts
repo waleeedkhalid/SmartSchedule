@@ -76,35 +76,40 @@ export async function getStudentEnrollments(studentId: string): Promise<StudentE
 
 /**
  * Get available elective sections for registration
- * Includes capacity info and filters for student's level
+ * 
+ * IMPORTANT: Electives have no level restrictions! Students can register for any elective
+ * as long as they meet prerequisites and credit requirements. The 'level' field in the
+ * course table for electives is only for organizational/categorization purposes.
  * 
  * Logic:
- * 1. Query all elective course sections
+ * 1. Query all elective course sections (no level filtering)
  * 2. Calculate enrolled count per section
  * 3. Compute available seats
- * 4. Filter to appropriate level (optional)
+ * 4. Return sections with capacity info
  * 
- * @param level - Student level (1-5), optional filter
- * @returns Array of available sections with enrollment counts
+ * Filtering happens elsewhere based on:
+ * - Prerequisites (checked at enrollment time)
+ * - Credit limits (max 20 credits total)
+ * - Section capacity
+ * - Elective group requirements
+ * 
+ * @returns Array of available elective sections with enrollment counts
  */
-export async function getAvailableElectiveSections(level?: number): Promise<AvailableElectiveSection[]> {
+export async function getAvailableElectiveSections(): Promise<AvailableElectiveSection[]> {
   const supabase = await createClient();
   
   // Build query for elective course sections
-  let query = supabase
+  // NOTE: No level filtering - electives are available to all students!
+  const query = supabase
     .from('section')
     .select(`
       *,
-      course:course!section_course_code_fkey(code, title, level, credits, weekly_hours, is_elective),
+      course:course!section_course_code_fkey(code, title, level, credits, weekly_hours, is_elective, elective_group_id),
       instructor:instructor!section_instructor_id_fkey(id, name, email)
     `)
+    .eq('course.is_elective', true) // Only get elective courses
     .order('course_code', { ascending: true })
     .order('section_no', { ascending: true });
-  
-  // Optionally filter by level (show electives for student's level or higher levels)
-  if (level) {
-    query = query.gte('group_level', level);
-  }
   
   const { data, error } = await query;
   

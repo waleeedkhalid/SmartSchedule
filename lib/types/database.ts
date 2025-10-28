@@ -78,6 +78,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           credits: number
+          elective_group_id: string | null
           is_elective: boolean
           level: number
           title: string
@@ -89,6 +90,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           credits: number
+          elective_group_id?: string | null
           is_elective?: boolean
           level: number
           title: string
@@ -100,13 +102,58 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           credits?: number
+          elective_group_id?: string | null
           is_elective?: boolean
           level?: number
           title?: string
           updated_at?: string | null
           weekly_hours?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "course_elective_group_id_fkey"
+            columns: ["elective_group_id"]
+            isOneToOne: false
+            referencedRelation: "elective_group"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_prerequisite: {
+        Row: {
+          course_code: string
+          created_at: string | null
+          id: string
+          prerequisite_code: string
+        }
+        Insert: {
+          course_code: string
+          created_at?: string | null
+          id?: string
+          prerequisite_code: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string | null
+          id?: string
+          prerequisite_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_prerequisite_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "course_prerequisite_prerequisite_code_fkey"
+            columns: ["prerequisite_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       elective_comment: {
         Row: {
@@ -151,6 +198,33 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      elective_group: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          required_credit_hours: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          required_credit_hours: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          required_credit_hours?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       elective_preference: {
         Row: {
@@ -1069,4 +1143,29 @@ export const Constants = {
     },
   },
 } as const
+
+// Convenience type aliases for commonly used tables
+export type Course = Tables<'course'>
+export type CourseInput = TablesInsert<'course'>
+export type Section = Tables<'section'>
+export type SectionInput = TablesInsert<'section'>
+export type Instructor = Tables<'instructor'>
+export type InstructorInput = TablesInsert<'instructor'>
+export type Room = Tables<'room'>
+export type RoomInput = TablesInsert<'room'>
+export type Exam = Tables<'exam'>
+export type ExamInput = TablesInsert<'exam'>
+export type StudentGroup = Tables<'student_group'>
+export type StudentGroupInput = TablesInsert<'student_group'>
+export type ElectivePreference = Tables<'elective_preference'>
+export type ElectiveComment = Tables<'elective_comment'>
+export type TimeGridConfig = Tables<'time_grid_config'>
+export type RoomType = Database['public']['Enums']['room_type']
+
+// Custom types for RPC functions and views (these are already defined elsewhere in this file or used as-is)
+export type InstructorLoad = any // RPC function return type
+export type SectionConflicts = any // RPC function return type
+export type StudentScheduleView = any // Custom view/query result
+export type ExamView = any // Custom view/query result
+export type ScheduleCommentView = any // Custom view/query result
 

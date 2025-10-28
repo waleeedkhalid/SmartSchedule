@@ -138,6 +138,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
           <TableRow>
             <TableHead>Course</TableHead>
             <TableHead>Section</TableHead>
+            <TableHead>Scheduling</TableHead>
             <TableHead>Instructor</TableHead>
             <TableHead>Room</TableHead>
             <TableHead>Days</TableHead>
@@ -153,6 +154,13 @@ export function SectionsTable({ sections }: SectionsTableProps) {
             <TableRow key={section.id}>
               <TableCell className="font-medium">{section.course_code}</TableCell>
               <TableCell>{section.section_no}</TableCell>
+              <TableCell>
+                {section.course_code.startsWith('SWE') && section.group_level >= 4 && section.group_level <= 8 ? (
+                  <Badge className="bg-blue-600">Algorithm</Badge>
+                ) : (
+                  <Badge variant="outline">Manual</Badge>
+                )}
+              </TableCell>
               <TableCell>{section.instructor_id ? "Assigned" : "—"}</TableCell>
               <TableCell>
                 {section.room_code || "—"}

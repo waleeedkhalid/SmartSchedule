@@ -48,7 +48,8 @@ interface ExamsResponse {
   exams: ExamData[];
   total_exams: number;
   has_conflicts: boolean;
-  is_mock?: boolean;
+  is_empty?: boolean;
+  message?: string;
 }
 
 export function StudentExamTimetable() {
@@ -144,15 +145,24 @@ export function StudentExamTimetable() {
     );
   }
 
-  if (!examsData || examsData.total_exams === 0) {
+  if (!examsData || examsData.total_exams === 0 || examsData.is_empty) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="text-center">
-          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-semibold">No Exams Scheduled</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Exam dates will appear here once published
+        <div className="text-center max-w-md">
+          <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-30" />
+          <p className="text-xl font-semibold mb-2">No Exams Scheduled</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {examsData?.message || 'Exam dates will appear here once published by your department.'}
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 text-sm text-left">
+            <p className="font-medium text-blue-900 mb-2">Exam Information:</p>
+            <ul className="space-y-1 text-blue-800">
+              <li>• Exam schedules are published by the registrar</li>
+              <li>• Check back regularly for updates</li>
+              <li>• Contact your department if you have questions</li>
+              <li>• Exam conflicts will be flagged when detected</li>
+            </ul>
+          </div>
         </div>
       </div>
     );
@@ -194,17 +204,6 @@ export function StudentExamTimetable() {
           </CardContent>
         )}
       </Card>
-
-      {/* Mock Data Notice */}
-      {examsData.is_mock && (
-        <Alert className="border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <span className="font-medium">Demonstration Data:</span> This is sample exam data. 
-            Real exam dates will appear once published by the registrar.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Global Conflict Warning */}
       {examsData.has_conflicts && (

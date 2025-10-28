@@ -31,7 +31,6 @@
         ]
       },
       {
-        "year": 2,
         "level": 4,
         "courses": [
           { "code": "SWE 211", "title": "Introduction to Software Engineering", "credit_hours": 3, "prerequisite": "MATH 151, CSC 111" },

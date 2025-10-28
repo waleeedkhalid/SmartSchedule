@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { SectionConflictDisplay } from "@/components/section-conflict-display";
+import { parseMeetingPattern } from "@/lib/types/scheduling";
 
 const formSchema = z.object({
   course_code: z.string().min(1, "Course is required"),
@@ -29,7 +30,7 @@ const formSchema = z.object({
   instructor_id: z.string().optional(),
   room_code: z.string().optional(),
   capacity: z.coerce.number().min(1).max(500),
-  group_level: z.coerce.number().min(1).max(5),
+  group_level: z.coerce.number().min(4).max(8),
   meeting_days: z.array(z.string()).min(1, "Select at least one day"),
   meeting_start: z.string().min(1, "Start time is required"),
   meeting_duration: z.coerce.number().min(30).max(300),
@@ -69,10 +70,10 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
       room_code: section.room_code || "",
       capacity: section.capacity,
       group_level: section.group_level,
-      meeting_days: section.meeting_pattern.days || [],
-      meeting_start: section.meeting_pattern.start || "",
-      meeting_duration: section.meeting_pattern.duration || 60,
-      is_lab: section.meeting_pattern.is_lab || false,
+      meeting_days: parseMeetingPattern(section.meeting_pattern)?.days || [],
+      meeting_start: parseMeetingPattern(section.meeting_pattern)?.start || "",
+      meeting_duration: parseMeetingPattern(section.meeting_pattern)?.duration || 60,
+      is_lab: parseMeetingPattern(section.meeting_pattern)?.is_lab! || false,
       state: section.state,
     } : {
       course_code: "",
@@ -333,7 +334,7 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
                       <Input type="number" min="1" max="5" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Year level (1-5)
+                      Level (4-8)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

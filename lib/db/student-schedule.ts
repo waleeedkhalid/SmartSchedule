@@ -145,6 +145,7 @@ export async function getStudentSchedule(studentId: string): Promise<StudentSche
       credits: section.course.credits,
       is_elective: false,
       is_enrolled: false, // Auto-enrolled, not manual registration
+      is_swe_scheduled: section.course_code.startsWith('SWE') && section.course.level >= 4 && section.course.level <= 8,
       instructor_name: section.instructor?.name || null,
       room_code: section.room_code,
       meeting_pattern: section.meeting_pattern,
@@ -159,6 +160,7 @@ export async function getStudentSchedule(studentId: string): Promise<StudentSche
       credits: section.course.credits,
       is_elective: true,
       is_enrolled: true, // Manually registered
+      is_swe_scheduled: section.course_code.startsWith('SWE') && section.course.level >= 4 && section.course.level <= 8,
       instructor_name: section.instructor?.name || null,
       room_code: section.room_code,
       meeting_pattern: section.meeting_pattern,

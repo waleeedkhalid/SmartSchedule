@@ -60,7 +60,7 @@ interface OnboardingFormProps {
 
 export function OnboardingForm({ userId, userName, userRole }: OnboardingFormProps) {
   // Form state
-  const [academicLevel, setAcademicLevel] = useState<string>("");
+  const [academicLevel, setAcademicLevel] = useState<string>("4");
   const [confirmed, setConfirmed] = useState(false);
   
   // UI state
@@ -71,7 +71,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   const supabase = createClient();
   
   // Academic level options (1-8 for flexibility)
-  const levelOptions = [1, 2, 3, 4, 5, 6, 7, 8];
+  const levelOptions = [4, 5, 6, 7, 8];
   
   /**
    * Validate form before submission
@@ -193,7 +193,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   <SelectContent>
                     {levelOptions.map(level => (
                       <SelectItem key={level} value={level.toString()}>
-                        Level {level} {level <= 5 ? `(Year ${Math.ceil(level / 2)})` : ''}
+                        Level {level}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -202,7 +202,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   <p className="text-sm text-red-500">{errors.academicLevel}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Level indicates which semester you're in. Level 1 = First semester, Level 2 = Second semester, etc.
+                  Level indicates which semester you're in. Level 4 = First semester in the Major, Level 5 = Second semester in the Major, etc.
                 </p>
               </div>
               

@@ -38,6 +38,7 @@ interface ScheduleSection {
   credits: number;
   is_elective: boolean;
   is_enrolled: boolean;
+  is_swe_scheduled?: boolean; // Indicates if scheduled by algorithm (SWE courses levels 4-8)
   instructor_name: string | null;
   room_code: string | null;
   meeting_pattern: {
@@ -56,7 +57,7 @@ interface ScheduleData {
   required_credits: number;
   elective_credits: number;
   sections: ScheduleSection[];
-  is_mock?: boolean;
+  is_empty?: boolean;
   message?: string;
 }
 
@@ -150,15 +151,23 @@ export function StudentScheduleView() {
     );
   }
 
-  if (!schedule) {
+  if (!schedule || schedule.is_empty || schedule.sections.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-          <p className="text-lg font-semibold">Schedule Not Available</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Your schedule will appear once sections are published
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+          <p className="text-xl font-semibold mb-2">No Schedule Available</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {schedule?.message || 'Your schedule will appear once sections are published by your department.'}
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 text-sm text-left">
+            <p className="font-medium text-blue-900 mb-2">What to do next:</p>
+            <ul className="space-y-1 text-blue-800">
+              <li>• Contact your department administrator</li>
+              <li>• Check back later for updates</li>
+              <li>• Ensure your student information is up to date</li>
+            </ul>
+          </div>
         </div>
       </div>
     );
@@ -188,30 +197,15 @@ export function StudentScheduleView() {
         </CardHeader>
       </Card>
 
-      {/* Mock Data Notice */}
-      {schedule.is_mock && schedule.message && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-yellow-800">
-                  Demonstration Data
-                </p>
-                <p className="text-xs text-yellow-700 mt-1">
-                  {schedule.message}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Legend */}
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex items-center gap-4 text-sm flex-wrap">
         <span className="flex items-center gap-2">
-          <Badge className="bg-blue-600">Required</Badge>
-          <span className="text-muted-foreground">Auto-enrolled courses</span>
+          <Badge className="bg-blue-600">SWE Scheduled</Badge>
+          <span className="text-muted-foreground">SWE courses (algorithm)</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <Badge className="bg-purple-600">External Dept</Badge>
+          <span className="text-muted-foreground">Pre-scheduled courses</span>
         </span>
         <span className="flex items-center gap-2">
           <Badge className="bg-green-600">Elective</Badge>
@@ -254,9 +248,11 @@ export function StudentScheduleView() {
                             <div
                               key={section.id}
                               className={`p-2 rounded text-xs ${
-                                section.is_elective
+                                section.is_swe_scheduled
+                                  ? 'bg-blue-100 border border-blue-300'
+                                  : section.is_elective
                                   ? 'bg-green-100 border border-green-300'
-                                  : 'bg-blue-100 border border-blue-300'
+                                  : 'bg-purple-100 border border-purple-300'
                               } mb-1 last:mb-0`}
                             >
                               <div className="font-semibold">
@@ -305,8 +301,14 @@ export function StudentScheduleView() {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{section.course_code}</span>
                     <Badge variant="secondary">{section.section_no}</Badge>
-                    <Badge className={section.is_elective ? 'bg-green-600' : 'bg-blue-600'}>
-                      {section.is_elective ? 'Elective' : 'Required'}
+                    <Badge className={
+                      section.is_swe_scheduled
+                        ? 'bg-blue-600'
+                        : section.is_elective
+                        ? 'bg-green-600'
+                        : 'bg-purple-600'
+                    }>
+                      {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
                     </Badge>
                     <Badge variant="outline">{section.credits} cr</Badge>
                   </div>

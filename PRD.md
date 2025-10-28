@@ -125,7 +125,8 @@ Sign in → complete simple onboarding (set level 1-8) → register for elective
 > - Students follow main flow: each student belongs to a level and is automatically enrolled in all required courses for that level.
 > - Only elective courses require student preference submission.
 
-- **course**: `code PK`, `title`, `level INT`, `credits INT`, `weekly_hours INT`, `is_elective BOOL`  
+- **course**: `code PK`, `title`, `level INT` (organizational only for electives, required courses use this for enrollment), `credits INT`, `weekly_hours INT`, `is_elective BOOL`, `elective_group_id FK`
+  - **Important**: For elective courses, the `level` field is purely organizational (indicates typical placement in curriculum). Electives have NO level restrictions - students can register for any elective regardless of their level, as long as they meet prerequisites and credit requirements.  
 - **section**: `id PK`, `course_code FK`, `section_no`, `instructor_id FK`, `room_code FK`, `capacity INT`, `meeting_pattern JSONB{days[], start, duration, is_lab, linked_lab_section?}`, `group_level INT`, `state ENUM('draft','released')`  
 - **room**: `code PK`, `type ENUM('Lecture','Lab')`  
 - **instructor**: `id PK`, `name`, `email TEXT UNIQUE`, `preferred_times JSONB`, `unavailable_times JSONB`, `max_load_per_week INT`  
@@ -146,6 +147,18 @@ Sign in → complete simple onboarding (set level 1-8) → register for elective
 - **notification**: `id PK`, `user_id`, `type`, `payload JSONB`, `read_at?`
 - **time_grid_config**: `id PK`, `teaching_days TEXT[]`, `daily_start_time`, `daily_end_time`, `slot_duration_minutes INT`, `break_start_time`, `break_end_time`, `exam_days TEXT[]`, `exam_start_time`, `exam_end_time`, `typical_lab_duration_minutes INT`
 - **irregular_student**: `id PK`, `student_id FK (user_roles.user_id)`, `required_course_codes TEXT[]`, `notes TEXT`, `created_by FK`, `created_at`, `updated_at` *(V1: for students not following standard level-based curriculum)*
+
+## Scheduling Scope
+
+**The scheduling algorithm manages SWE department courses in levels 4-8 only.**
+
+- **SWE Courses (Levels 4-8)**: Scheduled automatically by the constraint satisfaction algorithm
+- **External Courses** (MATH, CSC, CEN, IS, ENGL, etc.): Pre-scheduled, maintained as reference data
+- **Foundation SWE** (Levels 1-3): Pre-scheduled, not managed by algorithm
+
+Students see a combined schedule view with both algorithm-scheduled and pre-scheduled courses.
+
+See [SWE_SCHEDULING_SCOPE.md](mdc:src/docs/SWE_SCHEDULING_SCOPE.md) for detailed implementation.
 
 ## Scheduling Rules (initial)
 - No student group clashes across courses in the same level.  

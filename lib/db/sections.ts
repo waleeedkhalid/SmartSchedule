@@ -116,3 +116,34 @@ export async function getAllScheduleConflicts() {
   return data as SectionConflicts[];
 }
 
+/**
+ * Get sections for SWE courses only (for scheduling algorithm)
+ * Filters to SWE courses in levels 4-8
+ * 
+ * @param state - Section state to filter by (default: 'draft')
+ * @returns Array of SWE course sections ready for scheduling
+ */
+export async function getSWESectionsForScheduling(state: 'draft' | 'released' = 'draft') {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('section')
+    .select(`
+      *,
+      course:course!section_course_code_fkey(code, level)
+    `)
+    .eq('state', state);
+  
+  if (error) throw error;
+  
+  // Filter to only SWE courses in levels 4-8
+  const sweSections = (data || []).filter((section: any) => {
+    const course = section.course;
+    return course && 
+           course.code.startsWith('SWE') && 
+           course.level >= 4 && 
+           course.level <= 8;
+  });
+  
+  return sweSections as Section[];
+}
+

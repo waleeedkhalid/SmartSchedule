@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { Course } from "@/lib/types/database";
 import {
   Table,
@@ -10,19 +11,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { isSWESchedulableCourse } from "@/lib/utils/course-utils";
 
 interface CoursesTableProps {
   courses: Course[];
 }
 
-export function CoursesTable({ courses }: CoursesTableProps) {
+function CoursesTableComponent({ courses }: CoursesTableProps) {
   const router = useRouter();
 
-  async function handleDelete(code: string) {
+  // Memoize delete handler to prevent recreation on every render
+  const handleDelete = useCallback(async (code: string) => {
     if (!confirm(`Are you sure you want to delete course ${code}?`)) {
       return;
     }
@@ -42,7 +46,7 @@ export function CoursesTable({ courses }: CoursesTableProps) {
       toast.error("Failed to delete course");
       console.error(error);
     }
-  }
+  }, [router])
 
   if (courses.length === 0) {
     return (
@@ -63,6 +67,7 @@ export function CoursesTable({ courses }: CoursesTableProps) {
             <TableHead>Credits</TableHead>
             <TableHead>Weekly Hours</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Scheduling</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -84,6 +89,13 @@ export function CoursesTable({ courses }: CoursesTableProps) {
                 >
                   {course.is_elective ? "Elective" : "Core"}
                 </span>
+              </TableCell>
+              <TableCell>
+                {isSWESchedulableCourse(course.code, course.level) ? (
+                  <Badge className="bg-blue-600">SWE Algorithm</Badge>
+                ) : (
+                  <Badge variant="outline">External/Manual</Badge>
+                )}
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button
@@ -110,4 +122,7 @@ export function CoursesTable({ courses }: CoursesTableProps) {
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders when courses array reference changes but content is the same
+export const CoursesTable = memo(CoursesTableComponent)
 

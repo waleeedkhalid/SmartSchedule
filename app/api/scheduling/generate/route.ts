@@ -30,13 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch all unassigned or draft sections
-    const { data: sections, error: sectionsError } = await supabase
+    // Fetch ONLY SWE course sections in levels 4-8 for scheduling
+    // External department courses (MATH, CSC, etc.) are pre-scheduled and not managed by this algorithm
+    const { data: allSections, error: sectionsError } = await supabase
       .from("section")
-      .select("*")
+      .select(`
+        *,
+        course:course!section_course_code_fkey(code, level)
+      `)
       .eq("state", "draft");
 
     if (sectionsError) throw sectionsError;
+
+    // Filter to SWE courses in levels 4-8 only
+    const sections = (allSections || []).filter((section: any) => {
+      const course = section.course;
+      return course && 
+             course.code.startsWith('SWE') && 
+             course.level >= 4 && 
+             course.level <= 8;
+    });
 
     // Fetch all rooms
     const { data: rooms, error: roomsError } = await supabase
