@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/nav/sidebar";
 import { MobileNav } from "@/components/nav/mobile-nav";
 
+// Force dynamic rendering - never cache this layout
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{

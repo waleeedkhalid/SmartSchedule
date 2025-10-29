@@ -71,9 +71,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   const supabase = createClient();
   
   // Academic level options (1-8 for full system support)
-  // Levels 1-3: Foundation/Prep courses
-  // Levels 4-8: Major courses (4=Year 1, 5=Year 2, etc.)
-  const levelOptions = [1, 2, 3, 4, 5, 6, 7, 8];
+  // DO NOT CHANGE THIS ARRAY. IT IS USED TO GENERATE THE LEVEL OPTIONS FOR THE SELECT DROP DOWN.
+  // Our scope is only for levels 4-8.
+  const levelOptions = [4, 5, 6, 7, 8];
   
   /**
    * Validate form before submission
@@ -169,8 +169,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           ? '/dashboard/student'
           : '/dashboard';
         
-        router.push(dashboardRoute);
-        router.refresh(); // Refresh to update server-side profile cache
+        // Use hard navigation to bypass Next.js Router Cache
+        // This ensures middleware re-checks onboarding status with fresh data
+        window.location.href = dashboardRoute;
       }, 1000);
       
     } catch (error) {

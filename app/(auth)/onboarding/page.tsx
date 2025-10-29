@@ -27,6 +27,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
 import { OnboardingForm } from "@/components/onboarding-form";
 
+// Force dynamic rendering - never cache this page
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function OnboardingPage() {
   // Server-side authentication check
   const supabase = await createClient();
@@ -72,7 +76,7 @@ export default async function OnboardingPage() {
   return (
     <OnboardingForm 
       userId={user.id}
-      userName={userRole.name}
+      userName={userRole.name || 'User'}
       userRole={userRole.role}
     />
   );

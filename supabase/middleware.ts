@@ -79,6 +79,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/register") &&
+    !request.nextUrl.pathname.startsWith("/onboarding") &&
     !request.nextUrl.pathname.startsWith("/error") &&
     request.nextUrl.pathname !== "/"
   ) {
@@ -99,7 +100,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/dashboard") &&
     !request.nextUrl.pathname.startsWith("/onboarding")
   ) {
-    // Check if user needs onboarding
+    // Check if user needs onboarding (force fresh data, no cache)
     const { data: userRole } = await supabase
       .from('user_roles')
       .select('onboarding_completed, level, role')
