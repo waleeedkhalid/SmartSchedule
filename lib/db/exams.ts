@@ -85,6 +85,7 @@ export async function getExamsPaginated(
       room_codes,
       academic_semester_id,
       created_at,
+      created_by,
       updated_at
     `, { count: 'exact' })
     .eq('academic_semester_id', semester)

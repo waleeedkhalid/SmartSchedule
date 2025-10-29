@@ -128,33 +128,39 @@ export type Database = {
       }
       exam: {
         Row: {
+          academic_semester_id: string
           course_code: string
           created_at: string | null
           created_by: string | null
           date: string
           duration_minutes: number
+          exam_type: string
           id: string
           room_codes: string[]
           start_time: string
           updated_at: string | null
         }
         Insert: {
+          academic_semester_id: string
           course_code: string
           created_at?: string | null
           created_by?: string | null
           date: string
           duration_minutes: number
+          exam_type: string
           id?: string
           room_codes?: string[]
           start_time: string
           updated_at?: string | null
         }
         Update: {
+          academic_semester_id?: string
           course_code?: string
           created_at?: string | null
           created_by?: string | null
           date?: string
           duration_minutes?: number
+          exam_type?: string
           id?: string
           room_codes?: string[]
           start_time?: string
@@ -328,47 +334,56 @@ export type Database = {
       }
       section: {
         Row: {
+          academic_semester_id: string
           activity: string | null
           capacity: number
           course_code: string
           created_at: string | null
           created_by: string | null
+          current_enrollment: number
           group_level: number
           id: string
           instructor_id: string | null
           meeting_pattern: Json
           room_code: string | null
           section_no: string
+          section_type: string
           state: Database["public"]["Enums"]["section_state"]
           updated_at: string | null
         }
         Insert: {
+          academic_semester_id: string
           activity?: string | null
           capacity: number
           course_code: string
           created_at?: string | null
           created_by?: string | null
+          current_enrollment?: number
           group_level: number
           id?: string
           instructor_id?: string | null
           meeting_pattern?: Json
           room_code?: string | null
           section_no: string
+          section_type?: string
           state?: Database["public"]["Enums"]["section_state"]
           updated_at?: string | null
         }
         Update: {
+          academic_semester_id?: string
           activity?: string | null
           capacity?: number
           course_code?: string
           created_at?: string | null
           created_by?: string | null
+          current_enrollment?: number
           group_level?: number
           id?: string
           instructor_id?: string | null
           meeting_pattern?: Json
           room_code?: string | null
           section_no?: string
+          section_type?: string
           state?: Database["public"]["Enums"]["section_state"]
           updated_at?: string | null
         }
@@ -755,7 +770,20 @@ export const Constants = {
 // Convenience type exports
 export type UserRoleRow = Database['public']['Tables']['user_roles']['Row']
 export type Course = Database['public']['Tables']['course']['Row']
+export type Exam = Database['public']['Tables']['exam']['Row']
 export type Instructor = Database['public']['Tables']['instructor']['Row']
 export type Room = Database['public']['Tables']['room']['Row']
 export type Section = Database['public']['Tables']['section']['Row']
 export type StudentGroup = Database['public']['Tables']['student_group']['Row']
+
+// Input types for database operations
+export type CourseInput = Database['public']['Tables']['course']['Insert']
+export type ExamInput = Database['public']['Tables']['exam']['Insert']
+export type SectionInput = Database['public']['Tables']['section']['Insert']
+
+// Custom types for RPC function returns
+export type SectionConflicts = {
+  instructor_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
+  room_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
+  student_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
+}

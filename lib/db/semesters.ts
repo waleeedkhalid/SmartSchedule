@@ -294,3 +294,4 @@ export async function setCurrentSemester(id: string): Promise<Semester> {
   return data as Semester;
 }
 
+
