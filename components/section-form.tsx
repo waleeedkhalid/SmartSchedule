@@ -34,7 +34,7 @@ const formSchema = z.object({
   meeting_days: z.array(z.string()).min(1, "Select at least one day"),
   meeting_start: z.string().min(1, "Start time is required"),
   meeting_duration: z.coerce.number().min(30).max(300),
-  is_lab: z.boolean(),
+  activity: z.enum(['lecture', 'tutorial', 'lab']),
   state: z.enum(['draft', 'released']),
 });
 
@@ -73,7 +73,7 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
       meeting_days: parseMeetingPattern(section.meeting_pattern)?.days || [],
       meeting_start: parseMeetingPattern(section.meeting_pattern)?.start || "",
       meeting_duration: parseMeetingPattern(section.meeting_pattern)?.duration || 60,
-      is_lab: parseMeetingPattern(section.meeting_pattern)?.is_lab! || false,
+      activity: section.activity || 'lecture',
       state: section.state,
     } : {
       course_code: "",
@@ -85,7 +85,7 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
       meeting_days: [],
       meeting_start: "08:00",
       meeting_duration: 60,
-      is_lab: false,
+      activity: 'lecture',
       state: 'draft',
     },
   });
@@ -172,8 +172,8 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
           days: values.meeting_days,
           start: values.meeting_start,
           duration: values.meeting_duration,
-          is_lab: values.is_lab,
         },
+        activity: values.activity,
         state: values.state,
       };
 
@@ -412,25 +412,26 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
 
               <FormField
                 control={form.control}
-                name="is_lab"
+                name="activity"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="mt-1"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        This is a Lab Section
-                      </FormLabel>
-                      <FormDescription>
-                        Lab sections require contiguous time blocks
-                      </FormDescription>
-                    </div>
+                  <FormItem>
+                    <FormLabel>Section Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select section type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="lecture">Lecture</SelectItem>
+                        <SelectItem value="tutorial">Tutorial</SelectItem>
+                        <SelectItem value="lab">Lab</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Lab sections require 2-hour blocks, tutorials are 1 hour
+                    </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

@@ -27,7 +27,7 @@ export interface SectionAssignment {
   time_slot: TimeSlot;
   instructor_id: string | null;
   group_level: number;
-  is_lab: boolean;
+  activity: 'lecture' | 'tutorial' | 'lab';
 }
 
 export interface SchedulingInput {
@@ -43,8 +43,8 @@ export interface SchedulingInput {
       days: string[];
       start: string;
       duration: number;
-      is_lab: boolean;
     };
+    activity: 'lecture' | 'tutorial' | 'lab';
   }>;
   rooms: Array<{
     code: string;
@@ -261,8 +261,8 @@ function findSuitableRoom(
   // Filter rooms by type (lab vs lecture)
   const suitableRooms = rooms.filter(
     (room) =>
-      (section.meeting_pattern.is_lab && room.type === "Lab") ||
-      (!section.meeting_pattern.is_lab && room.type === "Lecture")
+      (section.activity === 'lab' && room.type === "Lab") ||
+      (section.activity !== 'lab' && room.type === "Lecture")
   );
 
   // Sort by capacity (prefer closer match to section capacity)
@@ -300,8 +300,10 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
     if (a.group_level !== b.group_level) {
       return a.group_level - b.group_level;
     }
-    if (a.meeting_pattern.is_lab !== b.meeting_pattern.is_lab) {
-      return a.meeting_pattern.is_lab ? 1 : -1;
+    // Sort by activity: lecture, tutorial, lab
+    const activityOrder = { lecture: 0, tutorial: 1, lab: 2 };
+    if (a.activity !== b.activity) {
+      return activityOrder[a.activity] - activityOrder[b.activity];
     }
     return 0;
   });
@@ -312,7 +314,7 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
 
   // Try to assign each section
   for (const section of sortedSections) {
-    const availableSlots = section.meeting_pattern.is_lab ? labSlots : lectureSlots;
+    const availableSlots = section.activity === 'lab' ? labSlots : lectureSlots;
     let assigned = false;
 
     // Try each time slot until we find one without conflicts
@@ -330,7 +332,7 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
         // Find suitable room if not already assigned
         const roomCode = section.room_code || findSuitableRoom(section, input.rooms, timeSlot, assignments);
 
-        if (roomCode || !section.meeting_pattern.is_lab) {
+        if (roomCode || section.activity !== 'lab') {
           // Assign this section
           assignments.push({
             section_id: section.id,
@@ -340,7 +342,7 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
             time_slot: timeSlot,
             instructor_id: section.instructor_id,
             group_level: section.group_level,
-            is_lab: section.meeting_pattern.is_lab,
+            activity: section.activity,
           });
           assigned = true;
           break;

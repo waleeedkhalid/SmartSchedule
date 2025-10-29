@@ -29,8 +29,9 @@ export async function getCourseStatistics() {
     const sections = course.section || []
     const sectionCount = sections.length
     const assignedSections = sections.filter((s: any) => s.instructor_id && s.room_code).length
-    const labSections = sections.filter((s: any) => s.meeting_pattern?.is_lab).length
-    const lectureSections = sectionCount - labSections
+    const labSections = sections.filter((s: any) => s.activity === 'lab').length
+    const tutorialSections = sections.filter((s: any) => s.activity === 'tutorial').length
+    const lectureSections = sections.filter((s: any) => s.activity === 'lecture').length
     
     // Calculate average section capacity (using capacity from section, not room)
     const sectionCapacities = sections
@@ -55,8 +56,9 @@ export async function getCourseStatistics() {
       type: course.is_elective ? 'Elective' : 'Required',
       sectionCount,
       assignedSections,
-      labSections,
       lectureSections,
+      tutorialSections,
+      labSections,
       instructorCount: uniqueInstructors.size,
       avgCapacity: Math.round(avgCapacity),
       completionRate: sectionCount > 0 ? (assignedSections / sectionCount) * 100 : 0

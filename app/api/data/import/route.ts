@@ -122,18 +122,29 @@ export async function POST(request: Request) {
 
     // Import sections
     if (body.data.sections && body.data.sections.length > 0) {
-      const sectionsToImport = body.data.sections.map((s) => ({
-        id: s.id,
-        course_code: s.course_code,
-        section_no: s.section_no,
-        instructor_id: s.instructor_id,
-        room_code: s.room_code,
-        capacity: s.capacity,
-        meeting_pattern: s.meeting_pattern,
-        group_level: s.group_level,
-        state: s.state || 'draft',
-        created_by: user?.id,
-      }));
+      const sectionsToImport = body.data.sections.map((s) => {
+        // Infer activity from section_no if not provided
+        let activity = s.activity || 'lecture';
+        if (!s.activity && s.section_no) {
+          if (s.section_no.toUpperCase().endsWith('L')) activity = 'lecture';
+          else if (s.section_no.toUpperCase().endsWith('T')) activity = 'tutorial';
+          else if (s.section_no.toUpperCase().endsWith('B')) activity = 'lab';
+        }
+        
+        return {
+          id: s.id,
+          course_code: s.course_code,
+          section_no: s.section_no,
+          instructor_id: s.instructor_id,
+          room_code: s.room_code,
+          capacity: s.capacity,
+          meeting_pattern: s.meeting_pattern,
+          group_level: s.group_level,
+          activity: activity,
+          state: s.state || 'draft',
+          created_by: user?.id,
+        };
+      });
 
       const { data, error } = await supabase
         .from("section")
@@ -147,12 +158,12 @@ export async function POST(request: Request) {
       };
     }
 
-    // Import exams
+    // Import exams (all exams are course-level)
     if (body.data.exams && body.data.exams.length > 0) {
       const examsToImport = body.data.exams.map((e) => ({
         id: e.id,
         course_code: e.course_code,
-        section_id: e.section_id,
+        // section_id removed - all exams are course-level
         date: e.date,
         start_time: e.start_time,
         duration_minutes: e.duration_minutes,

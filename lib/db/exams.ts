@@ -22,9 +22,11 @@ export async function getExams() {
  * Get paginated exams with optional filtering and sorting
  * Implements server-side pagination for optimal performance
  * 
+ * NOTE: All exams are course-level (apply to all sections of a course)
+ * 
  * @param page - Page number (1-based)
  * @param pageSize - Number of exams per page (default: 20)
- * @param filters - Optional filters: { courseCode?, startDate?, endDate?, sectionId? }
+ * @param filters - Optional filters: { courseCode?, startDate?, endDate? }
  * @param sortBy - Field to sort by (default: 'date')
  * @param sortOrder - Sort direction: 'asc' or 'desc' (default: 'asc')
  * @returns Object containing exams array, total count, and total pages
@@ -36,7 +38,6 @@ export async function getExamsPaginated(
     courseCode?: string
     startDate?: string
     endDate?: string
-    sectionId?: string
   },
   sortBy: 'date' | 'start_time' | 'course_code' = 'date',
   sortOrder: 'asc' | 'desc' = 'asc'
@@ -53,7 +54,6 @@ export async function getExamsPaginated(
     .select(`
       id,
       course_code,
-      section_id,
       date,
       start_time,
       duration_minutes,
@@ -65,9 +65,6 @@ export async function getExamsPaginated(
   // Apply filters if provided
   if (filters?.courseCode) {
     query = query.eq('course_code', filters.courseCode)
-  }
-  if (filters?.sectionId) {
-    query = query.eq('section_id', filters.sectionId)
   }
   if (filters?.startDate) {
     query = query.gte('date', filters.startDate)

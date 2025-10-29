@@ -25,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   course_code: z.string().min(1, "Course is required"),
-  section_id: z.string().optional(),
   date: z.string().min(1, "Date is required"),
   start_time: z.string().min(1, "Start time is required"),
   duration_minutes: z.coerce.number().min(30).max(300),
@@ -65,14 +64,12 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
     resolver: zodResolver(formSchema),
     defaultValues: exam ? {
       course_code: exam.course_code,
-      section_id: exam.section_id || "",
       date: exam.date,
       start_time: exam.start_time.substring(0, 5), // HH:MM format
       duration_minutes: exam.duration_minutes,
       room_codes: exam.room_codes || [],
     } : {
       course_code: "",
-      section_id: "",
       date: "",
       start_time: "09:00",
       duration_minutes: 120,
@@ -210,6 +207,9 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
           <Card>
             <CardHeader>
               <CardTitle>Exam Details</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Note: All exams are course-level and apply to all sections of the selected course.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

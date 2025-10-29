@@ -267,7 +267,7 @@ export function StudentScheduleView() {
                                   {section.room_code}
                                 </div>
                               )}
-                              {section.meeting_pattern.is_lab && (
+                              {section.activity === 'lab' && (
                                 <Badge variant="outline" className="text-[9px] mt-1 h-4">
                                   Lab
                                 </Badge>

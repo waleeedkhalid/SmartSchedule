@@ -148,9 +148,19 @@ export async function createSection(section: SectionInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
+  // Ensure activity field is set (required column)
+  // If not provided, infer from section_no suffix or default to 'lecture'
+  let activity = section.activity;
+  if (!activity && section.section_no) {
+    if (section.section_no.endsWith('L')) activity = 'lecture';
+    else if (section.section_no.endsWith('T')) activity = 'tutorial';
+    else if (section.section_no.endsWith('B')) activity = 'lab';
+    else activity = 'lecture'; // Default
+  }
+  
   const { data, error } = await supabase
     .from('section')
-    .insert({ ...section, created_by: user?.id })
+    .insert({ ...section, activity, created_by: user?.id })
     .select()
     .single();
   

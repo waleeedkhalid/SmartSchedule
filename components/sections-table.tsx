@@ -164,10 +164,17 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell>{section.instructor_id ? "Assigned" : "—"}</TableCell>
               <TableCell>
                 {section.room_code || "—"}
-                {section.meeting_pattern.is_lab && (
-                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    Lab
-                  </span>
+                {section.activity && (
+                  <Badge 
+                    variant={
+                      section.activity === 'lab' ? 'default' : 
+                      section.activity === 'tutorial' ? 'secondary' : 
+                      'outline'
+                    }
+                    className="ml-2"
+                  >
+                    {section.activity.charAt(0).toUpperCase() + section.activity.slice(1)}
+                  </Badge>
                 )}
               </TableCell>
               <TableCell>{formatDays(section.meeting_pattern.days)}</TableCell>

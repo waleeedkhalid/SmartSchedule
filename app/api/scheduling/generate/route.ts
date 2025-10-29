@@ -105,8 +105,8 @@ export async function POST(request: NextRequest) {
               days: assignment.time_slot.days,
               start: assignment.time_slot.start_time,
               duration: assignment.time_slot.duration,
-              is_lab: assignment.is_lab,
             },
+            // activity is already stored in section table, no need to update
           })
           .eq("id", assignment.section_id)
       );

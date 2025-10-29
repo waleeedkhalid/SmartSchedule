@@ -124,16 +124,26 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       }
       
       // Update user profile in database
-      const { error: updateError } = await supabase
+      const { data: updatedProfile, error: updateError } = await supabase
         .from('user_roles')
         .update(updateData)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select()
+        .single();
       
       if (updateError) {
-        console.error('Error updating profile:', updateError);
-        toast.error('Failed to save your profile. Please try again.');
+        console.error('Error updating profile:', {
+          error: updateError,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code
+        });
+        toast.error(`Failed to save your profile: ${updateError.message || 'Unknown error'}`);
         return;
       }
+      
+      console.log('Profile updated successfully:', updatedProfile);
       
       // Auto-assign student to group (for students only)
       if (userRole === 'student') {

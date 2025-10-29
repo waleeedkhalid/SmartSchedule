@@ -12,7 +12,7 @@ export function SectionCard({ section }: SectionCardProps) {
 	const days = meetingPattern?.days || []
 	const startTime = meetingPattern?.start || 'TBD'
 	const duration = meetingPattern?.duration || 0
-	const isLab = meetingPattern?.is_lab || false
+	const activity = section.activity || 'lecture'
 
 	return (
 		<Card>
@@ -22,7 +22,8 @@ export function SectionCard({ section }: SectionCardProps) {
 				</CardTitle>
 				<p className="text-sm text-muted-foreground">
 					Section {section.section_no}{' '}
-					{isLab && <span className="text-blue-600">(Lab)</span>}
+					{activity === 'lab' && <span className="text-blue-600">(Lab)</span>}
+					{activity === 'tutorial' && <span className="text-green-600">(Tutorial)</span>}
 				</p>
 			</CardHeader>
 			<CardContent className="space-y-2 text-sm">

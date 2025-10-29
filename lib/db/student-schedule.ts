@@ -272,12 +272,12 @@ export async function getStudentExams(studentId: string): Promise<ExamView[]> {
   const courseCodes = schedule.sections.map(s => s.course_code);
   
   // Step 2: Query all exams for these courses
+  // Note: All exams are course-level (apply to all sections)
   const { data: exams, error: examsError } = await supabase
     .from('exam')
     .select(`
       *,
-      course:course!exam_course_code_fkey(code, title),
-      section:section!exam_section_id_fkey(id, section_no)
+      course:course!exam_course_code_fkey(code, title)
     `)
     .in('course_code', courseCodes)
     .order('date', { ascending: true })
@@ -317,8 +317,6 @@ export async function getStudentExams(studentId: string): Promise<ExamView[]> {
       id: exam.id,
       course_code: exam.course_code,
       course_title: exam.course?.title || '',
-      section_id: exam.section_id,
-      section_no: exam.section?.section_no || null,
       date: exam.date,
       start_time: exam.start_time,
       duration_minutes: exam.duration_minutes,
