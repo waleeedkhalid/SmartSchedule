@@ -45,7 +45,6 @@ next-env.d.ts
 .cursor/rules
 
 # supabase
-supabase
 supabase/migrations
 supabase/seed
 supabase/functions
