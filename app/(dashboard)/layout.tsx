@@ -21,10 +21,10 @@ export default async function DashboardLayout({
     .from('user_roles')
     .select('role, name, email')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!userRole) {
-    redirect("/dashboard");
+    redirect("/onboarding");
   }
 
   return (

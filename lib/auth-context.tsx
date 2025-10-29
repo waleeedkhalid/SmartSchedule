@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('user_roles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       return {
         user,

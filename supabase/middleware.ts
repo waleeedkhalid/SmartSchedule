@@ -104,7 +104,7 @@ export async function updateSession(request: NextRequest) {
       .from('user_roles')
       .select('onboarding_completed, level, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (userRole) {
       // Determine if onboarding is needed
@@ -127,6 +127,10 @@ export async function updateSession(request: NextRequest) {
         const onboardingUrl = new URL("/onboarding", request.url);
         return NextResponse.redirect(onboardingUrl);
       }
+    } else {
+      // User has no role record - redirect to onboarding
+      const onboardingUrl = new URL("/onboarding", request.url);
+      return NextResponse.redirect(onboardingUrl);
     }
   }
 
