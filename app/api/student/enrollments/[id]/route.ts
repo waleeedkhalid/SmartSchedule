@@ -1,35 +1,42 @@
 /**
- * Individual Student Enrollment API Route
+ * Individual Section Drop API Route
+ * 
+ * REFACTORED: Now drops section using drop_section() database function
  * 
  * Endpoints:
- * - DELETE: Drop an enrollment (mark as dropped)
+ * - DELETE: Drop a section (removes section_assignment, updates enrollment status)
  * 
- * Authorization: Students can only drop their own enrollments
+ * Authorization: Students can only drop their own sections
  * 
- * Note: We mark enrollments as 'dropped' rather than deleting them
- * to maintain an audit trail of registration activity
+ * Note: [id] parameter is now section_id (not enrollment_id)
+ * The database function handles both section_assignment and course_enrollment updates
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/supabase/server';
-import { dropEnrollment } from '@/lib/db/student-enrollments';
+import { dropSection } from '@/lib/db/enrollments';
 
 /**
  * DELETE /api/student/enrollments/[id]
- * Drop an enrollment (update status to 'dropped')
+ * Drop a section (uses drop_section() database function)
  * 
  * Path Parameters:
- * - id: UUID of the enrollment to drop
+ * - id: UUID of the section to drop (section_id)
  * 
  * Authorization:
- * - Student must own the enrollment
- * - Enrollment must have status='registered'
+ * - Student must be enrolled in the section
+ * - Uses drop_section() database function for validation
+ * 
+ * Database function handles:
+ * - Removes section_assignment record
+ * - Updates course_enrollment status to 'dropped' if no other sections
+ * - Updates section enrollment count cache
  * 
  * Returns:
- * - 200: Enrollment dropped successfully
+ * - 200: Section dropped successfully
  * - 401: Not authenticated
- * - 403: Not authorized (not a student or not owner)
- * - 404: Enrollment not found
+ * - 403: Not authorized (not a student)
+ * - 400: Validation failed (not enrolled, etc.)
  * - 500: Server error
  */
 export async function DELETE(
@@ -37,7 +44,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: enrollmentId } = await params;
+    const { id: sectionId } = await params;
     
     // Authentication check
     const supabase = await createClient();
@@ -59,34 +66,31 @@ export async function DELETE(
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(
-        { error: 'Only students can drop enrollments' },
+        { error: 'Only students can drop sections' },
         { status: 403 }
       );
     }
     
-    // Drop enrollment
-    // The dropEnrollment function verifies:
-    // 1. Student owns this enrollment
-    // 2. Enrollment is currently 'registered'
-    // Then updates status to 'dropped' and sets dropped_at timestamp
-    const result = await dropEnrollment(enrollmentId, user.id);
+    // Drop section using database function
+    // This handles validation and updates both section_assignment and course_enrollment
+    const result = await dropSection(user.id, sectionId);
     
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || 'Failed to drop enrollment' },
-        { status: 404 }
+        { error: result.error || 'Failed to drop section' },
+        { status: 400 }
       );
     }
     
     return NextResponse.json({
       success: true,
-      message: 'Enrollment dropped successfully'
+      message: 'Section dropped successfully'
     });
     
   } catch (error) {
-    console.error('Error dropping enrollment:', error);
+    console.error('Error dropping section:', error);
     return NextResponse.json(
-      { error: 'Failed to drop enrollment' },
+      { error: 'Failed to drop section' },
       { status: 500 }
     );
   }

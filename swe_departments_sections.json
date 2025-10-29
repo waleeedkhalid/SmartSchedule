@@ -1,0 +1,566 @@
+{
+  "department_code": "SWE",
+  "department_name": "Software Engineering Department",
+  "courses": [
+    {
+      "code": "SWE 211",
+      "title": "Introduction to Software Engineering",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 4,
+      "is_elective": false,
+      "prerequisite": "MATH 151, CSC 111",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 4,
+          "capacity": 40,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Sarah Al-Mansour",
+                "email": "smansour@university.edu"
+              },
+              "room_code": "SWE-101",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "10:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Sarah Al-Mansour",
+                "email": "smansour@university.edu"
+              },
+              "room_code": "SWE-102",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "10:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 314",
+      "title": "Software Security Engineering",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 5,
+      "is_elective": false,
+      "prerequisite": "CEN 303",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 5,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Mohammed Al-Qahtani",
+                "email": "mqahtani@university.edu"
+              },
+              "room_code": "SWE-201",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "13:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Mohammed Al-Qahtani",
+                "email": "mqahtani@university.edu"
+              },
+              "room_code": "SWE-202",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "13:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 312",
+      "title": "Software Requirements Engineering",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 5,
+      "is_elective": false,
+      "prerequisite": "CSC 113, SWE 211",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 5,
+          "capacity": 40,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Fatima Al-Dosari",
+                "email": "fdosari@university.edu"
+              },
+              "room_code": "SWE-203",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "08:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Fatima Al-Dosari",
+                "email": "fdosari@university.edu"
+              },
+              "room_code": "SWE-204",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "08:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 381",
+      "title": "Web Application Development",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 6,
+      "is_elective": false,
+      "prerequisite": "SWE 211",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 6,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Khalid Al-Harbi",
+                "email": "kharbi@university.edu"
+              },
+              "room_code": "SWE-LAB-301",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "11:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Khalid Al-Harbi",
+                "email": "kharbi@university.edu"
+              },
+              "room_code": "SWE-LAB-302",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "11:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 321",
+      "title": "Software Design and Architecture",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 6,
+      "is_elective": false,
+      "prerequisite": "SWE 312, SWE 314",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 6,
+          "capacity": 40,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Nora Al-Shehri",
+                "email": "nshehri@university.edu"
+              },
+              "room_code": "SWE-301",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "09:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Nora Al-Shehri",
+                "email": "nshehri@university.edu"
+              },
+              "room_code": "SWE-302",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "09:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 333",
+      "title": "Software Quality Assurance",
+      "credits": 2,
+      "weekly_hours": 3,
+      "level": 6,
+      "is_elective": false,
+      "prerequisite": "SWE 312",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 6,
+          "capacity": 40,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Ahmed Al-Ghamdi",
+                "email": "aghamdi@university.edu"
+              },
+              "room_code": "SWE-303",
+              "meeting_pattern": {
+                "days": ["Monday", "Wednesday"],
+                "start_time": "10:00",
+                "duration_minutes": 75
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 444",
+      "title": "Software Construction Laboratory",
+      "credits": 2,
+      "weekly_hours": 4,
+      "level": 7,
+      "is_elective": false,
+      "prerequisite": "SWE 321, SWE 333",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 7,
+          "capacity": 30,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lab",
+              "instructor": {
+                "name": "Dr. Laila Al-Mutairi",
+                "email": "lmutairi@university.edu"
+              },
+              "room_code": "SWE-LAB-401",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "14:00",
+                "duration_minutes": 120
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 434",
+      "title": "Software Testing & Validation",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 7,
+      "is_elective": false,
+      "prerequisite": "SWE 333",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 7,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Hamed Al-Otaibi",
+                "email": "hotaibi@university.edu"
+              },
+              "room_code": "SWE-401",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "13:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Hamed Al-Otaibi",
+                "email": "hotaibi@university.edu"
+              },
+              "room_code": "SWE-402",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "13:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 496",
+      "title": "Graduation Project I",
+      "credits": 3,
+      "weekly_hours": 6,
+      "level": 7,
+      "is_elective": false,
+      "prerequisite": "SWE 321",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 7,
+          "capacity": 25,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Abdullah Al-Subaie",
+                "email": "asubaie@university.edu"
+              },
+              "room_code": "SWE-PROJECT-LAB",
+              "meeting_pattern": {
+                "days": ["Monday", "Wednesday"],
+                "start_time": "09:00",
+                "duration_minutes": 90
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 477",
+      "title": "Software Engineering Code of Ethics & Professional Practice",
+      "credits": 2,
+      "weekly_hours": 2,
+      "level": 7,
+      "is_elective": false,
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 7,
+          "capacity": 40,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Maha Al-Shahrani",
+                "email": "mshahrani@university.edu"
+              },
+              "room_code": "SWE-501",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "14:00",
+                "duration_minutes": 100
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 482",
+      "title": "Human-Computer Interaction",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 7,
+      "is_elective": false,
+      "prerequisite": "SWE 381",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 7,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Raed Al-Juhani",
+                "email": "rjuhani@university.edu"
+              },
+              "room_code": "SWE-LAB-403",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "10:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Raed Al-Juhani",
+                "email": "rjuhani@university.edu"
+              },
+              "room_code": "SWE-LAB-404",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "10:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 466",
+      "title": "Software Project Management",
+      "credits": 3,
+      "weekly_hours": 5,
+      "level": 8,
+      "is_elective": false,
+      "prerequisite": "SWE 333",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 8,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Tariq Al-Zahrani",
+                "email": "tzahrani@university.edu"
+              },
+              "room_code": "SWE-601",
+              "meeting_pattern": {
+                "days": ["Sunday", "Tuesday"],
+                "start_time": "08:00",
+                "duration_minutes": 90
+              }
+            },
+            {
+              "section_no": "01T",
+              "section_type": "tutorial",
+              "instructor": {
+                "name": "Dr. Tariq Al-Zahrani",
+                "email": "tzahrani@university.edu"
+              },
+              "room_code": "SWE-602",
+              "meeting_pattern": {
+                "days": ["Thursday"],
+                "start_time": "08:00",
+                "duration_minutes": 60
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 455",
+      "title": "Software Maintenance & Evolution",
+      "credits": 2,
+      "weekly_hours": 3,
+      "level": 8,
+      "is_elective": false,
+      "prerequisite": "SWE 434",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 8,
+          "capacity": 35,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Saleh Al-Malki",
+                "email": "smalki@university.edu"
+              },
+              "room_code": "SWE-603",
+              "meeting_pattern": {
+                "days": ["Monday", "Wednesday"],
+                "start_time": "13:00",
+                "duration_minutes": 75
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "SWE 497",
+      "title": "Graduation Project II",
+      "credits": 3,
+      "weekly_hours": 6,
+      "level": 8,
+      "is_elective": false,
+      "prerequisite": "SWE 496",
+      "section_groups": [
+        {
+          "group_id": "01",
+          "group_level": 8,
+          "capacity": 25,
+          "sections": [
+            {
+              "section_no": "01L",
+              "section_type": "lecture",
+              "instructor": {
+                "name": "Dr. Abdullah Al-Subaie",
+                "email": "asubaie@university.edu"
+              },
+              "room_code": "SWE-PROJECT-LAB",
+              "meeting_pattern": {
+                "days": ["Monday", "Wednesday"],
+                "start_time": "11:00",
+                "duration_minutes": 90
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

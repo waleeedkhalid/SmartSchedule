@@ -145,19 +145,8 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       
       console.log('Profile updated successfully:', updatedProfile);
       
-      // Auto-assign student to group (for students only)
-      if (userRole === 'student') {
-        const { error: groupError } = await supabase.rpc('auto_assign_student_to_group', {
-          p_student_id: userId,
-          p_level: parseInt(academicLevel)
-        });
-        
-        if (groupError) {
-          console.error('Error auto-assigning to group:', groupError);
-          // Don't fail onboarding if group assignment fails - it can be done manually later
-          toast.warning('Profile saved, but group assignment needs manual setup.');
-        }
-      }
+      // Note: Student group assignment happens during schedule generation
+      // by the scheduling committee, not during registration
       
       // Success! Show success message
       toast.success('Welcome to SmartSchedule! Your profile is all set up.');

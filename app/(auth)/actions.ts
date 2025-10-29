@@ -38,8 +38,12 @@ export async function signup(formData: {
       });
 
     if (roleError) {
-      // Log error but don't fail signup
+      // Return error to user instead of silent failure
       console.error('Failed to create user role:', roleError);
+      
+      return { 
+        error: `Failed to create user profile: ${roleError.message}. This is likely a permission issue. Please contact support or try again later.` 
+      };
     }
 
     // Auto-create instructor profile for faculty users

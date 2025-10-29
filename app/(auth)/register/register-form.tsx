@@ -161,15 +161,30 @@ export default function RegisterForm() {
 
         if (response.error) {
           const errorMessage = response.error.toLowerCase()
-          if (
-            errorMessage.includes('already') ||
-            errorMessage.includes('exists')
-          ) {
-            toast.error('An account with this email already exists.')
-          } else if (errorMessage.includes('email')) {
+          
+          // Profile creation error (RLS policy issue)
+          if (errorMessage.includes('profile') || errorMessage.includes('permission')) {
+            toast.error(response.error, {
+              duration: 8000,
+              description: 'This appears to be a system configuration issue. Please contact your administrator.',
+            })
+          }
+          // Duplicate email
+          else if (errorMessage.includes('already') || errorMessage.includes('exists')) {
+            toast.error('An account with this email already exists.', {
+              description: 'Please use a different email or try logging in.'
+            })
+          }
+          // Invalid email
+          else if (errorMessage.includes('email')) {
             toast.error('Invalid email address. Please try again.')
-          } else {
-            toast.error('Unable to create account. Please try again later.')
+          }
+          // Generic error
+          else {
+            toast.error('Unable to create account', {
+              description: response.error,
+              duration: 6000
+            })
           }
           return
         }

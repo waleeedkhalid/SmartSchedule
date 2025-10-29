@@ -6,6 +6,12 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  // Check if environment variables are set
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn('Supabase environment variables not set, skipping auth check');
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,8 +21,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
@@ -59,31 +64,36 @@ export async function updateSession(request: NextRequest) {
   }
 
   // =====================================================
+  // DEFINE PUBLIC ROUTES (accessible without authentication)
+  // =====================================================
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/register',
+    '/auth',
+    '/error',
+    '/onboarding',
+    '/demo',
+    '/api',
+    '/_next',
+    '/favicon.ico'
+  ];
+  
+  const isPublicRoute = publicRoutes.some(route => 
+    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(`${route}/`)
+  );
+
+  // =====================================================
   // REDIRECT LOGGED-IN USERS FROM AUTH ROUTES
   // =====================================================
-  // If user is logged in and trying to access auth routes, redirect to dashboard
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith("/login") ||
-      request.nextUrl.pathname.startsWith("/register"))
-  ) {
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // =====================================================
-  // PROTECT DASHBOARD ROUTES
+  // PROTECT DASHBOARD AND OTHER PRIVATE ROUTES
   // =====================================================
-  // If no user and trying to access protected routes, redirect to login
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/register") &&
-    !request.nextUrl.pathname.startsWith("/onboarding") &&
-    !request.nextUrl.pathname.startsWith("/error") &&
-    request.nextUrl.pathname !== "/"
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  if (!user && !isPublicRoute) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
@@ -97,8 +107,7 @@ export async function updateSession(request: NextRequest) {
   
   if (
     user &&
-    request.nextUrl.pathname.startsWith("/dashboard") &&
-    !request.nextUrl.pathname.startsWith("/onboarding")
+    request.nextUrl.pathname.startsWith("/dashboard")
   ) {
     // Check if user needs onboarding (force fresh data, no cache)
     const { data: userRole } = await supabase

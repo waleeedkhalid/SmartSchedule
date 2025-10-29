@@ -26,6 +26,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // Force dynamic rendering - never cache this page
 export const dynamic = 'force-dynamic';
@@ -49,8 +51,41 @@ export default async function OnboardingPage() {
     .maybeSingle();
   
   // User not found in user_roles table
+  // This can happen if registration didn't complete properly (RLS policy blocked INSERT)
   if (roleError || !userRole) {
-    redirect("/login");
+    // Show error instead of redirecting to prevent infinite loop
+    return (
+      <div className="container flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Profile Not Found</CardTitle>
+            <CardDescription>
+              Your account exists but your profile could not be found.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This usually happens if registration didn't complete properly. Please sign out and try registering again.
+            </p>
+            {roleError && (
+              <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
+                Error: {roleError.message}
+              </div>
+            )}
+            <form action={async () => {
+              "use server";
+              const supabase = await createClient();
+              await supabase.auth.signOut();
+              redirect("/register");
+            }}>
+              <Button type="submit" className="w-full">
+                Sign Out and Register Again
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
   
   // Already completed onboarding - redirect to dashboard

@@ -1,4 +1,11 @@
-// Database queries for courses
+/**
+ * Database queries for courses
+ * 
+ * REFACTORED: Updated to use new schema fields
+ * - title → name
+ * - is_elective → course_type (ENUM: 'required' | 'elective')
+ * - Removed: weekly_hours
+ */
 import { createClient } from '@/supabase/server';
 import { Course, CourseInput } from '@/lib/types/database';
 
@@ -42,7 +49,7 @@ export async function getElectiveCourses() {
   const { data, error } = await supabase
     .from('course')
     .select('*')
-    .eq('is_elective', true)
+    .eq('course_type', 'elective')
     .order('code');
   
   if (error) throw error;
@@ -187,7 +194,7 @@ export async function getRequiredCoursesByLevel(level: number) {
     .from('course')
     .select('*')
     .eq('level', level)
-    .eq('is_elective', false)
+    .eq('course_type', 'required')
     .order('code')
   
   if (error) throw error
@@ -209,7 +216,7 @@ export async function getCoursesPaginated(
   page: number = 1,
   pageSize: number = 20,
   searchTerm?: string,
-  sortBy: 'code' | 'title' | 'level' | 'credits' | 'weekly_hours' = 'code',
+  sortBy: 'code' | 'name' | 'level' | 'credits' = 'code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
   const supabase = await createClient()
@@ -226,7 +233,7 @@ export async function getCoursesPaginated(
   // Apply search filter if provided
   if (searchTerm && searchTerm.trim()) {
     const searchPattern = `%${searchTerm.trim()}%`
-    query = query.or(`code.ilike.${searchPattern},title.ilike.${searchPattern}`)
+    query = query.or(`code.ilike.${searchPattern},name.ilike.${searchPattern}`)
   }
   
   // Apply sorting and pagination

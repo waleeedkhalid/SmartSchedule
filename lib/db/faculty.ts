@@ -101,11 +101,24 @@ export async function getInstructorByUserEmail(email: string): Promise<Instructo
  * Get sections assigned to a faculty member
  * 
  * @param instructorId - UUID of the instructor
+ * @param semesterId - Optional semester ID (defaults to current semester)
  * @returns Array of sections with course information
  * @throws Error if database query fails
  */
-export async function getFacultySections(instructorId: string): Promise<FacultySection[]> {
+export async function getFacultySections(instructorId: string, semesterId?: string): Promise<FacultySection[]> {
   const supabase = await createClient();
+  
+  // Get semester ID if not provided
+  let semester = semesterId;
+  if (!semester) {
+    const { getCurrentSemester } = await import('./semesters');
+    const currentSemester = await getCurrentSemester();
+    if (!currentSemester) {
+      // Return empty array if no semester exists
+      return [];
+    }
+    semester = currentSemester.id;
+  }
   
   const { data, error } = await supabase
     .from('section')
@@ -116,9 +129,11 @@ export async function getFacultySections(instructorId: string): Promise<FacultyS
       capacity,
       meeting_pattern,
       room_code,
+      academic_semester_id,
       course:course!section_course_code_fkey(title, credits, level)
     `)
     .eq('instructor_id', instructorId)
+    .eq('academic_semester_id', semester)
     .order('course_code');
   
   if (error) {
@@ -245,10 +260,29 @@ export async function isFacultyUser(userId: string): Promise<boolean> {
  * Get faculty statistics (sections, load, etc.)
  * 
  * @param instructorId - UUID of the instructor
+ * @param semesterId - Optional semester ID (defaults to current semester)
  * @returns Statistics object
  */
-export async function getFacultyStats(instructorId: string) {
+export async function getFacultyStats(instructorId: string, semesterId?: string) {
   const supabase = await createClient();
+  
+  // Get semester ID if not provided
+  let semester = semesterId;
+  if (!semester) {
+    const { getCurrentSemester } = await import('./semesters');
+    const currentSemester = await getCurrentSemester();
+    if (!currentSemester) {
+      // Return default stats if no semester exists
+      return {
+        totalSections: 0,
+        uniqueCourses: 0,
+        maxLoadPerWeek: 12,
+        currentLoad: 0,
+        loadPercentage: 0,
+      };
+    }
+    semester = currentSemester.id;
+  }
   
   // Get instructor info
   const { data: instructor } = await supabase
@@ -257,11 +291,12 @@ export async function getFacultyStats(instructorId: string) {
     .eq('id', instructorId)
     .maybeSingle();
   
-  // Get sections count
+  // Get sections count for current semester
   const { data: sections } = await supabase
     .from('section')
-    .select('id, course_code')
-    .eq('instructor_id', instructorId);
+    .select('id, course_code, academic_semester_id')
+    .eq('instructor_id', instructorId)
+    .eq('academic_semester_id', semester);
   
   const sectionCount = sections?.length || 0;
   const uniqueCourses = new Set(sections?.map(s => s.course_code)).size;

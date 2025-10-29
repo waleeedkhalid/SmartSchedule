@@ -1,33 +1,37 @@
 /**
  * Student Enrollments API Route
  * 
+ * REFACTORED: Using dual enrollment model (course_enrollment + section_assignment)
+ * 
  * Endpoints:
- * - GET: Fetch student's current enrollments
- * - POST: Enroll in an elective section
+ * - GET: Fetch student's current enrollments with sections
+ * - POST: Enroll in a section (creates both course enrollment and section assignment)
  * 
  * Authorization: Students can only access their own enrollments
  * 
  * Validation Flow (POST):
  * 1. Verify authenticated and is a student
- * 2. Check credit limit (≤20 total credits)
- * 3. Verify section has available seats
- * 4. Confirm prerequisites met (V1: auto-pass)
- * 5. Create enrollment record
+ * 2. Use validate_enrollment() database function
+ * 3. Use assign_student_to_section() database function
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/supabase/server';
 import { 
-  getStudentEnrollments, 
-  enrollInSection,
-  getEnrollmentStats
-} from '@/lib/db/student-enrollments';
+  getStudentEnrollmentsWithSections,
+  assignStudentToSection,
+  validateEnrollment,
+  getStudentTotalCredits
+} from '@/lib/db/enrollments';
+import { getCurrentSemester } from '@/lib/db/semesters';
+import { getStudentProfile } from '@/lib/db/student-profiles';
 
 /**
  * GET /api/student/enrollments
  * Fetch all active enrollments for the authenticated student
  * 
  * Query Parameters:
+ * - semester_id: Optional semester ID (defaults to current semester)
  * - stats: If 'true', returns enrollment statistics instead of full list
  * 
  * Returns:
@@ -62,18 +66,26 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Check if stats requested
+    // Get semester ID (from query param or current)
     const { searchParams } = new URL(request.url);
+    const semesterId = searchParams.get('semester_id');
     const wantsStats = searchParams.get('stats') === 'true';
     
     if (wantsStats) {
       // Return enrollment statistics
-      const stats = await getEnrollmentStats(user.id);
-      return NextResponse.json(stats);
+      const currentSemester = await getCurrentSemester();
+      const totalCredits = await getStudentTotalCredits(user.id, semesterId || currentSemester?.id);
+      const profile = await getStudentProfile(user.id);
+      
+      return NextResponse.json({
+        total_credits: totalCredits,
+        max_credits: profile?.max_credits_allowed || 21,
+        remaining_credits: (profile?.max_credits_allowed || 21) - totalCredits
+      });
     }
     
-    // Fetch full enrollment list
-    const enrollments = await getStudentEnrollments(user.id);
+    // Fetch enrollments with section details
+    const enrollments = await getStudentEnrollmentsWithSections(user.id, semesterId || undefined);
     
     return NextResponse.json(enrollments);
     
@@ -88,19 +100,16 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/student/enrollments
- * Enroll student in an elective section
+ * Enroll student in a section (creates both course enrollment and section assignment)
  * 
  * Request Body:
  * {
  *   section_id: string  // UUID of the section to enroll in
+ *   enrollment_type?: 'required' | 'elective' | 'retake'  // Optional, defaults to 'elective'
  * }
  * 
  * Validation:
- * 1. Student authentication
- * 2. Credit limit check (total ≤ 20)
- * 3. Section capacity check (seats available)
- * 4. Prerequisites check (V1: always pass)
- * 5. No duplicate enrollment
+ * Uses validate_enrollment() and assign_student_to_section() database functions
  * 
  * Returns:
  * - 201: Enrollment created successfully
@@ -125,7 +134,7 @@ export async function POST(request: NextRequest) {
     // Verify user is a student
     const { data: userRole, error: roleError } = await supabase
       .from('user_roles')
-      .select('role, level')
+      .select('role')
       .eq('user_id', user.id)
       .maybeSingle();
     
@@ -136,17 +145,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verify student has a level set
-    if (!userRole.level) {
+    // Verify student has a profile
+    const profile = await getStudentProfile(user.id);
+    if (!profile) {
       return NextResponse.json(
-        { error: 'Student level not set. Contact administrator.' },
+        { error: 'Student profile not found. Contact administrator.' },
         { status: 400 }
       );
     }
     
     // Parse request body
     const body = await request.json();
-    const { section_id } = body;
+    const { section_id, enrollment_type } = body;
     
     if (!section_id) {
       return NextResponse.json(
@@ -155,16 +165,24 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Validate and create enrollment
-    // This function handles all validation logic:
-    // - Credit limit (≤20)
-    // - Section capacity
-    // - Prerequisites
-    // - Duplicate check
-    const result = await enrollInSection(user.id, section_id);
+    // Validate enrollment first
+    const validation = await validateEnrollment(user.id, section_id);
+    
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error, validation },
+        { status: 400 }
+      );
+    }
+    
+    // Create enrollment using database function
+    const result = await assignStudentToSection(
+      user.id,
+      section_id,
+      enrollment_type || 'elective'
+    );
     
     if (!result.success) {
-      // Validation failed - return user-friendly error
       return NextResponse.json(
         { error: result.error },
         { status: 400 }
@@ -175,7 +193,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: true,
-        enrollment_id: result.enrollmentId,
+        enrollment_id: result.enrollment_id,
         message: 'Successfully enrolled in section'
       },
       { status: 201 }

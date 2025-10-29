@@ -1,16 +1,32 @@
-// Database queries for sections
+/**
+ * Database queries for sections
+ * 
+ * REFACTORED: Added semester context (REQUIRED for all queries)
+ * - Added academic_semester_id to all query functions
+ * - Added section_type support ('lecture' | 'lab' | 'tutorial')
+ * - Using current_enrollment from database (cached via trigger)
+ */
 import { createClient } from '@/supabase/server';
 import { Section, SectionInput, SectionConflicts } from '@/lib/types/database';
+import { getCurrentSemester } from './semesters';
 
 /**
- * Get all sections (DEPRECATED - use getSectionsPaginated instead)
+ * Get all sections for a semester (DEPRECATED - use getSectionsPaginated instead)
  * @deprecated Use getSectionsPaginated for better performance
+ * @param semesterId - Semester ID (defaults to current semester)
  */
-export async function getSections() {
+export async function getSections(semesterId?: string) {
   const supabase = await createClient();
+  const semester = semesterId || (await getCurrentSemester())?.id;
+  
+  if (!semester) {
+    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+  }
+  
   const { data, error } = await supabase
     .from('section')
     .select('*')
+    .eq('academic_semester_id', semester)
     .order('course_code');
   
   if (error) throw error;
@@ -23,7 +39,7 @@ export async function getSections() {
  * 
  * @param page - Page number (1-based)
  * @param pageSize - Number of sections per page (default: 20)
- * @param filters - Optional filters: { level?, state?, courseCode?, instructorId? }
+ * @param filters - Optional filters: { semesterId?, level?, state?, courseCode?, instructorId?, sectionType? }
  * @param sortBy - Field to sort by (default: 'course_code')
  * @param sortOrder - Sort direction: 'asc' or 'desc' (default: 'asc')
  * @returns Object containing sections array, total count, and total pages
@@ -32,15 +48,23 @@ export async function getSectionsPaginated(
   page: number = 1,
   pageSize: number = 20,
   filters?: {
+    semesterId?: string
     level?: number
     state?: 'draft' | 'released'
     courseCode?: string
     instructorId?: string
+    sectionType?: 'lecture' | 'lab' | 'tutorial'
   },
   sortBy: 'course_code' | 'section_no' | 'group_level' | 'state' = 'course_code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
   const supabase = await createClient()
+  
+  // Get semester ID (required)
+  const semester = filters?.semesterId || (await getCurrentSemester())?.id;
+  if (!semester) {
+    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+  }
   
   // Calculate range for pagination
   const from = (page - 1) * pageSize
@@ -53,15 +77,19 @@ export async function getSectionsPaginated(
       id,
       course_code,
       section_no,
+      section_type,
       instructor_id,
       room_code,
       capacity,
+      current_enrollment,
       meeting_pattern,
       group_level,
       state,
+      academic_semester_id,
       created_at,
       updated_at
     `, { count: 'exact' })
+    .eq('academic_semester_id', semester)
   
   // Apply filters if provided
   if (filters?.level) {
@@ -75,6 +103,9 @@ export async function getSectionsPaginated(
   }
   if (filters?.instructorId) {
     query = query.eq('instructor_id', filters.instructorId)
+  }
+  if (filters?.sectionType) {
+    query = query.eq('section_type', filters.sectionType)
   }
   
   // Apply sorting and pagination
@@ -108,36 +139,57 @@ export async function getSectionById(id: string) {
   return data as Section;
 }
 
-export async function getSectionsByCourse(courseCode: string) {
+export async function getSectionsByCourse(courseCode: string, semesterId?: string) {
   const supabase = await createClient();
+  const semester = semesterId || (await getCurrentSemester())?.id;
+  
+  if (!semester) {
+    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+  }
+  
   const { data, error } = await supabase
     .from('section')
     .select('*')
     .eq('course_code', courseCode)
+    .eq('academic_semester_id', semester)
     .order('section_no');
   
   if (error) throw error;
   return data as Section[];
 }
 
-export async function getSectionsByInstructor(instructorId: string) {
+export async function getSectionsByInstructor(instructorId: string, semesterId?: string) {
   const supabase = await createClient();
+  const semester = semesterId || (await getCurrentSemester())?.id;
+  
+  if (!semester) {
+    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+  }
+  
   const { data, error } = await supabase
     .from('section')
     .select('*')
     .eq('instructor_id', instructorId)
+    .eq('academic_semester_id', semester)
     .order('course_code');
   
   if (error) throw error;
   return data as Section[];
 }
 
-export async function getSectionsByLevel(level: number) {
+export async function getSectionsByLevel(level: number, semesterId?: string) {
   const supabase = await createClient();
+  const semester = semesterId || (await getCurrentSemester())?.id;
+  
+  if (!semester) {
+    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+  }
+  
   const { data, error } = await supabase
     .from('section')
     .select('*')
     .eq('group_level', level)
+    .eq('academic_semester_id', semester)
     .order('course_code');
   
   if (error) throw error;
@@ -148,19 +200,32 @@ export async function createSection(section: SectionInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  // Ensure activity field is set (required column)
-  // If not provided, infer from section_no suffix or default to 'lecture'
-  let activity = section.activity;
-  if (!activity && section.section_no) {
-    if (section.section_no.endsWith('L')) activity = 'lecture';
-    else if (section.section_no.endsWith('T')) activity = 'tutorial';
-    else if (section.section_no.endsWith('B')) activity = 'lab';
-    else activity = 'lecture'; // Default
+  // Validate semester_id is provided
+  if (!section.academic_semester_id) {
+    // Try to use current semester as default
+    const currentSemester = await getCurrentSemester();
+    if (!currentSemester) {
+      throw new Error('academic_semester_id is required. No current semester found.');
+    }
+    section.academic_semester_id = currentSemester.id;
+  }
+  
+  // Infer section_type from section_no suffix if not provided
+  let sectionType = section.section_type;
+  if (!sectionType && section.section_no) {
+    if (section.section_no.endsWith('L')) sectionType = 'lecture';
+    else if (section.section_no.endsWith('T')) sectionType = 'tutorial';
+    else if (section.section_no.endsWith('B')) sectionType = 'lab';
+    else sectionType = 'lecture'; // Default
   }
   
   const { data, error } = await supabase
     .from('section')
-    .insert({ ...section, activity, created_by: user?.id })
+    .insert({ 
+      ...section, 
+      section_type: sectionType || 'lecture',
+      created_by: user?.id 
+    })
     .select()
     .single();
   
