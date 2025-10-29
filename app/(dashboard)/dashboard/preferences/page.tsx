@@ -24,7 +24,7 @@ export default async function PreferencesPage() {
     .from('user_roles')
     .select('role')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!userRole || userRole.role !== 'student') {
     redirect("/dashboard");

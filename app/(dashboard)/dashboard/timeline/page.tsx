@@ -24,7 +24,7 @@ export default async function TimelinePage() {
 		.from('user_roles')
 		.select('role')
 		.eq('user_id', user.id)
-		.single()
+		.maybeSingle()
 
 	if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
 		redirect('/dashboard')

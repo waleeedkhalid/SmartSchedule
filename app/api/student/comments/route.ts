@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(
@@ -226,7 +226,7 @@ export async function PATCH(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(
@@ -303,7 +303,7 @@ export async function DELETE(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(

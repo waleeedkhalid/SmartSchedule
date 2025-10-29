@@ -42,7 +42,7 @@ export default async function OnboardingPage() {
     .from('user_roles')
     .select('role, name, onboarding_completed, level')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
   
   // User not found in user_roles table
   if (roleError || !userRole) {

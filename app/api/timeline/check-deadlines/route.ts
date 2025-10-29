@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 				.from('user_roles')
 				.select('role')
 				.eq('user_id', user.id)
-				.single()
+				.maybeSingle()
 
 			if (!userRole || userRole.role !== 'scheduling') {
 				return NextResponse.json(
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
 			.from('user_roles')
 			.select('role')
 			.eq('user_id', user.id)
-			.single()
+			.maybeSingle()
 
 		if (!userRole || userRole.role !== 'scheduling') {
 			return NextResponse.json(

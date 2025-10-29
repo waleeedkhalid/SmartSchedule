@@ -29,7 +29,7 @@ export async function PATCH(
       .from('notification')
       .select('user_id')
       .eq('id', notificationId)
-      .single()
+      .maybeSingle()
 
     if (!notification) {
       return NextResponse.json(
@@ -85,7 +85,7 @@ export async function DELETE(
       .from('notification')
       .select('user_id')
       .eq('id', notificationId)
-      .single()
+      .maybeSingle()
 
     if (!notification) {
       return NextResponse.json(

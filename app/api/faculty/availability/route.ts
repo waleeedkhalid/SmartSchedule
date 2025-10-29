@@ -26,7 +26,7 @@ export async function GET() {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (!userRole || userRole.role !== 'faculty') {
       return NextResponse.json(
@@ -86,7 +86,7 @@ export async function PATCH(request: Request) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (!userRole || userRole.role !== 'faculty') {
       return NextResponse.json(

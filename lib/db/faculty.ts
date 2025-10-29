@@ -55,7 +55,7 @@ export async function getFacultyProfile(userId: string): Promise<Instructor | nu
     .from('user_roles')
     .select('email')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
   
   if (userError || !userRole) {
     return null;
@@ -66,7 +66,7 @@ export async function getFacultyProfile(userId: string): Promise<Instructor | nu
     .from('instructor')
     .select('*')
     .eq('email', userRole.email)
-    .single();
+    .maybeSingle();
   
   if (instructorError) {
     return null;
@@ -88,7 +88,7 @@ export async function getInstructorByUserEmail(email: string): Promise<Instructo
     .from('instructor')
     .select('*')
     .eq('email', email)
-    .single();
+    .maybeSingle();
   
   if (error) {
     return null;
@@ -180,7 +180,7 @@ export async function updateFacultyAvailability(
     .update(updates)
     .eq('id', instructorId)
     .select()
-    .single();
+    .maybeSingle();
   
   if (error) {
     return { success: false, error: 'Failed to update availability preferences' };
@@ -207,7 +207,7 @@ export async function getFacultyAvailability(
     .from('instructor')
     .select('preferred_times, unavailable_times')
     .eq('id', instructorId)
-    .single();
+    .maybeSingle();
   
   if (error) {
     return null;
@@ -232,7 +232,7 @@ export async function isFacultyUser(userId: string): Promise<boolean> {
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
   
   if (error || !data) {
     return false;
@@ -255,7 +255,7 @@ export async function getFacultyStats(instructorId: string) {
     .from('instructor')
     .select('max_load_per_week')
     .eq('id', instructorId)
-    .single();
+    .maybeSingle();
   
   // Get sections count
   const { data: sections } = await supabase

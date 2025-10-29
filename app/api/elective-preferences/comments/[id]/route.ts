@@ -27,7 +27,7 @@ export async function GET(
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     const isOwner = comment.student_id === user.id;
     const isScheduling = userRole?.role === 'scheduling' || userRole?.role === 'teaching_load';
@@ -66,7 +66,7 @@ export async function PATCH(
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     // Handle resolve/unresolve (scheduling only)
     if (resolve !== undefined) {

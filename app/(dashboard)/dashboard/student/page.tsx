@@ -43,7 +43,7 @@ export default async function StudentDashboardPage() {
     .from('user_roles')
     .select('role, name, level')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (userRole?.role !== 'student') {
     redirect("/dashboard");

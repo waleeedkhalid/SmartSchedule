@@ -167,7 +167,7 @@ export async function createIrregularStudent(
     .from('user_roles')
     .select('role')
     .eq('user_id', data.student_id)
-    .single()
+    .maybeSingle()
   
   if (studentError || !student) {
     throw new Error('Student not found')
@@ -210,7 +210,7 @@ export async function createIrregularStudent(
       created_by: createdBy,
     })
     .select()
-    .single()
+    .maybeSingle()
   
   if (error) throw error
   
@@ -254,7 +254,7 @@ export async function updateIrregularStudent(
     })
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
   
   if (error) throw error
   

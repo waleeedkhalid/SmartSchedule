@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .from('user_roles')
       .select('role, level, name')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (roleError || !userRole || userRole.role !== 'student') {
       return NextResponse.json(

@@ -14,7 +14,7 @@ export default async function DashboardPage() {
     .from('user_roles')
     .select('role')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   // Redirect to role-specific dashboard
   if (userRole?.role) {

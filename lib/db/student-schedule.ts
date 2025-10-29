@@ -97,7 +97,7 @@ export async function getStudentSchedule(studentId: string): Promise<StudentSche
     .select('level, student_group_id')
     .eq('user_id', studentId)
     .eq('role', 'student')
-    .single();
+    .maybeSingle();
   
   if (studentError || !student || !student.level) {
     console.error('Student not found or level not set:', studentError);

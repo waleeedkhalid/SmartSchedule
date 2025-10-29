@@ -30,7 +30,7 @@ export async function GET(
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(
@@ -87,7 +87,7 @@ export async function PATCH(
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(
@@ -166,7 +166,7 @@ export async function DELETE(
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(

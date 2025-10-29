@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       .from('user_roles')
       .select('role, email')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (!userRole) {
       return NextResponse.json({ error: 'User role not found' }, { status: 404 });

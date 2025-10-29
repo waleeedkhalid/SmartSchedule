@@ -28,7 +28,7 @@ export default async function FacultyFeedbackPage() {
     .from('user_roles')
     .select('*')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (userRole?.role !== 'faculty') {
     redirect('/dashboard')

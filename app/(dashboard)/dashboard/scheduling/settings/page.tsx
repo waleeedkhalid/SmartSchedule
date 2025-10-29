@@ -18,7 +18,7 @@ export default async function SchedulingSettingsPage() {
 		.from('user_roles')
 		.select('role')
 		.eq('user_id', user.id)
-		.single();
+		.maybeSingle();
 
 	// Only allow scheduling role (admin privileges)
 	if (roleError || !userRole || userRole.role !== 'scheduling') {

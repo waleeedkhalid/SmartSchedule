@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     // Stats endpoint for scheduling committee
     if (statsParam === 'true') {
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (!userRole || userRole.role !== 'student') {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

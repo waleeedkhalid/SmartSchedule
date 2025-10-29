@@ -70,7 +70,7 @@ export async function PATCH(
 			.from('user_roles')
 			.select('role')
 			.eq('user_id', user.id)
-			.single()
+			.maybeSingle()
 
 		if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
 			return NextResponse.json(
@@ -116,7 +116,7 @@ export async function DELETE(
 			.from('user_roles')
 			.select('role')
 			.eq('user_id', user.id)
-			.single()
+			.maybeSingle()
 
 		if (!userRole || userRole.role !== 'scheduling') {
 			return NextResponse.json(

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
       .from('user_roles')
       .select('role, name, email')
       .eq('user_id', body.student_id)
-      .single()
+      .maybeSingle()
     
     if (studentError || !student) {
       return NextResponse.json(
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         )
       `)
       .eq('id', body.section_id)
-      .single()
+      .maybeSingle()
     
     if (sectionError || !section) {
       return NextResponse.json(
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', existing.id)
           .select()
-          .single()
+          .maybeSingle()
         
         if (updateError) throw updateError
         
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
           )
         )
       `)
-      .single()
+      .maybeSingle()
     
     if (enrollError) throw enrollError
     
@@ -320,7 +320,7 @@ export async function DELETE(request: NextRequest) {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (roleError || userRole?.role !== 'registrar') {
       return NextResponse.json(

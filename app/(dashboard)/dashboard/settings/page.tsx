@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 		.from('user_roles')
 		.select('name, email')
 		.eq('user_id', user.id)
-		.single();
+		.maybeSingle();
 
 	if (roleError || !userRole) {
 		console.error('Error fetching user profile:', roleError);
