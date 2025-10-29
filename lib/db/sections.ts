@@ -2,6 +2,10 @@
 import { createClient } from '@/supabase/server';
 import { Section, SectionInput, SectionConflicts } from '@/lib/types/database';
 
+/**
+ * Get all sections (DEPRECATED - use getSectionsPaginated instead)
+ * @deprecated Use getSectionsPaginated for better performance
+ */
 export async function getSections() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -11,6 +15,85 @@ export async function getSections() {
   
   if (error) throw error;
   return data as Section[];
+}
+
+/**
+ * Get paginated sections with optional filtering and sorting
+ * Implements server-side pagination for optimal performance
+ * 
+ * @param page - Page number (1-based)
+ * @param pageSize - Number of sections per page (default: 20)
+ * @param filters - Optional filters: { level?, state?, courseCode?, instructorId? }
+ * @param sortBy - Field to sort by (default: 'course_code')
+ * @param sortOrder - Sort direction: 'asc' or 'desc' (default: 'asc')
+ * @returns Object containing sections array, total count, and total pages
+ */
+export async function getSectionsPaginated(
+  page: number = 1,
+  pageSize: number = 20,
+  filters?: {
+    level?: number
+    state?: 'draft' | 'released'
+    courseCode?: string
+    instructorId?: string
+  },
+  sortBy: 'course_code' | 'section_no' | 'group_level' | 'state' = 'course_code',
+  sortOrder: 'asc' | 'desc' = 'asc'
+) {
+  const supabase = await createClient()
+  
+  // Calculate range for pagination
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+  
+  // Build query with count
+  let query = supabase
+    .from('section')
+    .select(`
+      id,
+      course_code,
+      section_no,
+      instructor_id,
+      room_code,
+      capacity,
+      meeting_pattern,
+      group_level,
+      state,
+      created_at,
+      updated_at
+    `, { count: 'exact' })
+  
+  // Apply filters if provided
+  if (filters?.level) {
+    query = query.eq('group_level', filters.level)
+  }
+  if (filters?.state) {
+    query = query.eq('state', filters.state)
+  }
+  if (filters?.courseCode) {
+    query = query.eq('course_code', filters.courseCode)
+  }
+  if (filters?.instructorId) {
+    query = query.eq('instructor_id', filters.instructorId)
+  }
+  
+  // Apply sorting and pagination
+  query = query.order(sortBy, { ascending: sortOrder === 'asc' }).range(from, to)
+  
+  const { data, error, count } = await query
+  
+  if (error) throw error
+  
+  const totalCount = count ?? 0
+  const totalPages = Math.ceil(totalCount / pageSize)
+  
+  return {
+    sections: data as Section[],
+    totalCount,
+    totalPages,
+    currentPage: page,
+    pageSize
+  }
 }
 
 export async function getSectionById(id: string) {
@@ -129,21 +212,13 @@ export async function getSWESectionsForScheduling(state: 'draft' | 'released' = 
     .from('section')
     .select(`
       *,
-      course:course!section_course_code_fkey(code, level)
+      course:course!section_course_code_fkey(code, level),
+      course_offering:course_offering(semester_code, is_active, semester:academic_semesters(*))
     `)
-    .eq('state', state);
+    .eq('state', state)
+    .eq('is_scheduled_by_algorithm', true); // Use new explicit field instead of code filtering
   
   if (error) throw error;
-  
-  // Filter to only SWE courses in levels 4-8
-  const sweSections = (data || []).filter((section: any) => {
-    const course = section.course;
-    return course && 
-           course.code.startsWith('SWE') && 
-           course.level >= 4 && 
-           course.level <= 8;
-  });
-  
-  return sweSections as Section[];
+  return data as Section[];
 }
 

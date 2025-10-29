@@ -34,6 +34,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_semesters: {
+        Row: {
+          code: string
+          created_at: string | null
+          electives_survey_open: boolean | null
+          end_date: string
+          feedback_open: boolean | null
+          is_active: boolean | null
+          is_faculty_availability_open: boolean | null
+          name: string
+          registration_open: boolean | null
+          schedule_published: boolean | null
+          start_date: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          electives_survey_open?: boolean | null
+          end_date: string
+          feedback_open?: boolean | null
+          is_active?: boolean | null
+          is_faculty_availability_open?: boolean | null
+          name: string
+          registration_open?: boolean | null
+          schedule_published?: boolean | null
+          start_date: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          electives_survey_open?: boolean | null
+          end_date?: string
+          feedback_open?: boolean | null
+          is_active?: boolean | null
+          is_faculty_availability_open?: boolean | null
+          name?: string
+          registration_open?: boolean | null
+          schedule_published?: boolean | null
+          start_date?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       comment: {
         Row: {
           author_id: string
@@ -116,6 +164,57 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "elective_group"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_offering: {
+        Row: {
+          course_code: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          max_sections: number | null
+          notes: string | null
+          semester_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          course_code: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_sections?: number | null
+          notes?: string | null
+          semester_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          course_code?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_sections?: number | null
+          notes?: string | null
+          semester_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_offering_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "course_offering_semester_code_fkey"
+            columns: ["semester_code"]
+            isOneToOne: false
+            referencedRelation: "academic_semesters"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -565,11 +664,13 @@ export type Database = {
         Row: {
           capacity: number
           course_code: string
+          course_offering_id: string | null
           created_at: string | null
           created_by: string | null
           group_level: number
           id: string
           instructor_id: string | null
+          is_scheduled_by_algorithm: boolean | null
           meeting_pattern: Json
           room_code: string | null
           section_no: string
@@ -579,11 +680,13 @@ export type Database = {
         Insert: {
           capacity: number
           course_code: string
+          course_offering_id?: string | null
           created_at?: string | null
           created_by?: string | null
           group_level: number
           id?: string
           instructor_id?: string | null
+          is_scheduled_by_algorithm?: boolean | null
           meeting_pattern?: Json
           room_code?: string | null
           section_no: string
@@ -593,11 +696,13 @@ export type Database = {
         Update: {
           capacity?: number
           course_code?: string
+          course_offering_id?: string | null
           created_at?: string | null
           created_by?: string | null
           group_level?: number
           id?: string
           instructor_id?: string | null
+          is_scheduled_by_algorithm?: boolean | null
           meeting_pattern?: Json
           room_code?: string | null
           section_no?: string
@@ -611,6 +716,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "course"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "section_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offering"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "section_instructor_id_fkey"
@@ -628,11 +740,83 @@ export type Database = {
           },
         ]
       }
+      semester_timeline: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          end_date: string
+          event_type: string
+          id: string
+          is_deadline: boolean | null
+          is_recurring: boolean | null
+          metadata: Json | null
+          notification_days_before: number[] | null
+          priority: string | null
+          requires_action: boolean | null
+          start_date: string
+          status: string | null
+          target_roles: string[] | null
+          term_code: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          event_type: string
+          id?: string
+          is_deadline?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          notification_days_before?: number[] | null
+          priority?: string | null
+          requires_action?: boolean | null
+          start_date: string
+          status?: string | null
+          target_roles?: string[] | null
+          term_code: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          event_type?: string
+          id?: string
+          is_deadline?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          notification_days_before?: number[] | null
+          priority?: string | null
+          requires_action?: boolean | null
+          start_date?: string
+          status?: string | null
+          target_roles?: string[] | null
+          term_code?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semester_timeline_term_code_fkey"
+            columns: ["term_code"]
+            isOneToOne: false
+            referencedRelation: "academic_semesters"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       student_enrollment: {
         Row: {
           created_at: string | null
           dropped_at: string | null
           enrolled_at: string | null
+          enrollment_type: string | null
           id: string
           section_id: string
           status: Database["public"]["Enums"]["enrollment_status"]
@@ -643,6 +827,7 @@ export type Database = {
           created_at?: string | null
           dropped_at?: string | null
           enrolled_at?: string | null
+          enrollment_type?: string | null
           id?: string
           section_id: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -653,6 +838,7 @@ export type Database = {
           created_at?: string | null
           dropped_at?: string | null
           enrolled_at?: string | null
+          enrollment_type?: string | null
           id?: string
           section_id?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -757,6 +943,54 @@ export type Database = {
         }
         Relationships: []
       }
+      timeline_notification_log: {
+        Row: {
+          created_at: string | null
+          days_before: number
+          id: string
+          notification_id: string | null
+          recipient_count: number | null
+          recipient_role: string
+          sent_at: string | null
+          timeline_event_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          days_before: number
+          id?: string
+          notification_id?: string | null
+          recipient_count?: number | null
+          recipient_role: string
+          sent_at?: string | null
+          timeline_event_id: string
+        }
+        Update: {
+          created_at?: string | null
+          days_before?: number
+          id?: string
+          notification_id?: string | null
+          recipient_count?: number | null
+          recipient_role?: string
+          sent_at?: string | null
+          timeline_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_notification_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_notification_log_timeline_event_id_fkey"
+            columns: ["timeline_event_id"]
+            isOneToOne: false
+            referencedRelation: "semester_timeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -766,6 +1000,7 @@ export type Database = {
           name: string
           onboarding_completed: boolean | null
           role: Database["public"]["Enums"]["user_role"]
+          student_group_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -777,6 +1012,7 @@ export type Database = {
           name: string
           onboarding_completed?: boolean | null
           role: Database["public"]["Enums"]["user_role"]
+          student_group_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -788,16 +1024,29 @@ export type Database = {
           name?: string
           onboarding_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
+          student_group_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_student_group_id_fkey"
+            columns: ["student_group_id"]
+            isOneToOne: false
+            referencedRelation: "student_group"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      auto_assign_student_to_group: {
+        Args: { p_level: number; p_student_id: string }
+        Returns: string
+      }
       check_exam_room_conflicts: {
         Args: {
           p_duration: number
@@ -912,6 +1161,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_active_semester: { Args: never; Returns: string }
       get_all_exam_conflicts: {
         Args: never
         Returns: {
@@ -921,6 +1171,21 @@ export type Database = {
         }[]
       }
       get_all_schedule_conflicts: { Args: never; Returns: Json }
+      get_events_needing_notifications: {
+        Args: never
+        Returns: {
+          category: string
+          days_before: number
+          description: string
+          end_date: string
+          event_id: string
+          event_type: string
+          priority: string
+          start_date: string
+          target_role: string
+          title: string
+        }[]
+      }
       get_exam_conflicts: { Args: { p_exam_id: string }; Returns: Json }
       get_instructor_by_user_email: {
         Args: { p_user_email: string }
@@ -944,6 +1209,19 @@ export type Database = {
       }
       get_instructor_load: { Args: { p_instructor_id: string }; Returns: Json }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
+      get_overdue_events: {
+        Args: never
+        Returns: {
+          days_overdue: number
+          description: string
+          end_date: string
+          event_type: string
+          id: string
+          priority: string
+          target_roles: string[]
+          title: string
+        }[]
+      }
       get_section_conflicts: { Args: { p_section_id: string }; Returns: Json }
       get_student_required_courses: {
         Args: { p_student_id: string }
@@ -953,6 +1231,34 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      get_timeline_statistics: {
+        Args: { semester_code?: string }
+        Returns: {
+          completed_events: number
+          critical_priority_count: number
+          high_priority_count: number
+          in_progress_events: number
+          overdue_events: number
+          total_events: number
+          upcoming_events: number
+        }[]
+      }
+      get_upcoming_deadlines_for_role: {
+        Args: { days_ahead?: number; role_name: string }
+        Returns: {
+          days_until_end: number
+          days_until_start: number
+          description: string
+          end_date: string
+          event_type: string
+          id: string
+          priority: string
+          requires_action: boolean
+          start_date: string
+          status: string
+          title: string
+        }[]
+      }
       get_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -961,11 +1267,17 @@ export type Database = {
         Args: { check_roles: Database["public"]["Enums"]["user_role"][] }
         Returns: boolean
       }
+      has_notification_been_sent: {
+        Args: { days_before_value: number; event_id: string; role_name: string }
+        Returns: boolean
+      }
       has_role: {
         Args: { check_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      is_elective_survey_open: { Args: never; Returns: boolean }
       is_irregular_student: { Args: { p_student_id: string }; Returns: boolean }
+      is_registration_open: { Args: never; Returns: boolean }
       needs_onboarding: { Args: { p_user_id: string }; Returns: boolean }
       sync_student_groups: { Args: never; Returns: undefined }
       time_ranges_overlap: {
@@ -977,6 +1289,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_timeline_event_statuses: { Args: never; Returns: number }
       user_is_section_instructor: {
         Args: { p_section_id: string; p_user_id: string }
         Returns: boolean
@@ -1142,30 +1455,7 @@ export const Constants = {
       ],
     },
   },
-} as const
+} as const;
 
-// Convenience type aliases for commonly used tables
-export type Course = Tables<'course'>
-export type CourseInput = TablesInsert<'course'>
-export type Section = Tables<'section'>
-export type SectionInput = TablesInsert<'section'>
-export type Instructor = Tables<'instructor'>
-export type InstructorInput = TablesInsert<'instructor'>
-export type Room = Tables<'room'>
-export type RoomInput = TablesInsert<'room'>
-export type Exam = Tables<'exam'>
-export type ExamInput = TablesInsert<'exam'>
-export type StudentGroup = Tables<'student_group'>
-export type StudentGroupInput = TablesInsert<'student_group'>
-export type ElectivePreference = Tables<'elective_preference'>
-export type ElectiveComment = Tables<'elective_comment'>
-export type TimeGridConfig = Tables<'time_grid_config'>
-export type RoomType = Database['public']['Enums']['room_type']
-
-// Custom types for RPC functions and views (these are already defined elsewhere in this file or used as-is)
-export type InstructorLoad = any // RPC function return type
-export type SectionConflicts = any // RPC function return type
-export type StudentScheduleView = any // Custom view/query result
-export type ExamView = any // Custom view/query result
-export type ScheduleCommentView = any // Custom view/query result
-
+export type Exam = Database['public']['Tables']['exam']['Row'];
+export type ExamInput = Database['public']['Tables']['exam']['Insert'];

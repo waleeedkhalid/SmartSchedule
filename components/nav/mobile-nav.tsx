@@ -74,6 +74,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: LayoutDashboard,
     },
     {
+      title: "Timeline",
+      href: "/dashboard/timeline",
+      icon: Clock,
+    },
+    {
       title: "Courses",
       href: "/dashboard/courses",
       icon: BookOpen,
@@ -119,8 +124,8 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: CheckSquare,
     },
     {
-      title: "Admin Settings",
-      href: "/dashboard/admin/settings",
+      title: "Scheduling Settings",
+      href: "/dashboard/scheduling/settings",
       icon: Settings,
     },
   ],
@@ -170,6 +175,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: LayoutDashboard,
     },
     {
+      title: "Timeline",
+      href: "/dashboard/timeline",
+      icon: Clock,
+    },
+    {
       title: "Sections",
       href: "/dashboard/sections",
       icon: FileText,
@@ -179,59 +189,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/import-export",
       icon: Upload,
     },
-    {
-      title: "Admin Settings",
-      href: "/dashboard/admin/settings",
-      icon: Settings,
-    },
-  ],
-  admin: [
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Courses",
-      href: "/dashboard/courses",
-      icon: BookOpen,
-    },
-    {
-      title: "Sections",
-      href: "/dashboard/sections",
-      icon: FileText,
-    },
-    {
-      title: "Instructors",
-      href: "/dashboard/instructors",
-      icon: Users,
-    },
-    {
-      title: "Rooms",
-      href: "/dashboard/rooms",
-      icon: MapPin,
-    },
-    {
-      title: "Exams",
-      href: "/dashboard/exams",
-      icon: Calendar,
-    },
-    {
-      title: "Student Groups",
-      href: "/dashboard/student-groups",
-      icon: GraduationCap,
-    },
-    {
-      title: "Import/Export",
-      href: "/dashboard/import-export",
-      icon: Upload,
-    },
-    {
-      title: "Admin Settings",
-      href: "/dashboard/admin/settings",
-      icon: Settings,
-    },
-  ],
+  ]
 };
 
 export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {

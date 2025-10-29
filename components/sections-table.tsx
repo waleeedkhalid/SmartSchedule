@@ -155,7 +155,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell className="font-medium">{section.course_code}</TableCell>
               <TableCell>{section.section_no}</TableCell>
               <TableCell>
-                {section.course_code.startsWith('SWE') && section.group_level >= 4 && section.group_level <= 8 ? (
+                {(section as any).is_scheduled_by_algorithm ? (
                   <Badge className="bg-blue-600">Algorithm</Badge>
                 ) : (
                   <Badge variant="outline">Manual</Badge>

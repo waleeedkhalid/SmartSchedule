@@ -122,7 +122,6 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       }
       
       // Update user profile in database
-      // Note: Student groups will auto-update via database trigger
       const { error: updateError } = await supabase
         .from('user_roles')
         .update(updateData)
@@ -132,6 +131,20 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         console.error('Error updating profile:', updateError);
         toast.error('Failed to save your profile. Please try again.');
         return;
+      }
+      
+      // Auto-assign student to group (for students only)
+      if (userRole === 'student') {
+        const { error: groupError } = await supabase.rpc('auto_assign_student_to_group', {
+          p_student_id: userId,
+          p_level: parseInt(academicLevel)
+        });
+        
+        if (groupError) {
+          console.error('Error auto-assigning to group:', groupError);
+          // Don't fail onboarding if group assignment fails - it can be done manually later
+          toast.warning('Profile saved, but group assignment needs manual setup.');
+        }
       }
       
       // Success! Show success message

@@ -96,14 +96,7 @@ export default function LandingPage() {
                   </a>
                 ))}
                 <Separator />
-                <div className="flex flex-col space-y-2">
-                  <Button variant="outline" asChild className="w-full">
-                    <Link href="/login">Sign In</Link>
-                </Button>
-                  <Button asChild className="w-full">
-                    <Link href="/register">Get Started</Link>
-                </Button>
-              </div>
+                <UserAuthState />
               </nav>
             </div>
           )}

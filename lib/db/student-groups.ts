@@ -75,3 +75,41 @@ export async function deleteStudentGroup(id: string) {
   if (error) throw error;
 }
 
+/**
+ * Auto-assign a student to a group for their level
+ * Balances group sizes by assigning to the group with minimum size
+ * Creates a new group if none exists for the level
+ * 
+ * @param studentId - UUID of the student
+ * @param level - Student's level (1-8)
+ * @returns UUID of the assigned group
+ */
+export async function autoAssignStudentToGroup(studentId: string, level: number): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('auto_assign_student_to_group', {
+    p_student_id: studentId,
+    p_level: level
+  });
+  
+  if (error) throw error;
+  return data as string; // Returns group_id
+}
+
+/**
+ * Get students assigned to a specific group
+ * @param groupId - UUID of the student group
+ * @returns Array of students in the group
+ */
+export async function getStudentsInGroup(groupId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('user_id, name, email, level')
+    .eq('student_group_id', groupId)
+    .eq('role', 'student')
+    .order('name');
+  
+  if (error) throw error;
+  return data;
+}
+

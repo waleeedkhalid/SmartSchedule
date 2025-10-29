@@ -311,6 +311,11 @@ export function StudentScheduleView() {
                       {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
                     </Badge>
                     <Badge variant="outline">{section.credits} cr</Badge>
+                    {(section as any).enrollment_type && (
+                      <Badge variant={(section as any).enrollment_type === 'required' ? 'default' : 'secondary'}>
+                        {(section as any).enrollment_type === 'required' ? 'Required' : 'Elective'}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
                     {section.course_title}

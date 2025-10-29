@@ -7,20 +7,17 @@ export async function getCourseStatistics() {
   const supabase = await createClient()
 
   const { data: courses, error: coursesError } = await supabase
-    .from('courses')
+    .from('course')
     .select(`
       *,
-      sections(
+      section(
         id,
-        section_number,
+        section_no,
         instructor_id,
-        room_id,
-        meeting_days,
-        start_time,
-        end_time,
-        is_lab,
-        instructors(name),
-        rooms(name, capacity)
+        room_code,
+        meeting_pattern,
+        instructor:instructor!section_instructor_id_fkey(name),
+        room:room!section_room_code_fkey(code)
       )
     `)
     .order('code')
@@ -29,18 +26,18 @@ export async function getCourseStatistics() {
 
   // Calculate statistics for each course
   const stats = courses?.map(course => {
-    const sections = course.sections || []
+    const sections = course.section || []
     const sectionCount = sections.length
-    const assignedSections = sections.filter((s: any) => s.instructor_id && s.room_id).length
-    const labSections = sections.filter((s: any) => s.is_lab).length
+    const assignedSections = sections.filter((s: any) => s.instructor_id && s.room_code).length
+    const labSections = sections.filter((s: any) => s.meeting_pattern?.is_lab).length
     const lectureSections = sectionCount - labSections
     
-    // Calculate average room capacity
-    const roomCapacities = sections
-      .filter((s: any) => s.rooms?.capacity)
-      .map((s: any) => s.rooms.capacity)
-    const avgCapacity = roomCapacities.length > 0
-      ? roomCapacities.reduce((sum: number, cap: number) => sum + cap, 0) / roomCapacities.length
+    // Calculate average section capacity (using capacity from section, not room)
+    const sectionCapacities = sections
+      .filter((s: any) => s.capacity)
+      .map((s: any) => s.capacity)
+    const avgCapacity = sectionCapacities.length > 0
+      ? sectionCapacities.reduce((sum: number, cap: number) => sum + cap, 0) / sectionCapacities.length
       : 0
 
     // Get unique instructors
@@ -52,10 +49,10 @@ export async function getCourseStatistics() {
 
     return {
       code: course.code,
-      name: course.name,
+      name: course.title,
       level: course.level,
       credits: course.credits,
-      type: course.type,
+      type: course.is_elective ? 'Elective' : 'Required',
       sectionCount,
       assignedSections,
       labSections,
@@ -76,19 +73,17 @@ export async function getCourseDetails(courseCode: string) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('courses')
+    .from('course')
     .select(`
       *,
-      sections(
+      section(
         id,
-        section_number,
-        meeting_days,
-        start_time,
-        end_time,
-        is_lab,
-        status,
-        instructors(id, name, email),
-        rooms(id, name, capacity, type)
+        section_no,
+        meeting_pattern,
+        state,
+        capacity,
+        instructor:instructor!section_instructor_id_fkey(id, name, email),
+        room:room!section_room_code_fkey(code, type)
       )
     `)
     .eq('code', courseCode)
@@ -105,14 +100,14 @@ export async function getCourseDistributionByType() {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('courses')
-    .select('type')
+    .from('course')
+    .select('is_elective')
 
   if (error) throw error
 
-  // Count courses by type
+  // Count courses by type (elective vs required)
   const distribution = data?.reduce((acc: Record<string, number>, course: any) => {
-    const type = course.type || 'unknown'
+    const type = course.is_elective ? 'Elective' : 'Required'
     acc[type] = (acc[type] || 0) + 1
     return acc
   }, {})
@@ -130,22 +125,22 @@ export async function getSectionUtilization() {
   const supabase = await createClient()
 
   const { data: sections, error } = await supabase
-    .from('sections')
+    .from('section')
     .select(`
       id,
       course_code,
       instructor_id,
-      room_id,
-      status,
-      rooms(capacity)
+      room_code,
+      state,
+      capacity
     `)
 
   if (error) throw error
 
   const total = sections?.length || 0
-  const assigned = sections?.filter((s: any) => s.instructor_id && s.room_id).length || 0
-  const draft = sections?.filter((s: any) => s.status === 'draft').length || 0
-  const released = sections?.filter((s: any) => s.status === 'released').length || 0
+  const assigned = sections?.filter((s: any) => s.instructor_id && s.room_code).length || 0
+  const draft = sections?.filter((s: any) => s.state === 'draft').length || 0
+  const released = sections?.filter((s: any) => s.state === 'released').length || 0
 
   return {
     total,
@@ -164,12 +159,12 @@ export async function getTopCoursesBySections(limit: number = 10) {
   const supabase = await createClient()
 
   const { data: courses, error } = await supabase
-    .from('courses')
+    .from('course')
     .select(`
       code,
-      name,
+      title,
       level,
-      sections(id)
+      section(id)
     `)
 
   if (error) throw error
@@ -177,9 +172,9 @@ export async function getTopCoursesBySections(limit: number = 10) {
   // Count sections and sort
   const coursesWithCounts = courses?.map(course => ({
     code: course.code,
-    name: course.name,
+    name: course.title,
     level: course.level,
-    sectionCount: course.sections?.length || 0
+    sectionCount: course.section?.length || 0
   }))
     .sort((a, b) => b.sectionCount - a.sectionCount)
     .slice(0, limit)
@@ -194,12 +189,12 @@ export async function getInstructorWorkloadByCourse() {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('sections')
+    .from('section')
     .select(`
       course_code,
       instructor_id,
-      instructors!inner(name),
-      courses!inner(name, credits)
+      instructor:instructor!section_instructor_id_fkey!inner(name),
+      course:course!section_course_code_fkey!inner(title, credits)
     `)
     .not('instructor_id', 'is', null)
 
@@ -215,9 +210,9 @@ export async function getInstructorWorkloadByCourse() {
   data?.forEach((section: any) => {
     const courseCode = section.course_code
     const instructorId = section.instructor_id
-    const instructorName = section.instructors.name
-    const courseName = section.courses.name
-    const credits = section.courses.credits || 3
+    const instructorName = section.instructor.name
+    const courseName = section.course.title
+    const credits = section.course.credits || 3
 
     if (!courseMap.has(courseCode)) {
       courseMap.set(courseCode, {

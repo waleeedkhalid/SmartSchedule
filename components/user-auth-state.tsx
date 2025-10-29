@@ -108,15 +108,35 @@ export default function UserAuthState() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Button disabled={isPending} asChild>
-          <Link href={"/login"}>
-            {isPending ? (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              "Verify Now"
-            )}
-          </Link>
-        </Button>
+        <>
+          <Button 
+            variant="ghost" 
+            disabled={isPending} 
+            asChild
+            className="hover:bg-brand-blue-50 hover:text-brand-blue-700 dark:hover:bg-brand-blue-950/30 dark:hover:text-brand-blue-400"
+          >
+            <Link href="/login">
+              {isPending ? (
+                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Sign In"
+              )}
+            </Link>
+          </Button>
+          <Button 
+            disabled={isPending} 
+            asChild
+            className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600"
+          >
+            <Link href="/register">
+              {isPending ? (
+                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Get Started"
+              )}
+            </Link>
+          </Button>
+        </>
       )}
     </div>
   );

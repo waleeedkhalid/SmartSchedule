@@ -2,35 +2,6 @@
     "total_credit_hours": 137,
     "study_plan": [
       {
-        "level": 1,
-        "courses": [
-          { "code": "ENGL 100", "title": "English Language", "credit_hours": 6 },
-          { "code": "MATH 101", "title": "Differential Calculus", "credit_hours": 3 },
-          { "code": "CHEM 101", "title": "General Chemistry (1)", "credit_hours": 4 },
-          { "code": "ARAB 100", "title": "Writing Skills", "credit_hours": 2 },
-          { "code": "ENT 101", "title": "Entrepreneurship", "credit_hours": 1 }
-        ]
-      },
-      {
-        "level": 2,
-        "courses": [
-          { "code": "STAT 101", "title": "Introduction to Probability & Statistics", "credit_hours": 3 },
-          { "code": "EPH 101", "title": "Fitness and Health Education", "credit_hours": 1 },
-          { "code": "CT 101", "title": "IT Skills", "credit_hours": 3 },
-          { "code": "CUR 101", "title": "University Skills", "credit_hours": 3 },
-          { "code": "ENGL 110", "title": "English", "credit_hours": 6, "prerequisite": "ENGL 100" }
-        ]
-      },
-      {
-        "level": 3,
-        "courses": [
-          { "code": "CSC 111", "title": "Computer Programming I", "credit_hours": 4, "prerequisite": "CT 101" },
-          { "code": "MATH 106", "title": "Integral Calculus", "credit_hours": 3, "prerequisite": "MATH 101" },
-          { "code": "MATH 151", "title": "Discrete Mathematics", "credit_hours": 3, "prerequisite": "MATH 101" },
-          { "code": "PHYS 103", "title": "General Physics I", "credit_hours": 4 }
-        ]
-      },
-      {
         "level": 4,
         "courses": [
           { "code": "SWE 211", "title": "Introduction to Software Engineering", "credit_hours": 3, "prerequisite": "MATH 151, CSC 111" },
@@ -134,8 +105,7 @@
               { "code": "IC 103", "title": "Economic System in Islam", "credit_hours": 2 },
               { "code": "IC 104", "title": "Islamic Political System", "credit_hours": 2 },
               { "code": "IC 105", "title": "Human Rights", "credit_hours": 2 },
-              { "code": "IC 106", "title": "Medical Jurisprudence", "credit_hours": 2 },
-              { "code": "IC 109", "title": "Development Role of Women", "credit_hours": 2 }
+              { "code": "IC 106", "title": "Medical Jurisprudence", "credit_hours": 2 }
             ]
           }
     ]

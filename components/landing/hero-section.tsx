@@ -1,8 +1,13 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, CheckCircle } from "lucide-react";
+import { Calendar, Users, CheckCircle, ArrowRight, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export function HeroSection() {
+  const { user } = useAuth();
+
   return (
     <section className="relative w-full py-20 md:py-28 lg:py-36 overflow-hidden">
       {/* Background Pattern */}
@@ -26,16 +31,40 @@ export function HeroSection() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" asChild>
-              <Link href="/register">
-                Get Started Free
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="#features">
-                See How It Works
-              </Link>
-            </Button>
+            {user ? (
+              <Button 
+                size="lg" 
+                asChild
+                className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600 shadow-lg transition-all"
+              >
+                <Link href="/dashboard">
+                  <LayoutDashboard className="mr-2 h-5 w-5" />
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  size="lg" 
+                  asChild
+                  className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600 shadow-lg transition-all"
+                >
+                  <Link href="/login">
+                    Sign In
+                  </Link>
+                </Button>
+                <Button 
+                  size="lg" 
+                  asChild
+                  className="bg-white border-2 border-brand-blue-600 text-brand-blue-600 hover:bg-brand-blue-50 hover:text-brand-blue-700 hover:border-brand-blue-700 hover:scale-105 hover:shadow-2xl dark:bg-slate-800 dark:border-brand-blue-500 dark:text-brand-blue-500 dark:hover:bg-slate-700 dark:hover:text-brand-blue-400 dark:hover:border-brand-blue-400 transition-all duration-200 shadow-lg"
+                >
+                  <Link href="/register">
+                    Get Started Free
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Trust Indicators */}

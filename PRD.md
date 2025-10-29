@@ -52,7 +52,7 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 
 ## Functional Requirements (prioritized)
 ### Must‑have (MVP)
-1. **Auth & RBAC**: Supabase Auth; roles: `scheduling`, `teaching_load`, `faculty`, `student`, `registrar`. RLS on all tables.  
+1. **Auth & RBAC**: Supabase Auth; roles: `scheduling` (admin), `teaching_load`, `faculty`, `student`, `registrar`. RLS on all tables. **Note**: The `scheduling` role serves as the administrative role with full system access.  
 2. **Data Intake**: CRUD forms + JSON import/export for core datasets.  
 3. **Scheduler**: One‑click “Recommend Schedule” that respects rules and prevents room/time collisions; supports exams and labs; provides conflict list.  
 4. **Manual Editing**: Drag/resize or form edits to section meetings; instant conflict detection.  

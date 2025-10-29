@@ -7,6 +7,19 @@
 
 ---
 
+## System Roles
+
+**Important**: This system uses the following roles:
+1. **scheduling** - Full system access (administrative role)
+2. **registrar** - Course and schedule management
+3. **teaching_load** - Review instructor loads and provide feedback
+4. **faculty** - View schedules, manage preferences
+5. **student** - View own schedule and courses
+
+**Note**: There is no separate "admin" role. The `scheduling` role serves as the administrative role with full system access.
+
+---
+
 ## What Was Implemented
 
 ### 1. ✅ Updated Auth Context (`lib/auth-context.tsx`)
@@ -216,7 +229,7 @@
 -- 2. Assign roles:
 
 INSERT INTO user_roles (user_id, role, name, email) VALUES
-  ('<scheduling_user_id>', 'scheduling', 'Admin User', 'admin@example.com'),
+  ('<scheduling_user_id>', 'scheduling', 'Admin User', 'admin@example.com'),  -- Admin role
   ('<teaching_user_id>', 'teaching_load', 'Teaching Lead', 'teaching@example.com'),
   ('<faculty_user_id>', 'faculty', 'Prof. Smith', 'smith@example.com'),
   ('<student_user_id>', 'student', 'John Doe', 'student@example.com'),
@@ -313,10 +326,12 @@ User sees personalized UI
 ### Adding New Role
 1. Add to `user_role` enum in migration
 2. Add role-specific dashboard page
-3. Update navigation array in `dashboard-sidebar.tsx`
+3. Update navigation array in `components/nav/sidebar.tsx` and `components/nav/mobile-nav.tsx`
 4. Add route in `dashboard/page.tsx` switch
 5. Update role labels and colors
 6. Add RLS policies
+
+**Note**: The `scheduling` role is the administrative role. Do not create a separate "admin" role.
 
 ### Modifying Navigation
 Edit `navigation` array in `components/dashboard-sidebar.tsx`:
