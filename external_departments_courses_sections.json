@@ -1,0 +1,2180 @@
+{
+  "external_departments": [
+    {
+      "department_code": "MATH",
+      "department_name": "Mathematics Department",
+      "courses": [
+        {
+          "code": "MATH 244",
+          "title": "Linear Algebra",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 4,
+          "is_elective": false,
+          "prerequisite": "MATH 106",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 4,
+              "capacity": 45,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Ahmed Al-Zahrani",
+                    "email": "azahrani@university.edu"
+                  },
+                  "room_code": "MATH-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Ahmed Al-Zahrani",
+                    "email": "azahrani@university.edu"
+                  },
+                  "room_code": "MATH-202",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-17",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-D101", "EXAM-D102"]
+            },
+            "midterm2": {
+              "date": "2026-04-22",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-D101", "EXAM-D102"]
+            },
+            "final": {
+              "date": "2026-05-27",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-D101", "EXAM-D102"]
+            }
+          }
+        },
+        {
+          "code": "MATH 254",
+          "title": "Numerical Analysis",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "MATH 244",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 5,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Noura Al-Shehri",
+                    "email": "nshehri@university.edu"
+                  },
+                  "room_code": "MATH-305",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Noura Al-Shehri",
+                    "email": "nshehri@university.edu"
+                  },
+                  "room_code": "MATH-306",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-19",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-F101"]
+            },
+            "midterm2": {
+              "date": "2026-04-24",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-F101"]
+            },
+            "final": {
+              "date": "2026-05-29",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-F101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "CSC",
+      "department_name": "Computer Science Department",
+      "courses": [
+        {
+          "code": "CSC 113",
+          "title": "Computer Programming II",
+          "credits": 4,
+          "weekly_hours": 5,
+          "level": 4,
+          "is_elective": false,
+          "prerequisite": "CSC 111",
+          "section_groups": [
+            {
+              "group_id": 1,
+              "group_level": 4,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Omar Al-Malki",
+                    "email": "omalki@university.edu"
+                  },
+                  "room_code": "CSC-113-LEC-01",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 50
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Omar Al-Malki",
+                    "email": "omalki@university.edu"
+                  },
+                  "room_code": "CSC-113-TUT-01",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 50
+                  }
+                },
+                {
+                  "section_no": "01B",
+                  "section_type": "lab",
+                  "instructor": {
+                    "name": "Dr. Omar Al-Malki",
+                    "email": "omalki@university.edu"
+                  },
+                  "room_code": "CSC-113-LAB-01",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 120
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-21",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-I101", "EXAM-I102"]
+            },
+            "midterm2": {
+              "date": "2026-04-26",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-I101", "EXAM-I102"]
+            },
+            "final": {
+              "date": "2026-05-31",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-I101", "EXAM-I102"]
+            }
+          }
+        },
+        {
+          "code": "CSC 212",
+          "title": "Data Structures",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 5,
+          "is_elective": false,
+          "prerequisite": "CSC 113",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 5,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Reem Al-Anazi",
+                    "email": "ranazi@university.edu"
+                  },
+                  "room_code": "CS-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Reem Al-Anazi",
+                    "email": "ranazi@university.edu"
+                  },
+                  "room_code": "CS-302",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-22",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-J101", "EXAM-J102"]
+            },
+            "midterm2": {
+              "date": "2026-04-27",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-J101", "EXAM-J102"]
+            },
+            "final": {
+              "date": "2026-06-01",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-J101", "EXAM-J102"]
+            }
+          }
+        },
+        {
+          "code": "CSC 220",
+          "title": "Computer Organization",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 5,
+          "is_elective": false,
+          "prerequisite": "CSC 111",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 5,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Yasir Al-Subhi",
+                    "email": "ysubhi@university.edu"
+                  },
+                  "room_code": "CS-303",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Yasir Al-Subhi",
+                    "email": "ysubhi@university.edu"
+                  },
+                  "room_code": "CS-304",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-23",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-K101"]
+            },
+            "midterm2": {
+              "date": "2026-04-28",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-K101"]
+            },
+            "final": {
+              "date": "2026-06-02",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-K101", "EXAM-K102"]
+            }
+          }
+        },
+        {
+          "code": "CSC 227",
+          "title": "Operating Systems",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 6,
+          "is_elective": false,
+          "prerequisite": "CSC 212, CSC 220",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Tariq Al-Juaid",
+                    "email": "tjuaid@university.edu"
+                  },
+                  "room_code": "CS-401",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Tariq Al-Juaid",
+                    "email": "tjuaid@university.edu"
+                  },
+                  "room_code": "CS-402",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-24",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-L101"]
+            },
+            "midterm2": {
+              "date": "2026-04-29",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-L101"]
+            },
+            "final": {
+              "date": "2026-06-03",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-L101"]
+            }
+          }
+        },
+        {
+          "code": "CSC 215",
+          "title": "Procedural Language",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 111",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 4,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Laila Al-Subaie",
+                    "email": "lsubaie@university.edu"
+                  },
+                  "room_code": "CS-LAB-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Laila Al-Subaie",
+                    "email": "lsubaie@university.edu"
+                  },
+                  "room_code": "CS-LAB-302",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-25",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-M101"]
+            },
+            "midterm2": {
+              "date": "2026-04-30",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-M101"]
+            },
+            "final": {
+              "date": "2026-06-04",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-M101"]
+            }
+          }
+        },
+        {
+          "code": "CSC 311",
+          "title": "Algorithms",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 212",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Sami Al-Otaibi",
+                    "email": "sotaibi@university.edu"
+                  },
+                  "room_code": "CS-305",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Sami Al-Otaibi",
+                    "email": "sotaibi@university.edu"
+                  },
+                  "room_code": "CS-306",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-26",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-N101", "EXAM-N102"]
+            },
+            "midterm2": {
+              "date": "2026-05-01",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-N101", "EXAM-N102"]
+            },
+            "final": {
+              "date": "2026-06-05",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-N101", "EXAM-N102"]
+            }
+          }
+        },
+        {
+          "code": "CSC 361",
+          "title": "Artificial Intelligence",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 212",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Nadia Al-Fayez",
+                    "email": "nfayez@university.edu"
+                  },
+                  "room_code": "CS-402",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Nadia Al-Fayez",
+                    "email": "nfayez@university.edu"
+                  },
+                  "room_code": "CS-403",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-27",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-O101"]
+            },
+            "midterm2": {
+              "date": "2026-05-02",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-O101"]
+            },
+            "final": {
+              "date": "2026-06-06",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-O101"]
+            }
+          }
+        },
+        {
+          "code": "CSC 476",
+          "title": "Computer Graphics",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 212",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Mansour Al-Harbi",
+                    "email": "mharbi@university.edu"
+                  },
+                  "room_code": "CS-LAB-401",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Mansour Al-Harbi",
+                    "email": "mharbi@university.edu"
+                  },
+                  "room_code": "CS-LAB-402",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-28",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-P101"]
+            },
+            "midterm2": {
+              "date": "2026-05-03",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-P101"]
+            },
+            "final": {
+              "date": "2026-06-07",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-P101"]
+            }
+          }
+        },
+        {
+          "code": "CSC 478",
+          "title": "Digital Image Processing",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 361",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 7,
+              "capacity": 25,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Majid Al-Shammari",
+                    "email": "mshammari@university.edu"
+                  },
+                  "room_code": "CS-403",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Majid Al-Shammari",
+                    "email": "mshammari@university.edu"
+                  },
+                  "room_code": "CS-404",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-29",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Q101"]
+            },
+            "midterm2": {
+              "date": "2026-05-04",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Q101"]
+            },
+            "final": {
+              "date": "2026-06-08",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-Q101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "PHYS",
+      "department_name": "Physics Department",
+      "courses": [
+        {
+          "code": "PHYS 104",
+          "title": "General Physics II",
+          "credits": 4,
+          "weekly_hours": 6,
+          "level": 4,
+          "is_elective": false,
+          "prerequisite": "PHYS 103",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 4,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Saad Al-Zahrani",
+                    "email": "szahrani@university.edu"
+                  },
+                  "room_code": "PHYS-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 75
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Saad Al-Zahrani",
+                    "email": "szahrani@university.edu"
+                  },
+                  "room_code": "PHYS-LAB-201",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 120
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-03-31",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-T101", "EXAM-T102"]
+            },
+            "midterm2": {
+              "date": "2026-05-06",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-T101", "EXAM-T102"]
+            },
+            "final": {
+              "date": "2026-06-10",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-T101", "EXAM-T102"]
+            }
+          }
+        },
+        {
+          "code": "PHYS 201",
+          "title": "Mathematical Physics I",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 3,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Hassan Al-Najjar",
+                    "email": "hnajjar@university.edu"
+                  },
+                  "room_code": "PHYS-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Hassan Al-Najjar",
+                    "email": "hnajjar@university.edu"
+                  },
+                  "room_code": "PHYS-302",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-01",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-U101"]
+            },
+            "midterm2": {
+              "date": "2026-05-07",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-U101"]
+            },
+            "final": {
+              "date": "2026-06-11",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-U101"]
+            }
+          }
+        },
+        {
+          "code": "GPH 201",
+          "title": "Principles of Geophysics",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 3,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Ziyad Al-Malki",
+                    "email": "zmalki@university.edu"
+                  },
+                  "room_code": "GPH-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Ziyad Al-Malki",
+                    "email": "zmalki@university.edu"
+                  },
+                  "room_code": "GPH-202",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-23",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AS101"]
+            },
+            "midterm2": {
+              "date": "2026-05-19",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AS101"]
+            },
+            "final": {
+              "date": "2026-07-03",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AS101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "CEN",
+      "department_name": "Computer Engineering Department",
+      "courses": [
+        {
+          "code": "CEN 303",
+          "title": "Computer Communications and Networks",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 4,
+          "is_elective": false,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 4,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Faisal Al-Juhani",
+                    "email": "fjuhani@university.edu"
+                  },
+                  "room_code": "CEN-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Faisal Al-Juhani",
+                    "email": "fjuhani@university.edu"
+                  },
+                  "room_code": "CEN-202",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-02",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-V101"]
+            },
+            "midterm2": {
+              "date": "2026-05-08",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-V101"]
+            },
+            "final": {
+              "date": "2026-06-12",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-V101", "EXAM-V102"]
+            }
+          }
+        },
+        {
+          "code": "CEN 316",
+          "title": "Computer Architecture",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CSC 220",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Walid Al-Otaibi",
+                    "email": "wotaibi@university.edu"
+                  },
+                  "room_code": "CEN-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Walid Al-Otaibi",
+                    "email": "wotaibi@university.edu"
+                  },
+                  "room_code": "CEN-302",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-03",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-W101"]
+            },
+            "midterm2": {
+              "date": "2026-05-09",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-W101"]
+            },
+            "final": {
+              "date": "2026-06-13",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-W101"]
+            }
+          }
+        },
+        {
+          "code": "CEN 445",
+          "title": "Network Protocols & Algorithms",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CEN 303",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 5,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Aisha Al-Mutlaq",
+                    "email": "amutlaq@university.edu"
+                  },
+                  "room_code": "CEN-401",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Aisha Al-Mutlaq",
+                    "email": "amutlaq@university.edu"
+                  },
+                  "room_code": "CEN-402",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-04",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-X101"]
+            },
+            "midterm2": {
+              "date": "2026-05-10",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-X101"]
+            },
+            "final": {
+              "date": "2026-06-14",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-X101"]
+            }
+          }
+        },
+        {
+          "code": "CEN 318",
+          "title": "Embedded Systems Design",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "CEN 303",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 5,
+              "capacity": 25,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Badr Al-Turki",
+                    "email": "bturki@university.edu"
+                  },
+                  "room_code": "CEN-LAB-101",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Badr Al-Turki",
+                    "email": "bturki@university.edu"
+                  },
+                  "room_code": "CEN-LAB-102",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-05",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Y101"]
+            },
+            "midterm2": {
+              "date": "2026-05-11",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Y101"]
+            },
+            "final": {
+              "date": "2026-06-15",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-Y101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "IS",
+      "department_name": "Information Systems Department",
+      "courses": [
+        {
+          "code": "IS 230",
+          "title": "Introduction to Database Systems",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 6,
+          "is_elective": false,
+          "prerequisite": "CSC 212",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 6,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Amjad Al-Khaldi",
+                    "email": "akhaldi@university.edu"
+                  },
+                  "room_code": "IS-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Amjad Al-Khaldi",
+                    "email": "akhaldi@university.edu"
+                  },
+                  "room_code": "IS-202",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-06",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Z101"]
+            },
+            "midterm2": {
+              "date": "2026-05-12",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-Z101"]
+            },
+            "final": {
+              "date": "2026-06-16",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-Z101", "EXAM-Z102"]
+            }
+          }
+        },
+        {
+          "code": "IS 385",
+          "title": "Enterprise Resource Planning Systems",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "IS 230",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 7,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Youssef Al-Salem",
+                    "email": "ysalem@university.edu"
+                  },
+                  "room_code": "IS-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Youssef Al-Salem",
+                    "email": "ysalem@university.edu"
+                  },
+                  "room_code": "IS-302",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-07",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AA101"]
+            },
+            "midterm2": {
+              "date": "2026-05-13",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AA101"]
+            },
+            "final": {
+              "date": "2026-06-17",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AA101"]
+            }
+          }
+        },
+        {
+          "code": "IS 485",
+          "title": "ERP Systems Lab",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "prerequisite": "IS 385",
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 8,
+              "capacity": 25,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Lubna Al-Ajmi",
+                    "email": "lajmi@university.edu"
+                  },
+                  "room_code": "IS-LAB-101",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "15:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Lubna Al-Ajmi",
+                    "email": "lajmi@university.edu"
+                  },
+                  "room_code": "IS-LAB-102",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "15:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-08",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AB101"]
+            },
+            "midterm2": {
+              "date": "2026-05-14",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AB101"]
+            },
+            "final": {
+              "date": "2026-06-18",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AB101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "IC",
+      "department_name": "Islamic Culture Department",
+      "courses": [
+        {
+          "code": "IC 100",
+          "title": "Studies in the Prophet Biography",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 50,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Saleh Al-Qahtani",
+                    "email": "sqahtani@university.edu"
+                  },
+                  "room_code": "IC-101",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-09",
+              "start_time": "09:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AC101", "EXAM-AC102"]
+            },
+            "final": {
+              "date": "2026-06-19",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AC101", "EXAM-AC102", "EXAM-AC103"]
+            }
+          }
+        },
+        {
+          "code": "IC 101",
+          "title": "Principles of Islamic Culture",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 50,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Fahad Al-Shehri",
+                    "email": "fshehri@university.edu"
+                  },
+                  "room_code": "IC-201",
+                  "meeting_pattern": {
+                    "days": ["Monday", "Wednesday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-10",
+              "start_time": "13:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AE101", "EXAM-AE102"]
+            },
+            "final": {
+              "date": "2026-06-20",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AE101", "EXAM-AE102"]
+            }
+          }
+        },
+        {
+          "code": "IC 102",
+          "title": "Family in Islam",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 50,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Samir Al-Zahrani",
+                    "email": "szahrani2@university.edu"
+                  },
+                  "room_code": "IC-301",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "12:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-11",
+              "start_time": "09:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AF101"]
+            },
+            "final": {
+              "date": "2026-06-21",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AF101", "EXAM-AF102"]
+            }
+          }
+        },
+        {
+          "code": "IC 103",
+          "title": "Economic System in Islam",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 45,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Adel Al-Mutairi",
+                    "email": "amutairi@university.edu"
+                  },
+                  "room_code": "IC-401",
+                  "meeting_pattern": {
+                    "days": ["Monday", "Wednesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-12",
+              "start_time": "13:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AG101"]
+            },
+            "final": {
+              "date": "2026-06-22",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AG101"]
+            }
+          }
+        },
+        {
+          "code": "IC 104",
+          "title": "Islamic Political System",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 45,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Turki Al-Ghamdi",
+                    "email": "tghamdi@university.edu"
+                  },
+                  "room_code": "IC-501",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-13",
+              "start_time": "09:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AH101"]
+            },
+            "final": {
+              "date": "2026-06-23",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AH101"]
+            }
+          }
+        },
+        {
+          "code": "IC 105",
+          "title": "Human Rights",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 50,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Osama Al-Shammari",
+                    "email": "oshammari@university.edu"
+                  },
+                  "room_code": "IC-601",
+                  "meeting_pattern": {
+                    "days": ["Monday", "Wednesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-14",
+              "start_time": "13:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AI101"]
+            },
+            "final": {
+              "date": "2026-06-24",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AI101"]
+            }
+          }
+        },
+        {
+          "code": "IC 106",
+          "title": "Medical Jurisprudence",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Nasser Al-Dosari",
+                    "email": "ndosari@university.edu"
+                  },
+                  "room_code": "IC-701",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "15:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-15",
+              "start_time": "09:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AJ101"]
+            },
+            "final": {
+              "date": "2026-06-25",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AJ101"]
+            }
+          }
+        },
+        {
+          "code": "IC 107",
+          "title": "Professional Ethics",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 7,
+          "is_elective": false,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 7,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Mazen Al-Shahrani",
+                    "email": "mshahrani@university.edu"
+                  },
+                  "room_code": "IC-801",
+                  "meeting_pattern": {
+                    "days": ["Monday", "Wednesday"],
+                    "start_time": "11:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-16",
+              "start_time": "13:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AK101"]
+            },
+            "final": {
+              "date": "2026-06-26",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AK101"]
+            }
+          }
+        },
+        {
+          "code": "IC 108",
+          "title": "Contemporary Issues",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 8,
+          "is_elective": false,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 8,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Jaber Al-Otaibi",
+                    "email": "jotaibi@university.edu"
+                  },
+                  "room_code": "IC-901",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "09:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-17",
+              "start_time": "09:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AL101"]
+            },
+            "final": {
+              "date": "2026-06-27",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AL101"]
+            }
+          }
+        },
+        {
+          "code": "QURN 100",
+          "title": "The Holy Quran",
+          "credits": 2,
+          "weekly_hours": 2,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 1,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Abdulaziz Al-Subaie",
+                    "email": "asubaie@university.edu"
+                  },
+                  "room_code": "QURN-101",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "13:00",
+                    "duration_minutes": 50
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-18",
+              "start_time": "13:00",
+              "duration_minutes": 90,
+              "room_codes": ["EXAM-AM101"]
+            },
+            "final": {
+              "date": "2026-06-28",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AM101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "OPER",
+      "department_name": "Operations Research Department",
+      "courses": [
+        {
+          "code": "OPER 122",
+          "title": "Introduction to Operations Research",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 3,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Rashed Al-Harbi",
+                    "email": "rharbi@university.edu"
+                  },
+                  "room_code": "OPER-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "12:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Rashed Al-Harbi",
+                    "email": "rharbi@university.edu"
+                  },
+                  "room_code": "OPER-202",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "12:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-19",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AO101"]
+            },
+            "midterm2": {
+              "date": "2026-05-15",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AO101"]
+            },
+            "final": {
+              "date": "2026-06-29",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AO101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "BIOL",
+      "department_name": "Biology Department",
+      "courses": [
+        {
+          "code": "BIOL 145",
+          "title": "Biology",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 2,
+              "capacity": 40,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Amal Al-Sulaiman",
+                    "email": "asulaiman@university.edu"
+                  },
+                  "room_code": "BIOL-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Amal Al-Sulaiman",
+                    "email": "asulaiman@university.edu"
+                  },
+                  "room_code": "BIOL-LAB-101",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "10:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-20",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AP101"]
+            },
+            "midterm2": {
+              "date": "2026-05-16",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AP101"]
+            },
+            "final": {
+              "date": "2026-06-30",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AP101", "EXAM-AP102"]
+            }
+          }
+        },
+        {
+          "code": "MIC 140",
+          "title": "General Microbiology",
+          "credits": 3,
+          "weekly_hours": 5,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 2,
+              "capacity": 30,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Mona Al-Zahrani",
+                    "email": "mzahrani@university.edu"
+                  },
+                  "room_code": "MIC-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 90
+                  }
+                },
+                {
+                  "section_no": "01T",
+                  "section_type": "tutorial",
+                  "instructor": {
+                    "name": "Dr. Mona Al-Zahrani",
+                    "email": "mzahrani@university.edu"
+                  },
+                  "room_code": "MIC-LAB-101",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "08:00",
+                    "duration_minutes": 60
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-22",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AR101"]
+            },
+            "midterm2": {
+              "date": "2026-05-18",
+              "start_time": "13:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AR101"]
+            },
+            "final": {
+              "date": "2026-07-02",
+              "start_time": "13:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AR101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "department_code": "BCH",
+      "department_name": "Biochemistry Department",
+      "courses": [
+        {
+          "code": "BCH 101",
+          "title": "General Biochemistry",
+          "credits": 4,
+          "weekly_hours": 6,
+          "level": 0,
+          "is_elective": true,
+          "section_groups": [
+            {
+              "group_id": "01",
+              "group_level": 2,
+              "capacity": 35,
+              "sections": [
+                {
+                  "section_no": "01L",
+                  "section_type": "lecture",
+                  "instructor": {
+                    "name": "Dr. Sulaiman Al-Fayez",
+                    "email": "sfayez@university.edu"
+                  },
+                  "room_code": "BCH-201",
+                  "meeting_pattern": {
+                    "days": ["Sunday", "Tuesday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 75
+                  }
+                },
+                {
+                  "section_no": "01B",
+                  "section_type": "lab",
+                  "instructor": {
+                    "name": "Dr. Sulaiman Al-Fayez",
+                    "email": "sfayez@university.edu"
+                  },
+                  "room_code": "BCH-LAB-101",
+                  "meeting_pattern": {
+                    "days": ["Thursday"],
+                    "start_time": "14:00",
+                    "duration_minutes": 120
+                  }
+                }
+              ]
+            }
+          ],
+          "exams": {
+            "midterm": {
+              "date": "2026-04-21",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AQ101"]
+            },
+            "midterm2": {
+              "date": "2026-05-17",
+              "start_time": "09:00",
+              "duration_minutes": 120,
+              "room_codes": ["EXAM-AQ101"]
+            },
+            "final": {
+              "date": "2026-07-01",
+              "start_time": "09:00",
+              "duration_minutes": 180,
+              "room_codes": ["EXAM-AQ101"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "generated_on": "2025-10-29",
+    "academic_year": "2025-2026",
+    "semester": "Spring 2026",
+    "notes": "All instructor names, email addresses, and room codes are fictional. Courses with 3+ credits have lecture + tutorial/lab sections. Labs are always 2-hour blocks (120 minutes). Exams are unified for all sections of a course.",
+    "total_departments": 11,
+    "total_courses": 35,
+    "total_section_groups": 35,
+    "schema_version": "2.0",
+    "section_types": {
+      "lecture": "Main lecture section (L suffix)",
+      "tutorial": "Tutorial/recitation section (T suffix)",
+      "lab": "Laboratory section - always 120 minutes (B suffix)"
+    }
+  }
+}

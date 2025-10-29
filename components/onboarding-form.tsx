@@ -70,8 +70,10 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   const router = useRouter();
   const supabase = createClient();
   
-  // Academic level options (1-8 for flexibility)
-  const levelOptions = [4, 5, 6, 7, 8];
+  // Academic level options (1-8 for full system support)
+  // Levels 1-3: Foundation/Prep courses
+  // Levels 4-8: Major courses (4=Year 1, 5=Year 2, etc.)
+  const levelOptions = [1, 2, 3, 4, 5, 6, 7, 8];
   
   /**
    * Validate form before submission
@@ -215,7 +217,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   <p className="text-sm text-red-500">{errors.academicLevel}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Level indicates which semester you're in. Level 4 = First semester in the Major, Level 5 = Second semester in the Major, etc.
+                  Level indicates your academic standing. Levels 1-3: Foundation, Levels 4-8: Major (4=Year 1 Sem 1, 5=Year 1 Sem 2, etc.)
                 </p>
               </div>
               

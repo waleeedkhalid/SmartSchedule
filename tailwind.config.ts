@@ -85,6 +85,32 @@ export default {
   				900: 'hsl(var(--teal-900))',
   				DEFAULT: 'hsl(var(--teal-600))'
   			},
+  			purple: {
+  				50: 'hsl(var(--purple-50))',
+  				100: 'hsl(var(--purple-100))',
+  				200: 'hsl(var(--purple-200))',
+  				300: 'hsl(var(--purple-300))',
+  				400: 'hsl(var(--purple-400))',
+  				500: 'hsl(var(--purple-500))',
+  				600: 'hsl(var(--purple-600))',
+  				700: 'hsl(var(--purple-700))',
+  				800: 'hsl(var(--purple-800))',
+  				900: 'hsl(var(--purple-900))',
+  				DEFAULT: 'hsl(var(--purple-600))'
+  			},
+  			indigo: {
+  				50: 'hsl(var(--indigo-50))',
+  				100: 'hsl(var(--indigo-100))',
+  				200: 'hsl(var(--indigo-200))',
+  				300: 'hsl(var(--indigo-300))',
+  				400: 'hsl(var(--indigo-400))',
+  				500: 'hsl(var(--indigo-500))',
+  				600: 'hsl(var(--indigo-600))',
+  				700: 'hsl(var(--indigo-700))',
+  				800: 'hsl(var(--indigo-800))',
+  				900: 'hsl(var(--indigo-900))',
+  				DEFAULT: 'hsl(var(--indigo-600))'
+  			},
   			success: {
   				DEFAULT: 'hsl(var(--success))',
   				light: 'hsl(var(--success-light))'

@@ -35,7 +35,7 @@ export function HeroSection() {
               <Button 
                 size="lg" 
                 asChild
-                className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600 shadow-lg transition-all"
+                className="bg-brand-blue-600 text-white hover:bg-purple-600 dark:bg-brand-blue-500 dark:hover:bg-purple-500 shadow-lg transition-all"
               >
                 <Link href="/dashboard">
                   <LayoutDashboard className="mr-2 h-5 w-5" />
@@ -48,7 +48,7 @@ export function HeroSection() {
                 <Button 
                   size="lg" 
                   asChild
-                  className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600 shadow-lg transition-all"
+                  className="bg-brand-blue-600 text-white hover:bg-purple-600 dark:bg-brand-blue-500 dark:hover:bg-purple-500 shadow-lg transition-all"
                 >
                   <Link href="/login">
                     Sign In
@@ -57,7 +57,7 @@ export function HeroSection() {
                 <Button 
                   size="lg" 
                   asChild
-                  className="bg-white border-2 border-brand-blue-600 text-brand-blue-600 hover:bg-brand-blue-50 hover:text-brand-blue-700 hover:border-brand-blue-700 hover:scale-105 hover:shadow-2xl dark:bg-slate-800 dark:border-brand-blue-500 dark:text-brand-blue-500 dark:hover:bg-slate-700 dark:hover:text-brand-blue-400 dark:hover:border-brand-blue-400 transition-all duration-200 shadow-lg"
+                  className="bg-white border-2 border-brand-blue-600 text-brand-blue-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-600 hover:scale-105 hover:shadow-2xl dark:bg-slate-800 dark:border-brand-blue-500 dark:text-brand-blue-500 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 dark:hover:border-indigo-600 transition-all duration-200 shadow-lg"
                 >
                   <Link href="/register">
                     Get Started Free

@@ -369,7 +369,6 @@ export type Database = {
           duration_minutes: number
           id: string
           room_codes: string[]
-          section_id: string | null
           start_time: string
           updated_at: string | null
         }
@@ -381,7 +380,6 @@ export type Database = {
           duration_minutes: number
           id?: string
           room_codes?: string[]
-          section_id?: string | null
           start_time: string
           updated_at?: string | null
         }
@@ -393,7 +391,6 @@ export type Database = {
           duration_minutes?: number
           id?: string
           room_codes?: string[]
-          section_id?: string | null
           start_time?: string
           updated_at?: string | null
         }
@@ -404,13 +401,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "course"
             referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "exam_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "section"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -631,6 +621,13 @@ export type Database = {
             referencedRelation: "section"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schedule_comment_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_with_enrollment_count"
+            referencedColumns: ["id"]
+          },
         ]
       }
       schedule_doc: {
@@ -662,6 +659,7 @@ export type Database = {
       }
       section: {
         Row: {
+          activity: string | null
           capacity: number
           course_code: string
           course_offering_id: string | null
@@ -678,6 +676,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          activity?: string | null
           capacity: number
           course_code: string
           course_offering_id?: string | null
@@ -694,6 +693,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          activity?: string | null
           capacity?: number
           course_code?: string
           course_offering_id?: string | null
@@ -729,6 +729,13 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "instructor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_workload_summary"
             referencedColumns: ["id"]
           },
           {
@@ -851,6 +858,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "section"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_enrollment_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_with_enrollment_count"
             referencedColumns: ["id"]
           },
           {
@@ -1040,7 +1054,106 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      exam_schedule_conflicts: {
+        Row: {
+          course1_code: string | null
+          course2_code: string | null
+          exam_date: string | null
+          exam1_id: string | null
+          exam1_start: string | null
+          exam2_id: string | null
+          exam2_start: string | null
+          has_student_conflict: boolean | null
+          overlap_minutes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_course_code_fkey"
+            columns: ["course1_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "exam_course_code_fkey"
+            columns: ["course2_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      instructor_workload_summary: {
+        Row: {
+          email: string | null
+          id: string | null
+          max_load_per_week: number | null
+          name: string | null
+          sections: Json | null
+          total_sections: number | null
+          total_weekly_hours: number | null
+          within_load_limit: boolean | null
+        }
+        Relationships: []
+      }
+      section_with_enrollment_count: {
+        Row: {
+          available_seats: number | null
+          capacity: number | null
+          course_code: string | null
+          course_offering_id: string | null
+          created_at: string | null
+          created_by: string | null
+          enrolled_count: number | null
+          group_level: number | null
+          id: string | null
+          instructor_id: string | null
+          is_full: boolean | null
+          is_scheduled_by_algorithm: boolean | null
+          meeting_pattern: Json | null
+          room_code: string | null
+          section_no: string | null
+          state: Database["public"]["Enums"]["section_state"] | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "section_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offering"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_workload_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "room"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_assign_student_to_group: {
@@ -1104,6 +1217,10 @@ export type Database = {
         }[]
       }
       check_section_capacity: { Args: { p_section_id: string }; Returns: Json }
+      check_section_capacity_optimized: {
+        Args: { p_section_id: string }
+        Returns: Json
+      }
       check_student_level_conflicts: {
         Args: {
           p_days: string[]
@@ -1171,6 +1288,36 @@ export type Database = {
         }[]
       }
       get_all_schedule_conflicts: { Args: never; Returns: Json }
+      get_available_elective_sections_with_counts: {
+        Args: never
+        Returns: {
+          available_seats: number
+          capacity: number
+          course_code: string
+          course_credits: number
+          course_level: number
+          course_offering_id: string
+          course_title: string
+          course_weekly_hours: number
+          created_at: string
+          enrolled_count: number
+          instructor_email: string
+          instructor_id: string
+          instructor_name: string
+          is_full: boolean
+          is_scheduled_by_algorithm: boolean
+          meeting_pattern: Json
+          room_code: string
+          section_id: string
+          section_no: string
+          state: Database["public"]["Enums"]["section_state"]
+          updated_at: string
+        }[]
+      }
+      get_cached_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       get_events_needing_notifications: {
         Args: never
         Returns: {
@@ -1208,6 +1355,24 @@ export type Database = {
         }
       }
       get_instructor_load: { Args: { p_instructor_id: string }; Returns: Json }
+      get_instructor_schedule_with_details: {
+        Args: { p_instructor_id: string }
+        Returns: {
+          capacity: number
+          course_code: string
+          course_credits: number
+          course_title: string
+          enrolled_count: number
+          exam_date: string
+          exam_duration_minutes: number
+          exam_start_time: string
+          meeting_pattern: Json
+          room_code: string
+          section_id: string
+          section_no: string
+          state: Database["public"]["Enums"]["section_state"]
+        }[]
+      }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
       get_overdue_events: {
         Args: never
@@ -1223,6 +1388,26 @@ export type Database = {
         }[]
       }
       get_section_conflicts: { Args: { p_section_id: string }; Returns: Json }
+      get_student_complete_schedule: {
+        Args: { p_student_id: string }
+        Returns: {
+          course_code: string
+          course_credits: number
+          course_level: number
+          course_title: string
+          enrollment_type: string
+          exam_date: string
+          exam_room_codes: string[]
+          exam_start_time: string
+          instructor_email: string
+          instructor_name: string
+          is_elective: boolean
+          meeting_pattern: Json
+          room_code: string
+          section_id: string
+          section_no: string
+        }[]
+      }
       get_student_required_courses: {
         Args: { p_student_id: string }
         Returns: string[]
@@ -1267,6 +1452,10 @@ export type Database = {
         Args: { check_roles: Database["public"]["Enums"]["user_role"][] }
         Returns: boolean
       }
+      has_any_role_cached: {
+        Args: { check_roles: Database["public"]["Enums"]["user_role"][] }
+        Returns: boolean
+      }
       has_notification_been_sent: {
         Args: { days_before_value: number; event_id: string; role_name: string }
         Returns: boolean
@@ -1275,10 +1464,15 @@ export type Database = {
         Args: { check_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      has_role_cached: {
+        Args: { check_role: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
       is_elective_survey_open: { Args: never; Returns: boolean }
       is_irregular_student: { Args: { p_student_id: string }; Returns: boolean }
       is_registration_open: { Args: never; Returns: boolean }
       needs_onboarding: { Args: { p_user_id: string }; Returns: boolean }
+      set_user_role_context: { Args: never; Returns: undefined }
       sync_student_groups: { Args: never; Returns: undefined }
       time_ranges_overlap: {
         Args: {
@@ -1455,7 +1649,5 @@ export const Constants = {
       ],
     },
   },
-} as const;
+} as const
 
-export type Exam = Database['public']['Tables']['exam']['Row'];
-export type ExamInput = Database['public']['Tables']['exam']['Insert'];

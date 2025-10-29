@@ -78,6 +78,30 @@
     --teal-600: 180 70% 38%;
     --teal-900: 180 75% 18%;
     
+    /* Purple Hover Scale */
+    --purple-50: 270 60% 98%;
+    --purple-100: 270 55% 95%;
+    --purple-200: 270 60% 90%;
+    --purple-300: 270 65% 80%;
+    --purple-400: 270 68% 65%;
+    --purple-500: 270 70% 50%;
+    --purple-600: 270 72% 42%;
+    --purple-700: 270 75% 35%;
+    --purple-800: 270 78% 28%;
+    --purple-900: 270 80% 20%;
+    
+    /* Indigo Hover Scale */
+    --indigo-50: 240 60% 98%;
+    --indigo-100: 240 55% 95%;
+    --indigo-200: 240 58% 90%;
+    --indigo-300: 240 60% 80%;
+    --indigo-400: 240 62% 65%;
+    --indigo-500: 240 60% 50%;
+    --indigo-600: 240 65% 42%;
+    --indigo-700: 240 68% 35%;
+    --indigo-800: 240 70% 28%;
+    --indigo-900: 240 75% 20%;
+    
     /* Semantic Colors */
     --success: 145 65% 45%;
     --success-light: 145 60% 95%;
@@ -160,6 +184,30 @@
     --teal-500: 180 60% 55%;
     --teal-600: 180 55% 65%;
     --teal-900: 180 60% 90%;
+    
+    /* Purple Hover - Dark Mode */
+    --purple-50: 270 80% 20%;
+    --purple-100: 270 75% 25%;
+    --purple-200: 270 72% 30%;
+    --purple-300: 270 70% 40%;
+    --purple-400: 270 68% 50%;
+    --purple-500: 270 70% 60%;
+    --purple-600: 270 72% 68%;
+    --purple-700: 270 75% 75%;
+    --purple-800: 270 78% 82%;
+    --purple-900: 270 80% 90%;
+    
+    /* Indigo Hover - Dark Mode */
+    --indigo-50: 240 75% 20%;
+    --indigo-100: 240 70% 25%;
+    --indigo-200: 240 68% 30%;
+    --indigo-300: 240 65% 40%;
+    --indigo-400: 240 62% 50%;
+    --indigo-500: 240 60% 60%;
+    --indigo-600: 240 65% 68%;
+    --indigo-700: 240 68% 75%;
+    --indigo-800: 240 70% 82%;
+    --indigo-900: 240 75% 90%;
     
     /* Semantic Colors - Dark Mode */
     --success: 145 60% 55%;

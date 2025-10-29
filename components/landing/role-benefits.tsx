@@ -144,7 +144,7 @@ export function RoleBenefits() {
                       {role.capabilities.map((capability, index) => (
                         <div 
                           key={index}
-                          className="flex items-start gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
+                          className="flex items-start gap-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 transition-colors duration-200"
                         >
                           <div className="mt-0.5 h-5 w-5 rounded-full bg-brand-blue-100 dark:bg-brand-blue-900 flex items-center justify-center flex-shrink-0">
                             <div className="h-2 w-2 rounded-full bg-brand-blue-600 dark:bg-brand-blue-500" />

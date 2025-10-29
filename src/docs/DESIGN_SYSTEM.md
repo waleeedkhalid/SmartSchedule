@@ -55,6 +55,34 @@ Teal/cyan adds energy and complements blue without overwhelming.
 - `teal-600`: `hsl(180 70% 38%)` - Accent hover
 - `teal-900`: `hsl(180 75% 18%)`
 
+### Hover State Colors
+
+Purple and Indigo provide distinctive, modern hover states that complement the blue primary.
+
+**Purple Scale** (Primary hover states)
+- `purple-50`: `hsl(270 60% 98%)` - Light hover backgrounds
+- `purple-100`: `hsl(270 55% 95%)`
+- `purple-200`: `hsl(270 60% 90%)`
+- `purple-300`: `hsl(270 65% 80%)`
+- `purple-400`: `hsl(270 68% 65%)`
+- `purple-500`: `hsl(270 70% 50%)` - Primary hover color
+- `purple-600`: `hsl(270 72% 42%)` - Button hover
+- `purple-700`: `hsl(270 75% 35%)`
+- `purple-800`: `hsl(270 78% 28%)`
+- `purple-900`: `hsl(270 80% 20%)`
+
+**Indigo Scale** (Secondary/Navigation hover states)
+- `indigo-50`: `hsl(240 60% 98%)` - Light hover backgrounds
+- `indigo-100`: `hsl(240 55% 95%)`
+- `indigo-200`: `hsl(240 58% 90%)`
+- `indigo-300`: `hsl(240 60% 80%)`
+- `indigo-400`: `hsl(240 62% 65%)`
+- `indigo-500`: `hsl(240 60% 50%)` - Secondary hover color
+- `indigo-600`: `hsl(240 65% 42%)` - Navigation hover
+- `indigo-700`: `hsl(240 68% 35%)`
+- `indigo-800`: `hsl(240 70% 28%)`
+- `indigo-900`: `hsl(240 75% 20%)`
+
 ### Semantic Colors
 
 **Success** - Emerald
@@ -211,24 +239,27 @@ When creating schedule-specific icons:
 
 ### Buttons
 
-**Primary**: Blue background, white text
+**Primary**: Blue background, purple hover
 ```tsx
-<Button className="bg-blue-600 hover:bg-blue-700 text-white">
+<Button className="bg-blue-600 hover:bg-purple-600 text-white">
 ```
 
-**Secondary**: Slate background, white text
+**Secondary**: Slate background, indigo hover
 ```tsx
 <Button variant="secondary">
+// Hovers to indigo-100
 ```
 
-**Outline**: Transparent with blue border
+**Outline**: Transparent with indigo hover
 ```tsx
-<Button variant="outline" className="border-blue-600 text-blue-600">
+<Button variant="outline">
+// Hovers to indigo-50 background
 ```
 
-**Ghost**: Transparent with hover background
+**Ghost**: Transparent with purple/indigo hover
 ```tsx
 <Button variant="ghost">
+// Hovers to purple-50 background
 ```
 
 ### Cards
@@ -266,6 +297,9 @@ Maintain clear visual hierarchy through size, weight, and color. Users should kn
 
 ### 3. Predictable Interactions
 Similar actions should look and behave similarly. Feedback should be immediate.
+- **Primary actions**: Purple hover states (buttons, CTAs)
+- **Navigation**: Indigo hover states (sidebar, menus, tabs)
+- **Selections**: Indigo hover states (dropdowns, selects)
 
 ### 4. Responsive by Default
 Design mobile-first, enhance for larger screens. Touch targets ≥44px.

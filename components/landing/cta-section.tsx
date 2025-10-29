@@ -33,7 +33,7 @@ export function CTASection() {
               <Button 
                 size="lg" 
                 asChild 
-                className="bg-white text-brand-blue-600 hover:bg-brand-blue-50 hover:text-brand-blue-700 hover:scale-105 hover:shadow-2xl font-semibold group shadow-lg transition-all duration-200"
+                className="bg-white text-brand-blue-600 hover:bg-indigo-50 hover:text-indigo-700 hover:scale-105 hover:shadow-2xl font-semibold group shadow-lg transition-all duration-200"
               >
                 <Link href="/dashboard">
                   <LayoutDashboard className="mr-2 h-5 w-5" />
@@ -46,7 +46,7 @@ export function CTASection() {
                 <Button 
                   size="lg" 
                   asChild 
-                  className="bg-white text-brand-blue-600 hover:bg-brand-blue-50 hover:text-brand-blue-700 hover:scale-105 hover:shadow-2xl font-semibold group shadow-lg transition-all duration-200"
+                  className="bg-white text-brand-blue-600 hover:bg-indigo-50 hover:text-indigo-700 hover:scale-105 hover:shadow-2xl font-semibold group shadow-lg transition-all duration-200"
                 >
                   <Link href="/login">
                     Sign In
@@ -56,7 +56,7 @@ export function CTASection() {
                 <Button 
                   size="lg" 
                   asChild
-                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:border-white hover:text-brand-blue-600 hover:scale-105 hover:shadow-2xl transition-all duration-200 shadow-lg"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:border-white hover:text-purple-600 hover:scale-105 hover:shadow-2xl transition-all duration-200 shadow-lg"
                 >
                   <Link href="/register">
                     Create Free Account

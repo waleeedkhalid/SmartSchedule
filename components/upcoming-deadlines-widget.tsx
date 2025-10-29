@@ -142,7 +142,7 @@ export function UpcomingDeadlinesWidget({
 						{displayDeadlines.map((deadline) => (
 							<div
 								key={deadline.id}
-								className="border rounded-lg p-3 hover:bg-accent transition-colors"
+								className="border rounded-lg p-3 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950 dark:hover:border-indigo-700 transition-colors"
 							>
 								<div className="flex items-start justify-between gap-2">
 									<div className="flex-1 min-w-0">
