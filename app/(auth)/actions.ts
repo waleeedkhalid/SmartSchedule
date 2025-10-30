@@ -12,12 +12,14 @@ export async function signup(formData: {
   const supabase = await createClient();
 
   // Create auth user
+  // Pass role and name in metadata so database trigger can auto-create user_roles
   const { data, error } = await supabase.auth.signUp({
     email: formData.email as string,
     password: formData.password as string,
     options: {
       data: {
         full_name: formData.name as string,
+        role: formData.role, // Trigger will use this to create user_roles
       },
     },
   });
@@ -26,24 +28,20 @@ export async function signup(formData: {
     return { error: error.message };
   }
 
-  // Create user_roles entry automatically
+  // user_roles entry is automatically created by database trigger
+  // No manual INSERT needed - trigger handles it on auth.users INSERT
+  
   if (data.user) {
-    const { error: roleError } = await supabase
+    // Verify user_roles was created (optional check)
+    const { data: userRole, error: roleError } = await supabase
       .from('user_roles')
-      .insert({
-        user_id: data.user.id,
-        role: formData.role,
-        name: formData.name,
-        email: formData.email,
-      });
+      .select('user_id')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
 
-    if (roleError) {
-      // Return error to user instead of silent failure
-      console.error('Failed to create user role:', roleError);
-      
-      return { 
-        error: `Failed to create user profile: ${roleError.message}. This is likely a permission issue. Please contact support or try again later.` 
-      };
+    if (roleError || !userRole) {
+      console.error('User role not auto-created:', roleError);
+      // Don't fail signup - user can still login and complete onboarding
     }
 
     // Auto-create instructor profile for faculty users

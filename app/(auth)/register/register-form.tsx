@@ -155,8 +155,9 @@ export default function RegisterForm() {
   const onSubmit = useCallback(
     async (values: z.infer<typeof signupSchema>) => {
       startTransition(async () => {
-        // Remove confirmPassword before sending to server
-        const { confirmPassword, ...signupData } = values
+        // Exclude confirmPassword - it's only for client-side validation
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { confirmPassword: _confirmPassword, ...signupData } = values
         const response = await signup(signupData)
 
         if (response.error) {
@@ -386,7 +387,7 @@ export default function RegisterForm() {
           <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
             <Icons.info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
-              You'll receive a confirmation email after registration. Please
+              You&apos;ll receive a confirmation email after registration. Please
               verify your email address to activate your account.
             </AlertDescription>
           </Alert>
