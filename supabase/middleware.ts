@@ -104,31 +104,12 @@ export async function updateSession(request: NextRequest) {
     // Check if user needs onboarding (force fresh data, no cache)
     const { data: userRole } = await supabase
       .from('user_roles')
-      .select('onboarding_completed, level, role')
+			.select('role')
       .eq('user_id', user.id)
       .maybeSingle();
     
     if (userRole) {
-      // Determine if onboarding is needed
-      let needsOnboarding = false;
-      
-      // Check onboarding_completed flag
-      if (!userRole.onboarding_completed) {
-        needsOnboarding = true;
-      }
-      
-      // Additional check for students: ensure critical fields are set
-      if (userRole.role === 'student') {
-        if (!userRole.level) {
-          needsOnboarding = true;
-        }
-      }
-      
-      // Redirect to onboarding if needed
-      if (needsOnboarding) {
-        const onboardingUrl = new URL("/onboarding", request.url);
-        return NextResponse.redirect(onboardingUrl);
-      }
+			// Profile exists; allow access
     } else {
       // User has no role record - redirect to onboarding
       const onboardingUrl = new URL("/onboarding", request.url);

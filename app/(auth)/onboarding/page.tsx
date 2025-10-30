@@ -25,7 +25,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
-import { OnboardingForm } from "@/components/onboarding-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -43,10 +42,10 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
   
-  // Get user's role and onboarding status
+  // Get user's role (profile presence)
   const { data: userRole, error: roleError } = await supabase
     .from('user_roles')
-    .select('role, name, onboarding_completed, level')
+    .select('role, name')
     .eq('user_id', user.id)
     .maybeSingle();
   
@@ -88,9 +87,9 @@ export default async function OnboardingPage() {
     );
   }
   
-  // Already completed onboarding - redirect to dashboard
-  // This prevents users from accessing /onboarding directly after setup
-  if (userRole.onboarding_completed) {
+  // Profile exists: redirect straight to appropriate dashboard
+  // (Onboarding is not required with current minimal schema)
+  if (userRole) {
     const dashboardRoute = userRole.role === 'student' 
       ? '/dashboard/student'
       : userRole.role === 'faculty'
@@ -106,14 +105,38 @@ export default async function OnboardingPage() {
     redirect(dashboardRoute);
   }
   
-  // Render onboarding form
-  // This is a client component that handles the actual form and submission
+  // If we reached here, profile is missing - show helpful message
   return (
-    <OnboardingForm 
-      userId={user.id}
-      userName={userRole.name || 'User'}
-      userRole={userRole.role}
-    />
+    <div className="container flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Profile Not Found</CardTitle>
+          <CardDescription>
+            Your account exists but your profile could not be found.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This usually happens if registration didn't complete properly. Please sign out and try registering again.
+          </p>
+          {roleError && (
+            <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
+              Error: {roleError.message}
+            </div>
+          )}
+          <form action={async () => {
+            "use server";
+            const supabase = await createClient();
+            await supabase.auth.signOut();
+            redirect("/register");
+          }}>
+            <Button type="submit" className="w-full">
+              Sign Out and Register Again
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
