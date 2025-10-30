@@ -26,9 +26,9 @@ The bar chart compares sections across different courses like SWE 211 has 2 sect
 
 ### 1.3 Registrar Dashboard
 
-The registrar manages the entire system so they need big picture analytics. This dashboard tracks enrollment trends, capacity usage across all sections and department efficiency. The registrar sees these system-wide metrics when they open their admin dashboard.
+The registrar manages the entire system so they need big picture analytics. This dashboard tracks enrollment trends, capacity usage across all sections and department distribution. The registrar sees these system-wide metrics when they open their admin dashboard.
 
-The dual-line chart shows enrollment growing from 450 to 525 regular students over 6 weeks. The capacity bar chart groups sections by how full they are, showing 45 sections are 60-80% full. The section type doughnut breaks down 68 lectures, 32 labs and 25 tutorials. The department bar chart compares SWE at 85% capacity versus CS at 72%.
+The multi-line chart shows enrollment growing from 450 to 525 regular students and 28 to 43 irregular students over 6 weeks. The capacity bar chart groups sections by how full they are, showing 45 sections are 60-80% full and only 3 overbooked. The horizontal bar chart ranks courses by demand with SWE 211 having 145 students at the top. The doughnut chart shows department distribution with SWE having 285 students followed by CS with 125.
 
 ### 1.4 Teaching Load Committee Dashboard
 

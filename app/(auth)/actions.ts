@@ -27,7 +27,14 @@ export async function signup(formData: {
   }
 
   // Create user_roles entry automatically
-  if (data.user) {
+  if (data.user && data.session) {
+    // Set the session in the client to authenticate subsequent requests
+    await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+
+    // Now insert with authenticated context
     const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
