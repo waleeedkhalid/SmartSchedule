@@ -71,6 +71,9 @@ export default function FacultyDashboardPage() {
     ],
   };
 
+  // Calculate total sections
+  const totalSections = teachingLoadData.datasets[0].data.reduce((sum, val) => sum + val, 0);
+
   const enrollmentData = {
     labels: ['Enrolled', 'Available'],
     datasets: [{
@@ -150,6 +153,13 @@ export default function FacultyDashboardPage() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
+          stepSize: 1,
+          callback: function(value: any) {
+            if (Number.isInteger(value)) {
+              return value;
+            }
+            return null;
+          }
         },
         border: { display: false },
       },
@@ -306,7 +316,7 @@ export default function FacultyDashboardPage() {
         </div>
         <Badge variant="secondary" className="text-lg px-4 py-2 bg-green-100 text-green-900 border-green-200">
           <BookOpen className="h-4 w-4 mr-2" />
-          5 Sections
+          {totalSections} Sections
         </Badge>
       </div>
 
