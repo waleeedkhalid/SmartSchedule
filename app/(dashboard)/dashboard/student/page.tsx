@@ -21,13 +21,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/supabase/server";
 import { Calendar, BookOpen, MessageSquare, GraduationCap } from "lucide-react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ElectiveRegistrationManager } from "@/components/elective-registration-manager";
 import { StudentScheduleView } from "@/components/student-schedule-view";
 import { StudentExamTimetable } from "@/components/student-exam-timetable";
-import { StudentCommentManager } from "@/components/student-comment-manager";
+// import { StudentCommentManager } from "@/components/student-comment-manager"; // Temporarily disabled during maintenance
 
 export default async function StudentDashboardPage() {
   // Authentication: Verify user is logged in
@@ -71,7 +73,7 @@ export default async function StudentDashboardPage() {
       {/* Note: Level check removed - onboarding flow ensures level is always set */}
 
       {/* Main Tabbed Interface */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="overview" className="w-full space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
@@ -198,9 +200,75 @@ export default async function StudentDashboardPage() {
           <StudentExamTimetable />
         </TabsContent>
 
-        {/* Feedback Tab - Comment System */}
+        {/* Feedback Tab - Comment System - TEMPORARILY DISABLED */}
         <TabsContent value="feedback">
-          <StudentCommentManager />
+          <Card className="border-yellow-200 dark:border-yellow-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-yellow-500" />
+                Schedule Feedback
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-yellow-400 blur-lg opacity-30 animate-pulse"></div>
+                      <div className="relative bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full p-3">
+                        <MessageSquare className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 text-lg mb-1">
+                        Feature Under Maintenance
+                      </h3>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        We&apos;re upgrading the feedback system to support comments from all users (students, faculty, and staff). 
+                        This feature will be back online shortly.
+                      </p>
+                    </div>
+                    
+                    <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 space-y-2">
+                      <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                        What&apos;s being updated:
+                      </p>
+                      <ul className="text-sm text-yellow-800 dark:text-yellow-200 space-y-1 ml-4">
+                        <li className="flex items-start gap-2">
+                          <span className="text-yellow-600 mt-0.5">•</span>
+                          <span>Multi-user comment support</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-yellow-600 mt-0.5">•</span>
+                          <span>Enhanced feedback management</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-yellow-600 mt-0.5">•</span>
+                          <span>Improved comment resolution tracking</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <Link href="/maintenance">
+                        <Button variant="outline" size="sm">
+                          Learn More
+                        </Button>
+                      </Link>
+                      <Link href="/dashboard/student">
+                        <Button variant="outline" size="sm">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Use Other Features
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

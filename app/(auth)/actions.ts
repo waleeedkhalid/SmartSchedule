@@ -48,6 +48,7 @@ export async function signup(formData: {
     if (formData.role === 'faculty') {
       const { error: instructorError } = await supabase
         .rpc('create_instructor_for_user', {
+          p_user_id: data.user.id,
           p_name: formData.name,
           p_email: formData.email,
           p_max_load_per_week: 12,
@@ -66,18 +67,23 @@ export async function signup(formData: {
 
 //login with email and password
 export async function login(formData: { email: string; password: string }) {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: formData.email,
-    password: formData.password,
-  });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { user: data.user, session: data.session };
+  } catch (error) {
+    console.error('Login error:', error);
+    return { error: 'An unexpected error occurred during login. Please try again.' };
   }
-
-  return { user: data.user, session: data.session };
 }
 
 //logout and remove user

@@ -20,12 +20,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useQuery({
     queryKey: ["user", "userRole"],
     queryFn: async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user ?? null;
+      const { data: authData, error } = await supabase.auth.getUser();
       
-      if (!user) {
+      // Handle 403 or other auth errors gracefully
+      if (error || !authData?.user) {
         return { user: null, userRole: null };
       }
+      
+      const user = authData.user;
 
       // Fetch user role from user_roles table
       const { data: roleData } = await supabase
@@ -39,7 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userRole: roleData as UserRoleRow | null,
       };
     },
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes instead of 0
+    retry: false, // Don't retry on 403 errors
   });
 
   return (

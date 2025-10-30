@@ -14,528 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
-      comment: {
-        Row: {
-          author_id: string
-          created_at: string | null
-          doc_id: string | null
-          id: string
-          is_resolved: boolean | null
-          target_ref: string
-          text: string
-          updated_at: string | null
-        }
-        Insert: {
-          author_id: string
-          created_at?: string | null
-          doc_id?: string | null
-          id?: string
-          is_resolved?: boolean | null
-          target_ref: string
-          text: string
-          updated_at?: string | null
-        }
-        Update: {
-          author_id?: string
-          created_at?: string | null
-          doc_id?: string | null
-          id?: string
-          is_resolved?: boolean | null
-          target_ref?: string
-          text?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "comment_doc_id_fkey"
-            columns: ["doc_id"]
-            isOneToOne: false
-            referencedRelation: "schedule_doc"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      course: {
-        Row: {
-          code: string
-          created_at: string | null
-          created_by: string | null
-          credits: number
-          is_elective: boolean
-          level: number
-          title: string
-          updated_at: string | null
-          weekly_hours: number
-        }
-        Insert: {
-          code: string
-          created_at?: string | null
-          created_by?: string | null
-          credits: number
-          is_elective?: boolean
-          level: number
-          title: string
-          updated_at?: string | null
-          weekly_hours: number
-        }
-        Update: {
-          code?: string
-          created_at?: string | null
-          created_by?: string | null
-          credits?: number
-          is_elective?: boolean
-          level?: number
-          title?: string
-          updated_at?: string | null
-          weekly_hours?: number
-        }
-        Relationships: []
-      }
-      elective_preference: {
-        Row: {
-          course_code: string
-          created_at: string | null
-          id: string
-          rank: number
-          student_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          course_code: string
-          created_at?: string | null
-          id?: string
-          rank: number
-          student_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          course_code?: string
-          created_at?: string | null
-          id?: string
-          rank?: number
-          student_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "elective_preference_course_code_fkey"
-            columns: ["course_code"]
-            isOneToOne: false
-            referencedRelation: "course"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
-      exam: {
-        Row: {
-          academic_semester_id: string
-          course_code: string
-          created_at: string | null
-          created_by: string | null
-          date: string
-          duration_minutes: number
-          exam_type: string
-          id: string
-          room_codes: string[]
-          start_time: string
-          updated_at: string | null
-        }
-        Insert: {
-          academic_semester_id: string
-          course_code: string
-          created_at?: string | null
-          created_by?: string | null
-          date: string
-          duration_minutes: number
-          exam_type: string
-          id?: string
-          room_codes?: string[]
-          start_time: string
-          updated_at?: string | null
-        }
-        Update: {
-          academic_semester_id?: string
-          course_code?: string
-          created_at?: string | null
-          created_by?: string | null
-          date?: string
-          duration_minutes?: number
-          exam_type?: string
-          id?: string
-          room_codes?: string[]
-          start_time?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exam_course_code_fkey"
-            columns: ["course_code"]
-            isOneToOne: false
-            referencedRelation: "course"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
       instructor: {
         Row: {
-          created_at: string | null
-          created_by: string | null
-          email: string | null
+          created_at: string
+          email: string
           id: string
           max_load_per_week: number | null
           name: string
-          preferred_times: Json | null
-          unavailable_times: Json | null
-          updated_at: string | null
+          updated_at: string
           user_id: string | null
         }
         Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          email?: string | null
+          created_at?: string
+          email: string
           id?: string
           max_load_per_week?: number | null
           name: string
-          preferred_times?: Json | null
-          unavailable_times?: Json | null
-          updated_at?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
-          created_at?: string | null
-          created_by?: string | null
-          email?: string | null
+          created_at?: string
+          email?: string
           id?: string
           max_load_per_week?: number | null
           name?: string
-          preferred_times?: Json | null
-          unavailable_times?: Json | null
-          updated_at?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: []
       }
-      notification: {
+      student_profile: {
         Row: {
           created_at: string | null
-          id: string
-          payload: Json
-          read_at: string | null
-          type: string
+          department: string
+          level: number
+          student_group: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          id?: string
-          payload?: Json
-          read_at?: string | null
-          type: string
+          department?: string
+          level: number
+          student_group?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
-          id?: string
-          payload?: Json
-          read_at?: string | null
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      room: {
-        Row: {
-          capacity: number | null
-          code: string
-          created_at: string | null
-          created_by: string | null
-          type: Database["public"]["Enums"]["room_type"]
-          updated_at: string | null
-        }
-        Insert: {
-          capacity?: number | null
-          code: string
-          created_at?: string | null
-          created_by?: string | null
-          type: Database["public"]["Enums"]["room_type"]
-          updated_at?: string | null
-        }
-        Update: {
-          capacity?: number | null
-          code?: string
-          created_at?: string | null
-          created_by?: string | null
-          type?: Database["public"]["Enums"]["room_type"]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      rule: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          exam_spacing_mins: number
-          forbidden_pairs: Json
-          id: string
-          max_classes_per_instructor_day: number | null
-          max_classes_per_student_day: number | null
-          time_blocks: Json
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          exam_spacing_mins?: number
-          forbidden_pairs?: Json
-          id?: string
-          max_classes_per_instructor_day?: number | null
-          max_classes_per_student_day?: number | null
-          time_blocks?: Json
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          exam_spacing_mins?: number
-          forbidden_pairs?: Json
-          id?: string
-          max_classes_per_instructor_day?: number | null
-          max_classes_per_student_day?: number | null
-          time_blocks?: Json
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      schedule_doc: {
-        Row: {
-          content: Json
-          created_at: string | null
-          created_by: string | null
-          diff_from_previous: Json | null
-          id: string
-          release_tag: string | null
-        }
-        Insert: {
-          content?: Json
-          created_at?: string | null
-          created_by?: string | null
-          diff_from_previous?: Json | null
-          id?: string
-          release_tag?: string | null
-        }
-        Update: {
-          content?: Json
-          created_at?: string | null
-          created_by?: string | null
-          diff_from_previous?: Json | null
-          id?: string
-          release_tag?: string | null
-        }
-        Relationships: []
-      }
-      section: {
-        Row: {
-          academic_semester_id: string
-          activity: string | null
-          capacity: number
-          course_code: string
-          created_at: string | null
-          created_by: string | null
-          current_enrollment: number
-          group_level: number
-          id: string
-          instructor_id: string | null
-          meeting_pattern: Json
-          room_code: string | null
-          section_no: string
-          section_type: string
-          state: Database["public"]["Enums"]["section_state"]
-          updated_at: string | null
-        }
-        Insert: {
-          academic_semester_id: string
-          activity?: string | null
-          capacity: number
-          course_code: string
-          created_at?: string | null
-          created_by?: string | null
-          current_enrollment?: number
-          group_level: number
-          id?: string
-          instructor_id?: string | null
-          meeting_pattern?: Json
-          room_code?: string | null
-          section_no: string
-          section_type?: string
-          state?: Database["public"]["Enums"]["section_state"]
-          updated_at?: string | null
-        }
-        Update: {
-          academic_semester_id?: string
-          activity?: string | null
-          capacity?: number
-          course_code?: string
-          created_at?: string | null
-          created_by?: string | null
-          current_enrollment?: number
-          group_level?: number
-          id?: string
-          instructor_id?: string | null
-          meeting_pattern?: Json
-          room_code?: string | null
-          section_no?: string
-          section_type?: string
-          state?: Database["public"]["Enums"]["section_state"]
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "section_course_code_fkey"
-            columns: ["course_code"]
-            isOneToOne: false
-            referencedRelation: "course"
-            referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "section_instructor_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "instructor"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "section_room_code_fkey"
-            columns: ["room_code"]
-            isOneToOne: false
-            referencedRelation: "room"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
-      student_group: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          level: number
-          name: string
-          size: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          level: number
-          name: string
-          size?: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
+          department?: string
           level?: number
-          name?: string
-          size?: number
+          student_group?: string | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      time_grid_config: {
-        Row: {
-          break_end_time: string
-          break_start_time: string
-          created_at: string | null
-          daily_end_time: string
-          daily_start_time: string
-          exam_days: string[]
-          exam_end_time: string
-          exam_start_time: string
-          id: string
-          slot_duration_minutes: number
-          teaching_days: string[]
-          typical_lab_duration_minutes: number
-          updated_at: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          break_end_time?: string
-          break_start_time?: string
-          created_at?: string | null
-          daily_end_time?: string
-          daily_start_time?: string
-          exam_days?: string[]
-          exam_end_time?: string
-          exam_start_time?: string
-          id?: string
-          slot_duration_minutes?: number
-          teaching_days?: string[]
-          typical_lab_duration_minutes?: number
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          break_end_time?: string
-          break_start_time?: string
-          created_at?: string | null
-          daily_end_time?: string
-          daily_end_time?: string
-          daily_start_time?: string
-          exam_days?: string[]
-          exam_end_time?: string
-          exam_start_time?: string
-          id?: string
-          slot_duration_minutes?: number
-          teaching_days?: string[]
-          typical_lab_duration_minutes?: number
-          updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string
         }
         Relationships: []
       }
       user_roles: {
         Row: {
-          created_at: string | null
+          created_at: string
           email: string
-          level: number | null
           name: string
-          onboarding_completed: boolean | null
           role: Database["public"]["Enums"]["user_role"]
-          student_group_id: string | null
-          updated_at: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           email: string
-          level?: number | null
           name: string
-          onboarding_completed?: boolean | null
           role: Database["public"]["Enums"]["user_role"]
-          student_group_id?: string | null
-          updated_at?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           email?: string
-          level?: number | null
           name?: string
-          onboarding_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
-          student_group_id?: string | null
-          updated_at?: string | null
+          updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_student_group_id_fkey"
-            columns: ["student_group_id"]
-            isOneToOne: false
-            referencedRelation: "student_group"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -588,14 +149,16 @@ export type Database = {
           conflict_section_no: string
         }[]
       }
-      create_notification: {
-        Args: { p_payload: Json; p_type: string; p_user_id: string }
+      create_instructor_for_user: {
+        Args: {
+          p_email: string
+          p_max_load_per_week?: number
+          p_name: string
+          p_user_id: string
+        }
         Returns: string
       }
-      get_all_schedule_conflicts: { Args: never; Returns: Json }
-      get_instructor_load: { Args: { p_instructor_id: string }; Returns: Json }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
-      get_section_conflicts: { Args: { p_section_id: string }; Returns: Json }
       get_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -608,6 +171,8 @@ export type Database = {
         Args: { check_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_registrar_or_admin: { Args: never; Returns: boolean }
       time_ranges_overlap: {
         Args: {
           duration1: number
@@ -619,8 +184,6 @@ export type Database = {
       }
     }
     Enums: {
-      room_type: "Lecture" | "Lab"
-      section_state: "draft" | "released"
       user_role:
         | "scheduling"
         | "teaching_load"
@@ -754,8 +317,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      room_type: ["Lecture", "Lab"],
-      section_state: ["draft", "released"],
       user_role: [
         "scheduling",
         "teaching_load",
@@ -766,24 +327,3 @@ export const Constants = {
     },
   },
 } as const
-
-// Convenience type exports
-export type UserRoleRow = Database['public']['Tables']['user_roles']['Row']
-export type Course = Database['public']['Tables']['course']['Row']
-export type Exam = Database['public']['Tables']['exam']['Row']
-export type Instructor = Database['public']['Tables']['instructor']['Row']
-export type Room = Database['public']['Tables']['room']['Row']
-export type Section = Database['public']['Tables']['section']['Row']
-export type StudentGroup = Database['public']['Tables']['student_group']['Row']
-
-// Input types for database operations
-export type CourseInput = Database['public']['Tables']['course']['Insert']
-export type ExamInput = Database['public']['Tables']['exam']['Insert']
-export type SectionInput = Database['public']['Tables']['section']['Insert']
-
-// Custom types for RPC function returns
-export type SectionConflicts = {
-  instructor_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
-  room_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
-  student_conflicts?: Array<{ conflict_section_id: string; conflict_course_code: string; conflict_section_no: string }>;
-}
