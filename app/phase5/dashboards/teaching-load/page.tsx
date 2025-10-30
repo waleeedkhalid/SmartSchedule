@@ -70,6 +70,10 @@ export default function TeachingLoadDashboardPage() {
     ],
   };
 
+  // Calculate metrics from data
+  const totalSectionsAll = instructorLoadData.datasets[0].data.reduce((sum, val) => sum + val, 0);
+  const avgLoad = Math.round(totalSectionsAll / instructorLoadData.labels.length);
+
   const capacityStatusData = {
     labels: ['Overloaded', 'Near Capacity', 'Balanced', 'Underutilized'],
     datasets: [{
@@ -273,7 +277,7 @@ export default function TeachingLoadDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Sections</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">102</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{totalSectionsAll}</p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600 font-medium">+5.2%</span>
@@ -291,7 +295,7 @@ export default function TeachingLoadDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Load</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">12.8</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{avgLoad}</p>
                 <span className="text-sm text-gray-600 font-medium">sections/instructor</span>
               </div>
               <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -443,13 +447,19 @@ export default function TeachingLoadDashboardPage() {
                 <Bar data={departmentLoadData} options={chartOptions} />
               </div>
               <div className="grid grid-cols-5 gap-4 mt-6">
-                {['SWE', 'CS', 'IT', 'IS', 'CE'].map((dept, idx) => (
-                  <div key={dept} className="text-center p-4 bg-gray-50 rounded-lg border">
-                    <p className="text-sm font-semibold text-gray-700">{dept}</p>
-                    <p className="text-2xl font-bold text-purple-600 mt-2">{[5.6, 5.4, 5.3, 5.6, 5.8][idx]}</p>
-                    <p className="text-xs text-muted-foreground mt-1">avg sections</p>
-                  </div>
-                ))}
+                {['SWE', 'CS', 'IT', 'IS', 'CE'].map((dept, idx) => {
+                  const totalSections = [45, 38, 32, 28, 35][idx];
+                  const instructors = [8, 7, 6, 5, 6][idx];
+                  const avgSections = Math.round(totalSections / instructors);
+                  
+                  return (
+                    <div key={dept} className="text-center p-4 bg-gray-50 rounded-lg border">
+                      <p className="text-sm font-semibold text-gray-700">{dept}</p>
+                      <p className="text-2xl font-bold text-purple-600 mt-2">{avgSections}</p>
+                      <p className="text-xs text-muted-foreground mt-1">avg sections</p>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
