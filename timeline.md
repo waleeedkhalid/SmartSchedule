@@ -5,6 +5,58 @@ SmartSchedule is a web app for the SWE department to generate conflict-free teac
 
 ---
 
+## October 30, 2025 - External APIs & Integration Strategy Documentation
+
+### Overview
+Updated PRD to clarify external API usage strategy, document current integrations, and outline planned future integrations for email notifications, calendar exports, and AI chatbot.
+
+### Documentation Updates
+
+**PRD.md Updates**:
+- Added new "External APIs & Integrations" section
+- Documented current integrations: Supabase (auth/database) and Google Fonts API
+- Outlined planned integrations:
+  - Email notifications (post-V1) using free-tier services (Resend/SendGrid)
+  - Calendar export (V2) with Google Calendar API or Microsoft Graph
+  - AI chatbot (V2) using Google AI Studio (Gemini API)
+- Clarified exclusions: SMS notifications, two-way calendar sync, social login
+- Updated notifications section to reflect email notifications as planned for post-V1
+- Removed "Email/SMS push notifications; in-app only" from exclusions list
+
+### Current External API Integrations
+1. **Supabase** (`@supabase/supabase-js` v2.48.1):
+   - Backend-as-a-Service for authentication
+   - PostgreSQL database with Row Level Security
+   - Currently the only external API integration for backend operations
+
+2. **Google Fonts API** (via `next/font/google`):
+   - Font loading for Inter and JetBrains Mono
+   - Built-in Next.js optimization
+
+### Planned Future Integrations
+- **Email Notifications**: Free-tier email service (3,000 emails/month target)
+  - Use cases: Schedule changes, exam reminders, deadline alerts
+  - Replaces current in-app-only notification system
+  
+- **Calendar Export**: One-way sync to personal calendars
+  - Google Calendar API or Microsoft Graph
+  - iCal format support
+  
+- **AI Chatbot**: Natural language schedule queries
+  - Google AI Studio (Gemini API)
+  - Free tier with generous quota
+
+### Files Modified
+- `PRD.md` - Added External APIs section, updated notifications and scope sections
+
+### Impact
+- Provides clear documentation for stakeholders about current and planned external dependencies
+- Establishes strategy for expanding notification capabilities beyond in-app alerts
+- Sets expectations for future calendar and AI integrations
+- All planned integrations focus on free-tier options to maintain cost efficiency
+
+---
+
 ## October 29, 2025 - Enhanced Scheduling Dashboard with Comprehensive Analytics
 
 ### Overview

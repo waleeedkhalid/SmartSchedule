@@ -19,7 +19,7 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 - Data intake: Forms + JSON import/export for courses, sections, rooms, instructors, student groups, exams, rules.
 - Intelligent recommendation: one‑click generate; then manual tweaks.
 - Collaboration: Comment/feedback system for all roles; asynchronous collaborative editing.
-- Notifications: in‑app for comments and material changes.
+- Notifications: in‑app for comments and material changes (email notifications planned for post-V1).
 - Dashboards: Level overview and Course overview (Chart.js).
 - Student portal: manual elective registration with validation (≤20 credits, capacity, prerequisites); view level‑based schedule (required courses + registered electives); exam timetable; dual-layer comments.
 - Faculty portal: self-registration with auto instructor profile; availability preferences; view personal teaching timetable; add feedback.
@@ -38,8 +38,31 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
 **Excluded (All Versions)**
 - SSO or external SIS/LMS integrations.  
 - Auto‑ingest from subsystems.  
-- Complex optimization beyond defined rules.  
-- Email/SMS push notifications; in‑app only.
+- Complex optimization beyond defined rules.
+
+## External APIs & Integrations
+
+**Currently Integrated (V1)**
+- **Supabase** (`@supabase/supabase-js`): Backend-as-a-Service for authentication, PostgreSQL database, and Row Level Security
+- **Google Fonts API**: Font loading via `next/font/google` (Inter, JetBrains Mono)
+
+**Planned for Future Consideration**
+- **Email Notifications** (Post-V1): Replace in-app-only notifications with email alerts using free-tier services (Resend, SendGrid, or similar)
+  - Use cases: Schedule change notifications, exam reminders, important deadline alerts
+  - Target: 3,000 emails/month free tier
+- **Calendar Export** (V2): Enable students and faculty to export schedules to personal calendars
+  - Google Calendar API or Microsoft Graph (Outlook Calendar)
+  - One-way sync (export only)
+  - iCal format support
+- **AI Chatbot** (V2): Google AI Studio (Gemini API) for natural language schedule queries and insights
+  - Already noted in Nice-to-have features (line 90)
+  - Free tier with generous quota
+
+**Explicitly Excluded**
+- SMS notifications (cost concerns, out of scope for V1)
+- Real-time two-way calendar sync
+- External SIS/LMS integrations
+- Social login providers (OAuth via Google/Microsoft)
 
 ## User Personas / Target Audience
 | Persona | Primary needs |
@@ -65,7 +88,9 @@ SmartSchedule is a web app for the SWE department (one program, one campus, one 
    - JSON export/import for manual versioning - ✅ V1 Complete
    - jsondiffpatch diffs and named releases - ⏳ Deferred to V2
    - Restore from release capability - ⏳ Deferred to V2  
-7. **Notifications**: In‑app alerts on comments and changes affecting an instructor/section/exam.  
+7. **Notifications**: 
+   - In‑app alerts on comments and changes affecting an instructor/section/exam - ✅ V1 Complete
+   - Email notifications for critical updates - ⏳ Planned for Post-V1 (using free-tier email API)  
 8. **Dashboards**:  
    - **Level overview**: per group in a level, sections, assigned instructors, student counts.  
    - **Course overview**: room assignments, students per section, instructor per section.  
