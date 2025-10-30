@@ -82,6 +82,41 @@ export default function Phase5Page() {
     },
   ];
 
+  const roleDashboards = [
+    {
+      role: 'Student',
+      description: 'Academic progress and course enrollment analytics',
+      href: '/phase5/dashboards/student',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      icon: '🎓',
+    },
+    {
+      role: 'Faculty',
+      description: 'Teaching load and student performance insights',
+      href: '/phase5/dashboards/faculty',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      icon: '👨‍🏫',
+    },
+    {
+      role: 'Registrar',
+      description: 'System-wide enrollment and capacity management',
+      href: '/phase5/dashboards/registrar',
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      icon: '📋',
+    },
+    {
+      role: 'Teaching Load',
+      description: 'Instructor workload and capacity analytics',
+      href: '/phase5/dashboards/teaching-load',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      icon: '📊',
+    },
+  ];
+
   return (
     <div className="container mx-auto px-8 py-12 space-y-12">
       <div className="text-center space-y-6">
@@ -218,6 +253,54 @@ export default function Phase5Page() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Role-Specific Dashboards */}
+      <div className="space-y-6">
+        <div className="text-center">
+          <Badge variant="outline" className="text-base px-3 py-1 bg-gradient-to-r from-purple-100 to-blue-100 border-purple-200">
+            Role-Based Analytics
+          </Badge>
+          <h2 className="text-3xl font-bold text-gray-900 mt-4">
+            Chart.js Dashboards by Role
+          </h2>
+          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+            Comprehensive data visualizations tailored for Student, Faculty, Registrar, and Teaching Load Committee users
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {roleDashboards.map((dashboard) => (
+            <Link key={dashboard.role} href={dashboard.href}>
+              <Card className="h-full border shadow hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`text-3xl p-3 rounded-lg ${dashboard.bgColor}`}>
+                      {dashboard.icon}
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">{dashboard.role} Dashboard</CardTitle>
+                      <CardDescription className="mt-1">{dashboard.description}</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className={`h-4 w-4 ${dashboard.color}`} />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        4 Chart Types
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      View Demo →
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div className="text-center pt-4">
         <p className="text-muted-foreground mb-6">
