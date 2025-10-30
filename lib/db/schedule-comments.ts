@@ -22,7 +22,36 @@
  */
 
 import { createClient } from '@/supabase/server';
-import type { ScheduleCommentView } from '@/lib/types/database';
+
+/**
+ * View interface for schedule comments with joined user and section data
+ */
+export interface ScheduleCommentView {
+  id: string;
+  student_id: string;
+  section_id: string | null;
+  comment_text: string;
+  is_resolved: boolean;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  student: {
+    name: string;
+    email: string;
+    level: number | null;
+    role?: string;
+  };
+  section: {
+    course_code: string;
+    section_no: string;
+    course_title: string;
+  } | null;
+  resolver: {
+    name: string;
+    email: string;
+  } | null;
+}
 
 /**
  * Get all comments by a user (general + section-specific)
@@ -106,7 +135,7 @@ export async function getSectionComments(sectionId: string): Promise<ScheduleCom
     .from('schedule_comment')
     .select(`
       *,
-      student:user_roles!schedule_comment_student_id_fkey(user_id, name, email, level),
+      student:user_roles!schedule_comment_author_id_fkey(user_id, name, email, level, role),
       section:section!schedule_comment_section_id_fkey(
         id,
         course_code,
@@ -122,7 +151,7 @@ export async function getSectionComments(sectionId: string): Promise<ScheduleCom
   
   return (data || []).map((comment: any) => ({
     id: comment.id,
-    student_id: comment.student_id,
+    student_id: comment.author_id,
     section_id: comment.section_id,
     comment_text: comment.comment_text,
     is_resolved: comment.is_resolved,
@@ -134,6 +163,7 @@ export async function getSectionComments(sectionId: string): Promise<ScheduleCom
       name: comment.student.name,
       email: comment.student.email,
       level: comment.student.level,
+      role: comment.student.role,
     },
     section: comment.section ? {
       course_code: comment.section.course_code,
@@ -160,7 +190,7 @@ export async function getGeneralComments(): Promise<ScheduleCommentView[]> {
     .from('schedule_comment')
     .select(`
       *,
-      student:user_roles!schedule_comment_student_id_fkey(user_id, name, email, level),
+      student:user_roles!schedule_comment_author_id_fkey(user_id, name, email, level, role),
       resolver:user_roles!schedule_comment_resolved_by_fkey(user_id, name, email)
     `)
     .is('section_id', null) // Only comments without section_id
@@ -170,7 +200,7 @@ export async function getGeneralComments(): Promise<ScheduleCommentView[]> {
   
   return (data || []).map((comment: any) => ({
     id: comment.id,
-    student_id: comment.student_id,
+    student_id: comment.author_id,
     section_id: null,
     comment_text: comment.comment_text,
     is_resolved: comment.is_resolved,
@@ -182,6 +212,7 @@ export async function getGeneralComments(): Promise<ScheduleCommentView[]> {
       name: comment.student.name,
       email: comment.student.email,
       level: comment.student.level,
+      role: comment.student.role,
     },
     section: null,
     resolver: comment.resolver ? {

@@ -35,34 +35,6 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // =====================================================
-  // PERFORMANCE OPTIMIZATION: Initialize Session Context
-  // =====================================================
-  // Call database function to cache user role in session
-  // This eliminates repeated role lookups in RLS policies
-  // Expected: 70% reduction in role check overhead
-  if (user) {
-    try {
-      await supabase.rpc('set_user_role_context');
-      // Silently fail if function doesn't exist (backward compatibility)
-    } catch (error) {
-      // Log error in development, but don't break the middleware
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Failed to initialize session context:', error);
-      }
-    }
-  }
-
   // =====================================================
   // DEFINE PUBLIC ROUTES (accessible without authentication)
   // =====================================================
@@ -82,6 +54,26 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(`${route}/`)
   );
+
+  // Skip auth check only for static assets that definitely don't need user info
+  const skipAuthCheck = 
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname === '/favicon.ico';
+
+  // Do not run code between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
+
+  // IMPORTANT: Only call getUser() when needed to reduce 403 noise
+  let user = null;
+  
+  if (!skipAuthCheck) {
+    const { data: { user: authUser }, error } = await supabase.auth.getUser();
+    // Silently handle 403/auth errors - they're expected for unauthenticated users
+    if (!error) {
+      user = authUser;
+    }
+  }
 
   // =====================================================
   // REDIRECT LOGGED-IN USERS FROM AUTH ROUTES
