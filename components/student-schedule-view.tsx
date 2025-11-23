@@ -79,20 +79,16 @@ export function StudentScheduleView() {
   }, []);
 
   /**
-   * Fetch student schedule from API
-   * Falls back to mock data if no real schedule exists
+   * Fetch student schedule
+   * DEMO MODE: Uses mock data instead of API calls
    */
   async function fetchSchedule() {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/schedule');
-      
-      if (res.ok) {
-        const data = await res.json();
-        setSchedule(data);
-      } else {
-        toast.error('Failed to load schedule');
-      }
+      // DEMO MODE: Use mock data function
+      const { getMockStudentSchedule } = await import('@/lib/demo-data');
+      const data = await getMockStudentSchedule();
+      setSchedule(data);
     } catch (error) {
       console.error('Error fetching schedule:', error);
       toast.error('Failed to load schedule');
@@ -246,7 +242,7 @@ export function StudentScheduleView() {
                         <td key={`${day}-${timeSlot}`} className="border p-1">
                           {sectionsInSlot.map(section => (
                             <div
-                              key={section.id}
+                              key={`${section.id}-${day}-${timeSlot}`}
                               className={`p-2 rounded text-xs ${
                                 section.is_swe_scheduled
                                   ? 'bg-blue-100 border border-blue-300'

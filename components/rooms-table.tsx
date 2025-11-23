@@ -28,18 +28,13 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/rooms/${code}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete room");
-      }
-
-      toast.success("Room deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Room ${code} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete room");
+      toast.error("Failed to delete room (Demo Mode)");
       console.error(error);
     }
   }

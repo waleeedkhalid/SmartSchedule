@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react'
+import { getMockDashboardStats } from '@/lib/demo-data'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -67,14 +68,84 @@ export function SchedulingDashboardCharts() {
     async function fetchData() {
       try {
         setLoading(true)
-        const response = await fetch('/api/scheduling/dashboard-stats?type=all')
+        // DEMO MODE: Use mock data
+        const data = await getMockDashboardStats()
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard statistics')
+        // Transform mock data to match expected format
+        const transformedData = {
+          enrollments: {
+            active: data.enrollments?.total || 0,
+            retentionRate: 95.5,
+            byLevel: data.enrollments?.byLevel || [],
+          },
+          rooms: {
+            totalRooms: data.rooms?.total || 0,
+            usedRooms: data.rooms?.used || 0,
+            unusedRooms: (data.rooms?.total || 0) - (data.rooms?.used || 0),
+            utilizationRate: data.rooms?.utilization?.reduce((sum: number, r: any) => sum + r.utilization, 0) / (data.rooms?.utilization?.length || 1) || 0,
+            lectureRooms: data.rooms?.utilization?.filter((r: any) => r.room.includes('LEC')).length || 0,
+            labRooms: data.rooms?.utilization?.filter((r: any) => r.room.includes('LAB')).length || 0,
+            roomUsageDetails: data.rooms?.utilization?.slice(0, 10).map((r: any) => ({
+              room: r.room,
+              sections: r.used,
+            })) || [],
+          },
+          workload: {
+            avgUtilization: data.workload?.average || 0,
+            overloaded: data.workload?.instructors?.filter((i: any) => i.utilization > 100).length || 0,
+            nearCapacity: data.workload?.instructors?.filter((i: any) => i.utilization > 80 && i.utilization <= 100).length || 0,
+            balanced: data.workload?.instructors?.filter((i: any) => i.utilization > 50 && i.utilization <= 80).length || 0,
+            underutilized: data.workload?.instructors?.filter((i: any) => i.utilization <= 50).length || 0,
+            instructors: data.workload?.instructors?.map((i: any) => ({
+              id: i.id,
+              name: i.name,
+              sections: i.sections,
+              credits: i.sections * 3, // Assume 3 credits per section
+              utilizationRate: i.utilization,
+              status: i.utilization > 100 ? 'overloaded' : i.utilization > 80 ? 'near-capacity' : i.utilization > 50 ? 'balanced' : 'underutilized',
+            })) || [],
+          },
+          progress: {
+            total: data.progress?.totalSections || 0,
+            assigned: data.progress?.assigned || 0,
+            draft: data.progress?.totalSections - (data.progress?.assigned || 0),
+            released: 0,
+            withInstructor: data.progress?.assigned || 0,
+            withRoom: data.progress?.assigned || 0,
+            withTime: data.progress?.assigned || 0,
+            completionRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
+            instructorAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
+            roomAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
+            timeAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
+          },
+          faculty: {
+            totalInstructors: data.workload?.instructors?.length || 0,
+            withPreferences: Math.floor((data.workload?.instructors?.length || 0) * 0.6),
+            withoutPreferences: Math.floor((data.workload?.instructors?.length || 0) * 0.2),
+            withUnavailability: Math.floor((data.workload?.instructors?.length || 0) * 0.4),
+          },
+          timeslots: {
+            timeDistribution: data.timeslots?.distribution || [],
+            dayDistribution: [
+              { day: 'Monday', sections: 15 },
+              { day: 'Tuesday', sections: 18 },
+              { day: 'Wednesday', sections: 12 },
+              { day: 'Thursday', sections: 16 },
+              { day: 'Friday', sections: 10 },
+            ],
+            totalScheduledSections: data.progress?.assigned || 0,
+          },
+          electives: data.electives?.courses?.map((e: any) => ({
+            course_code: e.course_code,
+            course_title: e.course_title,
+            total_requests: e.enrollments,
+            first_choice: Math.floor(e.enrollments * 0.5),
+            second_choice: Math.floor(e.enrollments * 0.3),
+            third_choice: Math.floor(e.enrollments * 0.2),
+          })) || [],
         }
-
-        const data = await response.json()
-        setStats(data)
+        
+        setStats(transformedData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {

@@ -1,31 +1,17 @@
 import { ExamForm } from "@/components/exam-form";
-import { getCourses } from "@/lib/db/courses";
-import { getRooms } from "@/lib/db/rooms";
-import { createClient } from "@/supabase/server";
+import { getMockCourses, getMockRooms, getMockUserRole } from "@/lib/demo-data";
 import { redirect } from "next/navigation";
 
 export default async function NewExamPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch user role
-  const { data: userRole } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  // Only scheduling and registrar roles can access this page
   if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
     redirect("/dashboard");
   }
 
-  const courses = await getCourses();
-  const rooms = await getRooms();
+  const courses = await getMockCourses();
+  const rooms = await getMockRooms();
 
   return (
     <div className="space-y-6">

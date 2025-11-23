@@ -45,13 +45,24 @@ export default function UserAuthState() {
 
   async function removeUser() {
     startTransision(async () => {
-      const response = await logOut();
-      if (response?.error) {
-        toast.error("Oops Something went wrong!");
-        return;
+      try {
+        // Use the logout API route
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+        });
+        
+        if (response.ok) {
+          queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
+          toast.success("You're logged out!");
+          // Redirect will be handled by the API route
+          window.location.href = '/login';
+        } else {
+          toast.error("Something went wrong during logout");
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        toast.error("Failed to log out");
       }
-      queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
-      toast.success("you're Logged Out!");
     });
   }
 

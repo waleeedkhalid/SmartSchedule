@@ -1,42 +1,27 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/supabase/server'
 import { Calendar, Clock, BookOpen, MessageSquare, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-// import { getCommentStats } from '@/lib/db/schedule-comments' // Temporarily disabled during maintenance
-import { getFacultyProfile, getFacultySections, getFacultyStats } from '@/lib/db/faculty'
+import { getMockUserRole, getMockFacultyProfile, getMockFacultySections } from '@/lib/demo-data'
 import { SectionCard } from '@/components/faculty/section-card'
+import { FacultyDashboardCharts } from '@/components/faculty-dashboard-charts'
 
 export default async function FacultyDashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole()
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Verify user has faculty role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (userRole?.role !== 'faculty') {
+  if (!userRole || userRole.role !== 'faculty') {
     redirect('/dashboard')
   }
 
-  // Get faculty profile using database access layer
-  const instructor = await getFacultyProfile(user.id)
+  // Get faculty profile using mock data
+  const instructor = await getMockFacultyProfile(userRole.id)
 
-  // Get sections (comment stats temporarily disabled during maintenance)
+  // Get sections assigned to this instructor
   const sections = instructor 
-    ? await getFacultySections(instructor.id)
+    ? await getMockFacultySections(instructor.id)
     : []
-  
-  // Temporarily disabled during schema migration
-  // const commentStats = await getCommentStats(user.id)
 
   // Calculate stats from sections
   const uniqueCourses = new Set(sections.map(s => s.course_code)).size
@@ -49,7 +34,7 @@ export default async function FacultyDashboardPage() {
             Faculty Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Welcome, {userRole.name}
+            Welcome, {userRole?.name || 'Faculty Member'}
           </p>
         </div>
 
@@ -63,11 +48,16 @@ export default async function FacultyDashboardPage() {
             </CardHeader>
             <CardContent className="text-sm text-gray-600 dark:text-gray-400">
               <p>Your account is not yet linked to an instructor profile.</p>
-              <p className="mt-2">Please contact the scheduling committee to link your account with email: <strong>{user.email}</strong></p>
+              <p className="mt-2">Please contact the scheduling committee to link your account with email: <strong>{userRole?.email || 'N/A'}</strong></p>
             </CardContent>
           </Card>
         ) : (
           <>
+            {/* Charts Section */}
+            <div className="mb-8">
+              <FacultyDashboardCharts />
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <Card>

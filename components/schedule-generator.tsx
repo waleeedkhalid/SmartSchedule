@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, AlertCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getMockScheduleStatus } from "@/lib/demo-data";
 
 interface SchedulingStats {
   total_sections: number;
@@ -57,22 +58,49 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     setGenerationResult(null);
 
     try {
-      const response = await fetch("/api/scheduling/generate", {
-        method: "POST",
-      });
+      // DEMO MODE: Simulate schedule generation
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to generate schedule");
-      }
+      // Get current status to calculate results
+      const currentStatus = await getMockScheduleStatus();
+      const unassignedCount = currentStatus.draft.unassigned;
+      const assignedCount = currentStatus.draft.assigned;
+      const totalCount = currentStatus.draft.total;
 
-      const result: GenerationResult = await response.json();
+      // Simulate generation result
+      const result: GenerationResult = {
+        success: unassignedCount === 0,
+        stats: {
+          total_sections: totalCount,
+          assigned: assignedCount + Math.floor(unassignedCount * 0.7), // Simulate assigning 70% of unassigned
+          unassigned: Math.floor(unassignedCount * 0.3), // 30% remain unassigned
+          conflicts_resolved: Math.floor(unassignedCount * 0.5),
+        },
+        unassigned: unassignedCount > 0 ? [
+          {
+            section_id: 'section-001',
+            course_code: 'CS401',
+            section_no: '01',
+            reason: 'No available room matching requirements',
+          },
+          {
+            section_id: 'section-002',
+            course_code: 'CS402',
+            section_no: '02',
+            reason: 'Instructor conflict',
+          },
+        ].slice(0, Math.floor(unassignedCount * 0.3)) : [],
+        message: unassignedCount === 0
+          ? "All sections have been successfully assigned!"
+          : `Schedule generated with ${Math.floor(unassignedCount * 0.3)} sections remaining unassigned.`,
+      };
+
       setGenerationResult(result);
 
       if (result.success) {
-        toast.success("Schedule generated successfully!");
+        toast.success("Schedule generated successfully! (Demo Mode: Not saved)");
       } else {
-        toast.warning("Partial schedule generated. Some sections could not be assigned.");
+        toast.warning("Partial schedule generated. Some sections could not be assigned. (Demo Mode: Not saved)");
       }
 
       // Refresh status
@@ -88,11 +116,9 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
 
   async function refreshStatus() {
     try {
-      const response = await fetch("/api/scheduling/generate");
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data);
-      }
+      // DEMO MODE: Use mock data
+      const data = await getMockScheduleStatus();
+      setStatus(data);
     } catch (error) {
       console.error("Error refreshing status:", error);
     }

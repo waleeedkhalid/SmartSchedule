@@ -1,4 +1,3 @@
-import { createClient } from '@/supabase/server'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,29 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
 import { FacultyAvailabilityGrid } from '@/components/faculty-availability-grid'
-import { getFacultyProfile, getFacultyAvailability } from '@/lib/db/faculty'
+import { getMockUserRole, getMockFacultyProfile, getMockFacultyAvailability } from '@/lib/demo-data'
 
 export default async function FacultyAvailabilityPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole()
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Verify user has faculty role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (userRole?.role !== 'faculty') {
+  if (!userRole || userRole.role !== 'faculty') {
     redirect('/dashboard')
   }
 
   // Get faculty profile
-  const instructor = await getFacultyProfile(user.id)
+  const instructor = await getMockFacultyProfile(userRole.id)
 
   if (!instructor) {
     return (
@@ -53,7 +41,7 @@ export default async function FacultyAvailabilityPage() {
   }
 
   // Get current availability
-  const availability = await getFacultyAvailability(instructor.id)
+  const availability = await getMockFacultyAvailability(instructor.id)
 
   return (
     <div className="p-8">
@@ -115,13 +103,17 @@ export default async function FacultyAvailabilityPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Preferred Times Set</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {availability?.preferred_times?.reduce((sum, d) => sum + d.slots.length, 0) || 0} slots
+                  {Array.isArray(availability?.preferred_times) 
+                    ? availability.preferred_times.reduce((sum: number, d: any) => sum + (d.slots?.length || 0), 0)
+                    : 0} slots
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Unavailable Times Set</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {availability?.unavailable_times?.reduce((sum, d) => sum + d.slots.length, 0) || 0} slots
+                  {Array.isArray(availability?.unavailable_times)
+                    ? availability.unavailable_times.reduce((sum: number, d: any) => sum + (d.slots?.length || 0), 0)
+                    : 0} slots
                 </p>
               </div>
             </div>
@@ -131,8 +123,8 @@ export default async function FacultyAvailabilityPage() {
         {/* Availability Grid */}
         <FacultyAvailabilityGrid
           instructorId={instructor.id}
-          initialPreferredTimes={availability?.preferred_times || []}
-          initialUnavailableTimes={availability?.unavailable_times || []}
+          initialPreferredTimes={Array.isArray(availability?.preferred_times) ? availability.preferred_times : []}
+          initialUnavailableTimes={Array.isArray(availability?.unavailable_times) ? availability.unavailable_times : []}
           maxLoadPerWeek={instructor.max_load_per_week || 12}
         />
       </div>

@@ -284,7 +284,7 @@ export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {
                 <Settings className="h-5 w-5" />
                 <span>Profile</span>
               </Link>
-              <form action="/api/auth/signout" method="post">
+              <form action="/api/auth/logout" method="POST">
                 <button
                   type="submit"
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"

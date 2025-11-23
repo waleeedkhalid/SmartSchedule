@@ -62,24 +62,14 @@ export function CourseForm({ course, isEditing = false }: CourseFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/courses/${course?.code}` : "/api/courses";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} course`);
-      }
-
-      toast.success(`Course ${isEditing ? 'updated' : 'created'} successfully`);
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      toast.success(`Course ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/courses");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} course`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} course (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

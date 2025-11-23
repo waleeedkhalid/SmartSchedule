@@ -58,31 +58,28 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/config/time-grid", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: initialConfig.id,
-          teaching_days: values.teaching_days.split(",").map((d) => d.trim()),
-          daily_start_time: values.daily_start_time + ":00",
-          daily_end_time: values.daily_end_time + ":00",
-          slot_duration_minutes: values.slot_duration_minutes,
-          break_start_time: values.break_start_time + ":00",
-          break_end_time: values.break_end_time + ":00",
-          exam_days: values.exam_days.split(",").map((d) => d.trim()),
-          exam_start_time: values.exam_start_time + ":00",
-          exam_end_time: values.exam_end_time + ":00",
-          typical_lab_duration_minutes: values.typical_lab_duration_minutes,
-        }),
-      });
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      // Validate the form data (same as before)
+      const configData = {
+        id: initialConfig.id,
+        teaching_days: values.teaching_days.split(",").map((d) => d.trim()),
+        daily_start_time: values.daily_start_time + ":00",
+        daily_end_time: values.daily_end_time + ":00",
+        slot_duration_minutes: values.slot_duration_minutes,
+        break_start_time: values.break_start_time + ":00",
+        break_end_time: values.break_end_time + ":00",
+        exam_days: values.exam_days.split(",").map((d) => d.trim()),
+        exam_start_time: values.exam_start_time + ":00",
+        exam_end_time: values.exam_end_time + ":00",
+        typical_lab_duration_minutes: values.typical_lab_duration_minutes,
+      };
 
-      if (!response.ok) {
-        throw new Error("Failed to update configuration");
-      }
-
-      toast.success("Configuration updated successfully");
+      // DEMO MODE: Show success toast but don't actually save
+      toast.success("Configuration updated successfully (Demo Mode: Not saved)");
     } catch (error) {
-      toast.error("Failed to update configuration");
+      toast.error("Failed to update configuration (Demo Mode)");
       console.error(error);
     } finally {
       setIsLoading(false);

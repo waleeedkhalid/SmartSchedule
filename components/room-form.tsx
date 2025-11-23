@@ -50,24 +50,14 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/rooms/${room?.code}` : "/api/rooms";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} room`);
-      }
-
-      toast.success(`Room ${isEditing ? 'updated' : 'created'} successfully`);
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      toast.success(`Room ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/rooms");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} room`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} room (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

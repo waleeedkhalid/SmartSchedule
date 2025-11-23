@@ -62,28 +62,62 @@ export function StudentExamTimetable() {
   }, []);
 
   /**
-   * Fetch exam timetable from API
+   * Fetch exam timetable
+   * DEMO MODE: Uses mock data instead of API calls
    */
   async function fetchExams() {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/exams');
+      // DEMO MODE: Use mock data function
+      const { getMockStudentExams, getMockCourses, getMockSections } = await import('@/lib/demo-data');
+      const [exams, courses, sections] = await Promise.all([
+        getMockStudentExams(),
+        getMockCourses(),
+        getMockSections(),
+      ]);
       
-      if (res.ok) {
-        const data = await res.json();
-        setExamsData(data);
+      // Format exams to match expected structure
+      const formattedExams: ExamData[] = exams.map(exam => {
+        const course = courses.find(c => c.code === exam.course_code);
+        const section = sections.find(s => s.id === exam.section_id);
         
-        // Find next upcoming exam
-        if (data.exams && data.exams.length > 0) {
-          const now = new Date();
-          const upcoming = data.exams.find((exam: ExamData) => {
-            const examDate = new Date(`${exam.date}T${exam.start_time}`);
-            return examDate > now;
-          });
-          setNextExam(upcoming || null);
-        }
-      } else {
-        toast.error('Failed to load exam timetable');
+        // Calculate end time
+        const [hours, minutes] = exam.start.split(':').map(Number);
+        const startDate = new Date(`${exam.date}T${exam.start}`);
+        const endDate = new Date(startDate.getTime() + exam.duration * 60000);
+        const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}:00`;
+        
+        return {
+          id: exam.id,
+          course_code: exam.course_code,
+          course_title: course?.title || '',
+          section_no: section?.section_no || null,
+          date: exam.date,
+          start_time: `${exam.start}:00`,
+          duration_minutes: exam.duration,
+          end_time: endTime,
+          room_codes: exam.room_codes,
+          has_conflict: false, // Demo mode: no conflicts
+          conflicting_exams: [],
+        };
+      });
+      
+      const data: ExamsResponse = {
+        exams: formattedExams,
+        total_exams: formattedExams.length,
+        has_conflicts: false,
+      };
+      
+      setExamsData(data);
+      
+      // Find next upcoming exam
+      if (data.exams && data.exams.length > 0) {
+        const now = new Date();
+        const upcoming = data.exams.find((exam: ExamData) => {
+          const examDate = new Date(`${exam.date}T${exam.start_time}`);
+          return examDate > now;
+        });
+        setNextExam(upcoming || null);
       }
     } catch (error) {
       console.error('Error fetching exams:', error);

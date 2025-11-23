@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCoursesPaginated } from "@/lib/db/courses";
+import { getMockCoursesPaginated } from "@/lib/demo-data";
 import { Plus, Info } from "lucide-react";
 import Link from "next/link";
 import { CoursesTable } from "@/components/courses-table";
@@ -32,7 +32,7 @@ async function CoursesContent({
   sortBy: 'code' | 'title' | 'level' | 'credits' | 'weekly_hours'
   sortOrder: 'asc' | 'desc'
 }) {
-  const { courses, totalCount, totalPages, pageSize } = await getCoursesPaginated(
+  const { courses, totalCount, totalPages, pageSize } = await getMockCoursesPaginated(
     currentPage,
     20,
     searchTerm,

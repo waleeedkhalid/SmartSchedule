@@ -87,11 +87,15 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
   async function checkConflicts(examId: string) {
     setCheckingConflicts(true);
     try {
-      const response = await fetch(`/api/exams/${examId}/conflicts`);
-      if (response.ok) {
-        const data = await response.json();
-        setConflicts(data);
-      }
+      // DEMO MODE: Simulate conflict check
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      // Return no conflicts in demo mode
+      setConflicts({
+        room_conflicts: [],
+        student_conflicts: [],
+        has_conflicts: false,
+      });
     } catch (error) {
       console.error("Error checking conflicts:", error);
     } finally {
@@ -102,40 +106,21 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const payload = {
-        course_code: values.course_code,
-        section_id: values.section_id || null,
-        date: values.date,
-        start_time: values.start_time + ":00", // Convert to HH:MM:SS
-        duration_minutes: values.duration_minutes,
-        room_codes: values.room_codes,
-      };
-
-      const url = isEditing ? `/api/exams/${exam?.id}` : "/api/exams";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      // Simulate conflict check in demo mode
+      setConflicts({
+        room_conflicts: [],
+        student_conflicts: [],
+        has_conflicts: false,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} exam`);
-      }
-
-      const createdExam = await response.json();
-
-      // Check conflicts for newly created/updated exam
-      if (createdExam.id) {
-        await checkConflicts(createdExam.id);
-      }
-
-      toast.success(`Exam ${isEditing ? 'updated' : 'created'} successfully`);
+      
+      toast.success(`Exam ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/exams");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} exam`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} exam (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

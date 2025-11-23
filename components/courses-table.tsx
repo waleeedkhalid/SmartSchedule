@@ -32,18 +32,13 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/courses/${code}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete course");
-      }
-
-      toast.success("Course deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Course ${code} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete course");
+      toast.error("Failed to delete course (Demo Mode)");
       console.error(error);
     }
   }, [router])

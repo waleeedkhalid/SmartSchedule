@@ -1,99 +1,77 @@
+/**
+ * DEMO MODE: Server Actions
+ * 
+ * Demo authentication with predefined accounts for each role.
+ */
+
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { verifyDemoCredentials } from "@/lib/demo-data";
 
-//sign up with email and password
+// DEMO MODE: Signup always succeeds and redirects to dashboard
 export async function signup(formData: {
   name: string;
   email: string;
   password: string;
   role: 'scheduling' | 'teaching_load' | 'faculty' | 'student' | 'registrar';
 }) {
-  const supabase = await createClient();
-
-  // Create auth user
-  // Pass role and name in metadata so database trigger can auto-create user_roles
-  const { data, error } = await supabase.auth.signUp({
-    email: formData.email as string,
-    password: formData.password as string,
-    options: {
-      data: {
-        full_name: formData.name as string,
-        role: formData.role, // Trigger will use this to create user_roles
-      },
-    },
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  // user_roles entry is automatically created by database trigger
-  // No manual INSERT needed - trigger handles it on auth.users INSERT
-  
-  if (data.user) {
-    // Verify user_roles was created (optional check)
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('user_id', data.user.id)
-      .maybeSingle();
-
-    if (roleError || !userRole) {
-      console.error('User role not auto-created:', roleError);
-      // Don't fail signup - user can still login and complete onboarding
-    }
-
-    // Auto-create instructor profile for faculty users
-    if (formData.role === 'faculty') {
-      const { error: instructorError } = await supabase
-        .rpc('create_instructor_for_user', {
-          p_user_id: data.user.id,
-          p_name: formData.name,
-          p_email: formData.email,
-          p_max_load_per_week: 12,
-        });
-
-      if (instructorError) {
-        // Log error but don't fail signup
-        // The faculty user can still login, and admin can manually create instructor if needed
-        console.error('Failed to create instructor profile:', instructorError);
-      }
-    }
-  }
-
-  return { user: data.user, session: data.session };
+  // In demo mode, always redirect to dashboard
+  redirect("/dashboard");
 }
 
-//login with email and password
+// DEMO MODE: Login with demo accounts
 export async function login(formData: { email: string; password: string }) {
-  try {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { user: data.user, session: data.session };
-  } catch (error) {
-    console.error('Login error:', error);
-    return { error: 'An unexpected error occurred during login. Please try again.' };
+  const { valid, user } = verifyDemoCredentials(formData.email, formData.password);
+  
+  if (!valid || !user) {
+    return { error: "Invalid email or password" };
+  }
+  
+  // Store demo user in cookie
+  const cookieStore = await cookies();
+  cookieStore.set('demo_user_id', user.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  });
+  
+  // Redirect to role-specific dashboard
+  switch (user.role) {
+    case 'student':
+      redirect('/dashboard/student');
+    case 'faculty':
+      redirect('/dashboard/faculty');
+    case 'scheduling':
+      redirect('/dashboard/scheduling');
+    case 'teaching_load':
+      redirect('/dashboard/teaching-load');
+    case 'registrar':
+      redirect('/dashboard/registrar');
+    default:
+      redirect('/dashboard');
   }
 }
 
-//logout and remove user
+// DEMO MODE: Logout clears cookie
+// Note: For client components, use the /api/auth/logout route instead
 export async function logOut() {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signOut();
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  return;
+  const cookieStore = await cookies();
+  
+  // Clear the demo_user_id cookie
+  cookieStore.delete('demo_user_id');
+  
+  // Also set it to empty with expired date to ensure it's cleared
+  cookieStore.set('demo_user_id', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0, // Expire immediately
+    path: '/',
+  });
+  
+  // Return success (client components should handle redirect)
+  return { success: true };
 }

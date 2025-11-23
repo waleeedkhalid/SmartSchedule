@@ -22,36 +22,38 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/supabase/server";
-import { Calendar, BookOpen, MessageSquare, GraduationCap } from "lucide-react";
+import { getMockUserRole, getMockCreditStats, getMockEnrollments, getMockStudentExams } from "@/lib/demo-data";
+import { Calendar, BookOpen, MessageSquare, GraduationCap, CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ElectiveRegistrationManager } from "@/components/elective-registration-manager";
 import { StudentScheduleView } from "@/components/student-schedule-view";
 import { StudentExamTimetable } from "@/components/student-exam-timetable";
+import { StudentDashboardCharts } from "@/components/student-dashboard-charts";
 // import { StudentCommentManager } from "@/components/student-comment-manager"; // Temporarily disabled during maintenance
 
 export default async function StudentDashboardPage() {
-  // Authentication: Verify user is logged in
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Authorization: Verify user has student role and get level
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role, name, level')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userRole?.role !== 'student') {
+  if (!userRole || userRole.role !== 'student') {
     redirect("/dashboard");
   }
 
   const studentLevel = userRole.level || null;
+  
+  // Fetch dashboard stats
+  const [creditStats, enrollments, exams] = await Promise.all([
+    getMockCreditStats(),
+    getMockEnrollments(),
+    getMockStudentExams(),
+  ]);
+  
+  const totalEnrollments = enrollments.length;
+  const upcomingExams = exams.filter(e => {
+    const examDate = new Date(`${e.date}T${e.start}`);
+    return examDate > new Date();
+  }).length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -84,6 +86,9 @@ export default async function StudentDashboardPage() {
 
         {/* Overview Tab - Quick Summary */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Charts Section */}
+          <StudentDashboardCharts />
+          
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -102,39 +107,41 @@ export default async function StudentDashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Schedule</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {creditStats?.total || 0} / 20
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {creditStats?.required_credits || 0} required, {creditStats?.elective_credits || 0} elective
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Enrollments</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">View</div>
+                <div className="text-2xl font-bold">{totalEnrollments}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Required + elective courses
+                  Active course sections
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Exams</CardTitle>
+                <CardTitle className="text-sm font-medium">Upcoming Exams</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">Check</div>
+                <div className="text-2xl font-bold">{upcomingExams}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Exam timetable available
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Feedback</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">Share</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Comment on your schedule
+                  {exams.length} total exams scheduled
                 </p>
               </CardContent>
             </Card>

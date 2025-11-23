@@ -28,18 +28,13 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/instructors/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete instructor");
-      }
-
-      toast.success("Instructor deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Instructor ${name} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete instructor");
+      toast.error("Failed to delete instructor (Demo Mode)");
       console.error(error);
     }
   }

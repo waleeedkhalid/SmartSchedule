@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getInstructors } from "@/lib/db/instructors";
+import { getMockInstructors } from "@/lib/demo-data";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { InstructorsTable } from "@/components/instructors-table";
 
 export default async function InstructorsPage() {
-  const instructors = await getInstructors();
+  const instructors = await getMockInstructors();
 
   return (
     <div className="p-8">

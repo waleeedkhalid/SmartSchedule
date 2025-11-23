@@ -1,31 +1,16 @@
-import { createClient } from "@/supabase/server";
 import { redirect } from "next/navigation";
 import { TimeGridConfigForm } from "@/components/time-grid-config-form";
-import { getTimeGridConfig } from "@/lib/db/config";
+import { getMockUserRole, getMockTimeGridConfig } from "@/lib/demo-data";
 
 export default async function SchedulingSettingsPage() {
-	const supabase = await createClient();
+	// DEMO MODE: Use mock user data
+	const userRole = await getMockUserRole();
 	
-	// Check authentication
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
-	
-	if (authError || !user) {
-		redirect('/login');
-	}
-
-	// Check user role - only scheduling role can access
-	const { data: userRole, error: roleError } = await supabase
-		.from('user_roles')
-		.select('role')
-		.eq('user_id', user.id)
-		.maybeSingle();
-
-	// Only allow scheduling role (admin privileges)
-	if (roleError || !userRole || userRole.role !== 'scheduling') {
+	if (!userRole || userRole.role !== 'scheduling') {
 		redirect('/dashboard');
 	}
 
-	const config = await getTimeGridConfig();
+	const config = await getMockTimeGridConfig();
 
 	return (
 		<div className="p-8">

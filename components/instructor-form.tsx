@@ -53,31 +53,14 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/instructors/${instructor?.id}` : "/api/instructors";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const payload = {
-        ...values,
-        email: values.email || null,
-        preferred_times: instructor?.preferred_times || [],
-        unavailable_times: instructor?.unavailable_times || [],
-      };
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} instructor`);
-      }
-
-      toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully`);
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/instructors");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} instructor`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} instructor (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

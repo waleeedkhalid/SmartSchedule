@@ -166,10 +166,19 @@ export function FacultyAvailabilityGrid({
   }, []);
 
   // Save availability
+  // DEMO MODE: Shows toast notification instead of actual save
   const handleSave = async () => {
     setIsSaving(true);
     
     try {
+      // DEMO MODE: Simulate save with delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success('In Demo Mode: Availability preferences saved (Changes are not persisted)');
+      setHasChanges(false);
+      
+      // In production, this would be the API call:
+      /*
       const response = await fetch('/api/faculty/availability', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -186,6 +195,7 @@ export function FacultyAvailabilityGrid({
       
       toast.success('Availability preferences saved successfully');
       setHasChanges(false);
+      */
     } catch (error) {
       console.error('Error saving availability:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save preferences');

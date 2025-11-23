@@ -92,18 +92,13 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/sections/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete section");
-      }
-
-      toast.success("Section deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Section ${courseCode}-${sectionNo} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete section");
+      toast.error("Failed to delete section (Demo Mode)");
       console.error(error);
     }
   }

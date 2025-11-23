@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getStudentGroups } from "@/lib/db/student-groups";
+import { getMockStudentGroups } from "@/lib/demo-data";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { StudentGroupsTable } from "@/components/student-groups-table";
 
 export default async function StudentGroupsPage() {
-  const groups = await getStudentGroups();
+  const groups = await getMockStudentGroups();
 
   return (
     <div className="p-8">

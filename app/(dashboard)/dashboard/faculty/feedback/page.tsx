@@ -1,40 +1,23 @@
-import { createClient } from '@/supabase/server'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
-import { getFacultyProfile } from '@/lib/db/faculty'
-// Temporarily disabled during maintenance:
-// import { getUserComments, getCommentStats } from '@/lib/db/schedule-comments'
-// import { SectionCard } from '@/components/faculty/section-card'
-// import { CommentFormWrapper } from '@/components/faculty/comment-form-wrapper'
-// import { CommentListWrapper } from '@/components/faculty/comment-list-wrapper'
+import { getMockUserRole, getMockFacultyProfile } from '@/lib/demo-data'
 
 export const dynamic = 'force-dynamic';
 
 export default async function FacultyFeedbackPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole()
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Verify user has faculty role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (userRole?.role !== 'faculty') {
+  if (!userRole || userRole.role !== 'faculty') {
     redirect('/dashboard')
   }
 
   // Get faculty profile
-  const instructor = await getFacultyProfile(user.id)
+  const instructor = await getMockFacultyProfile(userRole.id)
 
   return (
     <div className="p-8">

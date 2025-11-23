@@ -28,18 +28,13 @@ export function StudentGroupsTable({ groups }: StudentGroupsTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/student-groups/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete student group");
-      }
-
-      toast.success("Student group deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Student group "${name}" deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete student group");
+      toast.error("Failed to delete student group (Demo Mode)");
       console.error(error);
     }
   }

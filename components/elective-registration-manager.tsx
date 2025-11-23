@@ -100,32 +100,36 @@ export function ElectiveRegistrationManager() {
 
   /**
    * Fetch all data: enrollments, available sections, and credit stats
-   * This provides a complete view of student's registration status
+   * DEMO MODE: Uses mock data instead of API calls
    */
   async function fetchData() {
     setLoading(true);
     try {
-      // Parallel fetch for efficiency
-      const [enrollmentsRes, sectionsRes, statsRes] = await Promise.all([
-        fetch('/api/student/enrollments'),
-        fetch('/api/student/available-sections?available_only=false'),
-        fetch('/api/student/enrollments?stats=true'),
+      // DEMO MODE: Use mock data functions
+      const { 
+        getMockEnrollmentsWithDetails, 
+        getMockAvailableElectiveSections, 
+        getMockCreditStats 
+      } = await import('@/lib/demo-data');
+      
+      const [enrollmentsData, sectionsData, stats] = await Promise.all([
+        getMockEnrollmentsWithDetails(),
+        getMockAvailableElectiveSections(),
+        getMockCreditStats(),
       ]);
 
-      if (enrollmentsRes.ok) {
-        const enrollmentsData = await enrollmentsRes.json();
-        setEnrollments(enrollmentsData);
-      }
+      // Transform enrollments to match expected format
+      const formattedEnrollments = enrollmentsData.map((e: any) => ({
+        id: e.id,
+        section_id: e.section_id,
+        course: e.section?.course || { code: '', title: '', credits: 0 },
+        section: e.section || { section_no: '', meeting_pattern: { days: [], start: '', duration: 0 } },
+        instructor: e.section?.instructor || null,
+      }));
 
-      if (sectionsRes.ok) {
-        const sectionsData = await sectionsRes.json();
-        setAvailableSections(sectionsData.sections || []);
-      }
-
-      if (statsRes.ok) {
-        const stats = await statsRes.json();
-        setCreditStats(stats);
-      }
+      setEnrollments(formattedEnrollments);
+      setAvailableSections(sectionsData);
+      setCreditStats(stats);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load registration data');
@@ -136,9 +140,7 @@ export function ElectiveRegistrationManager() {
 
   /**
    * Enroll in an elective section
-   * Validates constraints and provides user feedback
-   * 
-   * @param sectionId - UUID of the section to enroll in
+   * DEMO MODE: Shows toast notification instead of actual enrollment
    */
   async function handleEnroll(section: AvailableSection) {
     // Pre-check: Credit limit (client-side for immediate feedback)
@@ -157,22 +159,10 @@ export function ElectiveRegistrationManager() {
 
     setActionLoading(section.section_id);
     try {
-      const res = await fetch('/api/student/enrollments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section_id: section.section_id }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        // Server-side validation failed - show specific error
-        toast.error(data.error || 'Failed to enroll');
-        return;
-      }
-
-      // Success!
-      toast.success(`Enrolled in ${section.course_code} ${section.section_no}`);
+      // DEMO MODE: Simulate enrollment with delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success(`In Demo Mode: Enrolled in ${section.course_code} ${section.section_no} (Changes are not saved)`);
       
       // Refresh data to show updated enrollments and credits
       fetchData();
@@ -186,23 +176,15 @@ export function ElectiveRegistrationManager() {
 
   /**
    * Drop an enrollment
-   * Updates status to 'dropped' (maintains audit trail)
-   * 
-   * @param enrollmentId - UUID of the enrollment to drop
+   * DEMO MODE: Shows toast notification instead of actual drop
    */
   async function handleDrop(enrollmentId: string, courseName: string) {
     setActionLoading(enrollmentId);
     try {
-      const res = await fetch(`/api/student/enrollments/${enrollmentId}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        toast.error('Failed to drop course');
-        return;
-      }
-
-      toast.success(`Dropped ${courseName}`);
+      // DEMO MODE: Simulate drop with delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success(`In Demo Mode: Dropped ${courseName} (Changes are not saved)`);
       
       // Refresh data
       fetchData();

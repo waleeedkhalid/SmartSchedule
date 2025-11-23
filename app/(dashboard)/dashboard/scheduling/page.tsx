@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createClient } from "@/supabase/server";
 import { 
   BookOpen, 
   Calendar, 
@@ -15,67 +14,25 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ScheduleGenerator } from "@/components/schedule-generator";
-import { SchedulingDashboardCharts } from "@/components/scheduling-dashboard-charts";
+import { SchedulingDashboardChartsNew } from "@/components/scheduling-dashboard-charts-new";
+import { getMockUserRole, getMockSchedulingStats, getMockScheduleStatus } from "@/lib/demo-data";
 
 export default async function SchedulingDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // DEMO MODE: Use mock user data
+  const userRole = await getMockUserRole();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Verify user has scheduling role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userRole?.role !== 'scheduling') {
+  if (!userRole || userRole.role !== 'scheduling') {
     redirect("/dashboard");
   }
 
-  // Get counts for each entity
-  const [coursesCount, sectionsCount, roomsCount, instructorsCount, groupsCount] = await Promise.all([
-    supabase.from('course').select('*', { count: 'exact', head: true }),
-    supabase.from('section').select('*', { count: 'exact', head: true }),
-    supabase.from('room').select('*', { count: 'exact', head: true }),
-    supabase.from('instructor').select('*', { count: 'exact', head: true }),
-    supabase.from('student_group').select('*', { count: 'exact', head: true }),
-  ]);
+  // Get statistics using mock data
+  const stats = await getMockSchedulingStats();
+  const scheduleStatus = await getMockScheduleStatus();
 
-  // Get draft and released section counts
-  const [draftSections, releasedSections] = await Promise.all([
-    supabase.from('section').select('*', { count: 'exact', head: true }).eq('state', 'draft'),
-    supabase.from('section').select('*', { count: 'exact', head: true }).eq('state', 'released'),
-  ]);
-
-  // Get detailed section assignment info
-  const { data: allDraftSections } = await supabase
-    .from('section')
-    .select('*')
-    .eq('state', 'draft');
-
-  const assignedCount = allDraftSections?.filter(
-    (s) => s.room_code && s.meeting_pattern?.start
-  ).length || 0;
-
-  const scheduleStatus = {
-    draft: {
-      total: draftSections.count || 0,
-      assigned: assignedCount,
-      unassigned: (draftSections.count || 0) - assignedCount,
-    },
-    released: {
-      total: releasedSections.count || 0,
-    },
-  };
-
-  const isSystemReady = (coursesCount.count ?? 0) > 0 && 
-                        (roomsCount.count ?? 0) > 0 && 
-                        (instructorsCount.count ?? 0) > 0 &&
-                        (groupsCount.count ?? 0) > 0;
+  const isSystemReady = stats.coursesCount > 0 && 
+                        stats.roomsCount > 0 && 
+                        stats.instructorsCount > 0 &&
+                        stats.groupsCount > 0;
 
   return (
     <div className="p-8">
@@ -108,7 +65,7 @@ export default async function SchedulingDashboardPage() {
               <BookOpen className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{coursesCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.coursesCount}</div>
             </CardContent>
           </Card>
 
@@ -118,9 +75,9 @@ export default async function SchedulingDashboardPage() {
               <Calendar className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{sectionsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.sectionsCount}</div>
               <p className="text-xs text-gray-500 mt-1">
-                {draftSections.count || 0} draft, {releasedSections.count || 0} released
+                {stats.draftSectionsCount} draft, {stats.releasedSectionsCount} released
               </p>
             </CardContent>
           </Card>
@@ -131,7 +88,7 @@ export default async function SchedulingDashboardPage() {
               <DoorOpen className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{roomsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.roomsCount}</div>
             </CardContent>
           </Card>
 
@@ -141,7 +98,7 @@ export default async function SchedulingDashboardPage() {
               <Users className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{instructorsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.instructorsCount}</div>
             </CardContent>
           </Card>
 
@@ -151,7 +108,7 @@ export default async function SchedulingDashboardPage() {
               <Users className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{groupsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.groupsCount}</div>
             </CardContent>
           </Card>
         </div>
@@ -185,7 +142,7 @@ export default async function SchedulingDashboardPage() {
               <CardContent>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center gap-2">
-                    {(coursesCount.count ?? 0) > 0 ? (
+                    {stats.coursesCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -193,7 +150,7 @@ export default async function SchedulingDashboardPage() {
                     <span>Add courses</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {(roomsCount.count ?? 0) > 0 ? (
+                    {stats.roomsCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -201,7 +158,7 @@ export default async function SchedulingDashboardPage() {
                     <span>Add rooms</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {(instructorsCount.count ?? 0) > 0 ? (
+                    {stats.instructorsCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -209,7 +166,7 @@ export default async function SchedulingDashboardPage() {
                     <span>Add instructors</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {(groupsCount.count ?? 0) > 0 ? (
+                    {stats.groupsCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -227,7 +184,7 @@ export default async function SchedulingDashboardPage() {
 
           {/* Analytics & Insights Tab */}
           <TabsContent value="analytics">
-            <SchedulingDashboardCharts />
+            <SchedulingDashboardChartsNew />
           </TabsContent>
 
           {/* Quick Actions Tab */}

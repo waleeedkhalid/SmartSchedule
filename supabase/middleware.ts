@@ -1,43 +1,16 @@
-import { createServerClient } from "@supabase/ssr";
+/**
+ * DEMO MODE: Authentication Middleware
+ * 
+ * Handles demo account authentication using cookies.
+ */
+
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  // Check if environment variables are set
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn('Supabase environment variables not set, skipping auth check');
-    return supabaseResponse;
-  }
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // =====================================================
-  // DEFINE PUBLIC ROUTES (accessible without authentication)
-  // =====================================================
+  const demoUserId = request.cookies.get('demo_user_id')?.value;
+  const pathname = request.nextUrl.pathname;
+  
+  // Public routes that don't require authentication
   const publicRoutes = [
     '/',
     '/login',
@@ -52,83 +25,23 @@ export async function updateSession(request: NextRequest) {
   ];
   
   const isPublicRoute = publicRoutes.some(route => 
-    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(`${route}/`)
+    pathname === route || pathname.startsWith(`${route}/`)
   );
-
-  // Skip auth check only for static assets that definitely don't need user info
-  const skipAuthCheck = 
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname === '/favicon.ico';
-
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: Only call getUser() when needed to reduce 403 noise
-  let user = null;
   
-  if (!skipAuthCheck) {
-    const { data: { user: authUser }, error } = await supabase.auth.getUser();
-    // Silently handle 403/auth errors - they're expected for unauthenticated users
-    if (!error) {
-      user = authUser;
-    }
-  }
-
-  // =====================================================
-  // REDIRECT LOGGED-IN USERS FROM AUTH ROUTES
-  // =====================================================
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
+  // Redirect logged-in users away from auth pages
+  if (demoUserId && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-
-  // =====================================================
-  // PROTECT DASHBOARD AND OTHER PRIVATE ROUTES
-  // =====================================================
-  if (!user && !isPublicRoute) {
-    const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // =====================================================
-  // ONBOARDING CHECK
-  // =====================================================
-  // If user is authenticated and trying to access dashboard routes,
-  // check if they need to complete onboarding first
   
-  if (
-    user &&
-    request.nextUrl.pathname.startsWith("/dashboard")
-  ) {
-    // Check if user needs onboarding (force fresh data, no cache)
-    const { data: userRole } = await supabase
-      .from('user_roles')
-			.select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (userRole) {
-			// Profile exists; allow access
-    } else {
-      // User has no role record - redirect to onboarding
-      const onboardingUrl = new URL("/onboarding", request.url);
-      return NextResponse.redirect(onboardingUrl);
-    }
+  // Protect dashboard routes - require authentication
+  if (!demoUserId && pathname.startsWith('/dashboard') && !isPublicRoute) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
-
-  return supabaseResponse;
+  
+  // Allow all other routes
+  return NextResponse.next({
+    request,
+  });
 }

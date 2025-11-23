@@ -36,18 +36,13 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
 
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/exams/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete exam");
-      }
-
-      toast.success("Exam deleted successfully");
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      
+      toast.success(`Exam for ${courseCode} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete exam");
+      toast.error("Failed to delete exam (Demo Mode)");
       console.error(error);
     } finally {
       setDeletingId(null);

@@ -120,24 +120,16 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
       setIsCheckingConflicts(true);
 
       try {
-        const response = await fetch("/api/sections/check-conflicts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room_code: room_code || null,
-            instructor_id: instructor_id || null,
-            group_level,
-            meeting_days,
-            meeting_start,
-            meeting_duration,
-            exclude_section_id: section?.id || null,
-          }),
+        // DEMO MODE: Simulate conflict check
+        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+        
+        // Return no conflicts in demo mode
+        setConflicts({
+          room_conflicts: [],
+          instructor_conflicts: [],
+          student_conflicts: [],
+          has_conflicts: false,
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          setConflicts(data);
-        }
       } catch (error) {
         console.error("Error checking conflicts:", error);
       } finally {
@@ -161,40 +153,14 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const payload = {
-        course_code: values.course_code,
-        section_no: values.section_no,
-        instructor_id: values.instructor_id || null,
-        room_code: values.room_code || null,
-        capacity: values.capacity,
-        group_level: values.group_level,
-        meeting_pattern: {
-          days: values.meeting_days,
-          start: values.meeting_start,
-          duration: values.meeting_duration,
-        },
-        activity: values.activity,
-        state: values.state,
-      };
-
-      const url = isEditing ? `/api/sections/${section?.id}` : "/api/sections";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} section`);
-      }
-
-      toast.success(`Section ${isEditing ? 'updated' : 'created'} successfully`);
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      toast.success(`Section ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/sections");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} section`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} section (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

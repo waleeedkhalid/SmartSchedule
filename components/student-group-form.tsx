@@ -53,24 +53,14 @@ export function StudentGroupForm({ group, isEditing = false }: StudentGroupFormP
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/student-groups/${group?.id}` : "/api/student-groups";
-      const method = isEditing ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} student group`);
-      }
-
-      toast.success(`Student group ${isEditing ? 'updated' : 'created'} successfully`);
+      // DEMO MODE: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      
+      toast.success(`Student group ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/student-groups");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} student group`);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} student group (Demo Mode)`);
       console.error(error);
     } finally {
       setIsLoading(false);

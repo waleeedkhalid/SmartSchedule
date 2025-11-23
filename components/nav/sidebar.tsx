@@ -276,10 +276,10 @@ export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
           <Settings className="h-5 w-5" />
           <span>Profile</span>
         </Link>
-        <form action="/api/auth/signout" method="post">
+        <form action="/api/auth/logout" method="POST">
           <button
             type="submit"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-200"
           >
             <LogOut className="h-5 w-5" />
             <span>Sign Out</span>

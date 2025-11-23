@@ -196,6 +196,35 @@ export default function LoginForm() {
           <Icons.arrowRight className="ml-2 h-4 w-4" />
         </Link>
       </Button>
+
+      {/* Demo Accounts Info */}
+      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          Demo Accounts (Password: demo123)
+        </p>
+        <div className="space-y-1 text-xs text-blue-800 dark:text-blue-200">
+          <div className="flex justify-between">
+            <span className="font-medium">Student:</span>
+            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">student@demo.com</code>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Faculty:</span>
+            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">faculty@demo.com</code>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Scheduling:</span>
+            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">scheduling@demo.com</code>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Teaching Load:</span>
+            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">teaching-load@demo.com</code>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Registrar:</span>
+            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">registrar@demo.com</code>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
