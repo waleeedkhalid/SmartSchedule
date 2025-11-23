@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/supabase/server'
+import { db } from '@/lib/db'
 import { markNotificationAsRead, deleteNotification } from '@/lib/db/notifications'
 
 /**
@@ -24,12 +25,11 @@ export async function PATCH(
 
     const notificationId = params.id
 
-    // Verify the notification belongs to the user
-    const { data: notification } = await supabase
-      .from('notification')
-      .select('user_id')
-      .eq('id', notificationId)
-      .maybeSingle()
+    // Verify the notification belongs to the user - USING PRISMA
+    const notification = await db.notification.findUnique({
+      where: { id: notificationId },
+      select: { userId: true }
+    })
 
     if (!notification) {
       return NextResponse.json(
@@ -38,7 +38,7 @@ export async function PATCH(
       )
     }
 
-    if (notification.user_id !== user.id) {
+    if (notification.userId !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -80,12 +80,11 @@ export async function DELETE(
 
     const notificationId = params.id
 
-    // Verify the notification belongs to the user
-    const { data: notification } = await supabase
-      .from('notification')
-      .select('user_id')
-      .eq('id', notificationId)
-      .maybeSingle()
+    // Verify the notification belongs to the user - USING PRISMA
+    const notification = await db.notification.findUnique({
+      where: { id: notificationId },
+      select: { userId: true }
+    })
 
     if (!notification) {
       return NextResponse.json(
@@ -94,7 +93,7 @@ export async function DELETE(
       )
     }
 
-    if (notification.user_id !== user.id) {
+    if (notification.userId !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

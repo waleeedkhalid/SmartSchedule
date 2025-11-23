@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/supabase/server'
+import { db } from '@/lib/db'
 import {
   getUserNotifications,
   getUnreadCount,
@@ -40,14 +41,13 @@ export async function GET(request: NextRequest) {
 
     // Admin stats
     if (stats) {
-      // Check if user is scheduling role
-      const { data: userRole } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      // Check if user is scheduling role - USING PRISMA
+      const dbUser = await db.userRole.findUnique({
+        where: { userId: user.id },
+        select: { role: true }
+      })
 
-      if (userRole?.role !== 'scheduling') {
+      if (!dbUser || dbUser.role !== 'scheduling') {
         return NextResponse.json(
           { error: 'Forbidden' },
           { status: 403 }
@@ -102,14 +102,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user has scheduling role
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    // Check if user has scheduling role - USING PRISMA
+    const dbUser = await db.userRole.findUnique({
+      where: { userId: user.id },
+      select: { role: true }
+    })
 
-    if (userRole?.role !== 'scheduling') {
+    if (!dbUser || dbUser.role !== 'scheduling') {
       return NextResponse.json(
         { error: 'Only scheduling committee can create notifications' },
         { status: 403 }
@@ -126,10 +125,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY FIX: Validate userIds exist in Prisma before creating notifications
     let data
     if (userIds && Array.isArray(userIds)) {
+      // Verify all userIds exist in Prisma
+      const existingUsers = await db.userRole.findMany({
+        where: { userId: { in: userIds } },
+        select: { userId: true }
+      })
+      
+      const existingIds = new Set(existingUsers.map(u => u.userId))
+      const invalidIds = userIds.filter(id => !existingIds.has(id))
+      
+      if (invalidIds.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid user IDs: ${invalidIds.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      
       data = await createBulkNotifications(userIds, type, payload)
     } else if (userId) {
+      // Verify userId exists in Prisma
+      const userExists = await db.userRole.findUnique({
+        where: { userId },
+        select: { userId: true }
+      })
+      
+      if (!userExists) {
+        return NextResponse.json(
+          { error: 'Invalid user ID' },
+          { status: 400 }
+        )
+      }
+      
       data = await createNotification(userId, type, payload)
     } else {
       return NextResponse.json(

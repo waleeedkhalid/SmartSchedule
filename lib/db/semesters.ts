@@ -1,49 +1,50 @@
 /**
  * Database queries for academic semesters
  * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
+ * 
  * REFACTORED: New file for semester management
  * Supports semester-based scheduling context
+ * 
+ * NOTE: Prisma schema uses:
+ * - `code` as the ID (not `id`)
+ * - `isActive` instead of `is_current`
+ * - Different field names (camelCase in Prisma, snake_case in DB via @map)
  */
+import { db } from '@/lib/db';
+import type { AcademicSemester, SemesterType } from '@prisma/client';
 import { createClient } from '@/supabase/server';
 
-export interface Semester {
-  id: string;
-  name: string;
-  code: string;
-  start_date: string;
-  end_date: string;
-  registration_start_date: string | null;
-  registration_end_date: string | null;
-  add_drop_deadline: string | null;
-  status: 'planning' | 'registration_open' | 'active' | 'completed' | 'archived';
-  is_current: boolean;
-  created_at: string | null;
-  created_by: string | null;
-  updated_at: string | null;
-}
+// Type for semester (matches Prisma model)
+export type Semester = AcademicSemester;
 
+// Type for semester create input
 export interface SemesterCreate {
-  name: string;
   code: string;
-  start_date: string;
-  end_date: string;
-  registration_start_date?: string;
-  registration_end_date?: string;
-  add_drop_deadline?: string;
-  status?: 'planning' | 'registration_open' | 'active' | 'completed' | 'archived';
-  is_current?: boolean;
+  name: string;
+  type: SemesterType;
+  startDate: Date | string;
+  endDate: Date | string;
+  isActive?: boolean;
+  electivesSurveyOpen?: boolean;
+  registrationOpen?: boolean;
+  feedbackOpen?: boolean;
+  schedulePublished?: boolean;
+  isFacultyAvailabilityOpen?: boolean;
 }
 
+// Type for semester update input
 export interface SemesterUpdate {
   name?: string;
-  code?: string;
-  start_date?: string;
-  end_date?: string;
-  registration_start_date?: string;
-  registration_end_date?: string;
-  add_drop_deadline?: string;
-  status?: 'planning' | 'registration_open' | 'active' | 'completed' | 'archived';
-  is_current?: boolean;
+  type?: SemesterType;
+  startDate?: Date | string;
+  endDate?: Date | string;
+  isActive?: boolean;
+  electivesSurveyOpen?: boolean;
+  registrationOpen?: boolean;
+  feedbackOpen?: boolean;
+  schedulePublished?: boolean;
+  isFacultyAvailabilityOpen?: boolean;
 }
 
 /**
@@ -51,58 +52,32 @@ export interface SemesterUpdate {
  * @returns Current semester or null if no current semester is set
  */
 export async function getCurrentSemester(): Promise<Semester | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .select('*')
-    .eq('is_current', true)
-    .single();
+  const semester = await db.academicSemester.findFirst({
+    where: { isActive: true }
+  });
   
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // No current semester set
-      return null;
-    }
-    throw error;
-  }
-  return data as Semester;
+  return semester;
 }
 
 /**
- * Get all semesters, ordered by start_date descending (most recent first)
+ * Get all semesters, ordered by startDate descending (most recent first)
  * @returns Array of semesters
  */
 export async function getSemesters(): Promise<Semester[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .select('*')
-    .order('start_date', { ascending: false });
-  
-  if (error) throw error;
-  return data as Semester[];
+  return await db.academicSemester.findMany({
+    orderBy: { startDate: 'desc' }
+  });
 }
 
 /**
- * Get a specific semester by ID
- * @param id - Semester ID
+ * Get a specific semester by code
+ * @param code - Semester code (e.g., "471", "472")
  * @returns Semester or null if not found
  */
-export async function getSemester(id: string): Promise<Semester | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    throw error;
-  }
-  return data as Semester;
+export async function getSemester(code: string): Promise<Semester | null> {
+  return await db.academicSemester.findUnique({
+    where: { code }
+  });
 }
 
 /**
@@ -114,184 +89,181 @@ export async function createSemester(semesterData: SemesterCreate): Promise<Seme
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .insert({ 
-      ...semesterData, 
-      created_by: user?.id,
-      status: semesterData.status || 'planning'
-    })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data as Semester;
+  return await db.academicSemester.create({
+    data: {
+      code: semesterData.code,
+      name: semesterData.name,
+      type: semesterData.type,
+      startDate: typeof semesterData.startDate === 'string' 
+        ? new Date(semesterData.startDate) 
+        : semesterData.startDate,
+      endDate: typeof semesterData.endDate === 'string' 
+        ? new Date(semesterData.endDate) 
+        : semesterData.endDate,
+      isActive: semesterData.isActive ?? false,
+      electivesSurveyOpen: semesterData.electivesSurveyOpen ?? false,
+      registrationOpen: semesterData.registrationOpen ?? false,
+      feedbackOpen: semesterData.feedbackOpen ?? false,
+      schedulePublished: semesterData.schedulePublished ?? false,
+      isFacultyAvailabilityOpen: semesterData.isFacultyAvailabilityOpen ?? false
+    }
+  });
 }
 
 /**
  * Update an existing semester
- * @param id - Semester ID
+ * @param code - Semester code
  * @param updates - Fields to update
  * @returns Updated semester
  */
-export async function updateSemester(id: string, updates: SemesterUpdate): Promise<Semester> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+export async function updateSemester(code: string, updates: SemesterUpdate): Promise<Semester> {
+  const prismaUpdates: any = {};
   
-  if (error) throw error;
-  return data as Semester;
+  if (updates.name !== undefined) prismaUpdates.name = updates.name;
+  if (updates.type !== undefined) prismaUpdates.type = updates.type;
+  if (updates.startDate !== undefined) {
+    prismaUpdates.startDate = typeof updates.startDate === 'string' 
+      ? new Date(updates.startDate) 
+      : updates.startDate;
+  }
+  if (updates.endDate !== undefined) {
+    prismaUpdates.endDate = typeof updates.endDate === 'string' 
+      ? new Date(updates.endDate) 
+      : updates.endDate;
+  }
+  if (updates.isActive !== undefined) prismaUpdates.isActive = updates.isActive;
+  if (updates.electivesSurveyOpen !== undefined) prismaUpdates.electivesSurveyOpen = updates.electivesSurveyOpen;
+  if (updates.registrationOpen !== undefined) prismaUpdates.registrationOpen = updates.registrationOpen;
+  if (updates.feedbackOpen !== undefined) prismaUpdates.feedbackOpen = updates.feedbackOpen;
+  if (updates.schedulePublished !== undefined) prismaUpdates.schedulePublished = updates.schedulePublished;
+  if (updates.isFacultyAvailabilityOpen !== undefined) prismaUpdates.isFacultyAvailabilityOpen = updates.isFacultyAvailabilityOpen;
+  
+  return await db.academicSemester.update({
+    where: { code },
+    data: prismaUpdates
+  });
 }
 
 /**
  * Delete a semester
- * @param id - Semester ID
+ * @param code - Semester code
  */
-export async function deleteSemester(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('academic_semester')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+export async function deleteSemester(code: string): Promise<void> {
+  await db.academicSemester.delete({
+    where: { code }
+  });
 }
 
 /**
- * Archive a semester (sets status to 'archived' and is_current to false)
- * Uses the database function archive_semester() if available
- * @param id - Semester ID
+ * Archive a semester (sets isActive to false)
+ * Uses Prisma update directly
+ * @param code - Semester code
  * @returns Updated semester
  */
-export async function archiveSemester(id: string): Promise<Semester> {
+export async function archiveSemester(code: string): Promise<Semester> {
+  // Try using database function first (if it exists)
   const supabase = await createClient();
-  
-  // Try using database function first
   const { data: fnData, error: fnError } = await supabase
-    .rpc('archive_semester', { semester_id: id });
+    .rpc('archive_semester', { semester_code: code });
   
   if (!fnError && fnData) {
     // Function succeeded, return the archived semester
-    return await getSemester(id) as Semester;
+    return await getSemester(code) as Semester;
   }
   
-  // Fallback to direct update if function doesn't exist
-  return await updateSemester(id, {
-    status: 'archived',
-    is_current: false
+  // Fallback to direct update
+  return await updateSemester(code, {
+    isActive: false
   });
 }
 
 /**
  * Check if registration is currently open for a semester
- * @param semesterId - Semester ID (defaults to current semester)
+ * @param semesterCode - Semester code (defaults to current semester)
  * @returns True if registration is open
  */
-export async function isRegistrationOpen(semesterId?: string): Promise<boolean> {
-  const supabase = await createClient();
-  const id = semesterId || (await getCurrentSemester())?.id;
+export async function isRegistrationOpen(semesterCode?: string): Promise<boolean> {
+  const code = semesterCode || (await getCurrentSemester())?.code;
   
-  if (!id) return false;
+  if (!code) return false;
   
   // Try database function first
+  const supabase = await createClient();
   const { data: fnData, error: fnError } = await supabase
-    .rpc('is_registration_open', { semester_id: id });
+    .rpc('is_registration_open', { semester_code: code });
   
   if (!fnError && fnData !== null) {
     return fnData;
   }
   
   // Fallback to manual check
-  const semester = await getSemester(id);
-  if (!semester || semester.status !== 'registration_open') return false;
+  const semester = await getSemester(code);
+  if (!semester || !semester.registrationOpen) return false;
   
   const now = new Date();
-  const start = semester.registration_start_date ? new Date(semester.registration_start_date) : null;
-  const end = semester.registration_end_date ? new Date(semester.registration_end_date) : null;
-  
-  if (!start || !end) return false;
-  
-  return now >= start && now <= end;
+  // Note: Prisma schema doesn't have registration_start_date/end_date
+  // This would need to be added to schema or checked via timeline events
+  return semester.registrationOpen;
 }
 
 /**
  * Check if add/drop period is currently open for a semester
- * @param semesterId - Semester ID (defaults to current semester)
+ * @param semesterCode - Semester code (defaults to current semester)
  * @returns True if add/drop is open
  */
-export async function isAddDropOpen(semesterId?: string): Promise<boolean> {
-  const supabase = await createClient();
-  const id = semesterId || (await getCurrentSemester())?.id;
+export async function isAddDropOpen(semesterCode?: string): Promise<boolean> {
+  const code = semesterCode || (await getCurrentSemester())?.code;
   
-  if (!id) return false;
+  if (!code) return false;
   
   // Try database function first
+  const supabase = await createClient();
   const { data: fnData, error: fnError } = await supabase
-    .rpc('is_add_drop_open', { semester_id: id });
+    .rpc('is_add_drop_open', { semester_code: code });
   
   if (!fnError && fnData !== null) {
     return fnData;
   }
   
-  // Fallback to manual check
-  const semester = await getSemester(id);
-  if (!semester || semester.status !== 'active') return false;
+  // Fallback: Check if semester is active
+  const semester = await getSemester(code);
+  if (!semester || !semester.isActive) return false;
   
-  const now = new Date();
-  const deadline = semester.add_drop_deadline ? new Date(semester.add_drop_deadline) : null;
-  
-  if (!deadline) return false;
-  
-  return now <= deadline;
+  // Note: Prisma schema doesn't have add_drop_deadline
+  // This would need to be added to schema or checked via timeline events
+  return semester.isActive;
 }
 
 /**
- * Get semesters by status
- * @param status - Semester status
+ * Get semesters by active status
+ * @param isActive - Active status
  * @returns Array of semesters
  */
-export async function getSemestersByStatus(
-  status: 'planning' | 'registration_open' | 'active' | 'completed' | 'archived'
-): Promise<Semester[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .select('*')
-    .eq('status', status)
-    .order('start_date', { ascending: false });
-  
-  if (error) throw error;
-  return data as Semester[];
+export async function getSemestersByStatus(isActive: boolean): Promise<Semester[]> {
+  return await db.academicSemester.findMany({
+    where: { isActive },
+    orderBy: { startDate: 'desc' }
+  });
 }
 
 /**
  * Set a semester as current (and unset all others)
- * @param id - Semester ID
+ * @param code - Semester code
  * @returns Updated semester
  */
-export async function setCurrentSemester(id: string): Promise<Semester> {
-  const supabase = await createClient();
-  
-  // First, unset all current semesters
-  await supabase
-    .from('academic_semester')
-    .update({ is_current: false })
-    .eq('is_current', true);
-  
-  // Then set the new current semester
-  const { data, error } = await supabase
-    .from('academic_semester')
-    .update({ is_current: true })
-    .eq('id', id)
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data as Semester;
+export async function setCurrentSemester(code: string): Promise<Semester> {
+  // Use transaction to ensure atomicity
+  return await db.$transaction(async (tx) => {
+    // First, unset all active semesters
+    await tx.academicSemester.updateMany({
+      where: { isActive: true },
+      data: { isActive: false }
+    });
+    
+    // Then set the new active semester
+    return await tx.academicSemester.update({
+      where: { code },
+      data: { isActive: true }
+    });
+  });
 }
-
-

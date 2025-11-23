@@ -57,14 +57,17 @@ export async function DELETE(
       );
     }
     
-    // Verify user is a student
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (roleError || !userRole || userRole.role !== 'student') {
+    // Verify user is a student - USING AUTH UTILITY
+    const { requireRole } = await import('@/lib/utils/auth');
+    try {
+      await requireRole('student');
+    } catch (error: any) {
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
       return NextResponse.json(
         { error: 'Only students can drop sections' },
         { status: 403 }

@@ -52,12 +52,15 @@ if (databaseUrl.startsWith('prisma+postgres://') || databaseUrl.startsWith('pris
 }
 
 // Create PostgreSQL connection pool with error handling
+// PERFORMANCE: Increased pool size for production readiness
+// - Development: 10 connections (sufficient for local dev)
+// - Production: 20-50 connections (handles concurrent requests)
 const pool = new Pool({
   connectionString: databaseUrl,
   // Add connection timeout and retry settings
   connectionTimeoutMillis: 10000, // 10 seconds
   idleTimeoutMillis: 30000,
-  max: 10, // Maximum number of clients in the pool
+  max: process.env.NODE_ENV === 'production' ? 20 : 10, // Scale pool size for production
 })
 
 // Handle pool errors

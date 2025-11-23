@@ -1,36 +1,65 @@
 /**
  * Database queries for sections
  * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
+ * 
  * REFACTORED: Added semester context (REQUIRED for all queries)
- * - Added academic_semester_id to all query functions
+ * - Sections link to semesters via courseOffering (courseOfferingId -> CourseOffering -> semesterCode)
  * - Added section_type support ('lecture' | 'lab' | 'tutorial')
- * - Using current_enrollment from database (cached via trigger)
  */
-import { createClient } from '@/supabase/server';
-import { Section, SectionInput, SectionConflicts } from '@/lib/types/database';
+import { db } from '@/lib/db';
+import type { Section, SectionState } from '@prisma/client';
 import { getCurrentSemester } from './semesters';
+import { createClient } from '@/supabase/server';
+
+// Type for section input (matches Prisma create input)
+export type SectionInput = {
+  courseCode: string;
+  sectionNo: string;
+  instructorId?: string | null;
+  roomCode?: string | null;
+  capacity: number;
+  meetingPattern: any; // JSON
+  groupLevel: number;
+  state?: SectionState;
+  isScheduledByAlgorithm?: boolean;
+  courseOfferingId?: string | null;
+  sectionType?: string; // Not in Prisma schema, but used in old code
+  academic_semester_id?: string; // Legacy field - will be converted to courseOfferingId
+};
+
+// Type for section conflicts (from RPC function)
+export interface SectionConflicts {
+  section_id: string;
+  conflict_type: string;
+  conflicting_section_id?: string;
+  conflicting_exam_id?: string;
+  details: any;
+}
 
 /**
  * Get all sections for a semester (DEPRECATED - use getSectionsPaginated instead)
  * @deprecated Use getSectionsPaginated for better performance
- * @param semesterId - Semester ID (defaults to current semester)
+ * @param semesterId - Semester code (defaults to current semester)
  */
-export async function getSections(semesterId?: string) {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+export async function getSections(semesterCode?: string): Promise<Section[]> {
+  const semester = semesterCode || (await getCurrentSemester())?.code;
   
   if (!semester) {
-    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+    throw new Error('No semester found. Please specify a semester code or set a current semester.');
   }
   
-  const { data, error } = await supabase
-    .from('section')
-    .select('*')
-    .eq('academic_semester_id', semester)
-    .order('course_code');
+  // Get sections via courseOffering relationship
+  const sections = await db.section.findMany({
+    where: {
+      courseOffering: {
+        semesterCode: semester
+      }
+    },
+    orderBy: { courseCode: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Section[];
+  return sections;
 }
 
 /**
@@ -58,222 +87,252 @@ export async function getSectionsPaginated(
   sortBy: 'course_code' | 'section_no' | 'group_level' | 'state' = 'course_code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
-  const supabase = await createClient()
-  
-  // Get semester ID (required)
-  const semester = filters?.semesterId || (await getCurrentSemester())?.id;
+  // Get semester code (required)
+  const semester = filters?.semesterId || (await getCurrentSemester())?.code;
   if (!semester) {
-    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+    throw new Error('No semester found. Please specify a semester code or set a current semester.');
   }
   
-  // Calculate range for pagination
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+  // Build where clause
+  const where: any = {
+    courseOffering: {
+      semesterCode: semester
+    }
+  };
   
-  // Build query with count
-  let query = supabase
-    .from('section')
-    .select(`
-      id,
-      course_code,
-      section_no,
-      section_type,
-      instructor_id,
-      room_code,
-      capacity,
-      current_enrollment,
-      meeting_pattern,
-      group_level,
-      state,
-      activity,
-      academic_semester_id,
-      created_at,
-      created_by,
-      updated_at
-    `, { count: 'exact' })
-    .eq('academic_semester_id', semester)
-  
-  // Apply filters if provided
+  // Apply filters
   if (filters?.level) {
-    query = query.eq('group_level', filters.level)
+    where.groupLevel = filters.level;
   }
   if (filters?.state) {
-    query = query.eq('state', filters.state)
+    where.state = filters.state;
   }
   if (filters?.courseCode) {
-    query = query.eq('course_code', filters.courseCode)
+    where.courseCode = filters.courseCode;
   }
   if (filters?.instructorId) {
-    query = query.eq('instructor_id', filters.instructorId)
+    where.instructorId = filters.instructorId;
   }
-  if (filters?.sectionType) {
-    query = query.eq('section_type', filters.sectionType)
+  // Note: sectionType is not in Prisma schema, would need to be added or handled differently
+  
+  // Build orderBy
+  const orderBy: any = {};
+  if (sortBy === 'course_code') {
+    orderBy.courseCode = sortOrder;
+  } else if (sortBy === 'section_no') {
+    orderBy.sectionNo = sortOrder;
+  } else if (sortBy === 'group_level') {
+    orderBy.groupLevel = sortOrder;
+  } else if (sortBy === 'state') {
+    orderBy.state = sortOrder;
   }
   
-  // Apply sorting and pagination
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' }).range(from, to)
+  // Get total count and data
+  const [sections, totalCount] = await Promise.all([
+    db.section.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    db.section.count({ where })
+  ]);
   
-  const { data, error, count } = await query
-  
-  if (error) throw error
-  
-  const totalCount = count ?? 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   return {
-    sections: data as Section[],
+    sections,
     totalCount,
     totalPages,
     currentPage: page,
     pageSize
-  }
+  };
 }
 
-export async function getSectionById(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('section')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error) throw error;
-  return data as Section;
+export async function getSectionById(id: string): Promise<Section | null> {
+  return await db.section.findUnique({
+    where: { id }
+  });
 }
 
-export async function getSectionsByCourse(courseCode: string, semesterId?: string) {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+export async function getSectionsByCourse(courseCode: string, semesterCode?: string): Promise<Section[]> {
+  const semester = semesterCode || (await getCurrentSemester())?.code;
   
   if (!semester) {
-    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+    throw new Error('No semester found. Please specify a semester code or set a current semester.');
   }
   
-  const { data, error } = await supabase
-    .from('section')
-    .select('*')
-    .eq('course_code', courseCode)
-    .eq('academic_semester_id', semester)
-    .order('section_no');
-  
-  if (error) throw error;
-  return data as Section[];
+  return await db.section.findMany({
+    where: {
+      courseCode,
+      courseOffering: {
+        semesterCode: semester
+      }
+    },
+    orderBy: { sectionNo: 'asc' }
+  });
 }
 
-export async function getSectionsByInstructor(instructorId: string, semesterId?: string) {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+export async function getSectionsByInstructor(instructorId: string, semesterCode?: string): Promise<Section[]> {
+  const semester = semesterCode || (await getCurrentSemester())?.code;
   
   if (!semester) {
-    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+    throw new Error('No semester found. Please specify a semester code or set a current semester.');
   }
   
-  const { data, error } = await supabase
-    .from('section')
-    .select('*')
-    .eq('instructor_id', instructorId)
-    .eq('academic_semester_id', semester)
-    .order('course_code');
-  
-  if (error) throw error;
-  return data as Section[];
+  return await db.section.findMany({
+    where: {
+      instructorId,
+      courseOffering: {
+        semesterCode: semester
+      }
+    },
+    orderBy: { courseCode: 'asc' }
+  });
 }
 
-export async function getSectionsByLevel(level: number, semesterId?: string) {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+export async function getSectionsByLevel(level: number, semesterCode?: string): Promise<Section[]> {
+  const semester = semesterCode || (await getCurrentSemester())?.code;
   
   if (!semester) {
-    throw new Error('No semester found. Please specify a semester ID or set a current semester.');
+    throw new Error('No semester found. Please specify a semester code or set a current semester.');
   }
   
-  const { data, error } = await supabase
-    .from('section')
-    .select('*')
-    .eq('group_level', level)
-    .eq('academic_semester_id', semester)
-    .order('course_code');
-  
-  if (error) throw error;
-  return data as Section[];
+  return await db.section.findMany({
+    where: {
+      groupLevel: level,
+      courseOffering: {
+        semesterCode: semester
+      }
+    },
+    orderBy: { courseCode: 'asc' }
+  });
 }
 
-export async function createSection(section: SectionInput) {
+export async function createSection(section: SectionInput): Promise<Section> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  // Validate semester_id is provided
-  if (!section.academic_semester_id) {
-    // Try to use current semester as default
-    const currentSemester = await getCurrentSemester();
-    if (!currentSemester) {
-      throw new Error('academic_semester_id is required. No current semester found.');
+  // Handle legacy academic_semester_id by finding/creating courseOffering
+  let courseOfferingId = section.courseOfferingId;
+  
+  if (!courseOfferingId && section.academic_semester_id) {
+    // Legacy: convert academic_semester_id to courseOfferingId
+    // Find or create courseOffering for this course + semester
+    const semesterCode = section.academic_semester_id; // Assuming it's the semester code
+    const offering = await db.courseOffering.findUnique({
+      where: {
+        courseCode_semesterCode: {
+          courseCode: section.courseCode,
+          semesterCode: semesterCode
+        }
+      }
+    });
+    
+    if (offering) {
+      courseOfferingId = offering.id;
+    } else {
+      // Create courseOffering if it doesn't exist
+      const newOffering = await db.courseOffering.create({
+        data: {
+          courseCode: section.courseCode,
+          semesterCode: semesterCode,
+          isActive: true
+        }
+      });
+      courseOfferingId = newOffering.id;
     }
-    section.academic_semester_id = currentSemester.id;
+  } else if (!courseOfferingId) {
+    // Try to use current semester
+    const currentSemester = await getCurrentSemester();
+    if (currentSemester) {
+      const offering = await db.courseOffering.findUnique({
+        where: {
+          courseCode_semesterCode: {
+            courseCode: section.courseCode,
+            semesterCode: currentSemester.code
+          }
+        }
+      });
+      
+      if (offering) {
+        courseOfferingId = offering.id;
+      }
+    }
+    
+    if (!courseOfferingId) {
+      throw new Error('courseOfferingId is required. No current semester or course offering found.');
+    }
   }
   
-  // Infer section_type from section_no suffix if not provided
-  let sectionType = section.section_type;
-  if (!sectionType && section.section_no) {
-    if (section.section_no.endsWith('L')) sectionType = 'lecture';
-    else if (section.section_no.endsWith('T')) sectionType = 'tutorial';
-    else if (section.section_no.endsWith('B')) sectionType = 'lab';
-    else sectionType = 'lecture'; // Default
-  }
-  
-  const { data, error } = await supabase
-    .from('section')
-    .insert({ 
-      ...section, 
-      section_type: sectionType || 'lecture',
-      created_by: user?.id 
-    })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data as Section;
+  return await db.section.create({
+    data: {
+      courseCode: section.courseCode,
+      sectionNo: section.sectionNo,
+      instructorId: section.instructorId ?? null,
+      roomCode: section.roomCode ?? null,
+      capacity: section.capacity,
+      meetingPattern: section.meetingPattern,
+      groupLevel: section.groupLevel,
+      state: section.state ?? 'draft',
+      isScheduledByAlgorithm: section.isScheduledByAlgorithm ?? false,
+      courseOfferingId: courseOfferingId,
+      createdBy: user?.id ?? null
+    }
+  });
 }
 
-export async function updateSection(id: string, updates: Partial<SectionInput>) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('section')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+export async function updateSection(id: string, updates: Partial<SectionInput>): Promise<Section> {
+  // Convert updates to Prisma format
+  const prismaUpdates: any = {};
   
-  if (error) throw error;
-  return data as Section;
+  if (updates.courseCode !== undefined) prismaUpdates.courseCode = updates.courseCode;
+  if (updates.sectionNo !== undefined) prismaUpdates.sectionNo = updates.sectionNo;
+  if (updates.instructorId !== undefined) prismaUpdates.instructorId = updates.instructorId ?? null;
+  if (updates.roomCode !== undefined) prismaUpdates.roomCode = updates.roomCode ?? null;
+  if (updates.capacity !== undefined) prismaUpdates.capacity = updates.capacity;
+  if (updates.meetingPattern !== undefined) prismaUpdates.meetingPattern = updates.meetingPattern;
+  if (updates.groupLevel !== undefined) prismaUpdates.groupLevel = updates.groupLevel;
+  if (updates.state !== undefined) prismaUpdates.state = updates.state;
+  if (updates.isScheduledByAlgorithm !== undefined) prismaUpdates.isScheduledByAlgorithm = updates.isScheduledByAlgorithm;
+  if (updates.courseOfferingId !== undefined) prismaUpdates.courseOfferingId = updates.courseOfferingId ?? null;
+  
+  return await db.section.update({
+    where: { id },
+    data: prismaUpdates
+  });
 }
 
-export async function deleteSection(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('section')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+export async function deleteSection(id: string): Promise<void> {
+  await db.section.delete({
+    where: { id }
+  });
 }
 
-export async function getSectionConflicts(sectionId: string) {
+/**
+ * Get section conflicts using RPC function
+ * Note: RPC functions still use Supabase client as they're database functions
+ */
+export async function getSectionConflicts(sectionId: string): Promise<SectionConflicts | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc('get_section_conflicts', { p_section_id: sectionId });
   
   if (error) throw error;
-  return data as SectionConflicts;
+  return data as SectionConflicts | null;
 }
 
-export async function getAllScheduleConflicts() {
+/**
+ * Get all schedule conflicts using RPC function
+ * Note: RPC functions still use Supabase client as they're database functions
+ */
+export async function getAllScheduleConflicts(): Promise<SectionConflicts[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc('get_all_schedule_conflicts');
   
   if (error) throw error;
-  return data as SectionConflicts[];
+  return (data || []) as SectionConflicts[];
 }
 
 /**
@@ -283,19 +342,28 @@ export async function getAllScheduleConflicts() {
  * @param state - Section state to filter by (default: 'draft')
  * @returns Array of SWE course sections ready for scheduling
  */
-export async function getSWESectionsForScheduling(state: 'draft' | 'released' = 'draft') {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('section')
-    .select(`
-      *,
-      course:course!section_course_code_fkey(code, level),
-      course_offering:course_offering(semester_code, is_active, semester:academic_semesters(*))
-    `)
-    .eq('state', state)
-    .eq('is_scheduled_by_algorithm', true); // Use new explicit field instead of code filtering
-  
-  if (error) throw error;
-  return data as Section[];
+export async function getSWESectionsForScheduling(state: 'draft' | 'released' = 'draft'): Promise<Section[]> {
+  return await db.section.findMany({
+    where: {
+      state,
+      isScheduledByAlgorithm: true,
+      groupLevel: {
+        gte: 4,
+        lte: 8
+      }
+    },
+    include: {
+      course: {
+        select: {
+          code: true,
+          level: true
+        }
+      },
+      courseOffering: {
+        include: {
+          semester: true
+        }
+      }
+    }
+  });
 }
-

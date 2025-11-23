@@ -52,14 +52,19 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Verify user is a student
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (roleError || !userRole || userRole.role !== 'student') {
+    // Verify user is a student - USING AUTH UTILITY
+    const { requireRole } = await import('@/lib/utils/auth');
+    let dbUser;
+    try {
+      const authUser = await requireRole('student');
+      dbUser = authUser.dbUser;
+    } catch (error: any) {
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
       return NextResponse.json(
         { error: 'Only students can access enrollments' },
         { status: 403 }
@@ -136,14 +141,19 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verify user is a student
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (roleError || !userRole || userRole.role !== 'student') {
+    // Verify user is a student - USING AUTH UTILITY
+    const { requireRole } = await import('@/lib/utils/auth');
+    let dbUser;
+    try {
+      const authUser = await requireRole('student');
+      dbUser = authUser.dbUser;
+    } catch (error: any) {
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
       return NextResponse.json(
         { error: 'Only students can enroll in sections' },
         { status: 403 }

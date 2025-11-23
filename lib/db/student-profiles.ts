@@ -6,30 +6,19 @@
  * 
  * MIGRATED: Now uses Prisma ORM instead of Supabase Client
  */
+/**
+ * Database queries for student profiles
+ * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
+ * Uses Prisma types directly - no manual interfaces
+ */
 import { db } from '@/lib/db';
-import type { StudentProfile as PrismaStudentProfile } from '@prisma/client';
+import type { StudentProfile, Prisma } from '@prisma/client';
 
-export interface StudentProfile {
-  userId: string;
-  level: number;
-  studentGroupId: string | null;
-  department: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface StudentProfileCreate {
-  userId: string;
-  level: number;
-  studentGroupId?: string | null;
-  department?: string;
-}
-
-export interface StudentProfileUpdate {
-  level?: number;
-  studentGroupId?: string | null;
-  department?: string;
-}
+// Re-export Prisma types for convenience
+export type { StudentProfile };
+export type StudentProfileCreate = Prisma.StudentProfileCreateInput;
+export type StudentProfileUpdate = Prisma.StudentProfileUpdateInput;
 
 /**
  * Get a student profile by user ID
@@ -38,20 +27,9 @@ export interface StudentProfileUpdate {
  */
 export async function getStudentProfile(userId: string): Promise<StudentProfile | null> {
   try {
-    const profile = await db.studentProfile.findUnique({
+    return await db.studentProfile.findUnique({
       where: { userId }
     });
-    
-    if (!profile) return null;
-    
-    return {
-      userId: profile.userId,
-      level: profile.level,
-      studentGroupId: profile.studentGroupId,
-      department: profile.department,
-      createdAt: profile.createdAt,
-      updatedAt: profile.updatedAt,
-    };
   } catch (error) {
     // Handle connection errors with helpful messages
     if (error && typeof error === 'object' && 'code' in error) {
@@ -75,18 +53,9 @@ export async function getStudentProfile(userId: string): Promise<StudentProfile 
  * @returns Array of student profiles
  */
 export async function getStudentProfiles(): Promise<StudentProfile[]> {
-  const profiles = await db.studentProfile.findMany({
+  return await db.studentProfile.findMany({
     orderBy: { userId: 'asc' }
   });
-  
-  return profiles.map(p => ({
-    userId: p.userId,
-    level: p.level,
-    studentGroupId: p.studentGroupId,
-    department: p.department,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
 }
 
 /**
@@ -95,19 +64,10 @@ export async function getStudentProfiles(): Promise<StudentProfile[]> {
  * @returns Array of student profiles
  */
 export async function getStudentProfilesByLevel(level: number): Promise<StudentProfile[]> {
-  const profiles = await db.studentProfile.findMany({
+  return await db.studentProfile.findMany({
     where: { level },
     orderBy: { userId: 'asc' }
   });
-  
-  return profiles.map(p => ({
-    userId: p.userId,
-    level: p.level,
-    studentGroupId: p.studentGroupId,
-    department: p.department,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
 }
 
 /**
@@ -116,19 +76,10 @@ export async function getStudentProfilesByLevel(level: number): Promise<StudentP
  * @returns Array of student profiles
  */
 export async function getStudentProfilesByGroup(studentGroupId: string): Promise<StudentProfile[]> {
-  const profiles = await db.studentProfile.findMany({
+  return await db.studentProfile.findMany({
     where: { studentGroupId },
     orderBy: { userId: 'asc' }
   });
-  
-  return profiles.map(p => ({
-    userId: p.userId,
-    level: p.level,
-    studentGroupId: p.studentGroupId,
-    department: p.department,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
 }
 
 /**
@@ -137,23 +88,14 @@ export async function getStudentProfilesByGroup(studentGroupId: string): Promise
  * @returns Created student profile
  */
 export async function createStudentProfile(profileData: StudentProfileCreate): Promise<StudentProfile> {
-  const created = await db.studentProfile.create({
+  return await db.studentProfile.create({
     data: {
-      userId: profileData.userId,
-      level: profileData.level,
+      userId: profileData.userId as string,
+      level: profileData.level as number,
       studentGroupId: profileData.studentGroupId ?? null,
-      department: profileData.department || 'Software Engineering',
+      department: (profileData.department as string) || 'Software Engineering',
     }
   });
-  
-  return {
-    userId: created.userId,
-    level: created.level,
-    studentGroupId: created.studentGroupId,
-    department: created.department,
-    createdAt: created.createdAt,
-    updatedAt: created.updatedAt,
-  };
 }
 
 /**
@@ -163,19 +105,10 @@ export async function createStudentProfile(profileData: StudentProfileCreate): P
  * @returns Updated student profile
  */
 export async function updateStudentProfile(userId: string, updates: StudentProfileUpdate): Promise<StudentProfile> {
-  const updated = await db.studentProfile.update({
+  return await db.studentProfile.update({
     where: { userId },
     data: updates
   });
-  
-  return {
-    userId: updated.userId,
-    level: updated.level,
-    studentGroupId: updated.studentGroupId,
-    department: updated.department,
-    createdAt: updated.createdAt,
-    updatedAt: updated.updatedAt,
-  };
 }
 
 /**
@@ -210,6 +143,22 @@ export async function getStudentWithProfile(userId: string) {
   });
   
   return profile;
+}
+
+/**
+ * Get UserRole with StudentProfile in a single optimized query
+ * PERFORMANCE: Fetches both UserRole and StudentProfile in one database round-trip
+ * 
+ * @param userId - User ID
+ * @returns UserRole with included StudentProfile, or null if not found
+ */
+export async function getUserRoleWithStudentProfile(userId: string) {
+  return await db.userRole.findUnique({
+    where: { userId },
+    include: {
+      studentProfile: true
+    }
+  });
 }
 
 /**
@@ -252,19 +201,10 @@ export async function studentProfileExists(userId: string): Promise<boolean> {
  * @returns Array of student profiles
  */
 export async function getStudentsByDepartment(department: string): Promise<StudentProfile[]> {
-  const profiles = await db.studentProfile.findMany({
+  return await db.studentProfile.findMany({
     where: { department },
     orderBy: { userId: 'asc' }
   });
-  
-  return profiles.map(p => ({
-    userId: p.userId,
-    level: p.level,
-    studentGroupId: p.studentGroupId,
-    department: p.department,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
 }
 
 

@@ -14,27 +14,30 @@
  * 3. System uses custom list instead of level-based auto-enrollment
  */
 
+/**
+ * Irregular Students Database Access Layer
+ * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
+ * Uses Prisma types directly - no manual interfaces
+ */
+import { db } from '@/lib/db'
+import type { IrregularStudent, Prisma } from '@prisma/client'
 import { createClient } from '@/supabase/server'
 
-export interface IrregularStudent {
-  id: string
-  student_id: string
-  required_course_codes: string[]
-  notes: string | null
-  created_at: string
-  updated_at: string
-  created_by: string | null
-}
+// Re-export Prisma types for convenience
+export type { IrregularStudent }
 
+// View type that extends Prisma model with joined data
 export interface IrregularStudentView extends IrregularStudent {
   student_name: string
   student_email: string
   student_level: number | null
 }
 
+// Input type for creating/updating
 export interface IrregularStudentInput {
-  student_id: string
-  required_course_codes: string[]
+  studentId: string
+  requiredCourseCodes: string[]
   notes?: string
 }
 
@@ -162,14 +165,13 @@ export async function createIrregularStudent(
 ): Promise<IrregularStudent> {
   const supabase = await createClient()
   
-  // Verify student exists and has student role
-  const { data: student, error: studentError } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', data.student_id)
-    .maybeSingle()
+  // Verify student exists and has student role - USING PRISMA
+  const student = await db.userRole.findUnique({
+    where: { userId: data.studentId },
+    select: { role: true }
+  })
   
-  if (studentError || !student) {
+  if (!student) {
     throw new Error('Student not found')
   }
   
@@ -318,14 +320,16 @@ export async function getStudentRequiredCourses(studentId: string): Promise<stri
 export async function getRegularStudents() {
   const supabase = await createClient()
   
-  // Get all students
-  const { data: allStudents, error: studentsError } = await supabase
-    .from('user_roles')
-    .select('user_id, name, email, level')
-    .eq('role', 'student')
-    .order('name', { ascending: true })
-  
-  if (studentsError) throw studentsError
+  // Get all students - USING PRISMA
+  const allStudents = await db.userRole.findMany({
+    where: { role: 'student' },
+    select: {
+      userId: true,
+      name: true,
+      email: true
+    },
+    orderBy: { name: 'asc' }
+  })
   
   // Get all irregular student IDs
   const { data: irregularIds, error: irregularError } = await supabase

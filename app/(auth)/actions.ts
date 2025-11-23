@@ -34,15 +34,15 @@ export async function signup(formData: {
   // No manual INSERT needed - trigger handles it on auth.users INSERT
   
   if (data.user) {
-    // Verify user_roles was created (optional check)
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('user_id', data.user.id)
-      .maybeSingle();
+    // Verify user_roles was created (optional check) - USING PRISMA
+    const { db } = await import('@/lib/db');
+    const dbUser = await db.userRole.findUnique({
+      where: { userId: data.user.id },
+      select: { userId: true }
+    });
 
-    if (roleError || !userRole) {
-      console.error('User role not auto-created:', roleError);
+    if (!dbUser) {
+      console.error('User role not auto-created');
       // Don't fail signup - user can still login and complete onboarding
     }
 
