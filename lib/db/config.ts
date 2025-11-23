@@ -1,17 +1,17 @@
 // Database queries for time grid configuration
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import { TimeGridConfig } from '@/lib/types/database';
 
 export async function getTimeGridConfig() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('time_grid_config')
-    .select('*')
-    .limit(1)
-    .single();
+  const config = await db.timeGridConfig.findFirst();
   
-  if (error) throw error;
-  return data as TimeGridConfig;
+  if (!config) {
+    throw new Error('Time grid config not found');
+  }
+  
+  return config as TimeGridConfig;
 }
 
 export async function updateTimeGridConfig(
@@ -21,14 +21,14 @@ export async function updateTimeGridConfig(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('time_grid_config')
-    .update({ ...updates, updated_by: user?.id })
-    .eq('id', id)
-    .select()
-    .single();
+  const updated = await db.timeGridConfig.update({
+    where: { id },
+    data: {
+      ...updates,
+      updated_by: user?.id || null
+    }
+  });
   
-  if (error) throw error;
-  return data as TimeGridConfig;
+  return updated as TimeGridConfig;
 }
 

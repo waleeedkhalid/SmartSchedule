@@ -1,44 +1,46 @@
 // Database queries for elective preferences
-import { createClient } from '@/supabase/server';
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { ElectivePreference } from '@/lib/types/database';
 
 export async function getElectivePreferences() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .select('*')
-    .order('rank', { ascending: true });
+  const preferences = await db.electivePreference.findMany({
+    orderBy: { rank: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as ElectivePreference[];
+  return preferences as ElectivePreference[];
 }
 
 export async function getElectivePreferencesByStudent(studentId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .select(`
-      *,
-      course:course(code, title, level, credits)
-    `)
-    .eq('student_id', studentId)
-    .order('rank', { ascending: true });
+  const preferences = await db.electivePreference.findMany({
+    where: { student_id: studentId },
+    include: {
+      course: {
+        select: {
+          code: true,
+          title: true,
+          level: true,
+          credits: true
+        }
+      }
+    },
+    orderBy: { rank: 'asc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return preferences;
 }
 
 export async function getElectivePreferenceByCourse(studentId: string, courseCode: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .select('*')
-    .eq('student_id', studentId)
-    .eq('course_code', courseCode)
-    .single();
+  const preference = await db.electivePreference.findUnique({
+    where: {
+      student_id_course_code: {
+        student_id: studentId,
+        course_code: courseCode
+      }
+    }
+  });
   
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
-  return data as ElectivePreference | null;
+  return preference as ElectivePreference | null;
 }
 
 export async function createElectivePreference(
@@ -46,93 +48,83 @@ export async function createElectivePreference(
   courseCode: string,
   rank: number
 ) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .insert({
+  const created = await db.electivePreference.create({
+    data: {
       student_id: studentId,
       course_code: courseCode,
-      rank,
-    })
-    .select()
-    .single();
+      rank
+    }
+  });
   
-  if (error) throw error;
-  return data as ElectivePreference;
+  return created as ElectivePreference;
 }
 
 export async function updateElectivePreferenceRank(
   id: string,
   rank: number
 ) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .update({ rank })
-    .eq('id', id)
-    .select()
-    .single();
+  const updated = await db.electivePreference.update({
+    where: { id },
+    data: { rank }
+  });
   
-  if (error) throw error;
-  return data as ElectivePreference;
+  return updated as ElectivePreference;
 }
 
 export async function deleteElectivePreference(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('elective_preference')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+  await db.electivePreference.delete({
+    where: { id }
+  });
 }
 
 export async function bulkUpdateElectivePreferences(
   studentId: string,
   preferences: { course_code: string; rank: number }[]
 ) {
-  const supabase = await createClient();
-  
-  // Delete all existing preferences for this student
-  await supabase
-    .from('elective_preference')
-    .delete()
-    .eq('student_id', studentId);
-  
-  // Insert new preferences
-  if (preferences.length > 0) {
-    const { data, error } = await supabase
-      .from('elective_preference')
-      .insert(
-        preferences.map(p => ({
+  // Use transaction to ensure atomicity
+  return await db.$transaction(async (tx) => {
+    // Delete all existing preferences for this student
+    await tx.electivePreference.deleteMany({
+      where: { student_id: studentId }
+    });
+    
+    // Insert new preferences
+    if (preferences.length > 0) {
+      const created = await tx.electivePreference.createMany({
+        data: preferences.map(p => ({
           student_id: studentId,
           course_code: p.course_code,
-          rank: p.rank,
+          rank: p.rank
         }))
-      )
-      .select();
+      });
+      
+      // Fetch the created preferences
+      const result = await tx.electivePreference.findMany({
+        where: { student_id: studentId }
+      });
+      
+      return result as ElectivePreference[];
+    }
     
-    if (error) throw error;
-    return data as ElectivePreference[];
-  }
-  
-  return [];
+    return [];
+  });
 }
 
 // Get aggregated preference statistics for scheduling committee
 export async function getElectivePreferenceStats() {
-  const supabase = await createClient();
-  
   // Get all preferences with course info
-  const { data, error } = await supabase
-    .from('elective_preference')
-    .select(`
-      course_code,
-      rank,
-      course:course(code, title, level, credits)
-    `);
-  
-  if (error) throw error;
+  const preferences = await db.electivePreference.findMany({
+    include: {
+      course: {
+        select: {
+          code: true,
+          title: true,
+          level: true,
+          credits: true
+        }
+      }
+    }
+  });
   
   // Aggregate by course
   const stats: Record<string, {
@@ -146,7 +138,7 @@ export async function getElectivePreferenceStats() {
     other_choice: number;
   }> = {};
   
-  data.forEach((pref: any) => {
+  preferences.forEach((pref) => {
     const code = pref.course_code;
     if (!stats[code]) {
       stats[code] = {

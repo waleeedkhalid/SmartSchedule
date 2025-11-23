@@ -7,6 +7,8 @@
  * - Fetch assigned sections
  */
 
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import type { Database } from '@/lib/types/database';
 import type { MeetingPattern } from '@/lib/types/scheduling';
@@ -48,31 +50,22 @@ export interface FacultySection {
  * @returns Instructor record or null if not found
  */
 export async function getFacultyProfile(userId: string): Promise<Instructor | null> {
-  const supabase = await createClient();
-  
   // First, get user's email from user_roles
-  const { data: userRole, error: userError } = await supabase
-    .from('user_roles')
-    .select('email')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const userRole = await db.userRole.findUnique({
+    where: { user_id: userId },
+    select: { email: true }
+  });
   
-  if (userError || !userRole) {
+  if (!userRole) {
     return null;
   }
   
   // Then find instructor by email
-  const { data: instructor, error: instructorError } = await supabase
-    .from('instructor')
-    .select('*')
-    .eq('email', userRole.email)
-    .maybeSingle();
+  const instructor = await db.instructor.findUnique({
+    where: { email: userRole.email }
+  });
   
-  if (instructorError) {
-    return null;
-  }
-  
-  return instructor;
+  return instructor as Instructor | null;
 }
 
 /**
@@ -82,19 +75,11 @@ export async function getFacultyProfile(userId: string): Promise<Instructor | nu
  * @returns Instructor record or null if not found
  */
 export async function getInstructorByUserEmail(email: string): Promise<Instructor | null> {
-  const supabase = await createClient();
+  const instructor = await db.instructor.findUnique({
+    where: { email }
+  });
   
-  const { data, error } = await supabase
-    .from('instructor')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle();
-  
-  if (error) {
-    return null;
-  }
-  
-  return data;
+  return instructor as Instructor | null;
 }
 
 /**
@@ -120,44 +105,35 @@ export async function getFacultySections(instructorId: string, semesterId?: stri
     semester = currentSemester.id;
   }
   
-  const { data, error } = await supabase
-    .from('section')
-    .select(`
-      id,
-      course_code,
-      section_no,
-      capacity,
-      meeting_pattern,
-      room_code,
-      academic_semester_id,
-      course:course!section_course_code_fkey(title, credits, level)
-    `)
-    .eq('instructor_id', instructorId)
-    .eq('academic_semester_id', semester)
-    .order('course_code');
-  
-  if (error) {
-    console.error('Error fetching faculty sections:', error);
-    throw new Error('Failed to fetch faculty sections');
-  }
-  
-  // Transform to FacultySection format with proper type parsing
-  return (data || []).map((section) => {
-    // Handle course data which may be an array or object from Supabase join
-    const courseData = Array.isArray(section.course) ? section.course[0] : section.course
-    
-    return {
-      id: section.id,
-      course_code: section.course_code,
-      course_title: courseData?.title || section.course_code,
-      section_no: section.section_no,
-      capacity: section.capacity,
-      meeting_pattern: parseMeetingPattern(section.meeting_pattern),
-      room_code: section.room_code,
-      credits: courseData?.credits,
-      level: courseData?.level,
-    }
+  const sections = await db.section.findMany({
+    where: {
+      instructor_id: instructorId,
+      academic_semester_id: semester
+    },
+    include: {
+      course: {
+        select: {
+          title: true,
+          credits: true,
+          level: true
+        }
+      }
+    },
+    orderBy: { course_code: 'asc' }
   });
+  
+  // Transform to FacultySection format
+  return sections.map((section) => ({
+    id: section.id,
+    course_code: section.course_code,
+    course_title: section.course?.title || section.course_code,
+    section_no: section.section_no,
+    capacity: section.capacity,
+    meeting_pattern: parseMeetingPattern(section.meeting_pattern),
+    room_code: section.room_code,
+    credits: section.course?.credits,
+    level: section.course?.level,
+  }));
 }
 
 /**
@@ -190,18 +166,12 @@ export async function updateFacultyAvailability(
     updates.unavailable_times = availability.unavailable_times;
   }
   
-  const { data, error } = await supabase
-    .from('instructor')
-    .update(updates)
-    .eq('id', instructorId)
-    .select()
-    .maybeSingle();
+  const instructor = await db.instructor.update({
+    where: { id: instructorId },
+    data: updates
+  });
   
-  if (error) {
-    return { success: false, error: 'Failed to update availability preferences' };
-  }
-  
-  return { success: true, instructor: data };
+  return { success: true, instructor: instructor as Instructor };
 }
 
 /**
@@ -218,19 +188,21 @@ export async function getFacultyAvailability(
 } | null> {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('instructor')
-    .select('preferred_times, unavailable_times')
-    .eq('id', instructorId)
-    .maybeSingle();
+  const instructor = await db.instructor.findUnique({
+    where: { id: instructorId },
+    select: {
+      preferred_times: true,
+      unavailable_times: true
+    }
+  });
   
-  if (error) {
+  if (!instructor) {
     return null;
   }
   
   return {
-    preferred_times: (data.preferred_times as WeeklyAvailability) || null,
-    unavailable_times: (data.unavailable_times as WeeklyAvailability) || null,
+    preferred_times: (instructor.preferred_times as WeeklyAvailability) || null,
+    unavailable_times: (instructor.unavailable_times as WeeklyAvailability) || null,
   };
 }
 
@@ -243,17 +215,12 @@ export async function getFacultyAvailability(
 export async function isFacultyUser(userId: string): Promise<boolean> {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const userRole = await db.userRole.findUnique({
+    where: { user_id: userId },
+    select: { role: true }
+  });
   
-  if (error || !data) {
-    return false;
-  }
-  
-  return data.role === 'faculty';
+  return userRole?.role === 'faculty';
 }
 
 /**
@@ -285,21 +252,25 @@ export async function getFacultyStats(instructorId: string, semesterId?: string)
   }
   
   // Get instructor info
-  const { data: instructor } = await supabase
-    .from('instructor')
-    .select('max_load_per_week')
-    .eq('id', instructorId)
-    .maybeSingle();
+  const instructor = await db.instructor.findUnique({
+    where: { id: instructorId },
+    select: { max_load_per_week: true }
+  });
   
   // Get sections count for current semester
-  const { data: sections } = await supabase
-    .from('section')
-    .select('id, course_code, academic_semester_id')
-    .eq('instructor_id', instructorId)
-    .eq('academic_semester_id', semester);
+  const sections = await db.section.findMany({
+    where: {
+      instructor_id: instructorId,
+      academic_semester_id: semester
+    },
+    select: {
+      id: true,
+      course_code: true
+    }
+  });
   
-  const sectionCount = sections?.length || 0;
-  const uniqueCourses = new Set(sections?.map(s => s.course_code)).size;
+  const sectionCount = sections.length;
+  const uniqueCourses = new Set(sections.map(s => s.course_code)).size;
   
   return {
     totalSections: sectionCount,

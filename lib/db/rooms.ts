@@ -1,4 +1,6 @@
 // Database queries for rooms
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import { Room, RoomInput, RoomType } from '@/lib/types/database';
 
@@ -7,14 +9,11 @@ import { Room, RoomInput, RoomType } from '@/lib/types/database';
  * @deprecated Use getRoomsPaginated for better performance
  */
 export async function getRooms() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('room')
-    .select('*')
-    .order('code');
+  const rooms = await db.room.findMany({
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Room[];
+  return rooms as Room[];
 }
 
 /**
@@ -38,108 +37,98 @@ export async function getRoomsPaginated(
   sortBy: 'code' | 'type' = 'code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
-  const supabase = await createClient()
+  const skip = (page - 1) * pageSize;
   
-  // Calculate range for pagination
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
-  
-  // Build query with count - select specific columns for better performance
-  let query = supabase
-    .from('room')
-    .select(`
-      code,
-      type,
-      created_at,
-      updated_at
-    `, { count: 'exact' })
-  
-  // Apply filters if provided
+  // Build where clause
+  const where: any = {};
   if (filters?.type) {
-    query = query.eq('type', filters.type)
+    where.type = filters.type;
   }
   if (filters?.searchTerm && filters.searchTerm.trim()) {
-    const searchPattern = `%${filters.searchTerm.trim()}%`
-    query = query.ilike('code', searchPattern)
+    where.code = {
+      contains: filters.searchTerm.trim(),
+      mode: 'insensitive' as const
+    };
   }
   
-  // Apply sorting and pagination
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' }).range(from, to)
+  // Build orderBy clause
+  const orderBy = { [sortBy]: sortOrder };
   
-  const { data, error, count } = await query
+  // Execute queries in parallel
+  const [rooms, totalCount] = await Promise.all([
+    db.room.findMany({
+      where,
+      select: {
+        code: true,
+        type: true,
+        created_at: true,
+        updated_at: true
+      },
+      orderBy,
+      skip,
+      take: pageSize
+    }),
+    db.room.count({ where })
+  ]);
   
-  if (error) throw error
-  
-  const totalCount = count ?? 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   return {
-    rooms: data as Room[],
+    rooms: rooms as Room[],
     totalCount,
     totalPages,
     currentPage: page,
     pageSize
-  }
+  };
 }
 
 export async function getRoomByCode(code: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('room')
-    .select('*')
-    .eq('code', code)
-    .single();
+  const room = await db.room.findUnique({
+    where: { code }
+  });
   
-  if (error) throw error;
-  return data as Room;
+  if (!room) {
+    throw new Error(`Room with code ${code} not found`);
+  }
+  
+  return room as Room;
 }
 
 export async function getRoomsByType(type: RoomType) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('room')
-    .select('*')
-    .eq('type', type)
-    .order('code');
+  const rooms = await db.room.findMany({
+    where: { type },
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Room[];
+  return rooms as Room[];
 }
 
 export async function createRoom(room: RoomInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('room')
-    .insert({ ...room, created_by: user?.id })
-    .select()
-    .single();
+  const created = await db.room.create({
+    data: {
+      ...room,
+      created_by: user?.id || null
+    }
+  });
   
-  if (error) throw error;
-  return data as Room;
+  return created as Room;
 }
 
 export async function updateRoom(code: string, updates: Partial<RoomInput>) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('room')
-    .update(updates)
-    .eq('code', code)
-    .select()
-    .single();
+  const updated = await db.room.update({
+    where: { code },
+    data: updates
+  });
   
-  if (error) throw error;
-  return data as Room;
+  return updated as Room;
 }
 
 export async function deleteRoom(code: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('room')
-    .delete()
-    .eq('code', code);
-  
-  if (error) throw error;
+  await db.room.delete({
+    where: { code }
+  });
 }
 

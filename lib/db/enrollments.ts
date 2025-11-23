@@ -1,37 +1,14 @@
 /**
- * Database queries for course enrollments and section assignments
+ * Database queries for student enrollments
  * 
- * REFACTORED: Replaces student-enrollments.ts
- * Implements dual enrollment model:
- * - course_enrollment: Academic record (course-level)
- * - section_assignment: Scheduling detail (section-level)
+ * MIGRATED: Now uses Prisma ORM with StudentEnrollment model
+ * 
+ * Note: The Prisma schema uses a single StudentEnrollment table that tracks
+ * enrollments at the section level, not separate course_enrollment and section_assignment tables.
  */
-import { createClient } from '@/supabase/server';
-import { getCurrentSemester } from './semesters';
 
-export interface CourseEnrollment {
-  id: string;
-  student_id: string;
-  course_code: string;
-  academic_semester_id: string;
-  enrollment_type: 'required' | 'elective' | 'retake';
-  status: 'enrolled' | 'dropped' | 'completed' | 'failed' | 'withdrawn';
-  enrolled_at: string;
-  dropped_at: string | null;
-  grade: string | null;
-  credits_earned: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-export interface SectionAssignment {
-  id: string;
-  course_enrollment_id: string;
-  section_id: string;
-  assignment_type: 'lecture' | 'lab' | 'tutorial';
-  assigned_at: string;
-  created_at: string | null;
-}
+import { db } from '@/lib/db';
+import { calculateStudentCredits } from './student-enrollments';
 
 export interface EnrollmentValidation {
   valid: boolean;
@@ -43,18 +20,9 @@ export interface EnrollmentValidation {
   section_enrollment?: number;
 }
 
-export interface EnrollmentFilters {
-  student_id?: string;
-  semester_id?: string;
-  course_code?: string;
-  status?: 'enrolled' | 'dropped' | 'completed' | 'failed' | 'withdrawn';
-  enrollment_type?: 'required' | 'elective' | 'retake';
-}
-
 /**
  * Validate if a student can enroll in a section
- * Uses the database function validate_enrollment() if available
- * @param studentId - Student ID
+ * @param studentId - Student ID (StudentProfile.userId)
  * @param sectionId - Section ID
  * @returns Validation result
  */
@@ -62,76 +30,84 @@ export async function validateEnrollment(
   studentId: string,
   sectionId: string
 ): Promise<EnrollmentValidation> {
-  const supabase = await createClient();
-  
-  // Try using database function first
-  const { data: fnData, error: fnError } = await supabase
-    .rpc('validate_enrollment', { 
-      student_id: studentId,
-      section_id: sectionId
+  try {
+    // 1. Check if section exists
+    const section = await db.section.findUnique({
+      where: { id: sectionId },
+      include: {
+        course: true,
+        enrollments: {
+          where: {
+            status: 'registered'
+          }
+        }
+      }
     });
-  
-  if (!fnError && fnData) {
-    return fnData as EnrollmentValidation;
-  }
-  
-  // Fallback to manual validation
-  // This is a simplified version - the database function is more comprehensive
-  
-  // 1. Check if section exists and get details
-  const { data: section, error: sectionError } = await supabase
-    .from('section')
-    .select('id, capacity, current_enrollment, course_code, academic_semester_id')
-    .eq('id', sectionId)
-    .single();
-  
-  if (sectionError || !section) {
+    
+    if (!section) {
+      return {
+        valid: false,
+        error: 'Section not found'
+      };
+    }
+    
+    // 2. Check capacity
+    const enrolledCount = section.enrollments.length;
+    if (enrolledCount >= section.capacity) {
+      return {
+        valid: false,
+        error: 'Section is full',
+        section_capacity: section.capacity,
+        section_enrollment: enrolledCount
+      };
+    }
+    
+    // 3. Check if already enrolled
+    const existingEnrollment = await db.studentEnrollment.findFirst({
+      where: {
+        studentId,
+        sectionId,
+        status: 'registered'
+      }
+    });
+    
+    if (existingEnrollment) {
+      return {
+        valid: false,
+        error: 'Already enrolled in this section'
+      };
+    }
+    
+    // 4. Check credit limit (for electives)
+    const credits = await calculateStudentCredits(studentId);
+    if (credits.total + section.course.credits > 20) {
+      return {
+        valid: false,
+        error: 'Credit limit exceeded (max 20 credits)',
+        current_credits: credits.total,
+        max_credits: 20
+      };
+    }
+    
+    return {
+      valid: true,
+      current_credits: credits.total,
+      max_credits: 20
+    };
+  } catch (error) {
+    console.error('Error validating enrollment:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Validation failed';
     return {
       valid: false,
-      error: 'Section not found'
+      error: errorMessage
     };
   }
-  
-  // 2. Check capacity
-  if (section.current_enrollment >= section.capacity) {
-    return {
-      valid: false,
-      error: 'Section is full',
-      section_capacity: section.capacity,
-      section_enrollment: section.current_enrollment
-    };
-  }
-  
-  // 3. Check if already enrolled
-  const { data: existingEnrollment } = await supabase
-    .from('course_enrollment')
-    .select(`
-      id,
-      section_assignment!inner (section_id)
-    `)
-    .eq('student_id', studentId)
-    .eq('course_code', section.course_code)
-    .eq('academic_semester_id', section.academic_semester_id)
-    .eq('status', 'enrolled')
-    .single();
-  
-  if (existingEnrollment) {
-    return {
-      valid: false,
-      error: 'Already enrolled in this course'
-    };
-  }
-  
-  return {
-    valid: true
-  };
 }
 
 /**
  * Assign a student to a section (enroll)
- * Uses the database function assign_student_to_section() if available
- * This handles both course enrollment and section assignment
- * @param studentId - Student ID
+ * This creates a StudentEnrollment record
+ * @param studentId - Student ID (StudentProfile.userId)
  * @param sectionId - Section ID
  * @param enrollmentType - Type of enrollment ('required' | 'elective' | 'retake')
  * @returns Enrollment result
@@ -141,34 +117,45 @@ export async function assignStudentToSection(
   sectionId: string,
   enrollmentType: 'required' | 'elective' | 'retake' = 'elective'
 ): Promise<{ success: boolean; enrollment_id?: string; error?: string }> {
-  const supabase = await createClient();
-  
-  // Try using database function first
-  const { data: fnData, error: fnError } = await supabase
-    .rpc('assign_student_to_section', { 
-      student_id: studentId,
-      section_id: sectionId,
-      enrollment_type: enrollmentType
+  try {
+    // Validate first
+    const validation = await validateEnrollment(studentId, sectionId);
+    
+    if (!validation.valid) {
+      return {
+        success: false,
+        error: validation.error || 'Validation failed'
+      };
+    }
+    
+    // Create enrollment
+    const enrollment = await db.studentEnrollment.create({
+      data: {
+        studentId,
+        sectionId,
+        status: 'registered',
+        enrollmentType
+      }
     });
-  
-  if (!fnError && fnData) {
+    
     return {
       success: true,
-      enrollment_id: fnData
+      enrollment_id: enrollment.id
+    };
+  } catch (error) {
+    console.error('Error assigning student to section:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create enrollment';
+    return {
+      success: false,
+      error: errorMessage
     };
   }
-  
-  // If function doesn't exist, return error asking to use database function
-  return {
-    success: false,
-    error: 'Database function assign_student_to_section() not available. Please run migration 015.'
-  };
 }
 
 /**
  * Drop a section (unenroll a student)
- * Uses the database function drop_section() if available
- * @param studentId - Student ID
+ * Updates the enrollment status to 'dropped'
+ * @param studentId - Student ID (StudentProfile.userId)
  * @param sectionId - Section ID
  * @returns Success status
  */
@@ -176,230 +163,253 @@ export async function dropSection(
   studentId: string,
   sectionId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Try using database function first
-  const { data: fnData, error: fnError } = await supabase
-    .rpc('drop_section', { 
-      student_id: studentId,
-      section_id: sectionId
+  try {
+    // Find the enrollment
+    const enrollment = await db.studentEnrollment.findFirst({
+      where: {
+        studentId,
+        sectionId,
+        status: 'registered'
+      }
     });
-  
-  if (!fnError) {
+    
+    if (!enrollment) {
+      return {
+        success: false,
+        error: 'Enrollment not found'
+      };
+    }
+    
+    // Update status to dropped
+    await db.studentEnrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        status: 'dropped',
+        droppedAt: new Date()
+      }
+    });
+    
     return { success: true };
+  } catch (error) {
+    console.error('Error dropping section:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to drop enrollment';
+    return {
+      success: false,
+      error: errorMessage
+    };
   }
-  
-  // If function doesn't exist, return error asking to use database function
-  return {
-    success: false,
-    error: 'Database function drop_section() not available. Please run migration 015.'
-  };
 }
 
 /**
  * Get student's total credits for a semester
- * Uses the database function get_student_total_credits() if available
- * @param studentId - Student ID
- * @param semesterId - Semester ID (defaults to current semester)
- * @returns Total credits
+ * @param studentId - Student ID (StudentProfile.userId)
+ * @param semesterId - Semester code (optional, e.g., "471", "472")
+ * @returns Total credits for the specified semester, or all semesters if not provided
  */
 export async function getStudentTotalCredits(
   studentId: string,
   semesterId?: string
 ): Promise<number> {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+  // Build where clause for enrollments
+  const whereClause: {
+    studentId: string;
+    status: 'registered';
+    section?: {
+      courseOffering: {
+        semesterCode: string;
+      };
+    };
+  } = {
+    studentId,
+    status: 'registered'
+  };
   
-  if (!semester) return 0;
-  
-  // Try using database function first
-  const { data: fnData, error: fnError } = await supabase
-    .rpc('get_student_total_credits', { 
-      student_id: studentId,
-      semester_id: semester
-    });
-  
-  if (!fnError && fnData !== null) {
-    return fnData;
+  // If semester is specified, filter by section's course offering
+  // Distinguish between undefined/null (optional) and empty string (invalid)
+  if (semesterId !== undefined && semesterId !== null && semesterId !== '') {
+    whereClause.section = {
+      courseOffering: {
+        semesterCode: semesterId
+      }
+    };
   }
   
-  // Fallback to manual calculation
-  const { data: enrollments } = await supabase
-    .from('course_enrollment')
-    .select(`
-      course:course!inner (credits)
-    `)
-    .eq('student_id', studentId)
-    .eq('academic_semester_id', semester)
-    .eq('status', 'enrolled');
+  // Get enrollments with course credits
+  const enrollments = await db.studentEnrollment.findMany({
+    where: whereClause,
+    include: {
+      section: {
+        include: {
+          course: true
+        }
+      }
+    }
+  });
   
-  if (!enrollments) return 0;
-  
-  return enrollments.reduce((total, enrollment: any) => {
-    return total + (enrollment.course?.credits || 0);
+  // Calculate total credits
+  const total = enrollments.reduce((sum: number, enrollment: { section: { course: { credits: number } } }) => {
+    return sum + enrollment.section.course.credits;
   }, 0);
-}
-
-/**
- * Get course enrollments with filters
- * @param filters - Filter criteria
- * @returns Array of course enrollments
- */
-export async function getCourseEnrollments(filters: EnrollmentFilters = {}): Promise<CourseEnrollment[]> {
-  const supabase = await createClient();
-  let query = supabase
-    .from('course_enrollment')
-    .select('*')
-    .order('enrolled_at', { ascending: false });
   
-  if (filters.student_id) {
-    query = query.eq('student_id', filters.student_id);
-  }
-  if (filters.semester_id) {
-    query = query.eq('academic_semester_id', filters.semester_id);
-  }
-  if (filters.course_code) {
-    query = query.eq('course_code', filters.course_code);
-  }
-  if (filters.status) {
-    query = query.eq('status', filters.status);
-  }
-  if (filters.enrollment_type) {
-    query = query.eq('enrollment_type', filters.enrollment_type);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) throw error;
-  return data as CourseEnrollment[];
-}
-
-/**
- * Get section assignments for a course enrollment
- * @param enrollmentId - Course enrollment ID
- * @returns Array of section assignments
- */
-export async function getSectionAssignments(enrollmentId: string): Promise<SectionAssignment[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('section_assignment')
-    .select('*')
-    .eq('course_enrollment_id', enrollmentId)
-    .order('assignment_type');
-  
-  if (error) throw error;
-  return data as SectionAssignment[];
+  return total;
 }
 
 /**
  * Get a student's enrollments with section details for a semester
- * @param studentId - Student ID
- * @param semesterId - Semester ID (defaults to current semester)
+ * @param studentId - Student ID (StudentProfile.userId)
+ * @param semesterId - Semester ID (optional, defaults to current semester)
  * @returns Array of enrollments with sections
  */
 export async function getStudentEnrollmentsWithSections(
   studentId: string,
   semesterId?: string
 ) {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+  // Build where clause
+  const whereClause: {
+    studentId: string;
+    status: 'registered';
+    section?: {
+      courseOffering: {
+        semesterCode: string;
+      };
+    };
+  } = {
+    studentId,
+    status: 'registered'
+  };
   
-  if (!semester) return [];
+  // If semester is specified, filter by course offering
+  // Distinguish between undefined/null (optional) and empty string (invalid)
+  if (semesterId !== undefined && semesterId !== null && semesterId !== '') {
+    whereClause.section = {
+      courseOffering: {
+        semesterCode: semesterId
+      }
+    };
+  }
   
-  const { data, error } = await supabase
-    .from('course_enrollment')
-    .select(`
-      *,
-      course:course (
-        code,
-        name,
-        credits,
-        level
-      ),
-      section_assignments:section_assignment (
-        id,
-        assignment_type,
-        assigned_at,
-        section:section (
-          id,
-          section_no,
-          section_type,
-          meeting_pattern,
-          room_code,
-          instructor:instructor (
-            id,
-            name
-          )
-        )
-      )
-    `)
-    .eq('student_id', studentId)
-    .eq('academic_semester_id', semester)
-    .order('enrolled_at', { ascending: false });
+  const enrollments = await db.studentEnrollment.findMany({
+    where: whereClause,
+    include: {
+      section: {
+        include: {
+          course: true,
+          instructor: {
+            select: {
+              userId: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          },
+          room: true,
+          courseOffering: {
+            include: {
+              semester: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      enrolledAt: 'desc'
+    }
+  });
   
-  if (error) throw error;
-  return data;
+  // Transform to match expected format
+  return enrollments.map((enrollment: {
+    id: string;
+    studentId: string;
+    sectionId: string;
+    status: string;
+    enrollmentType: string;
+    enrolledAt: Date;
+    droppedAt: Date | null;
+    section: {
+      id: string;
+      sectionNo: string;
+      meetingPattern: unknown;
+      roomCode: string | null;
+      course: {
+        code: string;
+        title: string;
+        credits: number;
+        level: number;
+      };
+      instructor: {
+        userId: string;
+        user: {
+          name: string;
+          email: string;
+        };
+      } | null;
+    };
+  }) => ({
+    id: enrollment.id,
+    student_id: enrollment.studentId,
+    section_id: enrollment.sectionId,
+    status: enrollment.status,
+    enrollment_type: enrollment.enrollmentType,
+    enrolled_at: enrollment.enrolledAt.toISOString(),
+    dropped_at: enrollment.droppedAt?.toISOString() || null,
+    course: {
+      code: enrollment.section.course.code,
+      title: enrollment.section.course.title,
+      credits: enrollment.section.course.credits,
+      level: enrollment.section.course.level
+    },
+    section: {
+      id: enrollment.section.id,
+      section_no: enrollment.section.sectionNo,
+      meeting_pattern: enrollment.section.meetingPattern,
+      room_code: enrollment.section.roomCode,
+      instructor: enrollment.section.instructor ? {
+        id: enrollment.section.instructor.userId,
+        name: enrollment.section.instructor.user.name,
+        email: enrollment.section.instructor.user.email
+      } : null
+    }
+  }));
 }
 
 /**
  * Get enrollment count for a course in a semester
- * Uses the database function get_course_enrollment_count() if available
  * @param courseCode - Course code
- * @param semesterId - Semester ID (defaults to current semester)
+ * @param semesterId - Semester ID (optional, defaults to current semester)
  * @returns Enrollment count
  */
 export async function getCourseEnrollmentCount(
   courseCode: string,
   semesterId?: string
 ): Promise<number> {
-  const supabase = await createClient();
-  const semester = semesterId || (await getCurrentSemester())?.id;
+  const whereClause: {
+    section: {
+      courseCode: string;
+      courseOffering?: {
+        semesterCode: string;
+      };
+    };
+    status: 'registered';
+  } = {
+    section: {
+      courseCode
+    },
+    status: 'registered'
+  };
   
-  if (!semester) return 0;
-  
-  // Try using database function first
-  const { data: fnData, error: fnError } = await supabase
-    .rpc('get_course_enrollment_count', { 
-      course_code: courseCode,
-      semester_id: semester
-    });
-  
-  if (!fnError && fnData !== null) {
-    return fnData;
+  // If semester is specified, filter by course offering
+  if (semesterId) {
+    whereClause.section.courseOffering = {
+      semesterCode: semesterId
+    };
   }
   
-  // Fallback to manual count
-  const { count, error } = await supabase
-    .from('course_enrollment')
-    .select('*', { count: 'exact', head: true })
-    .eq('course_code', courseCode)
-    .eq('academic_semester_id', semester)
-    .eq('status', 'enrolled');
+  const count = await db.studentEnrollment.count({
+    where: whereClause
+  });
   
-  if (error) throw error;
-  return count || 0;
+  return count;
 }
-
-/**
- * Get course enrollment by ID
- * @param enrollmentId - Enrollment ID
- * @returns Course enrollment or null
- */
-export async function getCourseEnrollment(enrollmentId: string): Promise<CourseEnrollment | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course_enrollment')
-    .select('*')
-    .eq('id', enrollmentId)
-    .single();
-  
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    throw error;
-  }
-  return data as CourseEnrollment;
-}
-
-

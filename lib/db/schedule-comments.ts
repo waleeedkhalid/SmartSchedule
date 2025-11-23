@@ -4,31 +4,33 @@
  * Purpose: Manage student feedback on schedules (dual-layer comment system)
  * 
  * Comment Types:
- * 1. General Schedule Feedback (section_id = NULL)
+ * 1. General Schedule Feedback (sectionId = NULL)
  *    - Overall course load opinions
  *    - Time preference issues
  *    - General scheduling concerns
  * 
- * 2. Section-Specific Comments (section_id set)
+ * 2. Section-Specific Comments (sectionId set)
  *    - Feedback on specific class times
  *    - Room/instructor concerns
  *    - Lab/lecture specific issues
  * 
  * Resolution Workflow:
- * 1. Student creates comment (is_resolved = false)
+ * 1. User creates comment (isResolved = false)
  * 2. Scheduling committee/registrar reviews
- * 3. Admin marks as resolved (sets resolved_by, resolved_at)
- * 4. Students can view resolution status
+ * 3. Admin marks as resolved (sets resolvedBy, resolvedAt)
+ * 4. Users can view resolution status
+ * 
+ * MIGRATED: Now uses Prisma ORM with authorId instead of student_id
  */
 
-import { createClient } from '@/supabase/server';
+import { db } from '@/lib/db';
 
 /**
  * View interface for schedule comments with joined user and section data
  */
 export interface ScheduleCommentView {
   id: string;
-  student_id: string;
+  author_id: string;
   section_id: string | null;
   comment_text: string;
   is_resolved: boolean;
@@ -36,7 +38,7 @@ export interface ScheduleCommentView {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
-  student: {
+  author: {
     name: string;
     email: string;
     level: number | null;
@@ -62,55 +64,59 @@ export interface ScheduleCommentView {
  * @returns Array of comments with joined user/section data
  */
 export async function getUserComments(userId: string): Promise<ScheduleCommentView[]> {
-  const supabase = await createClient();
-  
-  // Query comments with all related data
-  // Joins: author info, section info (if section-specific), resolver info (if resolved)
-  const { data, error } = await supabase
-    .from('schedule_comment')
-    .select(`
-      *,
-      student:user_roles!schedule_comment_author_id_fkey(user_id, name, email, level, role),
-      section:section!schedule_comment_section_id_fkey(
-        id,
-        course_code,
-        section_no,
-        course:course!section_course_code_fkey(title)
-      ),
-      resolver:user_roles!schedule_comment_resolved_by_fkey(user_id, name, email)
-    `)
-    .eq('author_id', userId)
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
+  const comments = await db.scheduleComment.findMany({
+    where: {
+      authorId: userId
+    },
+    include: {
+      author: {
+        include: {
+          studentProfile: true
+        }
+      },
+      section: {
+        include: {
+          course: true
+        }
+      },
+      resolver: true
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
   
   // Transform to view interface
-  return (data || []).map((comment: any) => ({
-    id: comment.id,
-    student_id: comment.author_id, // Keep for backward compatibility
-    section_id: comment.section_id,
-    comment_text: comment.comment_text,
-    is_resolved: comment.is_resolved,
-    resolved_by: comment.resolved_by,
-    resolved_at: comment.resolved_at,
-    created_at: comment.created_at,
-    updated_at: comment.updated_at,
-    student: {
-      name: comment.student.name,
-      email: comment.student.email,
-      level: comment.student.level,
-      role: comment.student.role, // Include role for display
-    },
-    section: comment.section ? {
-      course_code: comment.section.course_code,
-      section_no: comment.section.section_no,
-      course_title: comment.section.course?.title || '',
-    } : null,
-    resolver: comment.resolver ? {
-      name: comment.resolver.name,
-      email: comment.resolver.email,
-    } : null,
-  }));
+  return comments.map((comment) => {
+    const authorLevel = comment.author.studentProfile?.level || null;
+    
+    return {
+      id: comment.id,
+      author_id: comment.authorId,
+      section_id: comment.sectionId,
+      comment_text: comment.commentText,
+      is_resolved: comment.isResolved,
+      resolved_by: comment.resolvedBy,
+      resolved_at: comment.resolvedAt?.toISOString() || null,
+      created_at: comment.createdAt.toISOString(),
+      updated_at: comment.updatedAt.toISOString(),
+      author: {
+        name: comment.author.name,
+        email: comment.author.email,
+        level: authorLevel,
+        role: comment.author.role,
+      },
+      section: comment.section ? {
+        course_code: comment.section.courseCode,
+        section_no: comment.section.sectionNo,
+        course_title: comment.section.course.title,
+      } : null,
+      resolver: comment.resolver ? {
+        name: comment.resolver.name,
+        email: comment.resolver.email,
+      } : null,
+    };
+  });
 }
 
 /**
@@ -129,52 +135,58 @@ export async function getStudentComments(studentId: string): Promise<ScheduleCom
  * @returns Array of comments about this section
  */
 export async function getSectionComments(sectionId: string): Promise<ScheduleCommentView[]> {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('schedule_comment')
-    .select(`
-      *,
-      student:user_roles!schedule_comment_author_id_fkey(user_id, name, email, level, role),
-      section:section!schedule_comment_section_id_fkey(
-        id,
-        course_code,
-        section_no,
-        course:course!section_course_code_fkey(title)
-      ),
-      resolver:user_roles!schedule_comment_resolved_by_fkey(user_id, name, email)
-    `)
-    .eq('section_id', sectionId)
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  
-  return (data || []).map((comment: any) => ({
-    id: comment.id,
-    student_id: comment.author_id,
-    section_id: comment.section_id,
-    comment_text: comment.comment_text,
-    is_resolved: comment.is_resolved,
-    resolved_by: comment.resolved_by,
-    resolved_at: comment.resolved_at,
-    created_at: comment.created_at,
-    updated_at: comment.updated_at,
-    student: {
-      name: comment.student.name,
-      email: comment.student.email,
-      level: comment.student.level,
-      role: comment.student.role,
+  const comments = await db.scheduleComment.findMany({
+    where: {
+      sectionId
     },
-    section: comment.section ? {
-      course_code: comment.section.course_code,
-      section_no: comment.section.section_no,
-      course_title: comment.section.course?.title || '',
-    } : null,
-    resolver: comment.resolver ? {
-      name: comment.resolver.name,
-      email: comment.resolver.email,
-    } : null,
-  }));
+    include: {
+      author: {
+        include: {
+          studentProfile: true
+        }
+      },
+      section: {
+        include: {
+          course: true
+        }
+      },
+      resolver: true
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+  
+  return comments.map((comment) => {
+    const authorLevel = comment.author.studentProfile?.level || null;
+    
+    return {
+      id: comment.id,
+      author_id: comment.authorId,
+      section_id: comment.sectionId,
+      comment_text: comment.commentText,
+      is_resolved: comment.isResolved,
+      resolved_by: comment.resolvedBy,
+      resolved_at: comment.resolvedAt?.toISOString() || null,
+      created_at: comment.createdAt.toISOString(),
+      updated_at: comment.updatedAt.toISOString(),
+      author: {
+        name: comment.author.name,
+        email: comment.author.email,
+        level: authorLevel,
+        role: comment.author.role,
+      },
+      section: comment.section ? {
+        course_code: comment.section.courseCode,
+        section_no: comment.section.sectionNo,
+        course_title: comment.section.course.title,
+      } : null,
+      resolver: comment.resolver ? {
+        name: comment.resolver.name,
+        email: comment.resolver.email,
+      } : null,
+    };
+  });
 }
 
 /**
@@ -184,42 +196,49 @@ export async function getSectionComments(sectionId: string): Promise<ScheduleCom
  * @returns Array of general comments
  */
 export async function getGeneralComments(): Promise<ScheduleCommentView[]> {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('schedule_comment')
-    .select(`
-      *,
-      student:user_roles!schedule_comment_author_id_fkey(user_id, name, email, level, role),
-      resolver:user_roles!schedule_comment_resolved_by_fkey(user_id, name, email)
-    `)
-    .is('section_id', null) // Only comments without section_id
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  
-  return (data || []).map((comment: any) => ({
-    id: comment.id,
-    student_id: comment.author_id,
-    section_id: null,
-    comment_text: comment.comment_text,
-    is_resolved: comment.is_resolved,
-    resolved_by: comment.resolved_by,
-    resolved_at: comment.resolved_at,
-    created_at: comment.created_at,
-    updated_at: comment.updated_at,
-    student: {
-      name: comment.student.name,
-      email: comment.student.email,
-      level: comment.student.level,
-      role: comment.student.role,
+  const comments = await db.scheduleComment.findMany({
+    where: {
+      sectionId: null
     },
-    section: null,
-    resolver: comment.resolver ? {
-      name: comment.resolver.name,
-      email: comment.resolver.email,
-    } : null,
-  }));
+    include: {
+      author: {
+        include: {
+          studentProfile: true
+        }
+      },
+      resolver: true
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+  
+  return comments.map((comment) => {
+    const authorLevel = comment.author.studentProfile?.level || null;
+    
+    return {
+      id: comment.id,
+      author_id: comment.authorId,
+      section_id: null,
+      comment_text: comment.commentText,
+      is_resolved: comment.isResolved,
+      resolved_by: comment.resolvedBy,
+      resolved_at: comment.resolvedAt?.toISOString() || null,
+      created_at: comment.createdAt.toISOString(),
+      updated_at: comment.updatedAt.toISOString(),
+      author: {
+        name: comment.author.name,
+        email: comment.author.email,
+        level: authorLevel,
+        role: comment.author.role,
+      },
+      section: null,
+      resolver: comment.resolver ? {
+        name: comment.resolver.name,
+        email: comment.resolver.email,
+      } : null,
+    };
+  });
 }
 
 /**
@@ -236,38 +255,34 @@ export async function createComment(
   commentText: string,
   sectionId?: string | null
 ): Promise<{ success: boolean; commentId?: string; error?: string }> {
-  const supabase = await createClient();
-  
-  // Validate comment text length (database has constraint, but check early)
-  if (!commentText || commentText.length === 0) {
-    return { success: false, error: 'Comment text cannot be empty' };
+  try {
+    // Validate comment text length
+    if (!commentText || commentText.length === 0) {
+      return { success: false, error: 'Comment text cannot be empty' };
+    }
+    
+    if (commentText.length > 2000) {
+      return { success: false, error: 'Comment text cannot exceed 2000 characters' };
+    }
+    
+    // Create comment
+    const comment = await db.scheduleComment.create({
+      data: {
+        authorId,
+        sectionId: sectionId || null,
+        commentText,
+        isResolved: false,
+      }
+    });
+    
+    return {
+      success: true,
+      commentId: comment.id,
+    };
+  } catch (error: any) {
+    console.error('Error creating comment:', error);
+    return { success: false, error: error.message || 'Failed to create comment' };
   }
-  
-  if (commentText.length > 2000) {
-    return { success: false, error: 'Comment text cannot exceed 2000 characters' };
-  }
-  
-  // Insert comment
-  // RLS policies ensure authenticated users can create comments
-  const { data, error } = await supabase
-    .from('schedule_comment')
-    .insert({
-      author_id: authorId,
-      section_id: sectionId || null,
-      comment_text: commentText,
-      is_resolved: false,
-    })
-    .select('id')
-    .single();
-  
-  if (error) {
-    return { success: false, error: 'Failed to create comment' };
-  }
-  
-  return {
-    success: true,
-    commentId: data.id,
-  };
 }
 
 /**
@@ -284,36 +299,42 @@ export async function updateComment(
   authorId: string,
   commentText: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Validate text
-  if (!commentText || commentText.length === 0) {
-    return { success: false, error: 'Comment text cannot be empty' };
+  try {
+    // Validate text
+    if (!commentText || commentText.length === 0) {
+      return { success: false, error: 'Comment text cannot be empty' };
+    }
+    
+    if (commentText.length > 2000) {
+      return { success: false, error: 'Comment text cannot exceed 2000 characters' };
+    }
+    
+    // Verify comment exists, belongs to user, and is unresolved
+    const comment = await db.scheduleComment.findFirst({
+      where: {
+        id: commentId,
+        authorId,
+        isResolved: false
+      }
+    });
+    
+    if (!comment) {
+      return { success: false, error: 'Comment not found or cannot be updated' };
+    }
+    
+    // Update comment
+    await db.scheduleComment.update({
+      where: { id: commentId },
+      data: {
+        commentText
+      }
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating comment:', error);
+    return { success: false, error: error.message || 'Failed to update comment' };
   }
-  
-  if (commentText.length > 2000) {
-    return { success: false, error: 'Comment text cannot exceed 2000 characters' };
-  }
-  
-  // Update comment
-  // RLS policies ensure:
-  // 1. User owns the comment
-  // 2. Comment is not yet resolved
-  const { error } = await supabase
-    .from('schedule_comment')
-    .update({
-      comment_text: commentText,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', commentId)
-    .eq('author_id', authorId) // Security: ensure user owns this
-    .eq('is_resolved', false); // Only update unresolved comments
-  
-  if (error) {
-    return { success: false, error: 'Failed to update comment' };
-  }
-  
-  return { success: true };
 }
 
 /**
@@ -328,22 +349,30 @@ export async function deleteComment(
   commentId: string,
   authorId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Delete comment
-  // RLS policies ensure user owns comment and it's unresolved
-  const { error } = await supabase
-    .from('schedule_comment')
-    .delete()
-    .eq('id', commentId)
-    .eq('author_id', authorId)
-    .eq('is_resolved', false);
-  
-  if (error) {
-    return { success: false, error: 'Failed to delete comment' };
+  try {
+    // Verify comment exists, belongs to user, and is unresolved
+    const comment = await db.scheduleComment.findFirst({
+      where: {
+        id: commentId,
+        authorId,
+        isResolved: false
+      }
+    });
+    
+    if (!comment) {
+      return { success: false, error: 'Comment not found or cannot be deleted' };
+    }
+    
+    // Delete comment
+    await db.scheduleComment.delete({
+      where: { id: commentId }
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting comment:', error);
+    return { success: false, error: error.message || 'Failed to delete comment' };
   }
-  
-  return { success: true };
 }
 
 /**
@@ -358,26 +387,34 @@ export async function resolveComment(
   commentId: string,
   resolvedBy: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Update comment to resolved status
-  // RLS policies ensure only scheduling/registrar can do this
-  const { error } = await supabase
-    .from('schedule_comment')
-    .update({
-      is_resolved: true,
-      resolved_by: resolvedBy,
-      resolved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', commentId)
-    .eq('is_resolved', false); // Only resolve unresolved comments
-  
-  if (error) {
-    return { success: false, error: 'Failed to resolve comment' };
+  try {
+    // Verify comment exists and is unresolved
+    const comment = await db.scheduleComment.findFirst({
+      where: {
+        id: commentId,
+        isResolved: false
+      }
+    });
+    
+    if (!comment) {
+      return { success: false, error: 'Comment not found or already resolved' };
+    }
+    
+    // Update comment to resolved status
+    await db.scheduleComment.update({
+      where: { id: commentId },
+      data: {
+        isResolved: true,
+        resolvedBy,
+        resolvedAt: new Date()
+      }
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error resolving comment:', error);
+    return { success: false, error: error.message || 'Failed to resolve comment' };
   }
-  
-  return { success: true };
 }
 
 /**
@@ -389,24 +426,34 @@ export async function resolveComment(
 export async function unresolveComment(
   commentId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  const { error } = await supabase
-    .from('schedule_comment')
-    .update({
-      is_resolved: false,
-      resolved_by: null,
-      resolved_at: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', commentId)
-    .eq('is_resolved', true); // Only unresolve resolved comments
-  
-  if (error) {
-    return { success: false, error: 'Failed to unresolve comment' };
+  try {
+    // Verify comment exists and is resolved
+    const comment = await db.scheduleComment.findFirst({
+      where: {
+        id: commentId,
+        isResolved: true
+      }
+    });
+    
+    if (!comment) {
+      return { success: false, error: 'Comment not found or not resolved' };
+    }
+    
+    // Update comment to unresolved status
+    await db.scheduleComment.update({
+      where: { id: commentId },
+      data: {
+        isResolved: false,
+        resolvedBy: null,
+        resolvedAt: null
+      }
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error unresolving comment:', error);
+    return { success: false, error: error.message || 'Failed to unresolve comment' };
   }
-  
-  return { success: true };
 }
 
 /**
@@ -418,24 +465,22 @@ export async function unresolveComment(
  * @returns Comment counts by status
  */
 export async function getCommentStats(userId: string) {
-  const supabase = await createClient();
-  
-  // Get all comments for this user
-  const { data, error } = await supabase
-    .from('schedule_comment')
-    .select('id, is_resolved, section_id')
-    .eq('author_id', userId);
-  
-  if (error) throw error;
-  
-  const comments = data || [];
+  const comments = await db.scheduleComment.findMany({
+    where: {
+      authorId: userId
+    },
+    select: {
+      id: true,
+      isResolved: true,
+      sectionId: true
+    }
+  });
   
   return {
     total: comments.length,
-    resolved: comments.filter(c => c.is_resolved).length,
-    unresolved: comments.filter(c => !c.is_resolved).length,
-    general: comments.filter(c => c.section_id === null).length,
-    section_specific: comments.filter(c => c.section_id !== null).length,
+    resolved: comments.filter(c => c.isResolved).length,
+    unresolved: comments.filter(c => !c.isResolved).length,
+    general: comments.filter(c => c.sectionId === null).length,
+    section_specific: comments.filter(c => c.sectionId !== null).length,
   };
 }
-

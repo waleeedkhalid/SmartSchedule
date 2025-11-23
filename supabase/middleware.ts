@@ -95,26 +95,55 @@ export async function updateSession(request: NextRequest) {
   // ONBOARDING CHECK
   // =====================================================
   // If user is authenticated and trying to access dashboard routes,
-  // check if they need to complete onboarding first
+  // check if they need to complete onboarding first (have role-specific profile)
   
   if (
     user &&
-    request.nextUrl.pathname.startsWith("/dashboard")
+    request.nextUrl.pathname.startsWith("/dashboard") &&
+    request.nextUrl.pathname !== "/onboarding"
   ) {
-    // Check if user needs onboarding (force fresh data, no cache)
+    // Check if user has a role record
     const { data: userRole } = await supabase
       .from('user_roles')
-			.select('role')
+      .select('role')
       .eq('user_id', user.id)
       .maybeSingle();
     
-    if (userRole) {
-			// Profile exists; allow access
-    } else {
+    if (!userRole) {
       // User has no role record - redirect to onboarding
       const onboardingUrl = new URL("/onboarding", request.url);
       return NextResponse.redirect(onboardingUrl);
     }
+    
+    // Check if user has role-specific profile
+    // Students need student_profile, Faculty need faculty_profile
+    // Other roles (scheduling, teaching_load, registrar) only need user_roles
+    if (userRole.role === 'student') {
+      const { data: studentProfile } = await supabase
+        .from('student_profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!studentProfile) {
+        // Student needs onboarding - redirect
+        const onboardingUrl = new URL("/onboarding", request.url);
+        return NextResponse.redirect(onboardingUrl);
+      }
+    } else if (userRole.role === 'faculty') {
+      const { data: facultyProfile } = await supabase
+        .from('faculty_profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!facultyProfile) {
+        // Faculty needs onboarding - redirect
+        const onboardingUrl = new URL("/onboarding", request.url);
+        return NextResponse.redirect(onboardingUrl);
+      }
+    }
+    // Other roles don't need separate profiles, so they're good to go
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

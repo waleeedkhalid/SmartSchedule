@@ -327,3 +327,38 @@ export const Constants = {
     },
   },
 } as const
+
+// [INTEGRATION] Prisma-compatible Course types
+// Types are defined to match component expectations (snake_case) while working with Prisma (camelCase)
+
+/**
+ * Course type compatible with component expectations (snake_case)
+ * Maps Prisma camelCase fields to snake_case for backward compatibility
+ */
+export type Course = {
+  code: string
+  title: string
+  level: number
+  credits: number
+  weekly_hours: number
+  is_elective: boolean
+  elective_group_id: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+/**
+ * Course input type for creating/updating courses
+ * Uses camelCase to match Prisma schema field names
+ */
+export type CourseInput = {
+  code: string
+  title: string
+  level: number
+  credits: number
+  weeklyHours: number
+  isElective: boolean
+  electiveGroupId?: string | null
+  createdBy?: string | null
+}

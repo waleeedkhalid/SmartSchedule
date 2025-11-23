@@ -1,0 +1,568 @@
+// SmartSchedule V1 Database Schema
+// Generated: 2025-01-30
+// Migrated from Supabase SQL to Prisma
+// 
+// Key Design Decisions:
+// 1. Each role has its own profile table (student_profile, faculty_profile)
+// 2. Committees (scheduling, teaching_load, registrar) use user_roles only
+// 3. Exams are course-level, per student_group
+// 4. Sections are tied to specific semesters via course_offering
+// 5. Prerequisites tracked via course_prerequisite junction table
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum UserRoleType {
+  scheduling
+  teaching_load
+  faculty
+  student
+  registrar
+}
+
+enum RoomType {
+  Lecture
+  Lab
+}
+
+enum SectionState {
+  draft
+  released
+}
+
+enum EnrollmentStatus {
+  registered
+  dropped
+}
+
+enum SemesterType {
+  FALL
+  SPRING
+  SUMMER
+}
+
+// =====================================================
+// USER & ROLE MANAGEMENT
+// =====================================================
+
+// Base user roles table (extends Supabase auth.users conceptually)
+// Note: auth.users is managed by Supabase, user_id references it
+model UserRole {
+  userId              String       @id @map("user_id") @db.Uuid
+  role                UserRoleType
+  name                String
+  email               String
+  onboardingCompleted Boolean      @default(false) @map("onboarding_completed")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  studentProfile      StudentProfile?
+  facultyProfile      FacultyProfile?
+  irregularStudent    IrregularStudent?  @relation("IrregularStudent")
+  authoredComments    ScheduleComment[]  @relation("CommentAuthor")
+  resolvedComments    ScheduleComment[]  @relation("CommentResolver")
+  notifications       Notification[]
+  createdCourses      Course[]           @relation("CourseCreator")
+  createdRooms        Room[]             @relation("RoomCreator")
+  createdSections     Section[]          @relation("SectionCreator")
+  createdExams        Exam[]             @relation("ExamCreator")
+  createdRules        Rule[]             @relation("RuleCreator")
+  createdOfferings    CourseOffering[]   @relation("OfferingCreator")
+  createdTimeline     SemesterTimeline[] @relation("TimelineCreator")
+  createdIrregular    IrregularStudent[] @relation("IrregularCreator")
+  createdScheduleDocs ScheduleDoc[]      @relation("ScheduleDocCreator")
+  updatedTimeGrid     TimeGridConfig[]   @relation("TimeGridUpdater")
+
+  @@index([role])
+  @@map("user_roles")
+}
+
+// Student-specific profile (1:1 with UserRole for students)
+model StudentProfile {
+  userId         String   @id @map("user_id") @db.Uuid
+  level          Int // 1-8: Academic level
+  studentGroupId String?  @map("student_group_id") @db.Uuid
+  department     String   @default("Software Engineering")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  user         UserRole            @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  studentGroup StudentGroup?       @relation(fields: [studentGroupId], references: [id], onDelete: SetNull)
+  enrollments  StudentEnrollment[]
+
+  @@index([level])
+  @@index([studentGroupId])
+  @@index([level, studentGroupId])
+  @@map("student_profile")
+}
+
+// Faculty-specific profile (replaces instructor table)
+// 1:1 with UserRole for faculty
+model FacultyProfile {
+  userId           String   @id @map("user_id") @db.Uuid
+  preferredTimes   Json     @default("[]") @map("preferred_times") // JSONB array
+  unavailableTimes Json     @default("[]") @map("unavailable_times") // JSONB array
+  maxLoadPerWeek   Int      @default(12) @map("max_load_per_week")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  user     UserRole  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  sections Section[]
+
+  @@map("faculty_profile")
+}
+
+// =====================================================
+// ACADEMIC STRUCTURE
+// =====================================================
+
+// Academic semesters management
+model AcademicSemester {
+  code                      String       @id // e.g., "471", "472", "475"
+  name                      String
+  type                      SemesterType
+  startDate                 DateTime     @map("start_date") @db.Date
+  endDate                   DateTime     @map("end_date") @db.Date
+  isActive                  Boolean      @default(false) @map("is_active")
+  electivesSurveyOpen       Boolean      @default(false) @map("electives_survey_open")
+  registrationOpen          Boolean      @default(false) @map("registration_open")
+  feedbackOpen              Boolean      @default(false) @map("feedback_open")
+  schedulePublished         Boolean      @default(false) @map("schedule_published")
+  isFacultyAvailabilityOpen Boolean      @default(false) @map("is_faculty_availability_open")
+  createdAt                 DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  courseOfferings CourseOffering[]
+  timelineEvents  SemesterTimeline[]
+
+  @@index([isActive])
+  @@index([type])
+  @@index([startDate, endDate])
+  @@map("academic_semesters")
+}
+
+// Semester timeline events (important dates)
+model SemesterTimeline {
+  id          String   @id @default(uuid()) @db.Uuid
+  termCode    String   @map("term_code")
+  title       String
+  description String?
+  eventType   String   @map("event_type")
+  category    String
+  startDate   DateTime @map("start_date") @db.Timestamptz
+  endDate     DateTime @map("end_date") @db.Timestamptz
+  isRecurring Boolean  @default(false) @map("is_recurring")
+  metadata    Json     @default("{}") // JSONB for additional event data
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  // Relations
+  semester AcademicSemester @relation(fields: [termCode], references: [code], onDelete: Cascade)
+  creator  UserRole?        @relation("TimelineCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+
+  @@index([termCode])
+  @@index([startDate, endDate])
+  @@index([eventType])
+  @@index([category])
+  @@map("semester_timeline")
+}
+
+// Course catalog
+model Course {
+  code            String   @id
+  title           String
+  level           Int // 1-8: Organizational level (for electives, indicates typical placement)
+  credits         Int
+  weeklyHours     Int      @map("weekly_hours")
+  isElective      Boolean  @default(false) @map("is_elective")
+  electiveGroupId String?  @map("elective_group_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy       String?  @map("created_by") @db.Uuid
+
+  // Relations
+  electiveGroup       ElectiveGroup?       @relation(fields: [electiveGroupId], references: [id], onDelete: SetNull)
+  creator             UserRole?            @relation("CourseCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+  sections            Section[]
+  exams               Exam[]
+  prerequisites       CoursePrerequisite[] @relation("Course")
+  requiredBy          CoursePrerequisite[] @relation("Prerequisite")
+  courseOfferings     CourseOffering[]
+  electivePreferences ElectivePreference[] // Deprecated but kept for migration
+
+  @@index([level])
+  @@index([isElective])
+  @@index([electiveGroupId])
+  @@map("course")
+}
+
+// Elective groups (general, islamic culture, math, department)
+model ElectiveGroup {
+  id                  String   @id @default(uuid()) @db.Uuid
+  name                String   @unique
+  requiredCreditHours Int      @map("required_credit_hours")
+  description         String?
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  courses Course[]
+
+  @@index([name])
+  @@map("elective_group")
+}
+
+// Course prerequisites (many-to-many)
+model CoursePrerequisite {
+  id               String   @id @default(uuid()) @db.Uuid
+  courseCode       String   @map("course_code")
+  prerequisiteCode String   @map("prerequisite_code")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  course       Course @relation("Course", fields: [courseCode], references: [code], onDelete: Cascade)
+  prerequisite Course @relation("Prerequisite", fields: [prerequisiteCode], references: [code], onDelete: Cascade)
+
+  @@unique([courseCode, prerequisiteCode])
+  @@index([courseCode])
+  @@index([prerequisiteCode])
+  @@map("course_prerequisite")
+}
+
+// Course offerings (links courses to semesters)
+model CourseOffering {
+  id           String   @id @default(uuid()) @db.Uuid
+  courseCode   String   @map("course_code")
+  semesterCode String   @map("semester_code")
+  isActive     Boolean  @default(true) @map("is_active")
+  maxSections  Int?     @map("max_sections")
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  // Relations
+  course   Course           @relation(fields: [courseCode], references: [code], onDelete: Cascade)
+  semester AcademicSemester @relation(fields: [semesterCode], references: [code], onDelete: Cascade)
+  creator  UserRole?        @relation("OfferingCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+  sections Section[]
+
+  @@unique([courseCode, semesterCode])
+  @@index([semesterCode])
+  @@index([isActive])
+  @@index([courseCode])
+  @@map("course_offering")
+}
+
+// =====================================================
+// SCHEDULING ENTITIES
+// =====================================================
+
+// Physical rooms
+model Room {
+  code      String   @id
+  type      RoomType
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
+
+  // Relations
+  creator  UserRole? @relation("RoomCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+  sections Section[]
+
+  @@map("room")
+}
+
+// Student groups (auto-managed by level)
+model StudentGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  level     Int // 1-8: Academic level
+  size      Int      @default(0)
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy String?  @map("created_by") @db.Uuid
+
+  // Relations
+  students StudentProfile[]
+  exams    Exam[]
+
+  @@index([level])
+  @@map("student_group")
+}
+
+// Course sections
+model Section {
+  id                     String       @id @default(uuid()) @db.Uuid
+  courseCode             String       @map("course_code")
+  sectionNo              String       @map("section_no")
+  instructorId           String?      @map("instructor_id") @db.Uuid
+  roomCode               String?      @map("room_code")
+  capacity               Int
+  meetingPattern         Json         @map("meeting_pattern") // JSONB: { days: string[], start: string, duration: number, is_lab: boolean, linked_lab_section?: string }
+  groupLevel             Int          @map("group_level") // 1-8: Level this section is for
+  state                  SectionState @default(draft)
+  isScheduledByAlgorithm Boolean      @default(false) @map("is_scheduled_by_algorithm")
+  courseOfferingId       String?      @map("course_offering_id") @db.Uuid
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy              String?      @map("created_by") @db.Uuid
+
+  // Relations
+  course         Course              @relation(fields: [courseCode], references: [code], onDelete: Cascade)
+  instructor     FacultyProfile?     @relation(fields: [instructorId], references: [userId], onDelete: SetNull)
+  room           Room?               @relation(fields: [roomCode], references: [code], onDelete: SetNull)
+  courseOffering CourseOffering?     @relation(fields: [courseOfferingId], references: [id], onDelete: SetNull)
+  creator        UserRole?           @relation("SectionCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+  enrollments    StudentEnrollment[]
+  comments       ScheduleComment[]
+
+  @@unique([courseCode, sectionNo])
+  @@index([courseCode])
+  @@index([instructorId])
+  @@index([state])
+  @@index([groupLevel])
+  @@index([isScheduledByAlgorithm])
+  @@index([courseOfferingId])
+  @@map("section")
+}
+
+// Exams (course-level, per student_group)
+model Exam {
+  id              String   @id @default(uuid()) @db.Uuid
+  courseCode      String   @map("course_code")
+  studentGroupId  String?  @map("student_group_id") @db.Uuid // NULL = all groups for this course
+  date            DateTime @db.Date
+  // Note: Database has TIME type, Prisma uses String (Prisma 7 doesn't support String @db.Time)
+  // The PrismaPg adapter handles TIME -> String conversion automatically
+  startTime       String   @map("start_time")
+  durationMinutes Int      @map("duration_minutes")
+  // Note: Database has TEXT[] type, Prisma uses String[] (Prisma 7 automatically maps String[] -> TEXT[])
+  // No @db.Text[] syntax available in Prisma 7, but mapping is handled correctly
+  roomCodes       String[] @map("room_codes")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy       String?  @map("created_by") @db.Uuid
+
+  // Relations
+  course       Course        @relation(fields: [courseCode], references: [code], onDelete: Cascade)
+  studentGroup StudentGroup? @relation(fields: [studentGroupId], references: [id], onDelete: SetNull)
+  creator      UserRole?     @relation("ExamCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+
+  @@index([courseCode])
+  @@index([date])
+  @@index([studentGroupId])
+  @@map("exam")
+}
+
+// Scheduling rules
+model Rule {
+  id                         String   @id @default(uuid()) @db.Uuid
+  timeBlocks                 Json     @map("time_blocks") // JSONB array
+  forbiddenPairs             Json     @map("forbidden_pairs") // JSONB array
+  examSpacingMins            Int      @default(120) @map("exam_spacing_mins")
+  maxClassesPerInstructorDay Int      @default(4) @map("max_classes_per_instructor_day")
+  maxClassesPerStudentDay    Int      @default(6) @map("max_classes_per_student_day")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy                  String?  @map("created_by") @db.Uuid
+
+  // Relations
+  creator UserRole? @relation("RuleCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+
+  @@map("rule")
+}
+
+// Time grid configuration
+model TimeGridConfig {
+  id                        String   @id @default(uuid()) @db.Uuid
+  // Note: Database has TEXT[] type, Prisma uses String[] (Prisma 7 automatically maps String[] -> TEXT[])
+  teachingDays              String[] @map("teaching_days")
+  // Note: Database has TIME type, Prisma uses String (Prisma 7 doesn't support String @db.Time)
+  // The PrismaPg adapter handles TIME -> String conversion automatically
+  dailyStartTime            String   @default("08:00:00") @map("daily_start_time")
+  dailyEndTime              String   @default("17:00:00") @map("daily_end_time")
+  slotDurationMinutes       Int      @default(60) @map("slot_duration_minutes")
+  breakStartTime            String   @default("12:00:00") @map("break_start_time")
+  breakEndTime              String   @default("13:00:00") @map("break_end_time")
+  // Note: Database has TEXT[] type, Prisma uses String[] (Prisma 7 automatically maps String[] -> TEXT[])
+  examDays                  String[] @map("exam_days")
+  examStartTime             String   @default("09:00:00") @map("exam_start_time")
+  examEndTime               String   @default("17:00:00") @map("exam_end_time")
+  typicalLabDurationMinutes Int      @default(120) @map("typical_lab_duration_minutes")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy                 String?  @map("updated_by") @db.Uuid
+
+  // Relations
+  updater UserRole? @relation("TimeGridUpdater", fields: [updatedBy], references: [userId], onDelete: SetNull)
+
+  @@map("time_grid_config")
+}
+
+// =====================================================
+// ENROLLMENT & STUDENT ENTITIES
+// =====================================================
+
+// Student enrollments (required + elective)
+model StudentEnrollment {
+  id             String           @id @default(uuid()) @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  sectionId      String           @map("section_id") @db.Uuid
+  status         EnrollmentStatus @default(registered)
+  enrollmentType String           @default("elective") @map("enrollment_type") // 'required' | 'elective'
+  enrolledAt     DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz
+  droppedAt      DateTime?        @map("dropped_at") @db.Timestamptz
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  student StudentProfile @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  section Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, sectionId])
+  @@index([studentId])
+  @@index([sectionId])
+  @@index([status])
+  @@index([enrollmentType])
+  // Note: Partial indexes for status='registered' are created manually via migration
+  // See: prisma/migrations/add_partial_indexes.sql
+  // Prisma 7 doesn't support WHERE clauses in @@index directives
+  @@map("student_enrollment")
+}
+
+// Irregular students (custom required course lists)
+model IrregularStudent {
+  id                  String   @id @default(uuid()) @db.Uuid
+  studentId           String   @unique @map("student_id") @db.Uuid
+  // Note: Database has TEXT[] type, Prisma uses String[] (Prisma 7 automatically maps String[] -> TEXT[])
+  // No @db.Text[] syntax available in Prisma 7, but mapping is handled correctly
+  requiredCourseCodes String[] @map("required_course_codes")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy           String?  @map("created_by") @db.Uuid
+
+  // Relations
+  student UserRole  @relation("IrregularStudent", fields: [studentId], references: [userId], onDelete: Cascade)
+  creator UserRole? @relation("IrregularCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([createdBy])
+  @@map("irregular_student")
+}
+
+// =====================================================
+// COMMUNICATION ENTITIES
+// =====================================================
+
+// Unified schedule comment system (all roles)
+model ScheduleComment {
+  id          String    @id @default(uuid()) @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  sectionId   String?   @map("section_id") @db.Uuid // NULL = general feedback
+  commentText String    @map("comment_text") @db.Text
+  isResolved  Boolean   @default(false) @map("is_resolved")
+  resolvedBy  String?   @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  author   UserRole  @relation("CommentAuthor", fields: [authorId], references: [userId], onDelete: Cascade)
+  resolver UserRole? @relation("CommentResolver", fields: [resolvedBy], references: [userId], onDelete: SetNull)
+  section  Section?  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([sectionId])
+  @@index([isResolved])
+  @@map("schedule_comment")
+}
+
+// In-app notifications
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  payload   Json      @default("{}") // JSONB
+  readAt    DateTime? @map("read_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user UserRole @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([readAt])
+  @@map("notification")
+}
+
+// =====================================================
+// VERSIONING (V2 - Reserved)
+// =====================================================
+
+// Schedule document for versioning (V2 feature)
+model ScheduleDoc {
+  id               String   @id @default(uuid()) @db.Uuid
+  content          Json     @default("{}") // JSONB
+  releaseTag       String?  @unique @map("release_tag")
+  diffFromPrevious Json?    @map("diff_from_previous") // JSONB
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy        String?  @map("created_by") @db.Uuid
+
+  // Relations
+  creator UserRole? @relation("ScheduleDocCreator", fields: [createdBy], references: [userId], onDelete: SetNull)
+
+  @@index([releaseTag])
+  @@map("schedule_doc")
+}
+
+// =====================================================
+// DEPRECATED TABLES (Kept for migration purposes)
+// =====================================================
+
+// Deprecated: Legacy elective preference ranking (replaced by student_enrollment)
+model ElectivePreference {
+  id         String   @id @default(uuid()) @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  courseCode String   @map("course_code")
+  rank       Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  course Course @relation(fields: [courseCode], references: [code], onDelete: Cascade)
+
+  @@unique([studentId, courseCode])
+  @@index([studentId])
+  @@map("elective_preference")
+}
+
+// Deprecated: Legacy comment table (replaced by schedule_comment)
+model Comment {
+  id         String   @id @default(uuid()) @db.Uuid
+  docId      String?  @map("doc_id") @db.Uuid
+  targetRef  String   @map("target_ref")
+  authorId   String   @map("author_id") @db.Uuid
+  text       String   @db.Text
+  isResolved Boolean  @default(false) @map("is_resolved")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([docId])
+  @@index([authorId])
+  @@map("comment")
+}

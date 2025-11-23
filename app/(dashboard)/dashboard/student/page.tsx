@@ -29,6 +29,7 @@ import Link from "next/link";
 import { ElectiveRegistrationManager } from "@/components/elective-registration-manager";
 import { StudentScheduleView } from "@/components/student-schedule-view";
 import { StudentExamTimetable } from "@/components/student-exam-timetable";
+import { getStudentProfile } from "@/lib/db/student-profiles";
 // import { StudentCommentManager } from "@/components/student-comment-manager"; // Temporarily disabled during maintenance
 
 export default async function StudentDashboardPage() {
@@ -40,10 +41,10 @@ export default async function StudentDashboardPage() {
     redirect("/login");
   }
 
-  // Authorization: Verify user has student role and get level
+  // Authorization: Verify user has student role
   const { data: userRole } = await supabase
     .from('user_roles')
-    .select('role, name, level')
+    .select('role, name')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -51,7 +52,9 @@ export default async function StudentDashboardPage() {
     redirect("/dashboard");
   }
 
-  const studentLevel = userRole.level || null;
+  // Get student level from StudentProfile via Prisma
+  const studentProfile = await getStudentProfile(user.id);
+  const studentLevel = studentProfile?.level || null;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

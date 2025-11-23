@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/supabase/server";
+import { db } from "@/lib/db";
+import { createStudentProfile } from "@/lib/db/student-profiles";
 
 //sign up with email and password
 export async function signup(formData: {
@@ -96,4 +98,68 @@ export async function logOut() {
   }
 
   return;
+}
+
+// Complete onboarding - create role-specific profile
+export async function completeOnboarding(data: {
+  userId: string;
+  role: 'student' | 'faculty' | 'scheduling' | 'teaching_load' | 'registrar';
+  level?: number; // Required for students
+}) {
+  try {
+    // 1. Authenticate & Fetch Data: Get current user from Supabase auth
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: 'Unauthorized: Please log in to complete onboarding' };
+    }
+
+    // 2. Safety Check: Ensure the authenticated user.id matches the passed userId
+    if (user.id !== data.userId) {
+      return { error: 'Unauthorized: User ID mismatch' };
+    }
+
+    // 3. Upsert Parent Record: Ensure UserRole exists before creating profile
+    await db.userRole.upsert({
+      where: { userId: user.id },
+      update: {}, // Do nothing if it already exists
+      create: {
+        userId: user.id,
+        email: user.email || '',
+        name: (user.user_metadata?.full_name as string) || user.email || 'User',
+        role: data.role as 'scheduling' | 'teaching_load' | 'faculty' | 'student' | 'registrar',
+      },
+    });
+
+    // 4. Create Child Record: Now that UserRole exists, create the profile
+    if (data.role === 'student') {
+      if (!data.level) {
+        return { error: 'Academic level is required for students' };
+      }
+
+      // Create student profile
+      await createStudentProfile({
+        userId: data.userId,
+        level: data.level,
+        department: 'Software Engineering',
+      });
+    } else if (data.role === 'faculty') {
+      // Create faculty profile with default values
+      await db.facultyProfile.create({
+        data: {
+          userId: data.userId,
+          preferredTimes: [],
+          unavailableTimes: [],
+          maxLoadPerWeek: 12,
+        },
+      });
+    }
+    // Other roles (scheduling, teaching_load, registrar) don't need separate profiles
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to complete onboarding' };
+  }
 }

@@ -1,62 +1,78 @@
 // Database queries for elective comments and feedback
-import { createClient } from '@/supabase/server';
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { ElectiveComment } from '@/lib/types/database';
 
 export async function getElectiveCommentsByStudent(studentId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .select(`
-      *,
-      course:course(code, title, level, credits)
-    `)
-    .eq('student_id', studentId)
-    .order('created_at', { ascending: false });
+  const comments = await db.electiveComment.findMany({
+    where: { student_id: studentId },
+    include: {
+      course: {
+        select: {
+          code: true,
+          title: true,
+          level: true,
+          credits: true
+        }
+      }
+    },
+    orderBy: { created_at: 'desc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return comments;
 }
 
 export async function getElectiveCommentsByCourse(courseCode: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .select(`
-      *,
-      student:user_roles!elective_comment_student_id_fkey(name, email)
-    `)
-    .eq('course_code', courseCode)
-    .order('created_at', { ascending: false });
+  const comments = await db.electiveComment.findMany({
+    where: { course_code: courseCode },
+    include: {
+      student: {
+        select: {
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: { created_at: 'desc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return comments;
 }
 
 export async function getAllElectiveComments() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .select(`
-      *,
-      course:course(code, title, level, credits),
-      student:user_roles!elective_comment_student_id_fkey(name, email)
-    `)
-    .order('created_at', { ascending: false });
+  const comments = await db.electiveComment.findMany({
+    include: {
+      course: {
+        select: {
+          code: true,
+          title: true,
+          level: true,
+          credits: true
+        }
+      },
+      student: {
+        select: {
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: { created_at: 'desc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return comments;
 }
 
 export async function getElectiveCommentById(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const comment = await db.electiveComment.findUnique({
+    where: { id }
+  });
   
-  if (error) throw error;
-  return data as ElectiveComment;
+  if (!comment) {
+    throw new Error(`Elective comment with id ${id} not found`);
+  }
+  
+  return comment as ElectiveComment;
 }
 
 export async function createElectiveComment(
@@ -64,97 +80,77 @@ export async function createElectiveComment(
   courseCode: string,
   comment: string
 ) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .insert({
+  const created = await db.electiveComment.create({
+    data: {
       student_id: studentId,
       course_code: courseCode,
-      comment,
-    })
-    .select()
-    .single();
+      comment
+    }
+  });
   
-  if (error) throw error;
-  return data as ElectiveComment;
+  return created as ElectiveComment;
 }
 
 export async function updateElectiveComment(
   id: string,
   comment: string
 ) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .update({ comment })
-    .eq('id', id)
-    .select()
-    .single();
+  const updated = await db.electiveComment.update({
+    where: { id },
+    data: { comment }
+  });
   
-  if (error) throw error;
-  return data as ElectiveComment;
+  return updated as ElectiveComment;
 }
 
 export async function deleteElectiveComment(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('elective_comment')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+  await db.electiveComment.delete({
+    where: { id }
+  });
 }
 
 export async function resolveElectiveComment(
   id: string,
   resolvedBy: string
 ) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .update({ 
+  const updated = await db.electiveComment.update({
+    where: { id },
+    data: {
       is_resolved: true,
       resolved_by: resolvedBy,
-      resolved_at: new Date().toISOString()
-    })
-    .eq('id', id)
-    .select()
-    .single();
+      resolved_at: new Date()
+    }
+  });
   
-  if (error) throw error;
-  return data as ElectiveComment;
+  return updated as ElectiveComment;
 }
 
 export async function unresolveElectiveComment(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .update({ 
+  const updated = await db.electiveComment.update({
+    where: { id },
+    data: {
       is_resolved: false,
       resolved_by: null,
       resolved_at: null
-    })
-    .eq('id', id)
-    .select()
-    .single();
+    }
+  });
   
-  if (error) throw error;
-  return data as ElectiveComment;
+  return updated as ElectiveComment;
 }
 
 // Get comment statistics for scheduling committee
 export async function getElectiveCommentStats() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('elective_comment')
-    .select(`
-      course_code,
-      is_resolved,
-      course:course(code, title, level)
-    `);
-  
-  if (error) throw error;
+  const comments = await db.electiveComment.findMany({
+    include: {
+      course: {
+        select: {
+          code: true,
+          title: true,
+          level: true
+        }
+      }
+    }
+  });
   
   // Aggregate by course
   const stats: Record<string, {
@@ -166,7 +162,7 @@ export async function getElectiveCommentStats() {
     unresolved_comments: number;
   }> = {};
   
-  data.forEach((comment: any) => {
+  comments.forEach((comment) => {
     const code = comment.course_code;
     if (!stats[code]) {
       stats[code] = {

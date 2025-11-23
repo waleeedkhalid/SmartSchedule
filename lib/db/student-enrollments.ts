@@ -13,9 +13,12 @@
  * 2. System validates: credit limit, capacity, prerequisites
  * 3. Enrollment created with status='registered'
  * 4. Student can drop enrollment (status updated to 'dropped')
+ * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
  */
 
-import { createClient } from '@/supabase/server';
+import { db } from '@/lib/db';
+import { EnrollmentStatus } from '@prisma/client';
 import type { 
   StudentEnrollmentView, 
   AvailableElectiveSection,
@@ -26,86 +29,153 @@ import type {
 
 /**
  * Get all enrollments for a student with full course/section details
- * @param studentId - UUID of the student
+ * @param studentId - UUID of the student (StudentProfile.userId)
  * @returns Array of enrollments with joined data
  */
 export async function getStudentEnrollments(studentId: string): Promise<StudentEnrollmentView[]> {
-  const supabase = await createClient();
+  const enrollments = await db.studentEnrollment.findMany({
+    where: {
+      studentId,
+      status: 'registered' // Only active enrollments
+    },
+    include: {
+      section: {
+        include: {
+          course: true,
+          instructor: {
+            select: {
+              userId: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          },
+          room: true
+        }
+      }
+    },
+    orderBy: {
+      enrolledAt: 'desc'
+    }
+  });
   
-  // Query enrollments with all related data joined
-  // This provides everything needed to display enrollment cards in the UI
-  const { data, error } = await supabase
-    .from('student_enrollment')
-    .select(`
-      *,
-      section:section!student_enrollment_section_id_fkey(
-        *,
-        course:course!section_course_code_fkey(*),
-        instructor:instructor!section_instructor_id_fkey(id, name, email)
-      )
-    `)
-    .eq('student_id', studentId)
-    .eq('status', 'registered') // Only active enrollments
-    .order('enrolled_at', { ascending: false });
-  
-  if (error) throw error;
-  
-  // Transform database response to match our view interface
-  return (data || []).map((enrollment: any) => ({
+  // Transform Prisma response to match our view interface
+  return enrollments.map((enrollment) => ({
     id: enrollment.id,
-    student_id: enrollment.student_id,
-    section_id: enrollment.section_id,
+    student_id: enrollment.studentId,
+    section_id: enrollment.sectionId,
     status: enrollment.status,
-    enrolled_at: enrollment.enrolled_at,
-    dropped_at: enrollment.dropped_at,
+    enrolled_at: enrollment.enrolledAt.toISOString(),
+    dropped_at: enrollment.droppedAt?.toISOString() || null,
     section: {
       id: enrollment.section.id,
-      course_code: enrollment.section.course_code,
-      section_no: enrollment.section.section_no,
-      instructor_id: enrollment.section.instructor_id,
-      room_code: enrollment.section.room_code,
+      course_code: enrollment.section.courseCode,
+      section_no: enrollment.section.sectionNo,
+      instructor_id: enrollment.section.instructorId,
+      room_code: enrollment.section.roomCode,
       capacity: enrollment.section.capacity,
-      meeting_pattern: enrollment.section.meeting_pattern,
-      group_level: enrollment.section.group_level,
+      meeting_pattern: enrollment.section.meetingPattern as any,
+      group_level: enrollment.section.groupLevel,
       state: enrollment.section.state,
     },
     course: enrollment.section.course,
-    instructor: enrollment.section.instructor,
+    instructor: enrollment.section.instructor ? {
+      id: enrollment.section.instructor.userId,
+      name: enrollment.section.instructor.user.name,
+      email: enrollment.section.instructor.user.email
+    } : null,
   }));
 }
 
 /**
- * Get available elective sections for registration (DEPRECATED)
- * @deprecated Use getAvailableElectiveSectionsPaginated for better performance
- * 
- * PERFORMANCE WARNING: This function uses N+1 queries (1 section query + N count queries).
- * For 100 sections, this results in 101 database queries!
- * 
- * Use the paginated version which uses a single optimized database function.
- */
-export async function getAvailableElectiveSections(): Promise<AvailableElectiveSection[]> {
-  // Use the optimized database function instead
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .rpc('get_available_elective_sections_with_counts');
-  
-  if (error) throw error;
-  
-  return (data || []) as AvailableElectiveSection[];
-}
-
-/**
- * Get available elective sections with pagination (OPTIMIZED)
+ * Get available elective sections for registration
  * 
  * IMPORTANT: Electives have no level restrictions! Students can register for any elective
  * as long as they meet prerequisites and credit requirements. The 'level' field in the
  * course table for electives is only for organizational/categorization purposes.
  * 
- * PERFORMANCE: Uses single database query with aggregation instead of N+1 pattern.
- * - Before: 101 queries for 100 sections (1 + 100 counts)
- * - After: 1 query with JOIN and GROUP BY
- * - Improvement: 95% reduction in query count and latency
+ * @returns Array of available elective sections with capacity info
+ */
+export async function getAvailableElectiveSections(): Promise<AvailableElectiveSection[]> {
+  // Get all elective courses
+  const electiveCourses = await db.course.findMany({
+    where: {
+      isElective: true
+    },
+    include: {
+      electiveGroup: true
+    }
+  });
+  
+  const courseCodes = electiveCourses.map(c => c.code);
+  
+  // Get all sections for elective courses with enrollment counts
+  const sections = await db.section.findMany({
+    where: {
+      courseCode: {
+        in: courseCodes
+      },
+      state: 'released' // Only show released sections
+    },
+    include: {
+      course: {
+        include: {
+          electiveGroup: true
+        }
+      },
+      instructor: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      },
+      room: true,
+      enrollments: {
+        where: {
+          status: 'registered'
+        }
+      }
+    }
+  });
+  
+  // Transform to AvailableElectiveSection format
+  return sections.map((section) => {
+    const enrolledCount = section.enrollments.length;
+    const availableSeats = section.capacity - enrolledCount;
+    
+    return {
+      section_id: section.id,
+      course_code: section.courseCode,
+      course_title: section.course.title,
+      section_no: section.sectionNo,
+      course_credits: section.course.credits,
+      course_level: section.course.level,
+      elective_group_id: section.course.electiveGroupId,
+      elective_group_name: section.course.electiveGroup?.name || null,
+      instructor_id: section.instructorId,
+      instructor_name: section.instructor?.user.name || null,
+      instructor_email: section.instructor?.user.email || null,
+      room_code: section.roomCode,
+      room_type: section.room?.type || null,
+      capacity: section.capacity,
+      enrolled_count: enrolledCount,
+      available_seats: availableSeats,
+      is_full: availableSeats <= 0,
+      meeting_pattern: section.meetingPattern as any,
+      group_level: section.groupLevel,
+    } as AvailableElectiveSection;
+  });
+}
+
+/**
+ * Get available elective sections with pagination
  * 
  * @param page - Page number (1-based)
  * @param pageSize - Number of sections per page (default: 20)
@@ -120,7 +190,7 @@ export async function getAvailableElectiveSectionsPaginated(
   filters?: {
     electiveGroupId?: string
     minSeats?: number
-    onlyAvailable?: boolean  // Only show sections with seats available
+    onlyAvailable?: boolean
   },
   sortBy: 'course_code' | 'course_level' | 'available_seats' = 'course_code',
   sortOrder: 'asc' | 'desc' = 'asc'
@@ -131,39 +201,44 @@ export async function getAvailableElectiveSectionsPaginated(
   currentPage: number
   pageSize: number
 }> {
-  const supabase = await createClient();
+  // Get all available sections
+  let sections = await getAvailableElectiveSections();
   
-  // Use optimized database function (single query with aggregation)
-  let { data, error } = await supabase
-    .rpc('get_available_elective_sections_with_counts');
-  
-  if (error) throw error;
-  
-  // Apply client-side filters (consider moving to database function if performance critical)
-  let filteredData = data || [];
-  
+  // Apply filters
   if (filters?.electiveGroupId) {
-    filteredData = filteredData.filter(
-      (section: any) => section.elective_group_id === filters.electiveGroupId
-    );
+    sections = sections.filter(s => s.elective_group_id === filters.electiveGroupId);
   }
   
   if (filters?.minSeats !== undefined) {
-    filteredData = filteredData.filter(
-      (section: any) => section.available_seats >= filters.minSeats!
-    );
+    sections = sections.filter(s => s.available_seats >= filters.minSeats!);
   }
   
   if (filters?.onlyAvailable) {
-    filteredData = filteredData.filter(
-      (section: any) => section.available_seats > 0
-    );
+    sections = sections.filter(s => s.available_seats > 0);
   }
   
   // Apply sorting
-  filteredData.sort((a: any, b: any) => {
-    let aVal = a[sortBy];
-    let bVal = b[sortBy];
+  sections.sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+    
+    switch (sortBy) {
+      case 'course_code':
+        aVal = a.course_code;
+        bVal = b.course_code;
+        break;
+      case 'course_level':
+        aVal = a.course_level;
+        bVal = b.course_level;
+        break;
+      case 'available_seats':
+        aVal = a.available_seats;
+        bVal = b.available_seats;
+        break;
+      default:
+        aVal = a.course_code;
+        bVal = b.course_code;
+    }
     
     if (sortOrder === 'asc') {
       return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
@@ -172,16 +247,16 @@ export async function getAvailableElectiveSectionsPaginated(
     }
   });
   
-  const totalCount = filteredData.length;
+  const totalCount = sections.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   
   // Apply pagination
   const from = (page - 1) * pageSize;
   const to = from + pageSize;
-  const paginatedData = filteredData.slice(from, to);
+  const paginatedSections = sections.slice(from, to);
   
   return {
-    sections: paginatedData as AvailableElectiveSection[],
+    sections: paginatedSections,
     totalCount,
     totalPages,
     currentPage: page,
@@ -191,23 +266,44 @@ export async function getAvailableElectiveSectionsPaginated(
 
 /**
  * Calculate total credits for a student (required + elective)
- * Uses database function get_student_total_credits for consistency
  * 
- * @param studentId - UUID of the student
+ * @param studentId - UUID of the student (StudentProfile.userId)
  * @returns Credit breakdown object
  */
 export async function calculateStudentCredits(studentId: string): Promise<StudentCreditsInfo> {
-  const supabase = await createClient();
-  
-  // Call database function which handles all the credit calculation logic
-  // This ensures consistency with enrollment validation
-  const { data, error } = await supabase.rpc('get_student_total_credits', {
-    p_student_id: studentId
+  // Get all active enrollments with course credits
+  const enrollments = await db.studentEnrollment.findMany({
+    where: {
+      studentId,
+      status: 'registered'
+    },
+    include: {
+      section: {
+        include: {
+          course: true
+        }
+      }
+    }
   });
   
-  if (error) throw error;
+  const total = enrollments.reduce((sum, enrollment) => {
+    return sum + enrollment.section.course.credits;
+  }, 0);
   
-  return data as StudentCreditsInfo;
+  // Separate required vs elective (based on enrollmentType)
+  const required = enrollments
+    .filter(e => e.enrollmentType === 'required')
+    .reduce((sum, e) => sum + e.section.course.credits, 0);
+  
+  const elective = enrollments
+    .filter(e => e.enrollmentType === 'elective')
+    .reduce((sum, e) => sum + e.section.course.credits, 0);
+  
+  return {
+    total,
+    required,
+    elective
+  };
 }
 
 /**
@@ -217,16 +313,31 @@ export async function calculateStudentCredits(studentId: string): Promise<Studen
  * @returns Capacity information
  */
 export async function checkSectionCapacity(sectionId: string): Promise<SectionCapacityInfo> {
-  const supabase = await createClient();
-  
-  // Call database function for accurate real-time capacity check
-  const { data, error } = await supabase.rpc('check_section_capacity', {
-    p_section_id: sectionId
+  const section = await db.section.findUnique({
+    where: { id: sectionId },
+    include: {
+      enrollments: {
+        where: {
+          status: 'registered'
+        }
+      }
+    }
   });
   
-  if (error) throw error;
+  if (!section) {
+    throw new Error('Section not found');
+  }
   
-  return data as SectionCapacityInfo;
+  const enrolledCount = section.enrollments.length;
+  const availableSeats = section.capacity - enrolledCount;
+  
+  return {
+    section_id: section.id,
+    capacity: section.capacity,
+    enrolled_count: enrolledCount,
+    available_seats: availableSeats,
+    is_full: availableSeats <= 0
+  };
 }
 
 /**
@@ -240,7 +351,7 @@ export async function checkSectionCapacity(sectionId: string): Promise<SectionCa
  * 4. Verify prerequisites (V1: always pass)
  * 5. Create enrollment record
  * 
- * @param studentId - UUID of the student
+ * @param studentId - UUID of the student (StudentProfile.userId)
  * @param sectionId - UUID of the section to enroll in
  * @param enrollmentType - Type of enrollment: 'required' or 'elective' (default: 'elective')
  * @returns Success status and enrollment ID or error message
@@ -250,64 +361,62 @@ export async function enrollInSection(
   sectionId: string,
   enrollmentType: 'required' | 'elective' = 'elective'
 ): Promise<{ success: boolean; enrollmentId?: string; error?: string }> {
-  const supabase = await createClient();
-  
-  // Step 1: Check if already enrolled
-  const { data: existing, error: checkError } = await supabase
-    .from('student_enrollment')
-    .select('id')
-    .eq('student_id', studentId)
-    .eq('section_id', sectionId)
-    .eq('status', 'registered')
-    .maybeSingle();
-  
-  if (checkError) {
-    return { success: false, error: 'Failed to check existing enrollment' };
-  }
-  
-  if (existing) {
-    return { success: false, error: 'Already enrolled in this section' };
-  }
-  
-  // Step 2-4: Validate constraints (only for electives)
-  if (enrollmentType === 'elective') {
-    const { data: validation, error: validationError } = await supabase.rpc('validate_enrollment', {
-      p_student_id: studentId,
-      p_section_id: sectionId
+  try {
+    // Step 1: Check if already enrolled
+    const existing = await db.studentEnrollment.findFirst({
+      where: {
+        studentId,
+        sectionId,
+        status: 'registered'
+      }
     });
     
-    if (validationError) {
-      return { success: false, error: 'Validation failed' };
+    if (existing) {
+      return { success: false, error: 'Already enrolled in this section' };
     }
     
-    const validationResult = validation as EnrollmentValidationResult;
-    
-    if (!validationResult.success) {
-      return { success: false, error: validationResult.error };
+    // Step 2-4: Validate constraints (only for electives)
+    if (enrollmentType === 'elective') {
+      // Check credit limit
+      const credits = await calculateStudentCredits(studentId);
+      const section = await db.section.findUnique({
+        where: { id: sectionId },
+        include: { course: true }
+      });
+      
+      if (!section) {
+        return { success: false, error: 'Section not found' };
+      }
+      
+      if (credits.total + section.course.credits > 20) {
+        return { success: false, error: 'Credit limit exceeded (max 20 credits)' };
+      }
+      
+      // Check capacity
+      const capacity = await checkSectionCapacity(sectionId);
+      if (capacity.is_full) {
+        return { success: false, error: 'Section is full' };
+      }
     }
+    
+    // Step 5: All validations passed - create enrollment
+    const enrollment = await db.studentEnrollment.create({
+      data: {
+        studentId,
+        sectionId,
+        status: 'registered',
+        enrollmentType
+      }
+    });
+    
+    return { 
+      success: true, 
+      enrollmentId: enrollment.id 
+    };
+  } catch (error: any) {
+    console.error('Error enrolling student:', error);
+    return { success: false, error: error.message || 'Failed to create enrollment' };
   }
-  
-  // Step 5: All validations passed - create enrollment
-  const { data: enrollment, error: insertError } = await supabase
-    .from('student_enrollment')
-    .insert({
-      student_id: studentId,
-      section_id: sectionId,
-      status: 'registered',
-      enrollment_type: enrollmentType,
-      enrolled_at: new Date().toISOString()
-    })
-    .select('id')
-    .single();
-  
-  if (insertError) {
-    return { success: false, error: 'Failed to create enrollment' };
-  }
-  
-  return { 
-    success: true, 
-    enrollmentId: enrollment.id 
-  };
 }
 
 /**
@@ -322,53 +431,58 @@ export async function dropEnrollment(
   enrollmentId: string,
   studentId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Update enrollment status to 'dropped' and record timestamp
-  // RLS policies ensure student can only drop their own enrollments
-  const { error } = await supabase
-    .from('student_enrollment')
-    .update({
-      status: 'dropped',
-      dropped_at: new Date().toISOString(),
-    })
-    .eq('id', enrollmentId)
-    .eq('student_id', studentId) // Security: ensure student owns this enrollment
-    .eq('status', 'registered'); // Only drop active enrollments
-  
-  if (error) {
-    return { success: false, error: 'Failed to drop enrollment' };
+  try {
+    // Verify the enrollment belongs to the student
+    const enrollment = await db.studentEnrollment.findFirst({
+      where: {
+        id: enrollmentId,
+        studentId,
+        status: 'registered' // Only drop active enrollments
+      }
+    });
+    
+    if (!enrollment) {
+      return { success: false, error: 'Enrollment not found or already dropped' };
+    }
+    
+    // Update enrollment status to 'dropped'
+    await db.studentEnrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        status: 'dropped',
+        droppedAt: new Date()
+      }
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error dropping enrollment:', error);
+    return { success: false, error: error.message || 'Failed to drop enrollment' };
   }
-  
-  return { success: true };
 }
 
 /**
  * Get enrollment statistics for a student
  * Useful for displaying overview cards
  * 
- * @param studentId - UUID of the student
+ * @param studentId - UUID of the student (StudentProfile.userId)
  * @returns Enrollment counts and credit totals
  */
 export async function getEnrollmentStats(studentId: string) {
-  const supabase = await createClient();
-  
   // Get count of active enrollments
-  const { count, error: countError } = await supabase
-    .from('student_enrollment')
-    .select('*', { count: 'exact', head: true })
-    .eq('student_id', studentId)
-    .eq('status', 'registered');
-  
-  if (countError) throw countError;
+  const enrolledCount = await db.studentEnrollment.count({
+    where: {
+      studentId,
+      status: 'registered'
+    }
+  });
   
   // Get credit breakdown
   const credits = await calculateStudentCredits(studentId);
   
   return {
-    enrolled_sections: count || 0,
+    enrolled_sections: enrolledCount,
     ...credits,
     available_credits: 20 - credits.total, // How many more credits can be added
   };
 }
-

@@ -1,96 +1,208 @@
 /**
  * Database queries for courses
  * 
- * REFACTORED: Updated to use new schema fields
- * - title → name
- * - is_elective → course_type (ENUM: 'required' | 'elective')
- * - Removed: weekly_hours
+ * [INTEGRATION] Migrated to Prisma ORM
+ * - Uses Prisma schema field names (title, weeklyHours, isElective)
+ * - Transforms Prisma camelCase to snake_case for component compatibility
+ * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
  */
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import { Course, CourseInput } from '@/lib/types/database';
 
+/**
+ * [INTEGRATION] Transform Prisma Course (camelCase) to component format (snake_case)
+ * Helper function to ensure consistent data transformation
+ */
+function transformPrismaCourse(course: {
+  code: string;
+  title: string;
+  level: number;
+  credits: number;
+  weeklyHours: number;
+  isElective: boolean;
+  electiveGroupId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string | null;
+}): Course {
+  return {
+    code: course.code,
+    title: course.title,
+    level: course.level,
+    credits: course.credits,
+    weekly_hours: course.weeklyHours,
+    is_elective: course.isElective,
+    elective_group_id: course.electiveGroupId || null,
+    created_at: course.createdAt.toISOString(),
+    updated_at: course.updatedAt.toISOString(),
+    created_by: course.createdBy || null,
+  };
+}
+
 export async function getCourses() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .order('code');
+  const courses = await db.course.findMany({
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Course[];
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
 export async function getCourseByCode(code: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .eq('code', code)
-    .single();
+  const course = await db.course.findUnique({
+    where: { code }
+  });
   
-  if (error) throw error;
-  return data as Course;
+  if (!course) {
+    throw new Error(`Course with code ${code} not found`);
+  }
+  
+  // [INTEGRATION] Transform Prisma result to snake_case format
+  return transformPrismaCourse(course);
 }
 
 export async function getCoursesByLevel(level: number) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .eq('level', level)
-    .order('code');
+  const courses = await db.course.findMany({
+    where: { level },
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Course[];
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
 export async function getElectiveCourses() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .eq('course_type', 'elective')
-    .order('code');
+  const courses = await db.course.findMany({
+    where: { isElective: true },
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Course[];
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
-export async function createCourse(course: CourseInput) {
+/**
+ * Course input that accepts both snake_case (from forms) and camelCase (from CourseInput type)
+ */
+type FlexibleCourseInput = {
+  code: string;
+  title: string;
+  level: number;
+  credits: number;
+  weekly_hours?: number;
+  is_elective?: boolean;
+  elective_group_id?: string | null;
+  weeklyHours?: number;
+  isElective?: boolean;
+  electiveGroupId?: string | null;
+};
+
+export async function createCourse(course: FlexibleCourseInput | CourseInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('course')
-    .insert({ ...course, created_by: user?.id })
-    .select()
-    .single();
+  // [INTEGRATION] Accept both snake_case (from forms) and camelCase (from CourseInput)
+  // Transform snake_case to camelCase for Prisma
+  // Use type assertion to access both formats
+  const courseData = course as FlexibleCourseInput;
+  const weeklyHours = courseData.weeklyHours ?? courseData.weekly_hours;
+  const isElective = courseData.isElective ?? courseData.is_elective;
+  const electiveGroupId = courseData.electiveGroupId ?? courseData.elective_group_id;
   
-  if (error) throw error;
-  return data as Course;
+  // Validate required fields
+  if (weeklyHours === undefined) {
+    throw new Error('weeklyHours or weekly_hours is required');
+  }
+  if (isElective === undefined) {
+    throw new Error('isElective or is_elective is required');
+  }
+  
+  const created = await db.course.create({
+    data: {
+      code: course.code,
+      title: course.title,
+      level: course.level,
+      credits: course.credits,
+      weeklyHours: weeklyHours,
+      isElective: isElective,
+      electiveGroupId: electiveGroupId || null,
+      createdBy: user?.id || null
+    }
+  });
+  
+  // [INTEGRATION] Transform Prisma result to snake_case format
+  return transformPrismaCourse(created);
 }
 
-export async function updateCourse(code: string, updates: Partial<CourseInput>) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .update(updates)
-    .eq('code', code)
-    .select()
-    .single();
+/**
+ * Course update input that accepts both snake_case (from forms) and camelCase (from CourseInput type)
+ */
+type FlexibleCourseUpdate = {
+  title?: string;
+  level?: number;
+  credits?: number;
+  weekly_hours?: number;
+  is_elective?: boolean;
+  elective_group_id?: string | null;
+  weeklyHours?: number;
+  isElective?: boolean;
+  electiveGroupId?: string | null;
+};
+
+export async function updateCourse(code: string, updates: FlexibleCourseUpdate | Partial<CourseInput>) {
+  // [INTEGRATION] Accept both snake_case (from forms) and camelCase (from CourseInput)
+  // Map to Prisma schema field names (camelCase)
+  // Use type assertion to access both formats
+  const updateData = updates as FlexibleCourseUpdate;
+  const prismaUpdates: {
+    title?: string;
+    level?: number;
+    credits?: number;
+    weeklyHours?: number;
+    isElective?: boolean;
+    electiveGroupId?: string | null;
+  } = {};
   
-  if (error) throw error;
-  return data as Course;
+  if (updateData.title !== undefined) prismaUpdates.title = updateData.title;
+  if (updateData.level !== undefined) prismaUpdates.level = updateData.level;
+  if (updateData.credits !== undefined) prismaUpdates.credits = updateData.credits;
+  
+  // Handle both snake_case and camelCase for weeklyHours
+  if (updateData.weeklyHours !== undefined) {
+    prismaUpdates.weeklyHours = updateData.weeklyHours;
+  } else if (updateData.weekly_hours !== undefined) {
+    prismaUpdates.weeklyHours = updateData.weekly_hours;
+  }
+  
+  // Handle both snake_case and camelCase for isElective
+  if (updateData.isElective !== undefined) {
+    prismaUpdates.isElective = updateData.isElective;
+  } else if (updateData.is_elective !== undefined) {
+    prismaUpdates.isElective = updateData.is_elective;
+  }
+  
+  // Handle both snake_case and camelCase for electiveGroupId
+  if (updateData.electiveGroupId !== undefined) {
+    prismaUpdates.electiveGroupId = updateData.electiveGroupId;
+  } else if (updateData.elective_group_id !== undefined) {
+    prismaUpdates.electiveGroupId = updateData.elective_group_id;
+  }
+  
+  const updated = await db.course.update({
+    where: { code },
+    data: prismaUpdates
+  });
+  
+  // [INTEGRATION] Transform Prisma result to snake_case format
+  return transformPrismaCourse(updated);
 }
 
 export async function deleteCourse(code: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('course')
-    .delete()
-    .eq('code', code);
-  
-  if (error) throw error;
+  await db.course.delete({
+    where: { code }
+  });
 }
 
 /**
@@ -100,18 +212,24 @@ export async function deleteCourse(code: string) {
  * @returns Array of SWE courses in levels 4-8
  */
 export async function getSWECoursesForScheduling() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .gte('level', 4)
-    .lte('level', 8)
-    .ilike('code', 'SWE%')
-    .order('level', { ascending: true })
-    .order('code', { ascending: true });
+  const courses = await db.course.findMany({
+    where: {
+      level: {
+        gte: 4,
+        lte: 8
+      },
+      code: {
+        startsWith: 'SWE'
+      }
+    },
+    orderBy: [
+      { level: 'asc' },
+      { code: 'asc' }
+    ]
+  });
   
-  if (error) throw error;
-  return data as Course[];
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
 /**
@@ -121,16 +239,22 @@ export async function getSWECoursesForScheduling() {
  * @returns Array of external department courses
  */
 export async function getExternalCourses() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .not('code', 'ilike', 'SWE%')
-    .order('level', { ascending: true })
-    .order('code', { ascending: true });
+  const courses = await db.course.findMany({
+    where: {
+      NOT: {
+        code: {
+          startsWith: 'SWE'
+        }
+      }
+    },
+    orderBy: [
+      { level: 'asc' },
+      { code: 'asc' }
+    ]
+  });
   
-  if (error) throw error;
-  return data as Course[];
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
 /**
@@ -148,22 +272,23 @@ export async function getExternalCourses() {
  * @returns Array of courses with elective group details
  */
 export async function getCoursesWithElectiveGroups() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('course')
-    .select(`
-      *,
-      elective_group:elective_group_id (
-        id,
-        name,
-        required_credit_hours
-      )
-    `)
-    .order('level')
-    .order('code')
+  const courses = await db.course.findMany({
+    include: {
+      elective_group: {
+        select: {
+          id: true,
+          name: true,
+          required_credit_hours: true
+        }
+      }
+    },
+    orderBy: [
+      { level: 'asc' },
+      { code: 'asc' }
+    ]
+  });
   
-  if (error) throw error
-  return data
+  return courses;
 }
 
 /**
@@ -172,15 +297,12 @@ export async function getCoursesWithElectiveGroups() {
  * @returns Array of courses in the elective group
  */
 export async function getCoursesByElectiveGroup(groupId: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .eq('elective_group_id', groupId)
-    .order('code')
+  const courses = await db.course.findMany({
+    where: { elective_group_id: groupId },
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error
-  return data
+  return courses;
 }
 
 /**
@@ -189,21 +311,26 @@ export async function getCoursesByElectiveGroup(groupId: string) {
  * @returns Array of required courses for that level
  */
 export async function getRequiredCoursesByLevel(level: number) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('course')
-    .select('*')
-    .eq('level', level)
-    .eq('course_type', 'required')
-    .order('code')
+  const courses = await db.course.findMany({
+    where: {
+      level,
+      isElective: false
+    },
+    orderBy: { code: 'asc' }
+  });
   
-  if (error) throw error
-  return data
+  // [INTEGRATION] Transform Prisma results to snake_case format
+  return courses.map(transformPrismaCourse);
 }
 
 /**
  * Get paginated courses with optional search and sorting
  * Implements server-side pagination for optimal performance
+ * 
+ * [INTEGRATION] Updated to use Prisma schema fields:
+ * - Changed 'name' → 'title' to match Prisma schema
+ * - Added 'weekly_hours' to sortBy options
+ * - Transform Prisma camelCase fields to snake_case for component compatibility
  * 
  * @param page - Page number (1-based)
  * @param pageSize - Number of courses per page (default: 20)
@@ -216,42 +343,47 @@ export async function getCoursesPaginated(
   page: number = 1,
   pageSize: number = 20,
   searchTerm?: string,
-  sortBy: 'code' | 'name' | 'level' | 'credits' = 'code',
+  sortBy: 'code' | 'title' | 'level' | 'credits' | 'weekly_hours' = 'code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
-  const supabase = await createClient()
+  const skip = (page - 1) * pageSize;
   
-  // Calculate range for pagination
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+  // Build where clause - use 'title' (Prisma field name)
+  const where = searchTerm && searchTerm.trim() ? {
+    OR: [
+      { code: { contains: searchTerm.trim(), mode: 'insensitive' as const } },
+      { title: { contains: searchTerm.trim(), mode: 'insensitive' as const } }
+    ]
+  } : {};
   
-  // Build query with count
-  let query = supabase
-    .from('course')
-    .select('*', { count: 'exact' })
+  // Map sortBy field names: component uses snake_case, Prisma uses camelCase
+  const prismaSortField = sortBy === 'weekly_hours' ? 'weeklyHours' : sortBy;
   
-  // Apply search filter if provided
-  if (searchTerm && searchTerm.trim()) {
-    const searchPattern = `%${searchTerm.trim()}%`
-    query = query.or(`code.ilike.${searchPattern},name.ilike.${searchPattern}`)
-  }
+  // Build orderBy clause
+  const orderBy = { [prismaSortField]: sortOrder };
   
-  // Apply sorting and pagination
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' }).range(from, to)
+  // Execute queries in parallel
+  const [courses, totalCount] = await Promise.all([
+    db.course.findMany({
+      where,
+      orderBy,
+      skip,
+      take: pageSize
+    }),
+    db.course.count({ where })
+  ]);
   
-  const { data, error, count } = await query
+  const totalPages = Math.ceil(totalCount / pageSize);
   
-  if (error) throw error
-  
-  const totalCount = count ?? 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  // [INTEGRATION] Transform Prisma camelCase fields to snake_case for component compatibility
+  const transformedCourses = courses.map(transformPrismaCourse);
   
   return {
-    courses: data as Course[],
+    courses: transformedCourses,
     totalCount,
     totalPages,
     currentPage: page,
     pageSize
-  }
+  };
 }
 

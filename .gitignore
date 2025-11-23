@@ -56,3 +56,4 @@ supabase/studio
 supabase/studio
 
 .env.local
+/src/generated/prisma

@@ -3,38 +3,32 @@
  * 
  * REFACTORED: New file for student-specific attributes
  * Replaces student fields that were previously in user_roles table
+ * 
+ * MIGRATED: Now uses Prisma ORM instead of Supabase Client
  */
-import { createClient } from '@/supabase/server';
+import { db } from '@/lib/db';
+import type { StudentProfile as PrismaStudentProfile } from '@prisma/client';
 
 export interface StudentProfile {
-  user_id: string;
-  student_id: string;
-  current_level: number;
-  enrollment_year: number;
-  expected_graduation_year: number;
-  academic_status: 'active' | 'probation' | 'suspended' | 'graduated' | 'withdrawn';
-  max_credits_allowed: number;
-  created_at: string | null;
-  updated_at: string | null;
+  userId: string;
+  level: number;
+  studentGroupId: string | null;
+  department: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface StudentProfileCreate {
-  user_id: string;
-  student_id: string;
-  current_level: number;
-  enrollment_year: number;
-  expected_graduation_year: number;
-  academic_status?: 'active' | 'probation' | 'suspended' | 'graduated' | 'withdrawn';
-  max_credits_allowed?: number;
+  userId: string;
+  level: number;
+  studentGroupId?: string | null;
+  department?: string;
 }
 
 export interface StudentProfileUpdate {
-  student_id?: string;
-  current_level?: number;
-  enrollment_year?: number;
-  expected_graduation_year?: number;
-  academic_status?: 'active' | 'probation' | 'suspended' | 'graduated' | 'withdrawn';
-  max_credits_allowed?: number;
+  level?: number;
+  studentGroupId?: string | null;
+  department?: string;
 }
 
 /**
@@ -43,20 +37,37 @@ export interface StudentProfileUpdate {
  * @returns Student profile or null if not found
  */
 export async function getStudentProfile(userId: string): Promise<StudentProfile | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-  
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
+  try {
+    const profile = await db.studentProfile.findUnique({
+      where: { userId }
+    });
+    
+    if (!profile) return null;
+    
+    return {
+      userId: profile.userId,
+      level: profile.level,
+      studentGroupId: profile.studentGroupId,
+      department: profile.department,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    };
+  } catch (error) {
+    // Handle connection errors with helpful messages
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === 'ECONNREFUSED') {
+        console.error(
+          '\n❌ Database connection refused when fetching student profile.\n' +
+          'Please ensure:\n' +
+          '  1. Your database is running (if local: `supabase start`)\n' +
+          '  2. DATABASE_URL is correctly set in .env.local\n' +
+          '  3. The database server is accessible\n'
+        );
+      }
     }
+    // Re-throw to let caller handle
     throw error;
   }
-  return data as StudentProfile;
 }
 
 /**
@@ -64,14 +75,18 @@ export async function getStudentProfile(userId: string): Promise<StudentProfile 
  * @returns Array of student profiles
  */
 export async function getStudentProfiles(): Promise<StudentProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .order('student_id');
+  const profiles = await db.studentProfile.findMany({
+    orderBy: { userId: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as StudentProfile[];
+  return profiles.map(p => ({
+    userId: p.userId,
+    level: p.level,
+    studentGroupId: p.studentGroupId,
+    department: p.department,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  }));
 }
 
 /**
@@ -80,34 +95,40 @@ export async function getStudentProfiles(): Promise<StudentProfile[]> {
  * @returns Array of student profiles
  */
 export async function getStudentProfilesByLevel(level: number): Promise<StudentProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .eq('current_level', level)
-    .order('student_id');
+  const profiles = await db.studentProfile.findMany({
+    where: { level },
+    orderBy: { userId: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as StudentProfile[];
+  return profiles.map(p => ({
+    userId: p.userId,
+    level: p.level,
+    studentGroupId: p.studentGroupId,
+    department: p.department,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  }));
 }
 
 /**
- * Get student profiles by academic status
- * @param status - Academic status
+ * Get student profiles by student group
+ * @param studentGroupId - Student group ID
  * @returns Array of student profiles
  */
-export async function getStudentProfilesByStatus(
-  status: 'active' | 'probation' | 'suspended' | 'graduated' | 'withdrawn'
-): Promise<StudentProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .eq('academic_status', status)
-    .order('student_id');
+export async function getStudentProfilesByGroup(studentGroupId: string): Promise<StudentProfile[]> {
+  const profiles = await db.studentProfile.findMany({
+    where: { studentGroupId },
+    orderBy: { userId: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as StudentProfile[];
+  return profiles.map(p => ({
+    userId: p.userId,
+    level: p.level,
+    studentGroupId: p.studentGroupId,
+    department: p.department,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  }));
 }
 
 /**
@@ -116,20 +137,23 @@ export async function getStudentProfilesByStatus(
  * @returns Created student profile
  */
 export async function createStudentProfile(profileData: StudentProfileCreate): Promise<StudentProfile> {
-  const supabase = await createClient();
+  const created = await db.studentProfile.create({
+    data: {
+      userId: profileData.userId,
+      level: profileData.level,
+      studentGroupId: profileData.studentGroupId ?? null,
+      department: profileData.department || 'Software Engineering',
+    }
+  });
   
-  const { data, error } = await supabase
-    .from('student_profile')
-    .insert({ 
-      ...profileData,
-      academic_status: profileData.academic_status || 'active',
-      max_credits_allowed: profileData.max_credits_allowed || 21
-    })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data as StudentProfile;
+  return {
+    userId: created.userId,
+    level: created.level,
+    studentGroupId: created.studentGroupId,
+    department: created.department,
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt,
+  };
 }
 
 /**
@@ -139,16 +163,19 @@ export async function createStudentProfile(profileData: StudentProfileCreate): P
  * @returns Updated student profile
  */
 export async function updateStudentProfile(userId: string, updates: StudentProfileUpdate): Promise<StudentProfile> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .update(updates)
-    .eq('user_id', userId)
-    .select()
-    .single();
+  const updated = await db.studentProfile.update({
+    where: { userId },
+    data: updates
+  });
   
-  if (error) throw error;
-  return data as StudentProfile;
+  return {
+    userId: updated.userId,
+    level: updated.level,
+    studentGroupId: updated.studentGroupId,
+    department: updated.department,
+    createdAt: updated.createdAt,
+    updatedAt: updated.updatedAt,
+  };
 }
 
 /**
@@ -156,13 +183,9 @@ export async function updateStudentProfile(userId: string, updates: StudentProfi
  * @param userId - User ID
  */
 export async function deleteStudentProfile(userId: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('student_profile')
-    .delete()
-    .eq('user_id', userId);
-  
-  if (error) throw error;
+  await db.studentProfile.delete({
+    where: { userId }
+  });
 }
 
 /**
@@ -171,29 +194,22 @@ export async function deleteStudentProfile(userId: string): Promise<void> {
  * @returns Combined student profile and user role data
  */
 export async function getStudentWithProfile(userId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select(`
-      *,
-      user:user_roles!inner (
-        user_id,
-        name,
-        email,
-        role,
-        onboarding_completed
-      )
-    `)
-    .eq('user_id', userId)
-    .single();
-  
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
+  const profile = await db.studentProfile.findUnique({
+    where: { userId },
+    include: {
+      user: {
+        select: {
+          userId: true,
+          name: true,
+          email: true,
+          role: true,
+          onboardingCompleted: true
+        }
+      }
     }
-    throw error;
-  }
-  return data;
+  });
+  
+  return profile;
 }
 
 /**
@@ -201,24 +217,23 @@ export async function getStudentWithProfile(userId: string) {
  * @returns Array of students with profile data
  */
 export async function getAllStudentsWithProfiles() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select(`
-      *,
-      user:user_roles!inner (
-        user_id,
-        name,
-        email,
-        role,
-        onboarding_completed,
-        created_at
-      )
-    `)
-    .order('student_id');
+  const profiles = await db.studentProfile.findMany({
+    include: {
+      user: {
+        select: {
+          userId: true,
+          name: true,
+          email: true,
+          role: true,
+          onboardingCompleted: true,
+          createdAt: true
+        }
+      }
+    },
+    orderBy: { userId: 'asc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return profiles;
 }
 
 /**
@@ -232,37 +247,24 @@ export async function studentProfileExists(userId: string): Promise<boolean> {
 }
 
 /**
- * Get students by enrollment year
- * @param year - Enrollment year
+ * Get students by department
+ * @param department - Department name
  * @returns Array of student profiles
  */
-export async function getStudentsByEnrollmentYear(year: number): Promise<StudentProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .eq('enrollment_year', year)
-    .order('student_id');
+export async function getStudentsByDepartment(department: string): Promise<StudentProfile[]> {
+  const profiles = await db.studentProfile.findMany({
+    where: { department },
+    orderBy: { userId: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as StudentProfile[];
-}
-
-/**
- * Get students expected to graduate in a specific year
- * @param year - Expected graduation year
- * @returns Array of student profiles
- */
-export async function getStudentsByGraduationYear(year: number): Promise<StudentProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_profile')
-    .select('*')
-    .eq('expected_graduation_year', year)
-    .order('student_id');
-  
-  if (error) throw error;
-  return data as StudentProfile[];
+  return profiles.map(p => ({
+    userId: p.userId,
+    level: p.level,
+    studentGroupId: p.studentGroupId,
+    department: p.department,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  }));
 }
 
 

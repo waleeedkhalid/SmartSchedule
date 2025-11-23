@@ -1,78 +1,68 @@
 // Database queries for student groups
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import { StudentGroup, StudentGroupInput } from '@/lib/types/database';
 
 export async function getStudentGroups() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_group')
-    .select('*')
-    .order('level')
-    .order('name');
+  const groups = await db.studentGroup.findMany({
+    orderBy: [
+      { level: 'asc' },
+      { name: 'asc' }
+    ]
+  });
   
-  if (error) throw error;
-  return data as StudentGroup[];
+  return groups as StudentGroup[];
 }
 
 export async function getStudentGroupById(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_group')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const group = await db.studentGroup.findUnique({
+    where: { id }
+  });
   
-  if (error) throw error;
-  return data as StudentGroup;
+  if (!group) {
+    throw new Error(`Student group with id ${id} not found`);
+  }
+  
+  return group as StudentGroup;
 }
 
 export async function getStudentGroupsByLevel(level: number) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_group')
-    .select('*')
-    .eq('level', level)
-    .order('name');
+  const groups = await db.studentGroup.findMany({
+    where: { level },
+    orderBy: { name: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as StudentGroup[];
+  return groups as StudentGroup[];
 }
 
 export async function createStudentGroup(group: StudentGroupInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('student_group')
-    .insert({ ...group, created_by: user?.id })
-    .select()
-    .single();
+  const created = await db.studentGroup.create({
+    data: {
+      ...group,
+      created_by: user?.id || null
+    }
+  });
   
-  if (error) throw error;
-  return data as StudentGroup;
+  return created as StudentGroup;
 }
 
 export async function updateStudentGroup(id: string, updates: Partial<StudentGroupInput>) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('student_group')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const updated = await db.studentGroup.update({
+    where: { id },
+    data: updates
+  });
   
-  if (error) throw error;
-  return data as StudentGroup;
+  return updated as StudentGroup;
 }
 
 export async function deleteStudentGroup(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('student_group')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+  await db.studentGroup.delete({
+    where: { id }
+  });
 }
 
 /**
@@ -85,14 +75,41 @@ export async function deleteStudentGroup(id: string) {
  * @returns UUID of the assigned group
  */
 export async function autoAssignStudentToGroup(studentId: string, level: number): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('auto_assign_student_to_group', {
-    p_student_id: studentId,
-    p_level: level
+  // Convert RPC to Prisma: Auto-assign student to group with minimum size
+  // Find or create a group for this level
+  let group = await db.studentGroup.findFirst({
+    where: { level },
+    orderBy: { size: 'asc' }
   });
   
-  if (error) throw error;
-  return data as string; // Returns group_id
+  if (!group) {
+    // Create a new group if none exists
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    group = await db.studentGroup.create({
+      data: {
+        level,
+        size: 0,
+        name: `Level ${level} - Group 1`,
+        created_by: user?.id || null
+      }
+    });
+  }
+  
+  // Update student's group assignment in user_roles
+  await db.userRole.update({
+    where: { user_id: studentId },
+    data: { student_group_id: group.id }
+  });
+  
+  // Increment group size
+  await db.studentGroup.update({
+    where: { id: group.id },
+    data: { size: { increment: 1 } }
+  });
+  
+  return group.id;
 }
 
 /**
@@ -101,15 +118,20 @@ export async function autoAssignStudentToGroup(studentId: string, level: number)
  * @returns Array of students in the group
  */
 export async function getStudentsInGroup(groupId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('user_id, name, email, level')
-    .eq('student_group_id', groupId)
-    .eq('role', 'student')
-    .order('name');
+  const students = await db.userRole.findMany({
+    where: {
+      student_group_id: groupId,
+      role: 'student'
+    },
+    select: {
+      user_id: true,
+      name: true,
+      email: true,
+      level: true
+    },
+    orderBy: { name: 'asc' }
+  });
   
-  if (error) throw error;
-  return data;
+  return students;
 }
 

@@ -37,8 +37,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/supabase/client";
 import { useRouter } from "next/navigation";
+import { completeOnboarding } from "@/app/(auth)/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,6 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const router = useRouter();
-  const supabase = createClient();
   
   // Academic level options (1-8 for full system support)
   // DO NOT CHANGE THIS ARRAY. IT IS USED TO GENERATE THE LEVEL OPTIONS FOR THE SELECT DROP DOWN.
@@ -95,14 +94,12 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   }
   
   /**
-   * Submit onboarding data to Supabase
+   * Submit onboarding data - create role-specific profile
    * 
    * Process:
    * 1. Validate all required fields
-   * 2. Update user_roles table with profile data
-   * 3. Set onboarding_completed = TRUE
-   * 4. Trigger auto-sync of student groups (happens automatically via DB trigger)
-   * 5. Redirect to appropriate dashboard based on role
+   * 2. Create student_profile or faculty_profile using Prisma
+   * 3. Redirect to appropriate dashboard based on role
    */
   async function handleSubmit() {
     if (!validateForm()) {
@@ -112,41 +109,20 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     setIsSubmitting(true);
     
     try {
-      // Prepare update data based on role
-      const updateData: any = {
-        onboarding_completed: true,
-        updated_at: new Date().toISOString(),
-      };
+      // Create profile using server action
+      const result = await completeOnboarding({
+        userId,
+        role: userRole,
+        level: userRole === 'student' ? parseInt(academicLevel) : undefined,
+      });
       
-      // Add student-specific fields (only level now!)
-      if (userRole === 'student') {
-        updateData.level = parseInt(academicLevel);
-      }
-      
-      // Update user profile in database
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('user_roles')
-        .update(updateData)
-        .eq('user_id', userId)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error('Error updating profile:', {
-          error: updateError,
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code
-        });
-        toast.error(`Failed to save your profile: ${updateError.message || 'Unknown error'}`);
+      if (result?.error) {
+        toast.error(`Failed to save your profile: ${result.error}`);
+        setIsSubmitting(false);
         return;
       }
       
-      console.log('Profile updated successfully:', updatedProfile);
-      
-      // Note: Student group assignment happens during schedule generation
-      // by the scheduling committee, not during registration
+      console.log('Profile created successfully');
       
       // Success! Show success message
       toast.success('Welcome to SmartSchedule! Your profile is all set up.');
@@ -156,6 +132,14 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         // Redirect based on role
         const dashboardRoute = userRole === 'student' 
           ? '/dashboard/student'
+          : userRole === 'faculty'
+          ? '/dashboard/faculty'
+          : userRole === 'scheduling'
+          ? '/dashboard/scheduling'
+          : userRole === 'teaching_load'
+          ? '/dashboard/teaching-load'
+          : userRole === 'registrar'
+          ? '/dashboard/registrar'
           : '/dashboard';
         
         // Use hard navigation to bypass Next.js Router Cache

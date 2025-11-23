@@ -74,18 +74,23 @@ export async function GET(request: NextRequest) {
     if (wantsStats) {
       // Return enrollment statistics
       const currentSemester = await getCurrentSemester();
-      const totalCredits = await getStudentTotalCredits(user.id, semesterId || currentSemester?.id);
-      const profile = await getStudentProfile(user.id);
+      // Use semester code (Prisma schema uses 'code' as primary key, not 'id')
+      const semesterCode = semesterId || currentSemester?.code;
+      const totalCredits = await getStudentTotalCredits(user.id, semesterCode);
+      const maxCredits = 20; // Standard credit limit
       
       return NextResponse.json({
         total_credits: totalCredits,
-        max_credits: profile?.max_credits_allowed || 21,
-        remaining_credits: (profile?.max_credits_allowed || 21) - totalCredits
+        max_credits: maxCredits,
+        remaining_credits: maxCredits - totalCredits
       });
     }
     
     // Fetch enrollments with section details
-    const enrollments = await getStudentEnrollmentsWithSections(user.id, semesterId || undefined);
+    // Use semester code (Prisma schema uses 'code' as primary key)
+    const currentSemester = await getCurrentSemester();
+    const semesterCode = semesterId || currentSemester?.code;
+    const enrollments = await getStudentEnrollmentsWithSections(user.id, semesterCode);
     
     return NextResponse.json(enrollments);
     

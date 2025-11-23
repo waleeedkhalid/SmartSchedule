@@ -1,4 +1,6 @@
 // Database queries for instructors
+// MIGRATED: Now uses Prisma ORM instead of Supabase Client
+import { db } from '@/lib/db';
 import { createClient } from '@/supabase/server';
 import { Instructor, InstructorInput, InstructorLoad } from '@/lib/types/database';
 
@@ -7,14 +9,11 @@ import { Instructor, InstructorInput, InstructorLoad } from '@/lib/types/databas
  * @deprecated Use getInstructorsPaginated for better performance
  */
 export async function getInstructors() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('instructor')
-    .select('*')
-    .order('name');
+  const instructors = await db.instructor.findMany({
+    orderBy: { name: 'asc' }
+  });
   
-  if (error) throw error;
-  return data as Instructor[];
+  return instructors as Instructor[];
 }
 
 /**
@@ -35,107 +34,130 @@ export async function getInstructorsPaginated(
   sortBy: 'name' | 'email' | 'max_load_per_week' = 'name',
   sortOrder: 'asc' | 'desc' = 'asc'
 ) {
-  const supabase = await createClient()
+  const skip = (page - 1) * pageSize;
   
-  // Calculate range for pagination
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+  // Build where clause
+  const where = searchTerm && searchTerm.trim() ? {
+    OR: [
+      { name: { contains: searchTerm.trim(), mode: 'insensitive' as const } },
+      { email: { contains: searchTerm.trim(), mode: 'insensitive' as const } }
+    ]
+  } : {};
   
-  // Build query with count - select specific columns for better performance
-  let query = supabase
-    .from('instructor')
-    .select(`
-      id,
-      name,
-      email,
-      preferred_times,
-      unavailable_times,
-      max_load_per_week,
-      created_at,
-      updated_at
-    `, { count: 'exact' })
+  // Build orderBy clause
+  const orderBy = { [sortBy]: sortOrder };
   
-  // Apply search filter if provided
-  if (searchTerm && searchTerm.trim()) {
-    const searchPattern = `%${searchTerm.trim()}%`
-    query = query.or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
-  }
+  // Execute queries in parallel
+  const [instructors, totalCount] = await Promise.all([
+    db.instructor.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        preferred_times: true,
+        unavailable_times: true,
+        max_load_per_week: true,
+        created_at: true,
+        updated_at: true
+      },
+      orderBy,
+      skip,
+      take: pageSize
+    }),
+    db.instructor.count({ where })
+  ]);
   
-  // Apply sorting and pagination
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' }).range(from, to)
-  
-  const { data, error, count } = await query
-  
-  if (error) throw error
-  
-  const totalCount = count ?? 0
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   return {
-    instructors: data as Instructor[],
+    instructors: instructors as Instructor[],
     totalCount,
     totalPages,
     currentPage: page,
     pageSize
-  }
+  };
 }
 
 export async function getInstructorById(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('instructor')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const instructor = await db.instructor.findUnique({
+    where: { id }
+  });
   
-  if (error) throw error;
-  return data as Instructor;
+  if (!instructor) {
+    throw new Error(`Instructor with id ${id} not found`);
+  }
+  
+  return instructor as Instructor;
 }
 
 export async function createInstructor(instructor: InstructorInput) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data, error } = await supabase
-    .from('instructor')
-    .insert({ ...instructor, created_by: user?.id })
-    .select()
-    .single();
+  const created = await db.instructor.create({
+    data: {
+      ...instructor,
+      created_by: user?.id || null
+    }
+  });
   
-  if (error) throw error;
-  return data as Instructor;
+  return created as Instructor;
 }
 
 export async function updateInstructor(id: string, updates: Partial<InstructorInput>) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('instructor')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const updated = await db.instructor.update({
+    where: { id },
+    data: updates
+  });
   
-  if (error) throw error;
-  return data as Instructor;
+  return updated as Instructor;
 }
 
 export async function deleteInstructor(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('instructor')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
+  await db.instructor.delete({
+    where: { id }
+  });
 }
 
 export async function getInstructorLoad(instructorId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc('get_instructor_load', { p_instructor_id: instructorId });
+  // Convert RPC to Prisma: Calculate instructor load from sections
+  const sections = await db.section.findMany({
+    where: { instructor_id: instructorId },
+    include: {
+      course: {
+        select: {
+          credits: true,
+          weekly_hours: true
+        }
+      }
+    }
+  });
   
-  if (error) throw error;
-  return data as InstructorLoad;
+  const totalSections = sections.length;
+  const totalWeeklyHours = sections.reduce((sum, section) => {
+    const hours = section.course?.weekly_hours || 0;
+    return sum + hours;
+  }, 0);
+  
+  const instructor = await db.instructor.findUnique({
+    where: { id: instructorId },
+    select: {
+      max_load_per_week: true
+    }
+  });
+  
+  const maxLoad = instructor?.max_load_per_week || 12;
+  const withinLimit = totalWeeklyHours <= maxLoad;
+  
+  return {
+    instructor_id: instructorId,
+    total_sections: totalSections,
+    total_weekly_hours: totalWeeklyHours,
+    max_load_per_week: maxLoad,
+    within_load_limit: withinLimit,
+    load_percentage: maxLoad > 0 ? (totalWeeklyHours / maxLoad) * 100 : 0
+  } as InstructorLoad;
 }
 
 /**
@@ -158,30 +180,53 @@ export async function getInstructorLoad(instructorId: string) {
  * @returns Array of sections with complete details
  */
 export async function getInstructorScheduleWithDetails(instructorId: string) {
-  const supabase = await createClient()
+  // Convert RPC to Prisma: Get instructor schedule with all details
+  // Note: Exams are course-level (linked to course_code, not section_id)
+  const sections = await db.section.findMany({
+    where: { instructor_id: instructorId },
+    include: {
+      course: {
+        include: {
+          exam: {
+            select: {
+              date: true,
+              start_time: true,
+              duration_minutes: true
+            }
+          }
+        }
+      },
+      room: {
+        select: {
+          code: true
+        }
+      },
+      student_enrollment: {
+        where: {
+          status: 'registered'
+        },
+        select: {
+          id: true
+        }
+      }
+    }
+  });
   
-  const { data, error } = await supabase
-    .rpc('get_instructor_schedule_with_details', {
-      p_instructor_id: instructorId
-    })
-  
-  if (error) throw error
-  
-  return data as Array<{
-    section_id: string
-    course_code: string
-    course_title: string
-    course_credits: number
-    section_no: string
-    room_code: string | null
-    capacity: number
-    enrolled_count: number
-    meeting_pattern: any
-    state: 'draft' | 'released'
-    exam_date: string | null
-    exam_start_time: string | null
-    exam_duration_minutes: number | null
-  }>
+  return sections.map(section => ({
+    section_id: section.id,
+    course_code: section.course_code,
+    course_title: section.course?.title || '',
+    course_credits: section.course?.credits || 0,
+    section_no: section.section_no,
+    room_code: section.room?.code || null,
+    capacity: section.capacity,
+    enrolled_count: section.student_enrollment?.length || 0,
+    meeting_pattern: section.meeting_pattern,
+    state: section.state as 'draft' | 'released',
+    exam_date: section.course?.exam?.[0]?.date?.toString() || null,
+    exam_start_time: section.course?.exam?.[0]?.start_time?.toString() || null,
+    exam_duration_minutes: section.course?.exam?.[0]?.duration_minutes || null
+  }));
 }
 
 /**
@@ -194,29 +239,53 @@ export async function getInstructorScheduleWithDetails(instructorId: string) {
  * @returns Workload summary with sections and load calculations
  */
 export async function getInstructorWorkloadSummary(instructorId: string) {
-  const supabase = await createClient()
+  // Convert view query to Prisma: Calculate workload summary
+  const instructor = await db.instructor.findUnique({
+    where: { id: instructorId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      max_load_per_week: true
+    }
+  });
   
-  const { data, error } = await supabase
-    .from('instructor_workload_summary')
-    .select('*')
-    .eq('id', instructorId)
-    .single()
-  
-  if (error) throw error
-  
-  return data as {
-    id: string
-    name: string
-    email: string | null
-    max_load_per_week: number
-    total_sections: number
-    total_weekly_hours: number
-    within_load_limit: boolean
-    sections: Array<{
-      course_code: string
-      section_no: string
-      weekly_hours: number
-    }>
+  if (!instructor) {
+    throw new Error(`Instructor with id ${instructorId} not found`);
   }
+  
+  const sections = await db.section.findMany({
+    where: { instructor_id: instructorId },
+    include: {
+      course: {
+        select: {
+          code: true,
+          weekly_hours: true
+        }
+      }
+    }
+  });
+  
+  const totalSections = sections.length;
+  const totalWeeklyHours = sections.reduce((sum, section) => {
+    return sum + (section.course?.weekly_hours || 0);
+  }, 0);
+  
+  const withinLoadLimit = totalWeeklyHours <= (instructor.max_load_per_week || 12);
+  
+  return {
+    id: instructor.id,
+    name: instructor.name,
+    email: instructor.email,
+    max_load_per_week: instructor.max_load_per_week || 12,
+    total_sections: totalSections,
+    total_weekly_hours: totalWeeklyHours,
+    within_load_limit: withinLoadLimit,
+    sections: sections.map(section => ({
+      course_code: section.course_code,
+      section_no: section.section_no,
+      weekly_hours: section.course?.weekly_hours || 0
+    }))
+  };
 }
 

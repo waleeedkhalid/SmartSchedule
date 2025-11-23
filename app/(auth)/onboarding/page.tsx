@@ -25,6 +25,9 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
+import { getStudentProfile } from "@/lib/db/student-profiles";
+import { db } from "@/lib/db";
+import { OnboardingForm } from "@/components/onboarding-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -42,7 +45,7 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
   
-  // Get user's role (profile presence)
+  // Get user's role from user_roles table
   const { data: userRole, error: roleError } = await supabase
     .from('user_roles')
     .select('role, name')
@@ -50,9 +53,8 @@ export default async function OnboardingPage() {
     .maybeSingle();
   
   // User not found in user_roles table
-  // This can happen if registration didn't complete properly (RLS policy blocked INSERT)
+  // This can happen if registration didn't complete properly
   if (roleError || !userRole) {
-    // Show error instead of redirecting to prevent infinite loop
     return (
       <div className="container flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
@@ -64,7 +66,7 @@ export default async function OnboardingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This usually happens if registration didn't complete properly. Please sign out and try registering again.
+              This usually happens if registration didn&apos;t complete properly. Please sign out and try registering again.
             </p>
             {roleError && (
               <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
@@ -87,9 +89,29 @@ export default async function OnboardingPage() {
     );
   }
   
-  // Profile exists: redirect straight to appropriate dashboard
-  // (Onboarding is not required with current minimal schema)
-  if (userRole) {
+  // Check if user has role-specific profile data
+  let needsOnboarding = false;
+  
+  if (userRole.role === 'student') {
+    // Students need a student_profile record
+    const studentProfile = await getStudentProfile(user.id);
+    if (!studentProfile) {
+      needsOnboarding = true;
+    }
+  } else if (userRole.role === 'faculty') {
+    // Faculty need a faculty_profile record
+    const facultyProfile = await db.facultyProfile.findUnique({
+      where: { userId: user.id }
+    });
+    if (!facultyProfile) {
+      needsOnboarding = true;
+    }
+  }
+  // Other roles (scheduling, teaching_load, registrar) don't need separate profiles
+  // They only need user_roles entry, which already exists
+  
+  // If profile exists, redirect to dashboard
+  if (!needsOnboarding) {
     const dashboardRoute = userRole.role === 'student' 
       ? '/dashboard/student'
       : userRole.role === 'faculty'
@@ -105,37 +127,16 @@ export default async function OnboardingPage() {
     redirect(dashboardRoute);
   }
   
-  // If we reached here, profile is missing - show helpful message
+  // User needs onboarding - show onboarding form
   return (
-    <div className="container flex items-center justify-center min-h-screen">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Profile Not Found</CardTitle>
-          <CardDescription>
-            Your account exists but your profile could not be found.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This usually happens if registration didn't complete properly. Please sign out and try registering again.
-          </p>
-          {roleError && (
-            <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
-              Error: {roleError.message}
-            </div>
-          )}
-          <form action={async () => {
-            "use server";
-            const supabase = await createClient();
-            await supabase.auth.signOut();
-            redirect("/register");
-          }}>
-            <Button type="submit" className="w-full">
-              Sign Out and Register Again
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="container flex items-center justify-center min-h-screen py-12">
+      <div className="w-full max-w-2xl">
+        <OnboardingForm 
+          userId={user.id} 
+          userName={userRole.name} 
+          userRole={userRole.role as 'student' | 'faculty' | 'scheduling' | 'teaching_load' | 'registrar'} 
+        />
+      </div>
     </div>
   );
 }
