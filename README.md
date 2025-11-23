@@ -45,20 +45,95 @@ A conflict-free teaching and exam scheduling web application for the SWE departm
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Option A: Local Development with Supabase CLI (Recommended)
+
+#### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Set Up Supabase
+#### 2. Start Supabase Locally
 
-#### Create Supabase Project
+```bash
+# Start Supabase (requires Docker)
+pnpm db:start
+
+# Or if using npm scripts
+npm run db:start
+```
+
+This starts:
+- **API URL**: http://127.0.0.1:54321
+- **Studio** (Database GUI): http://127.0.0.1:54323
+- **Mailpit** (Email testing): http://127.0.0.1:54324
+- **Database**: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+#### 3. Configure Environment
+
+Create `.env.local`:
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+```
+
+#### 4. Run Migrations
+
+```bash
+# Reset database and apply all migrations
+pnpm db:reset
+
+# Or manually via Studio: http://127.0.0.1:54323 → SQL Editor
+```
+
+#### 5. Seed Sample Data (Optional)
+
+```bash
+# Load comprehensive seed data
+pnpm db:seed:external:clear
+```
+
+#### 6. Start Development Server
+
+```bash
+pnpm dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000)
+
+#### 7. Create Test Users
+
+1. Visit http://localhost:3000/register
+2. Create account and select role
+3. Check email at http://127.0.0.1:54324 (Mailpit)
+4. Click confirmation link
+5. Login and explore!
+
+**Available Roles:**
+- `scheduling` - Full access, schedule generation, all management features
+- `teaching_load` - Instructor load management, section assignment editing
+- `faculty` - Personal schedule view, feedback submission
+- `student` - Elective preferences, schedule viewing
+- `registrar` - Final validation, publication, and data export
+
+---
+
+### Option B: Remote Supabase Project
+
+#### 1. Install Dependencies
+
+```bash
+pnpm install
+```
+
+#### 2. Create Supabase Project
+
 1. Go to [supabase.com](https://supabase.com) and create a new project
 2. Wait for the project to be ready (~2 minutes)
 3. Go to **Project Settings → API** to get your credentials
 
-#### Configure Environment
+#### 3. Configure Environment
+
 ```bash
 cp .env.local.example .env.local
 ```
@@ -69,7 +144,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-### 3. Run Database Migrations
+#### 4. Run Database Migrations
 
 Go to **SQL Editor** in your Supabase dashboard and execute these files **in order**:
 
@@ -77,13 +152,17 @@ Go to **SQL Editor** in your Supabase dashboard and execute these files **in ord
 2. `supabase/migrations/20241027000002_rls_policies.sql`
 3. `supabase/migrations/20241027000003_helper_functions.sql`
 
-### 4. Create Your First User
+#### 5. Create Your First User
 
-#### Option A: Via Supabase Dashboard
-1. Go to **Authentication → Users**
-2. Click **Add User**
-3. Enter email and password
-4. After creation, go to **SQL Editor** and run:
+**Via Register Page (Recommended):**
+1. Start the dev server: `pnpm dev`
+2. Go to `/register` and create an account
+3. **Select your role** from the dropdown during registration
+4. Your role is automatically assigned - no manual SQL needed!
+
+**Via Supabase Dashboard (Alternative):**
+1. Go to **Authentication → Users** → **Add User**
+2. After creation, go to **SQL Editor** and run:
 
 ```sql
 INSERT INTO user_roles (user_id, role, name, email)
@@ -95,22 +174,7 @@ VALUES (
 );
 ```
 
-#### Option B: Via Register Page (Recommended)
-1. Start the dev server (next step)
-2. Go to `/register` and create an account
-3. **Select your role** from the dropdown during registration
-4. Your role is automatically assigned - no manual SQL needed!
-
-**Available Roles:**
-- `scheduling` - Full access, schedule generation, all management features
-- `teaching_load` - Instructor load management, section assignment editing
-- `faculty` - Personal schedule view, feedback submission
-- `student` - Elective preferences, schedule viewing
-- `registrar` - Final validation, publication, and data export
-
-**Note**: Each role sees a completely different dashboard and navigation menu tailored to their responsibilities.
-
-### 5. Start Development Server
+#### 6. Start Development Server
 
 ```bash
 pnpm dev
@@ -118,15 +182,56 @@ pnpm dev
 
 Visit [http://localhost:3000](http://localhost:3000)
 
-### 6. Load Sample Data (Optional)
+#### 7. Load Sample Data (Optional)
 
 1. Login to the dashboard
 2. Go to **Import/Export** (`/dashboard/import-export`)
-3. Use the provided `seed-data.json` file to import:
-   - 12 sample courses
-   - 10 rooms (5 lecture, 5 labs)
-   - 6 instructors
-   - 7 student groups
+3. Use the provided `seed-data.json` or `seed-data-enhanced.json` file to import:
+   - 12-52 sample courses
+   - 10-124 rooms (lecture halls and labs)
+   - 6-35 instructors
+   - 7-8 student groups
+
+---
+
+### Essential Commands
+
+**Database Management:**
+```bash
+pnpm db:start        # Start Supabase
+pnpm db:stop         # Stop Supabase
+pnpm db:reset        # Reset database (reapply migrations)
+pnpm db:status       # Check what's running
+pnpm db:studio       # Open database GUI
+pnpm db:types        # Generate TypeScript types
+```
+
+**Data Seeding:**
+```bash
+pnpm db:seed         # Load sample data
+pnpm db:seed:clear   # Clear & reload data
+pnpm db:seed:external:clear  # Load comprehensive external data
+```
+
+**Development:**
+```bash
+pnpm dev             # Start Next.js server
+pnpm build           # Build for production
+pnpm lint            # Run linter
+```
+
+---
+
+### Quick Verification
+
+After setup, verify everything works:
+
+1. **Check Setup Status**: Login → Dashboard → Setup Check
+2. **View Sample Data**: Dashboard → Courses/Rooms/Instructors
+3. **Test Import/Export**: Dashboard → Import/Export
+4. **Explore Dashboards**: Dashboard → Level Overview / Course Overview
+
+**Note**: Each role sees a completely different dashboard and navigation menu tailored to their responsibilities.
 
 ---
 
@@ -363,20 +468,72 @@ pnpm lint         # Run ESLint
 
 ## 🐛 Troubleshooting
 
-### Can't See the UI?
+### Common Issues
+
+**"Connection refused" or "Could not find table"**
+```bash
+# Check if Supabase is running (local)
+pnpm db:status
+
+# If not, start it
+pnpm db:start
+
+# Reset database to apply migrations
+pnpm db:reset
+```
+
+**"Table does not exist"**
+- Ensure all migrations ran successfully
+- Check migration order: schema → RLS → helper functions
+- Verify in Studio: http://127.0.0.1:54323 (local) or Supabase Dashboard (remote)
+
+**Can't See the UI?**
 1. Check `.env.local` exists with correct Supabase credentials
 2. Ensure all 3 migrations ran successfully
 3. Verify user has a role in `user_roles` table
+4. Check browser console for errors
 
-### Database Errors?
-- Check Supabase project is active
+**Database Errors?**
+- Check Supabase project is active (remote) or Docker is running (local)
 - Verify RLS policies are enabled
 - Check user role permissions
+- Review logs: Supabase Dashboard → Logs → Database
 
-### Import Not Working?
+**Import Not Working?**
 - Ensure JSON format matches expected structure
 - Check user has `scheduling` role
 - Verify all referenced entities exist
+- Check console for validation errors
+
+**Port Already in Use**
+```bash
+# Stop Supabase
+pnpm db:stop
+
+# Start again
+pnpm db:start
+```
+
+**Docker Not Running (Local)**
+- Start Docker Desktop first
+- Then run: `pnpm db:start`
+
+**Email Verification Issues (Local)**
+- Check Mailpit: http://127.0.0.1:54324
+- All emails are captured here (no real emails sent locally)
+- Click confirmation links from Mailpit interface
+
+**Role Not Assigned After Registration**
+- Check `user_roles` table in database
+- Verify registration form included role selection
+- For manual assignment, see SQL in Quick Start section
+
+### Getting Help
+
+- **Local Development**: See [src/docs/LOCAL_DEVELOPMENT.md](src/docs/LOCAL_DEVELOPMENT.md)
+- **Supabase CLI**: See [SUPABASE_CLI_GUIDE.md](SUPABASE_CLI_GUIDE.md)
+- **Database Issues**: Check [src/docs/RLS_FIX_SUMMARY.md](src/docs/RLS_FIX_SUMMARY.md)
+- **API Reference**: See [API_REFERENCE.md](API_REFERENCE.md)
 
 ## 📚 Additional Documentation
 
