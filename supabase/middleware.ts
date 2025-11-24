@@ -21,7 +21,8 @@ export async function updateSession(request: NextRequest) {
     '/demo',
     '/api',
     '/_next',
-    '/favicon.ico'
+    '/favicon.ico',
+    '/mobile/login'
   ];
   
   const isPublicRoute = publicRoutes.some(route => 

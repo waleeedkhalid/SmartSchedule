@@ -101,7 +101,7 @@ export interface MockStudentGroup {
 // ============================================================================
 
 const DEMO_USER_ID = 'demo-user-123';
-const DEMO_STUDENT_ID = 'demo-student-456';
+const DEMO_STUDENT_ID = 'demo-user-123'; // Same as DEMO_USER_ID for consistency
 
 // Demo account credentials (password is "demo123" for all accounts)
 export const DEMO_ACCOUNTS = {
@@ -136,7 +136,7 @@ export const mockUsers: MockUser[] = [
   {
     id: DEMO_USER_ID,
     email: DEMO_ACCOUNTS.student.email,
-    name: 'Alexandra Martinez',
+    name: 'Ahmed',
     role: 'student',
     level: 4,
     department: 'Computer Science',
@@ -147,7 +147,7 @@ export const mockUsers: MockUser[] = [
   {
     id: 'faculty-001',
     email: DEMO_ACCOUNTS.faculty.email,
-    name: 'Dr. James Chen',
+    name: 'Dr. Mohammed',
     role: 'faculty',
     department: 'Computer Science',
     onboarding_completed: true,
@@ -157,7 +157,7 @@ export const mockUsers: MockUser[] = [
   {
     id: 'scheduling-001',
     email: DEMO_ACCOUNTS.scheduling.email,
-    name: 'Sarah Johnson',
+    name: 'Abdullah',
     role: 'scheduling',
     department: 'Administration',
     onboarding_completed: true,
@@ -167,7 +167,7 @@ export const mockUsers: MockUser[] = [
   {
     id: 'teaching-load-001',
     email: DEMO_ACCOUNTS.teaching_load.email,
-    name: 'Michael Thompson',
+    name: 'Abdulrahman',
     role: 'teaching_load',
     department: 'Administration',
     onboarding_completed: true,
@@ -177,7 +177,7 @@ export const mockUsers: MockUser[] = [
   {
     id: 'registrar-001',
     email: DEMO_ACCOUNTS.registrar.email,
-    name: 'Emily Rodriguez',
+    name: 'Waleed',
     role: 'registrar',
     department: 'Administration',
     onboarding_completed: true,
@@ -211,7 +211,7 @@ export const mockCourses: MockCourse[] = [
 export const mockInstructors: MockInstructor[] = [
   {
     id: 'instructor-001',
-    name: 'Dr. James Chen',
+    name: 'Dr. Mohammed',
     email: DEMO_ACCOUNTS.faculty.email,
     user_id: 'faculty-001',
     max_load_per_week: 12,
@@ -244,8 +244,8 @@ export const mockInstructors: MockInstructor[] = [
   },
   {
     id: 'instructor-002',
-    name: 'Dr. Maria Rodriguez',
-    email: 'maria.rodriguez@university.edu',
+    name: 'Dr. Hamza',
+    email: 'hamza@university.edu',
     user_id: null,
     max_load_per_week: 10,
     preferred_times: [
@@ -270,8 +270,8 @@ export const mockInstructors: MockInstructor[] = [
   },
   {
     id: 'instructor-003',
-    name: 'Dr. Robert Kim',
-    email: 'robert.kim@university.edu',
+    name: 'Dr. Abderraouf',
+    email: 'abderraouf@university.edu',
     user_id: null,
     max_load_per_week: 12,
     preferred_times: [
@@ -296,8 +296,8 @@ export const mockInstructors: MockInstructor[] = [
   },
   {
     id: 'instructor-004',
-    name: 'Dr. Emily Watson',
-    email: 'emily.watson@university.edu',
+    name: 'Dr. Sulaiman',
+    email: 'sulaiman@university.edu',
     user_id: null,
     max_load_per_week: 10,
     preferred_times: [
