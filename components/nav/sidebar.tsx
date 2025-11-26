@@ -126,7 +126,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   teaching_load: [
     {
       title: "Dashboard",
-      href: "/dashboard/teaching-load",
+      href: "/dashboard/dashboard",
       icon: LayoutDashboard,
     },
     {
@@ -276,15 +276,49 @@ export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
           <Settings className="h-5 w-5" />
           <span>Profile</span>
         </Link>
-        <form action="/api/auth/logout" method="POST">
-          <button
-            type="submit"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-200"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Sign Out</span>
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('auth_token='))
+                ?.split('=')[1] || 
+                (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+              
+              await fetch('/api/v1/auth/logout', {
+                method: 'POST',
+                headers: {
+                  'Authorization': token ? `Bearer ${token}` : '',
+                },
+              });
+              
+              // Clear cookies and localStorage
+              document.cookie = 'auth_token=; path=/; max-age=0';
+              document.cookie = 'demo_user_id=; path=/; max-age=0';
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+              }
+              
+              window.location.href = '/login';
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Clear local storage even on error
+              document.cookie = 'auth_token=; path=/; max-age=0';
+              document.cookie = 'demo_user_id=; path=/; max-age=0';
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+              }
+              window.location.href = '/login';
+            }
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-200"
+        >
+          <LogOut className="h-5 w-5" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </div>
   );

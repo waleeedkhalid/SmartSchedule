@@ -27,22 +27,28 @@ export const API_ENDPOINTS = {
     ME: `${API_BASE_URL}/api/${API_VERSION}/auth/me`,
   },
 
-  // Semesters
-  SEMESTERS: {
-    LIST: `${API_BASE_URL}/api/${API_VERSION}/semesters`,
-    CURRENT: `${API_BASE_URL}/api/${API_VERSION}/semesters/current`,
+  // Academic Terms
+  ACADEMIC_TERMS: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/academic-terms`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/academic-terms/${id}`,
   },
 
   // Courses
   COURSES: {
     LIST: `${API_BASE_URL}/api/${API_VERSION}/courses`,
     DETAIL: (code: string) => `${API_BASE_URL}/api/${API_VERSION}/courses/${code}`,
+    CREATE: `${API_BASE_URL}/api/${API_VERSION}/courses`,
+    UPDATE: (code: string) => `${API_BASE_URL}/api/${API_VERSION}/courses/${code}`,
+    DELETE: (code: string) => `${API_BASE_URL}/api/${API_VERSION}/courses/${code}`,
   },
 
   // Sections
   SECTIONS: {
     LIST: `${API_BASE_URL}/api/${API_VERSION}/sections`,
     DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/sections/${id}`,
+    CREATE: `${API_BASE_URL}/api/${API_VERSION}/sections`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/sections/${id}`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/sections/${id}`,
   },
 
   // Enrollments
@@ -55,6 +61,10 @@ export const API_ENDPOINTS = {
   // Schedules
   SCHEDULES: {
     ME: `${API_BASE_URL}/api/${API_VERSION}/schedules/me`,
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/schedules`,
+    CREATE: `${API_BASE_URL}/api/${API_VERSION}/schedules`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/schedules/${id}`,
+    GENERATE: `${API_BASE_URL}/api/${API_VERSION}/schedules/generate`,
   },
 } as const;
 

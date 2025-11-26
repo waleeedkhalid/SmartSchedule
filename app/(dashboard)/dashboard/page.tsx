@@ -1,33 +1,24 @@
 import { redirect } from "next/navigation";
-import { getMockUserRole } from "@/lib/demo-data";
+import { getServerUser, getDashboardPath } from "@/lib/server-auth";
 
 // Force dynamic rendering - never cache this page
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
-  if (!userRole) {
-    // Fallback: redirect to student dashboard
-    redirect('/dashboard/student');
+  // If not authenticated, redirect to login
+  // Note: Layout already handles this, but we keep it here for safety
+  // If layout allows unauthenticated users through, this will catch it
+  if (!user) {
+    redirect('/login');
   }
 
   // Redirect to role-specific dashboard
-  switch (userRole.role) {
-    case 'scheduling':
-      redirect('/dashboard/scheduling');
-    case 'teaching_load':
-      redirect('/dashboard/teaching-load');
-    case 'faculty':
-      redirect('/dashboard/faculty');
-    case 'student':
-      redirect('/dashboard/student');
-    case 'registrar':
-      redirect('/dashboard/registrar');
-    default:
-      // Fallback: redirect to student dashboard
-      redirect('/dashboard/student');
-  }
+  // This is the main purpose of this page - route users to their role dashboard
+  // Middleware handles redirect loop detection and cookie clearing
+  const dashboardPath = getDashboardPath(user.role);
+  redirect(dashboardPath);
 }

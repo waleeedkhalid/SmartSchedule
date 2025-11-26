@@ -1,10 +1,12 @@
 /**
- * Current Semester Endpoint
+ * Current Semester Endpoint (Backward Compatibility)
  * 
  * GET /api/v1/semesters/current
  * 
- * Returns the currently active semester.
- * This is a convenience endpoint for clients to quickly get the active semester.
+ * Returns the currently active academic term.
+ * 
+ * NOTE: This endpoint is kept for backward compatibility.
+ * New code should use /api/v1/academic-terms and filter by status.
  */
 
 import { NextRequest } from "next/server";
@@ -19,22 +21,24 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Get current semester using database function or query
+    // Get current term (status = 'draft' or 'released', most recent first)
     const { data, error } = await supabase
-      .from("academic_semesters")
+      .from("academic_term")
       .select("*")
-      .eq("is_current", true)
+      .in("status", ["draft", "released"])
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
     if (error) {
-      // If no current semester found, return 404
+      // If no current term found, return 404
       if (error.code === "PGRST116") {
         return createSuccessResponse(null, 404);
       }
       throw error;
     }
 
-    // Map database fields to API response format
+    // Map database fields to API response format (backward compatible)
     const semester = data
       ? {
           id: data.id,
@@ -42,11 +46,8 @@ export async function GET(request: NextRequest) {
           code: data.code,
           start_date: data.start_date,
           end_date: data.end_date,
-          registration_start_date: data.registration_start_date,
-          registration_end_date: data.registration_end_date,
-          add_drop_deadline: data.add_drop_deadline,
           status: data.status,
-          is_current: data.is_current,
+          is_current: true,
           created_at: data.created_at,
         }
       : null;
@@ -56,4 +57,3 @@ export async function GET(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

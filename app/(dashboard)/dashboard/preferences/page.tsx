@@ -31,6 +31,7 @@ export default async function PreferencesPage() {
   }
 
   // Get student's current preferences
+  // Uses idx_elective_preference_student index
   const { data: preferences } = await supabase
     .from('elective_preference')
     .select(`
@@ -43,6 +44,7 @@ export default async function PreferencesPage() {
     .order('rank', { ascending: true });
 
   // Get all available elective courses
+  // Uses indexes: idx_course_is_elective, idx_course_level_elective (composite)
   const { data: electiveCourses } = await supabase
     .from('course')
     .select('*')

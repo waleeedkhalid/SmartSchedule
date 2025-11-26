@@ -4,25 +4,23 @@ import { createClient } from "@/supabase/server";
 import { Users, Calendar, BookOpen, BarChart3, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getServerUser } from "@/lib/server-auth";
 
 export default async function TeachingLoadDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
   if (!user) {
     redirect("/login");
   }
 
-  // Verify user has teaching_load role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userRole?.role !== 'teaching_load') {
+  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
+  if (user.role !== 'teaching_load') {
     redirect("/dashboard");
   }
+
+  const supabase = await createClient();
 
   // Get instructors with their section counts
   const { data: instructors } = await supabase
@@ -41,8 +39,7 @@ export default async function TeachingLoadDashboardPage() {
   ]);
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Teaching Load Committee Dashboard
@@ -109,7 +106,7 @@ export default async function TeachingLoadDashboardPage() {
             <CardContent>
               {instructors && instructors.length > 0 ? (
                 <div className="space-y-4">
-                  {instructors.map((instructor) => {
+                  {instructors.map((instructor, index) => {
                     const sectionCount = Array.isArray(instructor.section) 
                       ? instructor.section.length 
                       : 0;
@@ -118,7 +115,7 @@ export default async function TeachingLoadDashboardPage() {
                     const isOverloaded = sectionCount > maxLoad;
 
                     return (
-                      <div key={instructor.id} className="space-y-2">
+                      <div key={instructor.id || `instructor-${index}`} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="font-medium">{instructor.name}</span>
                           <span className={isOverloaded ? "text-red-600" : "text-gray-600"}>
@@ -207,7 +204,6 @@ export default async function TeachingLoadDashboardPage() {
           </Card>
         </div>
       </div>
-    </div>
   );
 }
 

@@ -34,7 +34,11 @@ export async function GET(request: NextRequest) {
         const schedule = await getMockStudentSchedule(user.id, user.level);
         
         // Transform to match API response format
-        const scheduleItems = schedule.sections.map((section: {
+        // Ensure schedule.sections is an array
+        const sectionsArray = (schedule?.sections && Array.isArray(schedule.sections)) 
+          ? schedule.sections 
+          : [];
+        const scheduleItems = sectionsArray.map((section: {
           id: string;
           course_code: string;
           course_title: string;
@@ -155,16 +159,18 @@ export async function GET(request: NextRequest) {
     // Handle real Supabase mode
     const supabase = await createClient();
 
-    // Determine semester_id (use provided or current)
-    let finalSemesterId = semesterId;
-    if (!finalSemesterId) {
-      const { data: currentSemester } = await supabase
-        .from("academic_semesters")
+    // Determine term_id (use provided or current active term)
+    let finalTermId = semesterId; // Keep parameter name for backward compatibility
+    if (!finalTermId) {
+      const { data: currentTerm } = await supabase
+        .from("academic_term")
         .select("id")
-        .eq("is_current", true)
+        .in("status", ["draft", "released"])
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single();
 
-      if (!currentSemester) {
+      if (!currentTerm) {
         return createSuccessResponse(
           {
             student_id: user.id,
@@ -177,23 +183,45 @@ export async function GET(request: NextRequest) {
           200
         );
       }
-      finalSemesterId = currentSemester.id;
+      finalTermId = currentTerm.id;
     }
 
     // Build schedule based on user role
     if (user.role === "student") {
+      // Get sections in schedule for this term, then filter by student enrollments
+      const { data: scheduleSections } = await supabase
+        .from("schedule")
+        .select("section_id")
+        .eq("term_id", finalTermId);
+
+      const sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
+
+      if (sectionIds.length === 0) {
+        return createSuccessResponse(
+          {
+            student_id: user.id,
+            level: user.level,
+            student_name: user.name,
+            semester_id: finalTermId,
+            schedule: [],
+            is_empty: true,
+          },
+          200
+        );
+      }
+
       // Get student enrollments with section details
       const { data: enrollments, error: enrollError } = await supabase
         .from("student_enrollment")
         .select(`
           id,
           enrollment_id:id,
-          course_code,
           section:section_id (
             id,
             section_id:id,
             section_no,
-            type:meeting_pattern->type,
+            course_code,
+            activity,
             instructor:instructor_id (
               name
             ),
@@ -209,8 +237,8 @@ export async function GET(request: NextRequest) {
           )
         `)
         .eq("student_id", user.id)
-        .eq("academic_semester_id", finalSemesterId)
-        .eq("status", "enrolled");
+        .eq("status", "registered")
+        .in("section_id", sectionIds);
 
       if (enrollError) {
         throw enrollError;
@@ -220,7 +248,8 @@ export async function GET(request: NextRequest) {
       const scheduleMap = new Map<string, any>();
 
       (enrollments || []).forEach((enrollment: any) => {
-        const courseCode = enrollment.course_code || enrollment.section?.course?.code;
+        // Fix: course_code doesn't exist on enrollment, it comes from section.course.code
+        const courseCode = enrollment.section?.course?.code;
         if (!courseCode || !enrollment.section) return;
 
         if (!scheduleMap.has(courseCode)) {
@@ -237,7 +266,8 @@ export async function GET(request: NextRequest) {
         courseEntry.sections.push({
           section_id: enrollment.section.section_id,
           section_no: enrollment.section.section_no,
-          type: enrollment.section.type || "lecture",
+          // Fix: query selects 'activity' field, not 'type'
+          type: enrollment.section.activity || "lecture",
           instructor: enrollment.section.instructor?.name || "TBA",
           room: enrollment.section.room?.code || "TBA",
           meeting_pattern: enrollment.section.meeting_pattern,
@@ -251,7 +281,7 @@ export async function GET(request: NextRequest) {
           student_id: user.id,
           level: user.level,
           student_name: user.name,
-          semester_id: finalSemesterId,
+          semester_id: finalTermId,
           schedule,
           is_empty: schedule.length === 0,
         },
@@ -259,6 +289,7 @@ export async function GET(request: NextRequest) {
       );
     } else if (user.role === "faculty") {
       // Get faculty's assigned sections
+      // Uses idx_instructor_user_id index
       const { data: instructor, error: instructorError } = await supabase
         .from("instructor")
         .select("id")
@@ -270,7 +301,7 @@ export async function GET(request: NextRequest) {
           {
             instructor_id: null,
             instructor_name: user.name,
-            semester_id: finalSemesterId,
+            semester_id: finalTermId,
             schedule: [],
             is_empty: true,
           },
@@ -278,6 +309,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Fix: Filter sections by instructor_id first, then check if they're in the schedule
+      // This ensures we only get sections assigned to this instructor
+      // Uses idx_section_instructor_id index
       const { data: sections, error: sectionsError } = await supabase
         .from("section")
         .select(`
@@ -293,33 +327,78 @@ export async function GET(request: NextRequest) {
             code
           ),
           meeting_pattern,
-          capacity,
-          current_enrollment
+          capacity
         `)
-        .eq("instructor_id", instructor.id)
-        .eq("academic_semester_id", finalSemesterId);
+        .eq("instructor_id", instructor.id);
 
       if (sectionsError) {
         throw sectionsError;
       }
 
-      const schedule = (sections || []).map((section: any) => ({
-        section_id: section.section_id,
-        section_no: section.section_no,
-        course_code: section.course?.code || "",
-        course_name: section.course?.title || "",
-        credits: section.course?.credits || 0,
-        room: section.room?.code || "TBA",
-        meeting_pattern: section.meeting_pattern,
-        capacity: section.capacity,
-        current_enrollment: section.current_enrollment || 0,
-      }));
+      if (!sections || sections.length === 0) {
+        return createSuccessResponse(
+          {
+            instructor_id: instructor.id,
+            instructor_name: user.name,
+            semester_id: finalTermId,
+            schedule: [],
+            is_empty: true,
+          },
+          200
+        );
+      }
+
+      // Get sections in schedule for this term to filter by term
+      // Uses idx_schedule_term_id and idx_schedule_section_id indexes
+      const sectionIds = (sections || []).map((s: any) => s.id);
+      const { data: scheduleSections } = await supabase
+        .from("schedule")
+        .select("section_id")
+        .eq("term_id", finalTermId)
+        .in("section_id", sectionIds);
+
+      const scheduledSectionIds = new Set(
+        (scheduleSections || []).map((s: any) => s.section_id)
+      );
+
+      // Filter sections to only include those in the schedule for this term
+      const filteredSections = sections.filter((section: any) => 
+        scheduledSectionIds.has(section.id)
+      );
+
+      if (sectionsError) {
+        throw sectionsError;
+      }
+
+      // Calculate current enrollment for each section
+      const schedule = await Promise.all(
+        (filteredSections || []).map(async (section: any) => {
+          // Count registered enrollments for this section
+          const { count } = await supabase
+            .from("student_enrollment")
+            .select("*", { count: "exact", head: true })
+            .eq("section_id", section.id)
+            .eq("status", "registered");
+
+          return {
+            section_id: section.section_id,
+            section_no: section.section_no,
+            course_code: section.course?.code || "",
+            course_name: section.course?.title || "",
+            credits: section.course?.credits || 0,
+            room: section.room?.code || "TBA",
+            meeting_pattern: section.meeting_pattern,
+            capacity: section.capacity,
+            current_enrollment: count || 0,
+          };
+        })
+      );
 
       return createSuccessResponse(
         {
           instructor_id: instructor.id,
           instructor_name: user.name,
-          semester_id: finalSemesterId,
+          semester_id: finalTermId,
           schedule,
           is_empty: schedule.length === 0,
         },

@@ -3,15 +3,16 @@
  * 
  * POST /api/v1/auth/logout
  * 
- * Invalidates the user's session.
+ * Invalidates the user's session and clears authentication cookies.
  * This endpoint works identically for all clients - they just need to
  * send the Authorization header with their token.
  */
 
-import { NextRequest } from "next/server";
-import { authenticateRequest } from "@/lib/api/auth-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { authenticateRequest, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { cookies } from "next/headers";
 
 interface LogoutResponse {
   success: boolean;
@@ -20,33 +21,77 @@ interface LogoutResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate to get user (validates token)
-    const user = await authenticateRequest(request);
+    // Try to authenticate (but don't fail if token is invalid - we still want to logout)
+    let isDemo = false;
+    try {
+      const user = await authenticateRequest(request);
+      const token = extractAuthToken(request);
+      isDemo = token?.startsWith("demo:") === true;
+    } catch (error) {
+      // If authentication fails, we still proceed with logout
+      // This handles cases where token is expired or invalid
+      const token = extractAuthToken(request);
+      isDemo = token?.startsWith("demo:") === true;
+    }
 
-    // Check if this is a demo token
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    const isDemo = token?.startsWith("demo:") === true;
-
-    if (isDemo !== true) {
-      // Only sign out from Supabase if it's a real token
-      const supabase = await createClient();
-
-      // Sign out the user
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
+    // Sign out from Supabase if it's a real token
+    if (!isDemo) {
+      try {
+        const supabase = await createClient();
+        await supabase.auth.signOut();
+      } catch (error) {
         // Even if signOut fails, we consider logout successful
-        // (token will expire naturally)
-        console.error("Logout error:", error);
+        console.error("Supabase signOut error:", error);
       }
     }
 
+    // Clear authentication cookies
+    const cookieStore = await cookies();
+    cookieStore.delete('auth_token');
+    cookieStore.delete('demo_user_id');
+    cookieStore.set('auth_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+    cookieStore.set('demo_user_id', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    // Fix: Use createSuccessResponse for consistency with other endpoints
     const response: LogoutResponse = {
       success: true,
       message: "Successfully logged out",
     };
 
-    return createSuccessResponse(response, 200);
+    // Create response with cleared cookies using createSuccessResponse
+    const nextResponse = createSuccessResponse(response, 200);
+    
+    // Clear cookies in response headers
+    nextResponse.cookies.delete('auth_token');
+    nextResponse.cookies.delete('demo_user_id');
+    nextResponse.cookies.set('auth_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+    nextResponse.cookies.set('demo_user_id', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return nextResponse;
   } catch (error) {
     return handleApiError(error);
   }

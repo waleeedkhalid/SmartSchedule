@@ -65,7 +65,6 @@ export default function TeachingLoadDashboardPage() {
         borderColor: 'rgb(239, 68, 68)',
         borderWidth: 2,
         borderRadius: 8,
-        type: 'line' as const,
       },
     ],
   };
@@ -136,7 +135,7 @@ export default function TeachingLoadDashboardPage() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 600 },
           usePointStyle: true,
         },
       },
@@ -157,7 +156,7 @@ export default function TeachingLoadDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 500 },
           padding: 8,
         },
         border: { display: false },
@@ -168,7 +167,7 @@ export default function TeachingLoadDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 600 },
           padding: 8,
         },
         border: { display: false },
@@ -184,7 +183,7 @@ export default function TeachingLoadDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 600 },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -230,7 +229,7 @@ export default function TeachingLoadDashboardPage() {
           backdropColor: 'transparent',
         },
         pointLabels: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 600 },
         },
         grid: { color: 'rgba(0, 0, 0, 0.08)' },
         angleLines: { color: 'rgba(0, 0, 0, 0.08)' },
@@ -486,8 +485,6 @@ export default function TeachingLoadDashboardPage() {
                   { label: 'Lectures', value: 85, color: 'blue' },
                   { label: 'Labs', value: 72, color: 'green' },
                   { label: 'Tutorials', value: 58, color: 'purple' },
-                  { label: 'Projects', value: 45, color: 'orange' },
-                  { label: 'Seminars', value: 30, color: 'pink' }
                 ].map((item) => (
                   <div key={item.label} className="text-center p-4 bg-gray-50 rounded-lg border">
                     <p className="text-sm font-semibold text-gray-700">{item.label}</p>

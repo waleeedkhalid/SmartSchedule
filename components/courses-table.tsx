@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useCallback } from "react";
-import { Course } from "@/lib/types/database";
+import { memo, useCallback, useState } from "react";
+import { Course } from "@/lib/data/courses";
 import {
   Table,
   TableBody,
@@ -13,10 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { isSWESchedulableCourse } from "@/lib/utils/course-utils";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { CourseActionDialog, ActionType } from "@/components/course-action-dialog";
+import { useCourseDialog } from "@/components/courses-client";
 
 interface CoursesTableProps {
   courses: Course[];
@@ -24,24 +26,61 @@ interface CoursesTableProps {
 
 function CoursesTableComponent({ courses }: CoursesTableProps) {
   const router = useRouter();
+  const { openEditDialog } = useCourseDialog();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState<ActionType>("delete");
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Memoize delete handler to prevent recreation on every render
-  const handleDelete = useCallback(async (code: string) => {
-    if (!confirm(`Are you sure you want to delete course ${code}?`)) {
-      return;
-    }
+  // Handle delete action
+  const handleDelete = useCallback(async (course: Course) => {
+    setDialogAction("delete");
+    setSelectedCourse(course);
+    setDialogOpen(true);
+  }, []);
 
+  // Handle edit action
+  const handleEdit = useCallback((course: Course) => {
+    setDialogAction("edit");
+    setSelectedCourse(course);
+    setDialogOpen(true);
+  }, []);
+
+  // Confirm delete action
+  const confirmDelete = useCallback(async () => {
+    if (!selectedCourse) return;
+
+    setIsLoading(true);
     try {
-      // DEMO MODE: Simulate delete action
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
-      
-      toast.success(`Course ${code} deleted successfully (Demo Mode: Not saved)`);
+      const response = await fetch(`/api/v1/courses/${selectedCourse.code}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': getAuthHeader(),
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete course');
+      }
+
+      toast.success(`Course ${selectedCourse.code} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete course (Demo Mode)");
+      toast.error(error instanceof Error ? error.message : "Failed to delete course");
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [router])
+  }, [selectedCourse, router]);
+
+  // Confirm edit action - opens the course form dialog
+  const confirmEdit = useCallback(() => {
+    if (!selectedCourse) return;
+    setDialogOpen(false);
+    openEditDialog(selectedCourse);
+  }, [selectedCourse, openEditDialog]);
 
   if (courses.length === 0) {
     return (
@@ -54,7 +93,7 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
             <TableHead>Code</TableHead>
             <TableHead>Title</TableHead>
@@ -94,18 +133,16 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button
-                  asChild
                   variant="ghost"
                   size="sm"
+                  onClick={() => handleEdit(course)}
                 >
-                  <Link href={`/dashboard/courses/${course.code}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
+                  <Edit className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(course.code)}
+                  onClick={() => handleDelete(course)}
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
@@ -114,6 +151,19 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
           ))}
         </TableBody>
       </Table>
+
+      {/* Action Confirmation Dialog */}
+      {selectedCourse && (
+        <CourseActionDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          action={dialogAction}
+          courseCode={selectedCourse.code}
+          courseName={selectedCourse.title}
+          onConfirm={dialogAction === "delete" ? confirmDelete : confirmEdit}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

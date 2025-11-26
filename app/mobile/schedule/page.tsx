@@ -117,7 +117,7 @@ export default function SchedulePage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {schedule.schedule && schedule.schedule.length > 0 ? (
+                {schedule.schedule && Array.isArray(schedule.schedule) && schedule.schedule.length > 0 ? (
                   schedule.schedule.map((item, index) => {
                     // Handle both student and faculty schedule formats
                     const courseCode = "course_code" in item ? item.course_code : item.course_code;

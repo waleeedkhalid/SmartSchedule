@@ -112,38 +112,110 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     setIsSubmitting(true);
     
     try {
-      // Prepare update data based on role
-      const updateData: any = {
-        onboarding_completed: true,
-        updated_at: new Date().toISOString(),
-      };
+      // CRITICAL FIX: Create profile FIRST, then set onboarding_completed flag
+      // This prevents inconsistent state if profile creation fails
       
-      // Add student-specific fields (only level now!)
+      // Create role-specific profile based on user role
+      let profileCreated = false;
+      
       if (userRole === 'student') {
-        updateData.level = parseInt(academicLevel);
+        // Create student_profile for students
+        const { error: profileError } = await supabase
+          .from('student_profile')
+          .insert({
+            user_id: userId,
+            level: parseInt(academicLevel),
+            department: 'Software Engineering',
+          });
+        
+        if (profileError) {
+          console.error('Error creating student_profile:', {
+            error: profileError,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code
+          });
+          toast.error(`Failed to create student profile: ${profileError.message || 'Unknown error'}`);
+          setIsSubmitting(false);
+          return;
+        }
+        profileCreated = true;
+      } else if (userRole === 'faculty') {
+        // Create faculty_profile for faculty
+        const { error: profileError } = await supabase
+          .from('faculty_profile')
+          .insert({
+            user_id: userId,
+            department: 'Software Engineering',
+            // instructor_id can be linked later via email matching
+          });
+        
+        if (profileError) {
+          console.error('Error creating faculty_profile:', {
+            error: profileError,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code
+          });
+          toast.error(`Failed to create faculty profile: ${profileError.message || 'Unknown error'}`);
+          setIsSubmitting(false);
+          return;
+        }
+        profileCreated = true;
+      } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole)) {
+        // Create committee_profile for committee roles
+        const { error: profileError } = await supabase
+          .from('committee_profile')
+          .insert({
+            user_id: userId,
+            committee_role: userRole,
+            department: 'Software Engineering',
+          });
+        
+        if (profileError) {
+          console.error('Error creating committee_profile:', {
+            error: profileError,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code
+          });
+          toast.error(`Failed to create committee profile: ${profileError.message || 'Unknown error'}`);
+          setIsSubmitting(false);
+          return;
+        }
+        profileCreated = true;
       }
       
-      // Update user profile in database
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('user_roles')
-        .update(updateData)
-        .eq('user_id', userId)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error('Error updating profile:', {
-          error: updateError,
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code
-        });
-        toast.error(`Failed to save your profile: ${updateError.message || 'Unknown error'}`);
-        return;
+      // Only set onboarding_completed = true AFTER profile is successfully created
+      // This ensures atomicity: either both succeed or both fail
+      if (profileCreated) {
+        const { error: updateError } = await supabase
+          .from('user_roles')
+          .update({
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+        
+        if (updateError) {
+          console.error('Error updating user_roles:', {
+            error: updateError,
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint,
+            code: updateError.code
+          });
+          toast.error(`Failed to complete onboarding: ${updateError.message || 'Unknown error'}`);
+          // Profile was created but flag update failed - user can retry
+          setIsSubmitting(false);
+          return;
+        }
       }
       
-      console.log('Profile updated successfully:', updatedProfile);
+      console.log('Profile setup completed successfully');
       
       // Note: Student group assignment happens during schedule generation
       // by the scheduling committee, not during registration
@@ -153,9 +225,17 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       
       // Small delay to show success message, then redirect
       setTimeout(() => {
-        // Redirect based on role
+        // Redirect based on role to appropriate dashboard
         const dashboardRoute = userRole === 'student' 
           ? '/dashboard/student'
+          : userRole === 'faculty'
+          ? '/dashboard/faculty'
+          : userRole === 'scheduling'
+          ? '/dashboard/scheduling'
+          : userRole === 'teaching_load'
+          ? '/dashboard/teaching-load'
+          : userRole === 'registrar'
+          ? '/dashboard/registrar'
           : '/dashboard';
         
         // Use hard navigation to bypass Next.js Router Cache

@@ -103,7 +103,7 @@ export async function getAuthenticatedUser(
   // Fetch user role from user_roles table
   const { data: userRole, error: roleError } = await supabase
     .from("user_roles")
-    .select("role, name, email, level")
+    .select("role, name, email")
     .eq("user_id", user.id)
     .single();
 
@@ -115,12 +115,26 @@ export async function getAuthenticatedUser(
     );
   }
 
+  // Fetch student level from student_profile if user is a student
+  let studentLevel: number | undefined = undefined;
+  if (userRole.role === 'student') {
+    const { data: studentProfile } = await supabase
+      .from("student_profile")
+      .select("level")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (studentProfile) {
+      studentLevel = studentProfile.level;
+    }
+  }
+
   return {
     id: user.id,
     email: userRole.email,
     role: userRole.role,
     name: userRole.name,
-    level: userRole.level ?? undefined,
+    level: studentLevel,
   };
 }
 

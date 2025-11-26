@@ -234,7 +234,11 @@ export function StudentScheduleView() {
                     </td>
                     {DAYS.map(day => {
                       // Find sections that occupy this slot
-                      const sectionsInSlot = schedule.sections.filter(
+                      // Ensure schedule.sections is an array
+                      const sections = (schedule?.sections && Array.isArray(schedule.sections)) 
+                        ? schedule.sections 
+                        : [];
+                      const sectionsInSlot = sections.filter(
                         section => sectionOccupiesSlot(section, day, timeSlot)
                       );
 
@@ -288,11 +292,12 @@ export function StudentScheduleView() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
-            {schedule.sections.map(section => (
-              <div
-                key={section.id}
-                className="flex items-start justify-between p-3 border rounded-lg"
-              >
+            {schedule && schedule.sections && Array.isArray(schedule.sections) 
+              ? schedule.sections.map(section => (
+                  <div
+                    key={section.id}
+                    className="flex items-start justify-between p-3 border rounded-lg"
+                  >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{section.course_code}</span>
@@ -340,7 +345,12 @@ export function StudentScheduleView() {
                   </div>
                 </div>
               </div>
-            ))}
+                ))
+              : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No sections found in schedule
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>

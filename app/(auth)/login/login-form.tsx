@@ -1,10 +1,9 @@
 "use client";
 
-import { useTransition, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
-import { login } from '../actions'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -22,6 +21,7 @@ import {
 import { PasswordInput } from '@/components/ui/password-input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
+import { DEMO_ACCOUNTS } from '@/lib/demo-data'
 
 const loginSchema = z.object({
   email: z
@@ -34,7 +34,7 @@ const loginSchema = z.object({
 })
 
 export default function LoginForm() {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const searchParams = useSearchParams()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -63,38 +63,91 @@ export default function LoginForm() {
     }
   }, [confirmationMessage])
 
-  const onSubmit = useCallback(
-    async (values: z.infer<typeof loginSchema>) => {
-      startTransition(async () => {
-        const response = await login(values)
+  const handleLogin = useCallback(
+    async (email: string, password: string) => {
+      setIsPending(true);
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
 
-        if (response.error) {
-          // More specific error messages
-          const errorMessage = response.error.toLowerCase()
+        const result = await response.json();
+
+        if (!response.ok) {
+          const errorMessage = result.error?.toLowerCase() || 'Login failed';
           if (
             errorMessage.includes('invalid') ||
-            errorMessage.includes('credentials')
+            errorMessage.includes('credentials') ||
+            errorMessage.includes('password')
           ) {
-            toast.error('Invalid email or password. Please try again.')
+            toast.error('Invalid email or password. Please try again.');
           } else if (
             errorMessage.includes('email') &&
             errorMessage.includes('confirm')
           ) {
-            toast.error('Please confirm your email address before signing in.')
+            toast.error('Please confirm your email address before signing in.');
           } else {
             toast.error(
               'Unable to sign in. Please check your credentials and try again.'
-            )
+            );
           }
-          return
+          return;
         }
 
-        queryClient.invalidateQueries({ queryKey: ['user'] })
-        router.push(redirectTo)
-        toast.success('Welcome back!')
-      })
+        // Cookies are now set by the API route, no need to set them client-side
+        // Invalidate queries to refresh user data
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+
+        // Redirect based on role
+        const role = result.data?.user?.role;
+        let dashboardPath = '/dashboard';
+        if (role === 'student') {
+          dashboardPath = '/dashboard/student';
+        } else if (role === 'faculty') {
+          dashboardPath = '/dashboard/faculty';
+        } else if (role === 'scheduling') {
+          dashboardPath = '/dashboard/scheduling';
+        } else if (role === 'teaching_load') {
+          dashboardPath = '/dashboard/teaching-load';
+        } else if (role === 'registrar') {
+          dashboardPath = '/dashboard/registrar';
+        }
+
+        toast.success('Welcome back!');
+        
+        // Use window.location for a full page reload to ensure cookies are available
+        // This ensures middleware can see the cookies immediately
+        const finalPath = redirectTo === '/dashboard' ? dashboardPath : redirectTo;
+        window.location.href = finalPath;
+      } catch (error) {
+        console.error('Login error:', error);
+        toast.error('An error occurred during login. Please try again.');
+      } finally {
+        setIsPending(false);
+      }
     },
     [queryClient, redirectTo, router]
+  );
+
+  const onSubmit = useCallback(
+    async (values: z.infer<typeof loginSchema>) => {
+      await handleLogin(values.email, values.password);
+    },
+    [handleLogin]
+  );
+
+  const handleDemoLogin = useCallback(
+    async (role: keyof typeof DEMO_ACCOUNTS) => {
+      const account = DEMO_ACCOUNTS[role];
+      form.setValue('email', account.email);
+      form.setValue('password', account.password);
+      await handleLogin(account.email, account.password);
+    },
+    [handleLogin, form]
   )
 
   return (
@@ -197,32 +250,62 @@ export default function LoginForm() {
         </Link>
       </Button>
 
-      {/* Demo Accounts Info */}
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+      {/* Demo Account Quick Login - Clickable Buttons */}
+      <div className="mt-6 pt-6 border-t">
+        <p className="text-sm text-muted-foreground mb-3 text-center">
           Demo Accounts (Password: demo123)
         </p>
-        <div className="space-y-1 text-xs text-blue-800 dark:text-blue-200">
-          <div className="flex justify-between">
-            <span className="font-medium">Student:</span>
-            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">student@demo.com</code>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Faculty:</span>
-            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">faculty@demo.com</code>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Scheduling:</span>
-            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">scheduling@demo.com</code>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Teaching Load:</span>
-            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">teaching-load@demo.com</code>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Registrar:</span>
-            <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">registrar@demo.com</code>
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoLogin("student")}
+            disabled={isPending}
+            className="text-xs"
+          >
+            Student
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoLogin("faculty")}
+            disabled={isPending}
+            className="text-xs"
+          >
+            Faculty
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoLogin("scheduling")}
+            disabled={isPending}
+            className="text-xs"
+          >
+            Scheduling
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoLogin("teaching_load")}
+            disabled={isPending}
+            className="text-xs"
+          >
+            Load
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoLogin("registrar")}
+            disabled={isPending}
+            className="text-xs col-span-2"
+          >
+            Registrar
+          </Button>
         </div>
       </div>
     </div>

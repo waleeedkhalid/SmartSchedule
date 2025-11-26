@@ -75,12 +75,27 @@ export function StudentDashboardCharts() {
       const dayCredits: Record<string, number> = {};
       days.forEach(day => dayCredits[day] = 0);
       
-      schedule.forEach(section => {
-        const pattern = section.meeting_pattern;
-        if (pattern?.days) {
-          pattern.days.forEach((day: string) => {
-            if (dayCredits.hasOwnProperty(day)) {
-              dayCredits[day] += section.credits || 3;
+      // Fix: Schedule API returns courses with sections array, not flat sections
+      // Ensure schedule is an array of courses
+      const scheduleArray = Array.isArray(schedule) 
+        ? schedule 
+        : (schedule?.schedule && Array.isArray(schedule.schedule))
+          ? schedule.schedule
+          : [];
+      
+      // Iterate through each course and then through its sections
+      scheduleArray.forEach((course: any) => {
+        if (course.sections && Array.isArray(course.sections)) {
+          course.sections.forEach((section: any) => {
+            const pattern = section.meeting_pattern;
+            if (pattern?.days && Array.isArray(pattern.days)) {
+              // Use course credits (each section belongs to a course)
+              const credits = course.credits || section.credits || 3;
+              pattern.days.forEach((day: string) => {
+                if (dayCredits.hasOwnProperty(day)) {
+                  dayCredits[day] += credits;
+                }
+              });
             }
           });
         }

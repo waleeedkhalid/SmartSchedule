@@ -44,26 +44,55 @@ export default function UserAuthState() {
   const queryClient = useQueryClient();
 
   async function removeUser() {
-    startTransision(async () => {
-      try {
-        // Use the logout API route
-        const response = await fetch('/api/auth/logout', {
-          method: 'POST',
-        });
-        
-        if (response.ok) {
+      startTransision(async () => {
+        try {
+          // Get token from cookie or localStorage
+          const token = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('auth_token='))
+            ?.split('=')[1] || 
+            (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+          
+          // Use the unified logout API route
+          const response = await fetch('/api/v1/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+          });
+          
+          // Clear cookies and localStorage
+          document.cookie = 'auth_token=; path=/; max-age=0';
+          document.cookie = 'demo_user_id=; path=/; max-age=0';
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
+          
+          if (response.ok) {
+            queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
+            toast.success("You're logged out!");
+            window.location.href = '/login';
+          } else {
+            // Even if API fails, clear local storage and redirect
+            queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
+            toast.success("You're logged out!");
+            window.location.href = '/login';
+          }
+        } catch (error) {
+          console.error('Logout error:', error);
+          // Clear local storage even on error
+          document.cookie = 'auth_token=; path=/; max-age=0';
+          document.cookie = 'demo_user_id=; path=/; max-age=0';
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
           queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
           toast.success("You're logged out!");
-          // Redirect will be handled by the API route
           window.location.href = '/login';
-        } else {
-          toast.error("Something went wrong during logout");
         }
-      } catch (error) {
-        console.error('Logout error:', error);
-        toast.error("Failed to log out");
-      }
-    });
+      });
   }
 
   return (

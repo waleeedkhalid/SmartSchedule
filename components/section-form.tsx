@@ -15,8 +15,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Section, Course, Instructor, Room } from "@/lib/types/database";
+import { Section } from "@/lib/data/sections";
+import { Course } from "@/lib/data/courses";
+import { Instructor } from "@/lib/data/instructors";
+import { Room } from "@/lib/data/rooms";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -153,14 +163,62 @@ export function SectionForm({ section, courses, instructors, rooms, isEditing = 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // DEMO MODE: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      const url = isEditing 
+        ? `/api/v1/sections/${section?.id}`
+        : '/api/v1/sections';
       
-      toast.success(`Section ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      // Get current term_id (for now, we'll get the active term)
+      // TODO: Add term selection to form
+      let termId = null;
+      try {
+        const termsResponse = await fetch('/api/v1/academic-terms');
+        if (termsResponse.ok) {
+          const termsData = await termsResponse.json();
+          const activeTerm = termsData.data?.find((t: any) => 
+            t.status === 'draft' || t.status === 'released'
+          );
+          if (activeTerm) {
+            termId = activeTerm.id;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch active term:', e);
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          course_code: values.course_code,
+          section_no: values.section_no,
+          instructor_id: values.instructor_id || null,
+          room_code: values.room_code || null,
+          capacity: values.capacity,
+          group_level: values.group_level,
+          meeting_days: values.meeting_days,
+          meeting_start: values.meeting_start,
+          meeting_duration: values.meeting_duration,
+          activity: values.activity,
+          state: values.state,
+          term_id: termId, // Add to schedule if term_id is available
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to ${isEditing ? 'update' : 'create'} section`);
+      }
+
+      toast.success(`Section ${isEditing ? 'updated' : 'created'} successfully`);
       router.push("/dashboard/sections");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} section (Demo Mode)`);
+      toast.error(error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} section`);
       console.error(error);
     } finally {
       setIsLoading(false);

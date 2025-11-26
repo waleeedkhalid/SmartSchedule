@@ -108,7 +108,7 @@ export interface Section {
   meeting_pattern: MeetingPattern;
   group_level: number;
   state: "draft" | "released";
-  academic_semester_id: string;
+  academic_semester_id?: string; // Optional - backward compatibility (not in new schema)
   created_at: string;
 }
 
@@ -121,7 +121,7 @@ export interface Enrollment {
   student_id: string;
   section_id: string;
   course_code: string | null;
-  academic_semester_id: string;
+  academic_semester_id?: string; // Optional - backward compatibility (not in new schema)
   enrollment_type: "required" | "elective";
   status: "enrolled" | "dropped";
   enrolled_at: string;

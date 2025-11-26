@@ -24,38 +24,97 @@
  */
 
 import { redirect } from "next/navigation";
-import { getMockUserRole } from "@/lib/demo-data";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { cookies } from "next/headers";
+import { getServerUser } from "@/lib/server-auth";
+import { createClient } from "@/supabase/server";
+import { OnboardingForm } from "@/components/onboarding-form";
 
 // Force dynamic rendering - never cache this page
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function OnboardingPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
   
   // Not authenticated - redirect to login
-  if (!userRole) {
+  if (!user) {
     redirect("/login");
   }
   
-  // In demo mode, all users have completed onboarding
-  // Redirect to appropriate dashboard
-  const dashboardRoute = userRole.role === 'student' 
-    ? '/dashboard/student'
-    : userRole.role === 'faculty'
-    ? '/dashboard/faculty'
-    : userRole.role === 'scheduling'
-    ? '/dashboard/scheduling'
-    : userRole.role === 'teaching_load'
-    ? '/dashboard/teaching-load'
-    : userRole.role === 'registrar'
-    ? '/dashboard/registrar'
-    : '/dashboard';
+  // Check if onboarding is already completed
+  // CRITICAL FIX: Check BOTH onboarding_completed flag AND profile existence
+  // This prevents redirect loops when flag is true but profile is missing
+  // Uses idx_user_roles_onboarding partial index when onboarding_completed = FALSE
+  const supabase = await createClient();
+  const { data: userRole, error } = await supabase
+    .from('user_roles')
+    .select('onboarding_completed, role')
+    .eq('user_id', user.id)
+    .single();
   
-  redirect(dashboardRoute);
+  if (error || !userRole) {
+    // If user_roles doesn't exist, show onboarding form
+    // (This shouldn't happen, but handle gracefully)
+  } else if (userRole.onboarding_completed) {
+    // Flag is true - verify profile actually exists
+    let profileExists = false;
+    
+    if (userRole.role === 'student') {
+      const { data: studentProfile } = await supabase
+        .from('student_profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+      profileExists = !!studentProfile;
+    } else if (userRole.role === 'faculty') {
+      const { data: facultyProfile } = await supabase
+        .from('faculty_profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+      profileExists = !!facultyProfile;
+    } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole.role)) {
+      const { data: committeeProfile } = await supabase
+        .from('committee_profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+      profileExists = !!committeeProfile;
+    }
+    
+    // Only redirect to dashboard if BOTH flag is true AND profile exists
+    if (profileExists) {
+      const dashboardRoute = userRole.role === 'student' 
+        ? '/dashboard/student'
+        : userRole.role === 'faculty'
+        ? '/dashboard/faculty'
+        : userRole.role === 'scheduling'
+        ? '/dashboard/scheduling'
+        : userRole.role === 'teaching_load'
+        ? '/dashboard/teaching-load'
+        : userRole.role === 'registrar'
+        ? '/dashboard/registrar'
+        : '/dashboard';
+      
+      redirect(dashboardRoute);
+    } else {
+      // Flag is true but profile is missing - reset flag to allow retry
+      console.warn('Inconsistent onboarding state detected - flag is true but profile missing. Resetting flag.');
+      await supabase
+        .from('user_roles')
+        .update({ onboarding_completed: false })
+        .eq('user_id', user.id);
+      // Continue to show onboarding form
+    }
+  }
+  
+  // Render onboarding form for users who need to complete onboarding
+  return (
+    <OnboardingForm 
+      userId={user.id}
+      userName={user.name}
+      userRole={user.role as 'student' | 'faculty' | 'scheduling' | 'teaching_load' | 'registrar'}
+    />
+  );
 }
 

@@ -15,13 +15,24 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ScheduleGenerator } from "@/components/schedule-generator";
 import { SchedulingDashboardChartsNew } from "@/components/scheduling-dashboard-charts-new";
-import { getMockUserRole, getMockSchedulingStats, getMockScheduleStatus } from "@/lib/demo-data";
+import { getMockSchedulingStats, getMockScheduleStatus } from "@/lib/demo-data";
+import { getServerUser } from "@/lib/server-auth";
 
 export default async function SchedulingDashboardPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
-  if (!userRole || userRole.role !== 'scheduling') {
+  // SUSPECTED ISSUE: Multiple redirects in layout + page can cause RedirectBoundary errors
+  // If layout already checked auth, this might be redundant
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
+  if (!user) {
+    redirect("/login");
+  }
+
+  // SUSPECTED ISSUE: Redirecting to /dashboard might cause a loop if /dashboard also redirects
+  // This could trigger RedirectBoundary when both redirects happen in same render
+  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
+  if (user.role !== 'scheduling') {
     redirect("/dashboard");
   }
 

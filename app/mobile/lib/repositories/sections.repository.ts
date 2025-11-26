@@ -10,7 +10,8 @@ import { API_ENDPOINTS } from "../api/endpoints";
 import type { Section } from "../api/types";
 
 export interface SectionsFilters {
-  semester_id?: string;
+  semester_id?: string; // Backward compatible - maps to term_id
+  term_id?: string; // New preferred parameter
   level?: number;
   state?: "draft" | "released";
   courseCode?: string;
@@ -28,7 +29,10 @@ export class SectionsRepository {
   async getSections(filters?: SectionsFilters): Promise<Section[]> {
     const params = new URLSearchParams();
 
-    if (filters?.semester_id) {
+    // Support both term_id and semester_id for backward compatibility
+    if (filters?.term_id) {
+      params.append("term_id", filters.term_id);
+    } else if (filters?.semester_id) {
       params.append("semester_id", filters.semester_id);
     }
     if (filters?.level !== undefined) {

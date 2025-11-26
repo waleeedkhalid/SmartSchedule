@@ -104,7 +104,7 @@ export default function CoursesPage() {
                 </CardContent>
               </Card>
             ) : (
-              courses.map((course) => (
+              Array.isArray(courses) && courses.length > 0 ? courses.map((course) => (
                 <Card key={course.code}>
                   <CardHeader>
                     <CardTitle>{course.code} - {course.name}</CardTitle>
@@ -113,7 +113,13 @@ export default function CoursesPage() {
                     </CardDescription>
                   </CardHeader>
                 </Card>
-              ))
+              )) : (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">No courses available</p>
+                  </CardContent>
+                </Card>
+              )
             )}
           </div>
         )}

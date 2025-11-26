@@ -1,12 +1,13 @@
 /**
- * Semesters List Endpoint
+ * Semesters List Endpoint (Backward Compatibility)
  * 
  * GET /api/v1/semesters
  * 
- * Returns list of all semesters, ordered by start_date (most recent first).
- * Supports filtering by current semester.
+ * Returns list of all academic terms, ordered by start_date (most recent first).
+ * Supports filtering by current term.
  * 
- * Why platform-agnostic: Returns pure JSON that any client can parse.
+ * NOTE: This endpoint is kept for backward compatibility.
+ * New code should use /api/v1/academic-terms instead.
  */
 
 import { NextRequest } from "next/server";
@@ -16,7 +17,7 @@ import { createClient } from "@/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user (all authenticated users can view semesters)
+    // Authenticate user (all authenticated users can view terms)
     await authenticateRequest(request);
 
     const supabase = await createClient();
@@ -24,13 +25,13 @@ export async function GET(request: NextRequest) {
     const currentOnly = searchParams.get("current") === "true";
 
     let query = supabase
-      .from("academic_semesters")
+      .from("academic_term")
       .select("*")
       .order("start_date", { ascending: false });
 
-    // Filter by current semester if requested
+    // Filter by current term if requested (status = 'draft' or 'released')
     if (currentOnly) {
-      query = query.eq("is_current", true);
+      query = query.in("status", ["draft", "released"]);
     }
 
     const { data, error } = await query;
@@ -39,19 +40,16 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Map database fields to API response format
-    const semesters = (data || []).map((semester: any) => ({
-      id: semester.id,
-      name: semester.name,
-      code: semester.code,
-      start_date: semester.start_date,
-      end_date: semester.end_date,
-      registration_start_date: semester.registration_start_date,
-      registration_end_date: semester.registration_end_date,
-      add_drop_deadline: semester.add_drop_deadline,
-      status: semester.status,
-      is_current: semester.is_current,
-      created_at: semester.created_at,
+    // Map database fields to API response format (backward compatible)
+    const semesters = (data || []).map((term: any) => ({
+      id: term.id,
+      name: term.name,
+      code: term.code,
+      start_date: term.start_date,
+      end_date: term.end_date,
+      status: term.status,
+      is_current: term.status === "draft" || term.status === "released", // Approximate
+      created_at: term.created_at,
     }));
 
     return createSuccessResponse(semesters, 200);
@@ -59,4 +57,3 @@ export async function GET(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

@@ -58,49 +58,57 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     setGenerationResult(null);
 
     try {
-      // DEMO MODE: Simulate schedule generation
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
+      // Get current active term
+      const termsResponse = await fetch('/api/v1/academic-terms');
+      if (!termsResponse.ok) {
+        throw new Error('Failed to fetch academic terms');
+      }
 
-      // Get current status to calculate results
-      const currentStatus = await getMockScheduleStatus();
-      const unassignedCount = currentStatus.draft.unassigned;
-      const assignedCount = currentStatus.draft.assigned;
-      const totalCount = currentStatus.draft.total;
+      const termsData = await termsResponse.json();
+      const activeTerm = termsData.data?.find((t: any) => 
+        t.status === 'draft' || t.status === 'released'
+      );
 
-      // Simulate generation result
-      const result: GenerationResult = {
-        success: unassignedCount === 0,
-        stats: {
-          total_sections: totalCount,
-          assigned: assignedCount + Math.floor(unassignedCount * 0.7), // Simulate assigning 70% of unassigned
-          unassigned: Math.floor(unassignedCount * 0.3), // 30% remain unassigned
-          conflicts_resolved: Math.floor(unassignedCount * 0.5),
+      if (!activeTerm) {
+        throw new Error('No active academic term found. Please create an academic term first.');
+      }
+
+      // Call schedule generation API
+      const response = await fetch('/api/v1/schedules/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        unassigned: unassignedCount > 0 ? [
-          {
-            section_id: 'section-001',
-            course_code: 'CS401',
-            section_no: '01',
-            reason: 'No available room matching requirements',
-          },
-          {
-            section_id: 'section-002',
-            course_code: 'CS402',
-            section_no: '02',
-            reason: 'Instructor conflict',
-          },
-        ].slice(0, Math.floor(unassignedCount * 0.3)) : [],
-        message: unassignedCount === 0
-          ? "All sections have been successfully assigned!"
-          : `Schedule generated with ${Math.floor(unassignedCount * 0.3)} sections remaining unassigned.`,
+        body: JSON.stringify({
+          term_id: activeTerm.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate schedule');
+      }
+
+      // Map API response to component format
+      const generationResult: GenerationResult = {
+        success: result.data.stats.unassigned === 0,
+        stats: {
+          total_sections: result.data.stats.total_sections,
+          assigned: result.data.stats.added,
+          unassigned: result.data.stats.unassigned,
+          conflicts_resolved: result.data.stats.added, // Approximate
+        },
+        unassigned: [], // API doesn't return unassigned details yet
+        message: result.data.message,
       };
 
-      setGenerationResult(result);
+      setGenerationResult(generationResult);
 
-      if (result.success) {
-        toast.success("Schedule generated successfully! (Demo Mode: Not saved)");
+      if (generationResult.success) {
+        toast.success("Schedule generated successfully!");
       } else {
-        toast.warning("Partial schedule generated. Some sections could not be assigned. (Demo Mode: Not saved)");
+        toast.warning(`Partial schedule generated. ${result.data.stats.unassigned} sections remaining unassigned.`);
       }
 
       // Refresh status

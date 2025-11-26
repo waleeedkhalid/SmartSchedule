@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,12 +15,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Course } from "@/lib/types/database";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Course } from "@/lib/data/courses";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 const formSchema = z.object({
   code: z.string().min(2).max(20),
@@ -34,10 +31,11 @@ const formSchema = z.object({
 interface CourseFormProps {
   course?: Course;
   isEditing?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export function CourseForm({ course, isEditing = false }: CourseFormProps) {
-  const router = useRouter();
+export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: CourseFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -59,17 +57,68 @@ export function CourseForm({ course, isEditing = false }: CourseFormProps) {
     },
   });
 
+  // Reset form when course changes (for edit mode)
+  useEffect(() => {
+    if (course) {
+      form.reset({
+        code: course.code,
+        title: course.title,
+        level: course.level,
+        credits: course.credits,
+        weekly_hours: course.weekly_hours,
+        is_elective: course.is_elective,
+      });
+    } else {
+      form.reset({
+        code: "",
+        title: "",
+        level: 1,
+        credits: 3,
+        weekly_hours: 3,
+        is_elective: false,
+      });
+    }
+  }, [course, form]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // DEMO MODE: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      const url = isEditing 
+        ? `/api/v1/courses/${course?.code}`
+        : '/api/v1/courses';
       
-      toast.success(`Course ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
-      router.push("/dashboard/courses");
-      router.refresh();
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': getAuthHeader(),
+        },
+        body: JSON.stringify({
+          code: values.code,
+          name: values.title,
+          credits: values.credits,
+          level: values.level,
+          course_type: values.is_elective ? 'elective' : 'required',
+          weekly_hours: values.weekly_hours,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to ${isEditing ? 'update' : 'create'} course`);
+      }
+
+      toast.success(`Course ${isEditing ? 'updated' : 'created'} successfully`);
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} course (Demo Mode)`);
+      toast.error(error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} course`);
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -77,23 +126,8 @@ export function CourseForm({ course, isEditing = false }: CourseFormProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/dashboard/courses">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Courses
-          </Link>
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{isEditing ? 'Edit Course' : 'Add New Course'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="code"
@@ -197,19 +231,16 @@ export function CourseForm({ course, isEditing = false }: CourseFormProps) {
                 )}
               />
 
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : isEditing ? "Update Course" : "Create Course"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+        <div className="flex justify-end gap-4">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Saving..." : isEditing ? "Update Course" : "Create Course"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
 

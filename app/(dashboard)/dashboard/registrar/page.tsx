@@ -1,24 +1,19 @@
-import { createClient } from "@/supabase/server";
 import { redirect } from "next/navigation";
 import { IrregularStudentsTable } from "@/components/irregular-students-table";
 import { ManualStudentRegistration } from "@/components/manual-student-registration";
+import { getServerUser } from "@/lib/server-auth";
 
 export default async function RegistrarDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
   if (!user) {
     redirect("/login");
   }
 
-  // Verify user has registrar role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userRole?.role !== 'registrar') {
+  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
+  if (user.role !== 'registrar') {
     redirect("/dashboard");
   }
 

@@ -22,7 +22,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { getMockUserRole, getMockCreditStats, getMockEnrollments, getMockStudentExams } from "@/lib/demo-data";
+import { getMockCreditStats, getMockEnrollments, getMockStudentExams } from "@/lib/demo-data";
 import { Calendar, BookOpen, MessageSquare, GraduationCap, CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -30,17 +30,24 @@ import { ElectiveRegistrationManager } from "@/components/elective-registration-
 import { StudentScheduleView } from "@/components/student-schedule-view";
 import { StudentExamTimetable } from "@/components/student-exam-timetable";
 import { StudentDashboardCharts } from "@/components/student-dashboard-charts";
+import { getServerUser } from "@/lib/server-auth";
 // import { StudentCommentManager } from "@/components/student-comment-manager"; // Temporarily disabled during maintenance
 
 export default async function StudentDashboardPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
-  if (!userRole || userRole.role !== 'student') {
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
+  if (!user) {
+    redirect("/login");
+  }
+
+  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
+  if (user.role !== 'student') {
     redirect("/dashboard");
   }
 
-  const studentLevel = userRole.level || null;
+  const studentLevel = user.level || null;
   
   // Fetch dashboard stats
   const [creditStats, enrollments, exams] = await Promise.all([
@@ -60,7 +67,7 @@ export default async function StudentDashboardPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Welcome back, {userRole.name.split(" ")[0]}! 👋
+          Welcome back, {user.name.split(" ")[0]}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           Manage your schedule, register for electives, and track your exams

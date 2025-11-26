@@ -3,20 +3,31 @@ import { Button } from '@/components/ui/button'
 import { Calendar, Clock, BookOpen, MessageSquare, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getMockUserRole, getMockFacultyProfile, getMockFacultySections } from '@/lib/demo-data'
+import { getMockFacultyProfile, getMockFacultySections } from '@/lib/demo-data'
 import { SectionCard } from '@/components/faculty/section-card'
 import { FacultyDashboardCharts } from '@/components/faculty-dashboard-charts'
+import { getServerUser } from '@/lib/server-auth'
 
 export default async function FacultyDashboardPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole()
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser()
 
-  if (!userRole || userRole.role !== 'faculty') {
+  // SUSPECTED ISSUE: Multiple redirects in layout + page can cause RedirectBoundary errors
+  // If layout already checked auth, this might be redundant
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
+  if (!user) {
+    redirect('/login')
+  }
+
+  // SUSPECTED ISSUE: Redirecting to /dashboard might cause a loop if /dashboard also redirects
+  // This could trigger RedirectBoundary when both redirects happen in same render
+  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
+  if (user.role !== 'faculty') {
     redirect('/dashboard')
   }
 
   // Get faculty profile using mock data
-  const instructor = await getMockFacultyProfile(userRole.id)
+  const instructor = await getMockFacultyProfile(user.id)
 
   // Get sections assigned to this instructor
   const sections = instructor 
@@ -34,7 +45,7 @@ export default async function FacultyDashboardPage() {
             Faculty Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Welcome, {userRole?.name || 'Faculty Member'}
+            Welcome, {user?.name || 'Faculty Member'}
           </p>
         </div>
 
@@ -48,7 +59,7 @@ export default async function FacultyDashboardPage() {
             </CardHeader>
             <CardContent className="text-sm text-gray-600 dark:text-gray-400">
               <p>Your account is not yet linked to an instructor profile.</p>
-              <p className="mt-2">Please contact the scheduling committee to link your account with email: <strong>{userRole?.email || 'N/A'}</strong></p>
+              <p className="mt-2">Please contact the scheduling committee to link your account with email: <strong>{user?.email || 'N/A'}</strong></p>
             </CardContent>
           </Card>
         ) : (

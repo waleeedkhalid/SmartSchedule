@@ -1,17 +1,15 @@
 /**
  * Sections List Endpoint
  * 
- * GET /api/v1/sections
+ * GET /api/v1/sections - List sections (optionally filtered by term)
+ * POST /api/v1/sections - Create a new section
  * 
- * Returns list of sections for a semester with optional filtering.
- * Requires semester_id parameter (defaults to current semester).
- * 
- * Why platform-agnostic: Query parameters and JSON responses work identically
- * across all HTTP clients (Fetch, Axios, Retrofit, URLSession).
+ * All authenticated users can view sections.
+ * Only scheduling and teaching_load roles can create sections.
  */
 
 import { NextRequest } from "next/server";
-import { authenticateRequest } from "@/lib/api/auth-utils";
+import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
@@ -23,32 +21,42 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    // Get semester_id (required, but defaults to current)
-    let semesterId = searchParams.get("semester_id");
+    // Get term_id (optional - support both term_id and semester_id for backward compatibility)
+    let termId = searchParams.get("term_id") || searchParams.get("semester_id");
 
-    // If no semester_id provided, get current semester
-    if (!semesterId) {
-      const { data: currentSemester } = await supabase
-        .from("academic_semesters")
+    // If no term_id provided, get current active term (status = 'draft' or 'released')
+    if (!termId) {
+      const { data: currentTerm } = await supabase
+        .from("academic_term")
         .select("id")
-        .eq("is_current", true)
+        .in("status", ["draft", "released"])
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single();
 
-      if (!currentSemester) {
-        return createErrorResponse(
-          400,
-          ErrorCodes.VALIDATION_ERROR,
-          "No current semester found. Please specify semester_id."
-        );
+      if (currentTerm) {
+        termId = currentTerm.id;
       }
-      semesterId = currentSemester.id;
+    }
+
+    // If term_id is provided, get section IDs from schedule first
+    let sectionIds: string[] | null = null;
+    if (termId) {
+      const { data: scheduleSections } = await supabase
+        .from("schedule")
+        .select("section_id")
+        .eq("term_id", termId);
+
+      sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
     }
 
     // Build query with filters
+    // Fix: Explicitly select 'activity' field to ensure it's available in response
     let query = supabase
       .from("section")
       .select(`
         *,
+        activity,
         course:course_code (
           code,
           title,
@@ -63,10 +71,21 @@ export async function GET(request: NextRequest) {
           code,
           type
         )
-      `)
-      .eq("academic_semester_id", semesterId);
+      `);
 
-    // Apply optional filters
+    // If term_id is provided and we have section IDs, filter by them
+    if (termId && sectionIds && sectionIds.length > 0) {
+      query = query.in("id", sectionIds);
+    } else if (termId && sectionIds && sectionIds.length === 0) {
+      // Term exists but has no sections
+      return createSuccessResponse([], 200);
+    }
+
+    // Apply optional filters - these use indexes:
+    // - idx_section_group_level for level filter
+    // - idx_section_state for state filter
+    // - idx_section_course_code for courseCode filter
+    // - idx_section_instructor_id for instructorId filter
     const level = searchParams.get("level");
     if (level) {
       query = query.eq("group_level", parseInt(level));
@@ -87,14 +106,9 @@ export async function GET(request: NextRequest) {
       query = query.eq("instructor_id", instructorId);
     }
 
-    const sectionType = searchParams.get("sectionType");
-    if (sectionType) {
-      // Assuming meeting_pattern contains type information
-      // This may need adjustment based on actual schema
-      query = query.contains("meeting_pattern", { type: sectionType });
-    }
-
-    const { data, error } = await query;
+    // Order by course_code to use idx_section_course_code index
+    // If filtering by course_code, this ensures index usage
+    const { data, error } = await query.order("course_code", { ascending: true });
 
     if (error) {
       throw error;
@@ -105,7 +119,7 @@ export async function GET(request: NextRequest) {
       id: section.id,
       course_code: section.course_code,
       section_no: section.section_no,
-      section_type: section.meeting_pattern?.type || "lecture",
+      section_type: section.activity || "lecture",
       instructor_id: section.instructor_id,
       instructor: section.instructor
         ? {
@@ -122,11 +136,10 @@ export async function GET(request: NextRequest) {
           }
         : null,
       capacity: section.capacity,
-      current_enrollment: section.current_enrollment || 0,
+      current_enrollment: 0, // Will be calculated from student_enrollment
       meeting_pattern: section.meeting_pattern,
       group_level: section.group_level,
       state: section.state,
-      academic_semester_id: section.academic_semester_id,
       created_at: section.created_at,
     }));
 
@@ -136,3 +149,177 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate and check role
+    const user = await authenticateRequest(request);
+    requireRole(user, ["scheduling", "teaching_load"]);
+
+    const body = await request.json();
+    const {
+      course_code,
+      section_no,
+      instructor_id,
+      room_code,
+      capacity,
+      group_level,
+      meeting_days,
+      meeting_start,
+      meeting_duration,
+      activity,
+      state,
+      term_id,
+    } = body;
+
+    // Validate required fields
+    if (!course_code || !section_no || !capacity || !group_level) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "Missing required fields: course_code, section_no, capacity, group_level"
+      );
+    }
+
+    if (!meeting_days || !Array.isArray(meeting_days) || meeting_days.length === 0) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "meeting_days must be a non-empty array"
+      );
+    }
+
+    if (!meeting_start || !meeting_duration) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "Missing required fields: meeting_start, meeting_duration"
+      );
+    }
+
+    const supabase = await createClient();
+
+    // Check if course exists
+    const { data: course } = await supabase
+      .from("course")
+      .select("code")
+      .eq("code", course_code)
+      .single();
+
+    if (!course) {
+      return createErrorResponse(
+        404,
+        ErrorCodes.NOT_FOUND,
+        `Course with code '${course_code}' not found`
+      );
+    }
+
+    // Check if section already exists
+    const { data: existing } = await supabase
+      .from("section")
+      .select("id")
+      .eq("course_code", course_code)
+      .eq("section_no", section_no)
+      .single();
+
+    if (existing) {
+      return createErrorResponse(
+        409,
+        ErrorCodes.VALIDATION_ERROR,
+        `Section ${course_code}-${section_no} already exists`
+      );
+    }
+
+    // Build meeting_pattern JSONB
+    const meeting_pattern = {
+      days: meeting_days,
+      start: meeting_start,
+      duration: parseInt(meeting_duration),
+    };
+
+    // Insert new section
+    const { data, error } = await supabase
+      .from("section")
+      .insert({
+        course_code,
+        section_no,
+        instructor_id: instructor_id || null,
+        room_code: room_code || null,
+        capacity: parseInt(capacity),
+        group_level: parseInt(group_level),
+        meeting_pattern,
+        activity: activity || "lecture",
+        state: state || "draft",
+        created_by: user.id,
+      })
+      .select(`
+        *,
+        course:course_code (
+          code,
+          title,
+          credits
+        ),
+        instructor:instructor_id (
+          id,
+          name,
+          email
+        ),
+        room:room_code (
+          code,
+          type
+        )
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // If term_id is provided, add section to schedule
+    if (term_id) {
+      const { error: scheduleError } = await supabase
+        .from("schedule")
+        .insert({
+          term_id,
+          section_id: data.id,
+        });
+
+      if (scheduleError) {
+        console.error("Error adding section to schedule:", scheduleError);
+        // Don't fail the request, just log the error
+      }
+    }
+
+    // Map to API response format
+    const section = {
+      id: data.id,
+      course_code: data.course_code,
+      section_no: data.section_no,
+      section_type: data.activity || "lecture",
+      instructor_id: data.instructor_id,
+      instructor: data.instructor
+        ? {
+            id: data.instructor.id,
+            name: data.instructor.name,
+            email: data.instructor.email,
+          }
+        : null,
+      room_code: data.room_code,
+      room: data.room
+        ? {
+            code: data.room.code,
+            type: data.room.type,
+          }
+        : null,
+      capacity: data.capacity,
+      current_enrollment: 0,
+      meeting_pattern: data.meeting_pattern,
+      group_level: data.group_level,
+      state: data.state,
+      created_at: data.created_at,
+    };
+
+    return createSuccessResponse(section, 201);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

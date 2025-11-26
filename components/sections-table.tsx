@@ -87,18 +87,25 @@ export function SectionsTable({ sections }: SectionsTableProps) {
   }, [sections]);
 
   async function handleDelete(id: string, courseCode: string, sectionNo: string) {
-    if (!confirm(`Are you sure you want to delete section ${courseCode}-${sectionNo}?`)) {
+    if (!confirm(`Are you sure you want to delete section ${courseCode}-${sectionNo}? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      // DEMO MODE: Simulate delete action
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
-      
-      toast.success(`Section ${courseCode}-${sectionNo} deleted successfully (Demo Mode: Not saved)`);
+      const response = await fetch(`/api/v1/sections/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete section');
+      }
+
+      toast.success(`Section ${courseCode}-${sectionNo} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete section (Demo Mode)");
+      toast.error(error instanceof Error ? error.message : "Failed to delete section");
       console.error(error);
     }
   }

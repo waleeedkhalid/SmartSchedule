@@ -49,7 +49,8 @@ export default function EnrollmentsPage() {
     setError(null);
     try {
       const data = await enrollmentsRepository.getEnrollments();
-      setEnrollments(data.filter((e) => e.status === "enrolled"));
+      const enrollmentsArray = Array.isArray(data) ? data : [];
+      setEnrollments(enrollmentsArray.filter((e) => e.status === "enrolled"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load enrollments");
     } finally {
@@ -123,7 +124,7 @@ export default function EnrollmentsPage() {
                 </CardContent>
               </Card>
             ) : (
-              enrollments.map((enrollment) => (
+              Array.isArray(enrollments) && enrollments.length > 0 ? enrollments.map((enrollment) => (
                 <Card key={enrollment.id}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -150,7 +151,13 @@ export default function EnrollmentsPage() {
                     </div>
                   </CardHeader>
                 </Card>
-              ))
+              )) : (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">No enrollments found</p>
+                  </CardContent>
+                </Card>
+              )
             )}
           </div>
         )}

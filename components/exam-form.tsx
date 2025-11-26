@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Exam, Course, Room } from "@/lib/types/database";
+import { Exam } from "@/lib/data/exams";
+import { Course } from "@/lib/data/courses";
+import { Room } from "@/lib/data/rooms";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
