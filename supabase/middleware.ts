@@ -12,7 +12,7 @@
  * which will then redirect to the role-specific dashboard.
  */
 
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { mockUsers } from "@/lib/demo-data";
 
@@ -49,30 +49,64 @@ function getDashboardPath(role: string): string {
   }
 }
 
+
 /**
- * Clears authentication cookies to reset corrupted session
+ * Clears all authentication cookies to reset corrupted or expired session
+ * This ensures a clean signout when session expires - no errors will appear
+ * Clears both custom auth cookies and all Supabase SSR cookies
  */
 function clearAuthCookies(response: NextResponse): NextResponse {
-  response.cookies.delete('auth_token');
-  response.cookies.delete('demo_user_id');
-  // Also clear Supabase auth cookies
-  response.cookies.delete('sb-access-token');
-  response.cookies.delete('sb-refresh-token');
-  response.cookies.set('auth_token', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 0,
-    path: '/',
+  // Get all cookies from the response to find Supabase cookies
+  const allCookies = response.cookies.getAll();
+  
+  // Clear all auth-related cookies (both custom and Supabase)
+  const cookiesToClear = [
+    'auth_token',
+    'demo_user_id',
+    // Supabase SSR cookie patterns (these are the actual cookie names used by @supabase/ssr)
+    'sb-access-token',
+    'sb-refresh-token',
+    'sb-auth-token',
+    'sb-auth-token-code-verifier',
+  ];
+  
+  // Also clear any cookies that match Supabase patterns
+  allCookies.forEach(cookie => {
+    if (cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) {
+      cookiesToClear.push(cookie.name);
+    }
   });
-  response.cookies.set('demo_user_id', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 0,
-    path: '/',
+  
+  // Remove duplicates
+  const uniqueCookies = [...new Set(cookiesToClear)];
+  
+  // Clear each cookie once with path: '/' and maxAge: 0
+  // This is sufficient for cookie deletion across all paths
+  uniqueCookies.forEach(cookieName => {
+    response.cookies.delete(cookieName);
+    response.cookies.set(cookieName, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
   });
+  
   return response;
+}
+
+/**
+ * Automatically signs out user when session expires or cookies are invalid
+ * Redirects to login with session=expired parameter
+ */
+function autoSignOut(request: NextRequest, reason: string): NextResponse {
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("session", "expired");
+  loginUrl.searchParams.set("reason", reason);
+  
+  const response = NextResponse.redirect(loginUrl);
+  return clearAuthCookies(response);
 }
 
 /**
@@ -91,87 +125,149 @@ function copyCookiesToResponse(source: NextResponse, destination: NextResponse):
   return destination;
 }
 
-/**
- * Creates a Supabase client for use in middleware
- * This client automatically reads and writes cookies from the request/response
- */
-function createSupabaseClient(request: NextRequest, response: NextResponse) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, {
-              ...options,
-              httpOnly: options?.httpOnly ?? true,
-              secure: options?.secure ?? process.env.NODE_ENV === 'production',
-              sameSite: options?.sameSite ?? 'lax',
-              path: options?.path ?? '/',
-            });
-          });
-        },
-      },
-    }
-  );
-}
-
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const searchParams = request.nextUrl.searchParams;
+  const url = request.nextUrl.toString();
   
-  // CRITICAL: Early return for Next.js internal requests to prevent RSC payload leaks
-  // This includes RSC requests (?_rsc=), static assets, and other internal Next.js paths
-  // Dashboard routes can receive RSC requests, so we must check for _rsc before any redirects
-  if (
-    pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    searchParams.has('_rsc')
-  ) {
-    // Pass through without modification to preserve RSC payload integrity
-    // Pass request as-is to avoid stripping important metadata
+  // CRITICAL: Early return for Next.js internal requests
+  // This includes static assets, RSC requests, fetch-server-response, and other internal Next.js paths
+  // Skip ALL Next.js internal requests to prevent infinite redirect loops when session is invalid
+  
+  // Check for standard Next.js internal paths
+  if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
     return NextResponse.next({
       request,
     });
   }
   
-  // Create response object for Supabase to write cookies to
-  let response = NextResponse.next({
+  // Check for RSC query parameters (React Server Components)
+  // These are used by Next.js for React Server Component requests
+  const hasRscQuery = searchParams.has('__rsc__') || 
+                      searchParams.has('_rsc') ||
+                      searchParams.has('__nextjs_router_prefetch__') ||
+                      url.includes('__rsc__') ||
+                      url.includes('_rsc=');
+  
+  // Check for Next.js internal headers
+  // These indicate internal Next.js requests (RSC, prefetch, etc.)
+  const hasNextInternalHeader = 
+    request.headers.get('rsc') === '1' ||
+    request.headers.get('next-router-prefetch') === '1' ||
+    request.headers.get('next-action') !== null ||
+    request.headers.get('x-middleware-subrequest') !== null ||
+    request.headers.get('x-nextjs-data') !== null;
+  
+  // Check for fetch-server-response patterns
+  // fetch-server-response makes internal requests that may not have RSC indicators
+  // These requests typically have specific accept headers or come from Next.js internals
+  const acceptHeader = request.headers.get('accept') || '';
+  const refererHeader = request.headers.get('referer') || '';
+  const userAgent = request.headers.get('user-agent') || '';
+  
+  // Detect fetch-server-response requests
+  // These are internal Next.js requests for fetching server component responses
+  // The key is to identify requests that are NOT user-initiated navigation
+  const isFetchServerResponse = 
+    // RSC component requests (text/x-component is the RSC content type)
+    acceptHeader.includes('text/x-component') ||
+    // JSON requests from Next.js internals (fetch-server-response pattern)
+    (acceptHeader.includes('application/json') && 
+     (refererHeader.includes('/_next/') || 
+      refererHeader.includes('__rsc__') ||
+      refererHeader.includes('_rsc='))) ||
+    // Next.js internal requests often have specific user-agent patterns
+    (userAgent.includes('Next.js') && !acceptHeader.includes('text/html')) ||
+    // Requests that are clearly from Next.js internals
+    // Key indicators: specific accept header (not */*), no browser navigation headers
+    (request.method === 'GET' && 
+     !pathname.startsWith('/api/') && // Don't block API routes
+     acceptHeader && 
+     acceptHeader !== '*/*' && // Browsers send */*, Next.js internals are specific
+     !acceptHeader.includes('text/html') && // Not a browser page request
+     !request.headers.get('x-requested-with') && // No XHR header (browser would have this)
+     refererHeader && 
+     refererHeader.includes(request.nextUrl.origin) && // Same origin
+     (refererHeader.includes('/_next/') || refererHeader.includes('__rsc__')));
+  
+  // CRITICAL: Skip ALL internal Next.js requests immediately
+  // This prevents fetch-server-response and RSC requests from triggering auth checks
+  // This is the KEY fix for infinite redirect loops caused by Next.js internal requests
+  // Without this, fetch-server-response requests trigger auth checks → redirect → more requests → loop
+  if (hasRscQuery || hasNextInternalHeader || isFetchServerResponse) {
+    return NextResponse.next({
+      request,
+    });
+  }
+  
+  // Create response object
+  // The Supabase client will update cookies on this response object
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
   
-  // Create Supabase client with request/response for cookie handling
-  const supabase = createSupabaseClient(request, response);
-  
-  // CRITICAL: Refresh the auth session by calling getUser()
-  // This automatically refreshes expired tokens and updates cookies
-  // This must be called on every request to keep the session alive
-  const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-  
+  // Check for demo user first (no database call needed)
   const demoUserId = request.cookies.get('demo_user_id')?.value;
-  const hasSupabaseSession = !!supabaseUser && !authError;
+  const hasDemoUser = !!demoUserId;
   
-  // Detect redirect loops: if user is being redirected to dashboard multiple times
-  // Check for redirect loop indicator in query params
-  const redirectCount = parseInt(searchParams.get('_redirect_count') || '0');
-  if (redirectCount > 2) {
-    // Too many redirects - likely a cookie issue causing a loop
-    console.warn('Redirect loop detected, clearing cookies:', { pathname, redirectCount });
-    const loginResponse = NextResponse.redirect(new URL("/login?session=expired", request.url));
-    return clearAuthCookies(loginResponse);
+  // Only create Supabase client and check auth if not a demo user
+  // This avoids unnecessary auth requests for demo users
+  let supabaseUser = null;
+  let authError = null;
+  let hasSupabaseSession = false;
+  let supabase: ReturnType<typeof createServerClient> | null = null;
+  
+  if (!hasDemoUser) {
+    try {
+      // Create Supabase client with request/response for cookie handling
+      supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                // Only set cookies on the response object
+                // Modifying request.cookies is an anti-pattern in Next.js middleware
+                // The response cookies will be sent to the browser, which will include
+                // them in subsequent requests automatically
+                response.cookies.set(name, value, {
+                  ...options,
+                  httpOnly: options?.httpOnly ?? true,
+                  secure: options?.secure ?? process.env.NODE_ENV === 'production',
+                  sameSite: options?.sameSite ?? 'lax',
+                  path: options?.path ?? '/',
+                });
+              });
+            },
+          },
+        }
+      );
+      
+      // CRITICAL: Refresh the auth session by calling getUser()
+      // This automatically refreshes expired tokens and updates cookies
+      // Only call this for non-demo users to reduce auth requests
+      const authResult = await supabase.auth.getUser();
+      supabaseUser = authResult.data?.user || null;
+      authError = authResult.error;
+      hasSupabaseSession = !!supabaseUser && !authError;
+    } catch (error) {
+      // Handle errors creating or using Supabase client
+      // This prevents middleware from crashing if createServerClient fails
+      console.error('Failed to create or use Supabase client:', error);
+      // supabase remains null, which is handled gracefully by the rest of the code
+      authError = error instanceof Error ? error : new Error(String(error));
+      hasSupabaseSession = false;
+    }
   }
   
-  // Check if user is authenticated (either demo or Supabase)
-  const isAuthenticated = !!demoUserId || hasSupabaseSession;
-  
   // Public routes that don't require authentication
+  // Note: /_next and /favicon.ico are already handled by the early return above
   const publicRoutes = [
     '/',
     '/login',
@@ -181,14 +277,39 @@ export async function updateSession(request: NextRequest) {
     '/onboarding',
     '/demo',
     '/api',
-    '/_next',
-    '/favicon.ico',
     '/mobile/login'
   ];
   
   const isPublicRoute = publicRoutes.some(route => 
     pathname === route || pathname.startsWith(`${route}/`)
   );
+  
+  // AUTOMATIC SIGNOUT: If Supabase session expired or invalid, sign out immediately
+  // This prevents errors from appearing when user tries to access protected routes
+  // Also clear cookies on response to prevent redirect loops
+  if (authError && !hasDemoUser && !isPublicRoute && pathname.startsWith('/dashboard')) {
+    // Session expired or invalid - automatically sign out and clear all cookies
+    console.warn('Session expired or invalid, automatically signing out:', {
+      error: authError.message,
+      pathname
+    });
+    // autoSignOut handles cookie clearing internally
+    return autoSignOut(request, 'session_expired');
+  }
+  
+  // AGGRESSIVE CLEANUP: If we have auth errors on any protected route, clear cookies
+  // This prevents infinite redirect loops when session is corrupted
+  if (authError && !hasDemoUser && !isPublicRoute) {
+    console.warn('Auth error detected on protected route, clearing session:', {
+      error: authError.message,
+      pathname
+    });
+    // Use standard autoSignOut helper for consistent behavior
+    return autoSignOut(request, 'auth_error');
+  }
+  
+  // Check if user is authenticated (either demo or Supabase)
+  const isAuthenticated = hasDemoUser || hasSupabaseSession;
   
   // Redirect logged-in users away from auth pages
   // For demo users, redirect to role-specific dashboard
@@ -200,122 +321,159 @@ export async function updateSession(request: NextRequest) {
       // Demo user - redirect to role-specific dashboard
       const dashboardPath = getDashboardPath(demoRole);
       const redirectUrl = new URL(dashboardPath, request.url);
-      redirectUrl.searchParams.set('_redirect_count', '0'); // Reset redirect count
       return NextResponse.redirect(redirectUrl);
     }
     
     // Supabase user - redirect to /dashboard which will detect role
     // Session is already validated by getUser() call above
-    if (hasSupabaseSession && !supabaseUser) {
-      // Session refresh failed - clear cookies
-      console.warn('Session refresh failed on auth page redirect, clearing cookies');
-      const loginResponse = NextResponse.redirect(new URL("/login?session=expired", request.url));
-      return clearAuthCookies(loginResponse);
-    }
+    // Note: hasSupabaseSession is defined as !!supabaseUser && !authError,
+    // so if hasSupabaseSession is true, supabaseUser is guaranteed to exist
     
     // Create redirect response and copy Supabase session cookies
     const redirectUrl = new URL("/dashboard", request.url);
-    redirectUrl.searchParams.set('_redirect_count', '0'); // Reset redirect count
     const redirectResponse = NextResponse.redirect(redirectUrl);
     return copyCookiesToResponse(response, redirectResponse);
   }
   
   // Protect dashboard routes - require authentication
   if (!isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute) {
+    // If we have Supabase cookies but no valid session, it's corrupted - sign out immediately
+    // This prevents redirect loops from corrupted sessions
+    const hasSupabaseCookies = request.cookies.getAll().some(
+      cookie => cookie.name.startsWith('sb-') || cookie.name.includes('supabase')
+    );
+    
+    if (hasSupabaseCookies && !hasDemoUser) {
+      // Corrupted session - sign out immediately instead of redirecting
+      // This happens when cookies exist but session is invalid (expired, corrupted, etc.)
+      console.warn('Corrupted session detected (cookies present but no valid auth), signing out immediately:', {
+        pathname,
+        hasAuthError: !!authError,
+        authErrorMessage: authError?.message
+      });
+      return autoSignOut(request, 'corrupted_session');
+    }
+    
+    // Legitimate unauthenticated user - redirect to login
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
   
   // Check onboarding status for authenticated users trying to access dashboard
-  // Skip this check if already on onboarding page or if it's a demo user
-  if (isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute && !demoUserId) {
+  // OPTIMIZATION: Skip onboarding check for demo users and cache the result
+  // Only check onboarding once per session using a cookie flag
+  if (isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute && !hasDemoUser) {
     // Only check for Supabase users (demo users skip onboarding)
     if (hasSupabaseSession && supabaseUser) {
-      try {
-          // Check onboarding status
-          // Uses idx_user_roles_onboarding partial index when onboarding_completed = FALSE
-          const { data: userRole, error: roleError } = await supabase
-            .from('user_roles')
-            .select('onboarding_completed, role')
-            .eq('user_id', supabaseUser.id)
-            .single();
-          
-          // If user_roles doesn't exist for this user, clear cookies (cookie mismatch)
-          if (roleError || !userRole) {
-            console.warn('User role not found - possible cookie mismatch, clearing cookies:', {
-              userId: supabaseUser.id,
-              error: roleError?.message,
-              pathname
-            });
-            const loginResponse = NextResponse.redirect(new URL("/login?session=expired", request.url));
-            return clearAuthCookies(loginResponse);
+      // OPTIMIZATION: Check if onboarding was already verified in this session
+      const onboardingVerified = request.cookies.get('onboarding_verified')?.value === 'true';
+      
+      if (!onboardingVerified) {
+        try {
+          // Defensive check: Ensure supabase client exists
+          if (!supabase) {
+            console.warn('Supabase client not available in onboarding check, skipping');
+            return response;
           }
           
-          if (userRole) {
-            // Check if onboarding is needed
-            let needsOnboarding = !userRole.onboarding_completed;
+          // Check onboarding status and fetch role
+          // onboarding_completed column exists in user_roles table
+          let userRole;
+          let roleError;
+          
+          try {
+            const result = await supabase
+              .from('user_roles')
+              .select('onboarding_completed, role')
+              .eq('user_id', supabaseUser.id)
+              .single();
             
-            // Also check if role-specific profile exists
-            if (!needsOnboarding) {
-              if (userRole.role === 'student') {
-                // Students need student_profile
-                const { data: studentProfile } = await supabase
-                  .from('student_profile')
-                  .select('user_id')
-                  .eq('user_id', supabaseUser.id)
-                  .single();
-                
-                if (!studentProfile) {
-                  needsOnboarding = true;
-                }
-              } else if (userRole.role === 'faculty') {
-                // Faculty need faculty_profile
-                const { data: facultyProfile } = await supabase
-                  .from('faculty_profile')
-                  .select('user_id')
-                  .eq('user_id', supabaseUser.id)
-                  .single();
-                
-                if (!facultyProfile) {
-                  needsOnboarding = true;
-                }
-              } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole.role)) {
-                // Committee roles need committee_profile
-                const { data: committeeProfile } = await supabase
-                  .from('committee_profile')
-                  .select('user_id')
-                  .eq('user_id', supabaseUser.id)
-                  .single();
-                
-                if (!committeeProfile) {
-                  needsOnboarding = true;
-                }
+            userRole = result.data;
+            roleError = result.error;
+          } catch (error) {
+            // Catch any unexpected errors (network issues, etc.)
+            console.warn('Unexpected error fetching user role in middleware:', error);
+            roleError = {
+              message: error instanceof Error ? error.message : 'Unexpected error',
+              code: 'UNEXPECTED_ERROR',
+              status: 500,
+            };
+            userRole = null;
+          }
+          
+          // Handle all error cases: explicit error OR missing userRole OR both falsy
+          if (roleError || !userRole) {
+            // Handle 400 errors specifically - these are query/RLS issues, not auth issues
+            if (roleError) {
+              const errorStatus = 'status' in roleError ? roleError.status : undefined;
+              const errorCode = roleError.code;
+              if (errorStatus === 400 || errorCode?.startsWith('PGRST')) {
+                console.warn('user_roles query error (400) in middleware - skipping onboarding check:', {
+                  userId: supabaseUser.id,
+                  error: roleError.message,
+                  code: errorCode,
+                  pathname,
+                });
+                // Skip onboarding check and continue - don't sign out
+                return response;
               }
             }
             
-            // Redirect to onboarding if needed
-            if (needsOnboarding) {
-              const onboardingResponse = NextResponse.redirect(new URL("/onboarding", request.url));
-              return copyCookiesToResponse(response, onboardingResponse);
-            }
+            // For other errors (not found, auth issues, etc.), sign out
+            console.warn('User role not found - session invalid, automatically signing out:', {
+              userId: supabaseUser.id,
+              email: supabaseUser.email ?? 'N/A',
+              error: roleError?.message,
+              code: roleError?.code,
+              pathname,
+            });
+            return autoSignOut(request, 'user_role_not_found');
+          }
+          
+          // At this point, we know userRole exists and there's no error
+          const userRoleData = userRole as { onboarding_completed: boolean; role: string };
+          
+          // Check if onboarding is needed
+          const needsOnboarding = !userRoleData.onboarding_completed;
+          
+          // Store role in response header for dashboard page to avoid redundant query
+          if (!needsOnboarding && userRoleData.role) {
+            response.headers.set('x-user-role', userRoleData.role);
+          }
+            
+          // Set cookie to cache onboarding verification (valid for 1 hour)
+          if (!needsOnboarding) {
+            response.cookies.set('onboarding_verified', 'true', {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60, // 1 hour
+              path: '/',
+            });
+          }
+            
+          // Redirect to onboarding if needed
+          if (needsOnboarding) {
+            const onboardingUrl = new URL("/onboarding", request.url);
+            const onboardingResponse = NextResponse.redirect(onboardingUrl);
+            return copyCookiesToResponse(response, onboardingResponse);
           }
         } catch (error) {
-          // If error checking onboarding/auth, clear cookies to prevent loops
-          console.error("Error checking authentication/onboarding status, clearing cookies:", error);
-          const loginResponse = NextResponse.redirect(new URL("/login?session=expired", request.url));
-          return clearAuthCookies(loginResponse);
+          // AUTOMATIC SIGNOUT: If error checking onboarding/auth, session is corrupted - sign out immediately
+          console.error("Error checking authentication/onboarding status, automatically signing out:", error);
+          return autoSignOut(request, 'auth_check_error');
         }
-      } else if (!hasSupabaseSession) {
-        // Session refresh failed - clear cookies and redirect to login
-        console.warn('Session refresh failed, clearing cookies:', {
-          error: authError instanceof Error ? authError.message : String(authError),
-          pathname
-        });
-        const loginResponse = NextResponse.redirect(new URL("/login?session=expired", request.url));
-        return clearAuthCookies(loginResponse);
       }
+    } else if (!hasSupabaseSession && !hasDemoUser) {
+      // AUTOMATIC SIGNOUT: Session refresh failed - sign out immediately
+      console.warn('Session refresh failed, automatically signing out:', {
+        error: authError instanceof Error ? authError.message : String(authError),
+        pathname
+      });
+      return autoSignOut(request, 'session_refresh_failed');
     }
+  }
   
   // Return response with updated cookies from Supabase session refresh
   // This ensures the refreshed session cookies are sent to the client

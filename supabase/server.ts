@@ -31,9 +31,27 @@ import { cookies } from "next/headers";
 export async function createClient() {
   const cookieStore = await cookies();
 
+  // Validate environment variables
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error(
+      'Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL\n' +
+      'Please check your .env.local file or deployment configuration.'
+    );
+  }
+
+  if (!supabaseAnonKey) {
+    throw new Error(
+      'Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY\n' +
+      'Please check your .env.local file or deployment configuration.'
+    );
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         /**

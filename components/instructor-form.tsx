@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 const formSchema = z.object({
   name: z.string().min(2).max(100),
@@ -53,14 +54,39 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // DEMO MODE: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      const authHeader = await getAuthHeader();
       
-      toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
+      const url = isEditing 
+        ? `/api/v1/instructors/${instructor?.id}`
+        : '/api/v1/instructors';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email || null,
+          max_load_per_week: values.max_load_per_week,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${isEditing ? 'update' : 'create'} instructor`);
+      }
+
+      toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully`);
       router.push("/dashboard/instructors");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} instructor (Demo Mode)`);
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} instructor`;
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);

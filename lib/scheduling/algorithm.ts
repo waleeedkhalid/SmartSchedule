@@ -39,6 +39,7 @@ export interface SchedulingInput {
     room_code: string | null;
     capacity: number;
     group_level: number;
+    weekly_hours: number; // Total hours per week from course
     meeting_pattern: {
       days: string[];
       start: string;
@@ -81,8 +82,10 @@ export interface SchedulingResult {
 
 /**
  * Generate all possible time slots based on time grid configuration
+ * @param config Time grid configuration
+ * @param weeklyHours Optional weekly hours to calculate duration per meeting (in hours)
  */
-export function generateTimeSlots(config: SchedulingInput["timeGridConfig"]): TimeSlot[] {
+export function generateTimeSlots(config: SchedulingInput["timeGridConfig"], weeklyHours?: number): TimeSlot[] {
   const slots: TimeSlot[] = [];
   const { teaching_days, daily_start_time, daily_end_time, slot_duration_minutes } = config;
 
@@ -106,27 +109,63 @@ export function generateTimeSlots(config: SchedulingInput["timeGridConfig"]): Ti
     ["Tuesday", "Thursday"],
   ].filter(pattern => pattern.every(day => teaching_days.includes(day)));
 
-  // Generate slots for each time and day pattern
-  for (let currentMinutes = startMinutes; currentMinutes + slot_duration_minutes <= endMinutes; currentMinutes += slot_duration_minutes) {
-    const slotEndMinutes = currentMinutes + slot_duration_minutes;
-
-    // Skip slots that overlap with break time
-    if (
-      (currentMinutes < breakEndMinutes && slotEndMinutes > breakStartMinutes)
-    ) {
-      continue;
-    }
-
-    const hours = Math.floor(currentMinutes / 60);
-    const minutes = currentMinutes % 60;
-    const timeString = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-
+  // Calculate duration based on weekly_hours if provided
+  if (weeklyHours !== undefined && weeklyHours > 0) {
+    // For each day pattern, calculate duration per meeting based on weekly_hours
     for (const dayPattern of dayPatterns) {
-      slots.push({
-        days: dayPattern,
-        start_time: timeString,
-        duration: slot_duration_minutes,
-      });
+      const numDays = dayPattern.length;
+      // Duration per meeting = weekly_hours / number of days (convert to minutes)
+      // Round to nearest 30 minutes for practical scheduling
+      const durationPerMeetingHours = weeklyHours / numDays;
+      const durationPerMeetingMinutes = Math.round(durationPerMeetingHours * 60);
+      // Round to nearest 30 minutes
+      const durationMinutes = Math.max(30, Math.round(durationPerMeetingMinutes / 30) * 30);
+      
+      // Generate slots for this pattern with calculated duration
+      for (let currentMinutes = startMinutes; currentMinutes + durationMinutes <= endMinutes; currentMinutes += slot_duration_minutes) {
+        const slotEndMinutes = currentMinutes + durationMinutes;
+
+        // Skip slots that overlap with break time
+        if (
+          (currentMinutes < breakEndMinutes && slotEndMinutes > breakStartMinutes)
+        ) {
+          continue;
+        }
+
+        const hours = Math.floor(currentMinutes / 60);
+        const minutes = currentMinutes % 60;
+        const timeString = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+        slots.push({
+          days: dayPattern,
+          start_time: timeString,
+          duration: durationMinutes,
+        });
+      }
+    }
+  } else {
+    // Original behavior: use fixed slot_duration_minutes
+    for (let currentMinutes = startMinutes; currentMinutes + slot_duration_minutes <= endMinutes; currentMinutes += slot_duration_minutes) {
+      const slotEndMinutes = currentMinutes + slot_duration_minutes;
+
+      // Skip slots that overlap with break time
+      if (
+        (currentMinutes < breakEndMinutes && slotEndMinutes > breakStartMinutes)
+      ) {
+        continue;
+      }
+
+      const hours = Math.floor(currentMinutes / 60);
+      const minutes = currentMinutes % 60;
+      const timeString = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+      for (const dayPattern of dayPatterns) {
+        slots.push({
+          days: dayPattern,
+          start_time: timeString,
+          duration: slot_duration_minutes,
+        });
+      }
     }
   }
 
@@ -308,54 +347,120 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
     return 0;
   });
 
-  // Generate available time slots
-  const lectureSlots = generateTimeSlots(input.timeGridConfig);
+  // Generate available time slots (base slots without weekly_hours for fallback)
+  const baseLectureSlots = generateTimeSlots(input.timeGridConfig);
   const labSlots = generateLabTimeSlots(input.timeGridConfig);
 
   // Try to assign each section
   for (const section of sortedSections) {
-    const availableSlots = section.activity === 'lab' ? labSlots : lectureSlots;
     let assigned = false;
 
-    // Try each time slot until we find one without conflicts
-    for (const timeSlot of availableSlots) {
+    // Check if section already has a meeting pattern (manually assigned)
+    const hasExistingAssignment = 
+      section.meeting_pattern.days.length > 0 && 
+      section.meeting_pattern.start && 
+      section.meeting_pattern.duration > 0;
+
+    if (hasExistingAssignment) {
+      // Validate existing assignment for conflicts
+      const existingTimeSlot: TimeSlot = {
+        days: section.meeting_pattern.days,
+        start_time: section.meeting_pattern.start,
+        duration: section.meeting_pattern.duration,
+      };
+
       const conflictCheck = await checkSlotConflicts(
         section.id,
         section.room_code,
         section.instructor_id,
         section.group_level,
-        timeSlot,
+        existingTimeSlot,
         assignments
       );
 
       if (!conflictCheck.hasConflict) {
-        // Find suitable room if not already assigned
-        const roomCode = section.room_code || findSuitableRoom(section, input.rooms, timeSlot, assignments);
+        // Existing assignment is valid, keep it
+        assignments.push({
+          section_id: section.id,
+          course_code: section.course_code,
+          section_no: section.section_no,
+          room_code: section.room_code,
+          time_slot: existingTimeSlot,
+          instructor_id: section.instructor_id,
+          group_level: section.group_level,
+          activity: section.activity,
+        });
+        assigned = true;
+      } else {
+        // Existing assignment has conflicts, will try to reassign below
+        // Log the conflict types for better error messages
+        const conflictReasons = conflictCheck.conflictTypes.join(", ");
+        // Continue to try reassignment
+      }
+    }
 
-        if (roomCode || section.activity !== 'lab') {
-          // Assign this section
-          assignments.push({
-            section_id: section.id,
-            course_code: section.course_code,
-            section_no: section.section_no,
-            room_code: roomCode,
-            time_slot: timeSlot,
-            instructor_id: section.instructor_id,
-            group_level: section.group_level,
-            activity: section.activity,
-          });
-          assigned = true;
-          break;
+    // If not assigned yet (either no existing assignment or existing has conflicts), try to assign
+    if (!assigned) {
+      // Generate slots specific to this section's weekly_hours if it's a lecture
+      let availableSlots: TimeSlot[];
+      if (section.activity === 'lab') {
+        availableSlots = labSlots;
+      } else {
+        // For lectures, generate slots based on weekly_hours
+        if (section.weekly_hours && section.weekly_hours > 0) {
+          availableSlots = generateTimeSlots(input.timeGridConfig, section.weekly_hours);
+          // If no slots generated (e.g., weekly_hours too large), fall back to base slots
+          if (availableSlots.length === 0) {
+            availableSlots = baseLectureSlots;
+          }
+        } else {
+          availableSlots = baseLectureSlots;
+        }
+      }
+
+      // Try each time slot until we find one without conflicts
+      for (const timeSlot of availableSlots) {
+        const conflictCheck = await checkSlotConflicts(
+          section.id,
+          section.room_code,
+          section.instructor_id,
+          section.group_level,
+          timeSlot,
+          assignments
+        );
+
+        if (!conflictCheck.hasConflict) {
+          // Find suitable room if not already assigned
+          const roomCode = section.room_code || findSuitableRoom(section, input.rooms, timeSlot, assignments);
+
+          if (roomCode || section.activity !== 'lab') {
+            // Assign this section
+            assignments.push({
+              section_id: section.id,
+              course_code: section.course_code,
+              section_no: section.section_no,
+              room_code: roomCode,
+              time_slot: timeSlot,
+              instructor_id: section.instructor_id,
+              group_level: section.group_level,
+              activity: section.activity,
+            });
+            assigned = true;
+            break;
+          }
         }
       }
     }
 
     if (!assigned) {
+      const reason = hasExistingAssignment
+        ? "Existing assignment has conflicts and no alternative time slot available"
+        : "No conflict-free time slot available";
       unassigned.push({
         section_id: section.id,
         course_code: section.course_code,
         section_no: section.section_no,
-        reason: "No conflict-free time slot available",
+        reason,
       });
     }
   }

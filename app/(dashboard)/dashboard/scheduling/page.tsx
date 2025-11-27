@@ -14,36 +14,42 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ScheduleGenerator } from "@/components/schedule-generator";
-import { SchedulingDashboardChartsNew } from "@/components/scheduling-dashboard-charts-new";
-import { getMockSchedulingStats, getMockScheduleStatus } from "@/lib/demo-data";
-import { getServerUser } from "@/lib/server-auth";
+import { SchedulingDashboardChartsWrapper } from "@/components/scheduling-dashboard-charts-wrapper";
+import { getSchedulingStats, getScheduleStatus } from "@/lib/db/scheduling-stats";
+import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
+import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
+import { ClientOnly } from "@/components/client-only";
 
 export default async function SchedulingDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();
 
-  // SUSPECTED ISSUE: Multiple redirects in layout + page can cause RedirectBoundary errors
-  // If layout already checked auth, this might be redundant
   // If not authenticated, redirect to login (prevents infinite redirect loop)
   if (!user) {
     redirect("/login");
   }
 
-  // SUSPECTED ISSUE: Redirecting to /dashboard might cause a loop if /dashboard also redirects
-  // This could trigger RedirectBoundary when both redirects happen in same render
-  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
-  if (user.role !== 'scheduling') {
-    redirect("/dashboard");
+  // FIX: Use getDashboardPath instead of hardcoding /dashboard
+  // This ensures we redirect to the correct role-specific dashboard
+  // Also handle undefined/null role by redirecting to onboarding
+  if (!user.role || user.role !== 'scheduling') {
+    // If role is missing, user needs onboarding
+    if (!user.role) {
+      redirect("/onboarding");
+    }
+    // Otherwise redirect to their correct dashboard
+    const correctDashboard = getDashboardPath(user.role);
+    redirect(correctDashboard);
   }
 
-  // Get statistics using mock data
-  const stats = await getMockSchedulingStats();
-  const scheduleStatus = await getMockScheduleStatus();
+  // Get statistics from database
+  const stats = await getSchedulingStats();
+  const scheduleStatus = await getScheduleStatus();
 
   const isSystemReady = stats.coursesCount > 0 && 
                         stats.roomsCount > 0 && 
-                        stats.instructorsCount > 0 &&
-                        stats.groupsCount > 0;
+                        stats.instructorsCount > 0;
 
   return (
     <div className="p-8">
@@ -68,6 +74,42 @@ export default async function SchedulingDashboardPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Timeline and Notifications Section - Wrapped in ClientOnly to prevent hydration errors from date-fns */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upcoming Deadlines</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <UpcomingDeadlinesWidget userRole="scheduling" />
+              </ClientOnly>
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Notifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <RoleNotificationsWidget role="scheduling" />
+              </ClientOnly>
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card>
@@ -113,21 +155,28 @@ export default async function SchedulingDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Student Groups</CardTitle>
-              <Users className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.groupsCount}</div>
-            </CardContent>
-          </Card>
         </div>
 
-            {/* Schedule Generation Section */}
+            {/* Schedule Generation Section - Wrapped in ClientOnly to prevent hydration errors from state logic and progress bars */}
             {isSystemReady ? (
               <div className="mb-6">
-                <ScheduleGenerator initialStatus={scheduleStatus} />
+                <ClientOnly
+                  fallback={
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Schedule Generator</CardTitle>
+                        <CardDescription>Preparing schedule generation...</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-32 flex items-center justify-center">
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  }
+                >
+                  <ScheduleGenerator initialStatus={scheduleStatus} />
+                </ClientOnly>
               </div>
             ) : (
               <Card className="mb-6 border-yellow-200 dark:border-yellow-800">
@@ -138,7 +187,7 @@ export default async function SchedulingDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-gray-600 dark:text-gray-400">
-                  You need to set up courses, rooms, instructors, and student groups before generating schedules.
+                  You need to set up courses, rooms, and instructors before generating schedules.
                   Use the quick actions tab to get started.
                 </CardContent>
               </Card>
@@ -177,14 +226,6 @@ export default async function SchedulingDashboardPage() {
                     <span>Add instructors</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {stats.groupsCount > 0 ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    )}
-                    <span>Add student groups</span>
-                  </li>
-                  <li className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-gray-400" />
                     <span>Configure scheduling rules</span>
                   </li>
@@ -193,9 +234,24 @@ export default async function SchedulingDashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Analytics & Insights Tab */}
+          {/* Analytics & Insights Tab - Wrapped in ClientOnly to prevent hydration errors from Chart.js */}
           <TabsContent value="analytics">
-            <SchedulingDashboardChartsNew />
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Analytics & Insights</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">Loading charts...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <SchedulingDashboardChartsWrapper />
+            </ClientOnly>
           </TabsContent>
 
           {/* Quick Actions Tab */}

@@ -15,7 +15,6 @@ export function ImportExportUI() {
     { id: "courses", label: "Courses" },
     { id: "rooms", label: "Rooms" },
     { id: "instructors", label: "Instructors" },
-    { id: "student_groups", label: "Student Groups" },
     { id: "sections", label: "Sections" },
     { id: "exams", label: "Exams" },
     { id: "rules", label: "Rules" },
@@ -232,7 +231,6 @@ export function ImportExportUI() {
       }
     ],
     "instructors": [...],
-    "student_groups": [...],
     "sections": [...],
     "exams": [...]
   }

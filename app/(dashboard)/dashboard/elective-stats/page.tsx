@@ -14,12 +14,42 @@ export default async function ElectiveStatsPage() {
     redirect("/login");
   }
 
-  // Verify user has scheduling role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Verify user has scheduling role with error handling
+  let userRole;
+  let roleError;
+  
+  try {
+    const result = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    userRole = result.data;
+    roleError = result.error;
+  } catch (error) {
+    // Catch any unexpected errors (network issues, etc.)
+    console.warn('Unexpected error fetching user role in elective-stats:', error);
+    redirect("/dashboard");
+  }
+
+  // Handle errors gracefully
+  if (roleError) {
+    // Handle 400 errors specifically - these are query/RLS issues
+    if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error (400) in elective-stats:', {
+        code: roleError.code,
+        message: roleError.message,
+      });
+    } else if (roleError.code !== 'PGRST116') {
+      // PGRST116 is "not found" - expected, don't log
+      console.warn('Error fetching user role in elective-stats:', {
+        code: roleError.code,
+        message: roleError.message,
+      });
+    }
+    redirect("/dashboard");
+  }
 
   if (!userRole || userRole.role !== 'scheduling') {
     redirect("/dashboard");

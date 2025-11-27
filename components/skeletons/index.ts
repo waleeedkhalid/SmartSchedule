@@ -17,4 +17,5 @@ export { TeachingLoadDashboardLoading } from "./TeachingLoadDashboardLoading";
 export { FacultyDashboardLoading } from "./FacultyDashboardLoading";
 export { StudentDashboardLoading } from "./StudentDashboardLoading";
 export { RegistrarDashboardLoading } from "./RegistrarDashboardLoading";
+export { OnboardingSkeleton } from "./OnboardingSkeleton";
 

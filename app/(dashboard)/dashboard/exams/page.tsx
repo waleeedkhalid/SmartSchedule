@@ -3,32 +3,47 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle, Settings } from "lucide-react";
 import Link from "next/link";
-import { getMockExams, getMockUserRole } from "@/lib/demo-data";
 import { redirect } from "next/navigation";
+import { getAllExams, type Exam as ExamType } from "@/lib/data/exams";
+import { getServerUser } from "@/lib/server-auth";
+import { createClient } from "@/supabase/server";
 
 export default async function ExamsPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  // Check authentication and role
+  const user = await getServerUser();
 
-  if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
+  if (!user || !['scheduling', 'registrar'].includes(user.role)) {
     redirect("/dashboard");
   }
 
-  // DEMO MODE: Use mock data
-  const exams = await getMockExams();
+  // Fetch exams from database
+  const exams = await getAllExams();
+  
+  // Get current term info
+  const supabase = await createClient();
+  const { data: currentTerm } = await supabase
+    .from("academic_term")
+    .select("name, code")
+    .in("status", ["draft", "released"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  
+  const currentSemester = currentTerm ? {
+    name: currentTerm.name || "Current Term",
+    code: currentTerm.code || "",
+  } : {
+    name: "No Active Term",
+    code: "",
+  };
+  
   const error = null;
   
-  // Mock conflicts for demo
+  // Mock conflicts for demo (TODO: implement real conflict checking)
   const conflicts: Record<string, { has_conflicts: boolean }> = {};
   exams.forEach(exam => {
-    conflicts[exam.id] = { has_conflicts: false }; // No conflicts in demo
+    conflicts[exam.id] = { has_conflicts: false };
   });
-  
-  // Mock current semester for demo
-  const currentSemester = {
-    name: "Fall 2024",
-    code: "2024-FALL",
-  };
 
   return (
     <div className="space-y-6">
@@ -39,7 +54,7 @@ export default async function ExamsPage() {
             Manage exam schedules and check for conflicts
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-            Current Semester: <span className="font-medium">{currentSemester.name}</span> ({currentSemester.code}) (Demo Mode)
+            Current Semester: <span className="font-medium">{currentSemester.name}</span> ({currentSemester.code})
           </p>
         </div>
         <Button asChild>

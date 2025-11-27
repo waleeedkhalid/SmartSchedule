@@ -85,3 +85,22 @@ export async function getExamsPaginated(
   };
 }
 
+/**
+ * Fetches all exams from database (for list pages)
+ */
+export async function getAllExams(): Promise<Exam[]> {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from("exam")
+    .select("*")
+    .order("date", { ascending: true });
+  
+  if (error) {
+    console.error("Error fetching exams:", error);
+    throw new Error(`Failed to fetch exams: ${error.message}`);
+  }
+  
+  return (data as Exam[]) || [];
+}
+

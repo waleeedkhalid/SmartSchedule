@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -11,7 +12,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { TimelineEventsTable } from '@/components/timeline-events-table'
 import { TimelineEventForm } from '@/components/timeline-event-form'
@@ -20,7 +20,6 @@ import {
 	Clock,
 	AlertCircle,
 	CheckCircle2,
-	TrendingUp,
 	Bell,
 	Plus,
 	RefreshCw,
@@ -32,11 +31,49 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
+import { getAuthHeader } from '@/lib/utils/client-auth'
 
 interface Semester {
 	code: string
 	name: string
 	type: string
+}
+
+interface TimelineEvent {
+	id: string
+	title: string
+	description: string | null
+	event_type: string
+	category: string
+	start_date: string
+	end_date: string
+	priority: string
+	status: string
+	requires_action: boolean
+	target_roles: string[] | null
+	is_deadline: boolean
+	term_code?: string
+}
+
+interface TimelineStatistics {
+	total: number
+	upcoming: number
+	in_progress: number
+	overdue: number
+	completed: number
+	cancelled: number
+	by_priority: {
+		low: number
+		medium: number
+		high: number
+		critical: number
+	}
+	total_events?: number
+	upcoming_events?: number
+	in_progress_events?: number
+	overdue_events?: number
+	completed_events?: number
+	high_priority_count?: number
 }
 
 interface TimelineManagementProps {
@@ -51,175 +88,259 @@ export function TimelineManagement({
 	userRole,
 }: TimelineManagementProps) {
 	const [selectedSemester, setSelectedSemester] = useState(activeSemesterCode || '')
-	const [events, setEvents] = useState<any[]>([])
-	const [statistics, setStatistics] = useState<any>(null)
-	const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
-	const [overdueEvents, setOverdueEvents] = useState<any[]>([])
-	const [isLoading, setIsLoading] = useState(true)
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
-	const [editingEvent, setEditingEvent] = useState<any>(null)
-	const [notificationPreview, setNotificationPreview] = useState<any>(null)
+	const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null)
 	const [activeTab, setActiveTab] = useState('all')
+	const queryClient = useQueryClient()
 
-	useEffect(() => {
-		loadData()
-	}, [selectedSemester])
+	// OPTIMIZATION: Use React Query for all data fetching with proper caching
+	// This reduces unnecessary API calls and provides automatic caching
+	const { data: events = [], isLoading: isLoadingEvents } = useQuery({
+		queryKey: ['timeline', 'events', selectedSemester],
+		queryFn: async () => {
+			const params = new URLSearchParams()
+			if (selectedSemester) {
+				params.append('semester', selectedSemester)
+			}
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline?${params}`, {
+				headers: { 'Authorization': authHeader },
+			})
+			if (!response.ok) throw new Error('Failed to load events')
+			const result = await response.json()
+			return (result.data || []) as TimelineEvent[]
+		},
+		staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+		gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+		refetchOnWindowFocus: false,
+	})
 
-	async function loadData() {
-		setIsLoading(true)
+	const { data: statistics, isLoading: isLoadingStats } = useQuery({
+		queryKey: ['timeline', 'statistics', selectedSemester],
+		queryFn: async () => {
+			const params = new URLSearchParams({ stats: 'true' })
+			if (selectedSemester) {
+				params.append('semester', selectedSemester)
+			}
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline?${params}`, {
+				headers: { 'Authorization': authHeader },
+			})
+			if (!response.ok) throw new Error('Failed to load statistics')
+			const result = await response.json()
+			const stats = result.data || null
+			return stats ? {
+				...stats,
+				total_events: stats.total,
+				upcoming_events: stats.upcoming,
+				in_progress_events: stats.in_progress,
+				overdue_events: stats.overdue,
+				completed_events: stats.completed,
+				high_priority_count: stats.by_priority?.high || 0,
+			} as TimelineStatistics : null
+		},
+		staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+		gcTime: 10 * 60 * 1000,
+		refetchOnWindowFocus: false,
+	})
+
+	const { data: upcomingEvents = [], isLoading: isLoadingUpcoming } = useQuery({
+		queryKey: ['timeline', 'upcoming', selectedSemester],
+		queryFn: async () => {
+			const params = new URLSearchParams({ status: 'upcoming' })
+			if (selectedSemester) {
+				params.append('semester', selectedSemester)
+			}
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline?${params}`, {
+				headers: { 'Authorization': authHeader },
+			})
+			if (!response.ok) throw new Error('Failed to load upcoming events')
+			const result = await response.json()
+			return (result.data || []) as TimelineEvent[]
+		},
+		staleTime: 5 * 60 * 1000,
+		gcTime: 10 * 60 * 1000,
+		refetchOnWindowFocus: false,
+	})
+
+	const { data: overdueEvents = [], isLoading: isLoadingOverdue } = useQuery({
+		queryKey: ['timeline', 'overdue'],
+		queryFn: async () => {
+			const authHeader = await getAuthHeader()
+			const response = await fetch('/api/timeline?overdue=true', {
+				headers: { 'Authorization': authHeader },
+			})
+			if (!response.ok) throw new Error('Failed to load overdue events')
+			const result = await response.json()
+			return (result.data || []) as TimelineEvent[]
+		},
+		staleTime: 2 * 60 * 1000, // Shorter cache for overdue (2 minutes) as it's more time-sensitive
+		gcTime: 5 * 60 * 1000,
+		refetchOnWindowFocus: false,
+	})
+
+	const isLoading = isLoadingEvents || isLoadingStats || isLoadingUpcoming || isLoadingOverdue
+
+	// Helper function to invalidate timeline queries after mutations
+	const invalidateTimelineQueries = useCallback(() => {
+		queryClient.invalidateQueries({ queryKey: ['timeline'] })
+	}, [queryClient])
+
+	async function handleCreateEvent(data: Partial<TimelineEvent> & { term_code: string; title: string; start_date: string; end_date: string }) {
 		try {
-			await Promise.all([
-				loadEvents(),
-				loadStatistics(),
-				loadUpcomingEvents(),
-				loadOverdueEvents(),
-			])
-		} finally {
-			setIsLoading(false)
+			const authHeader = await getAuthHeader()
+			const response = await fetch('/api/timeline', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': authHeader,
+				},
+				body: JSON.stringify(data),
+			})
+
+			if (response.ok) {
+				setShowCreateDialog(false)
+				invalidateTimelineQueries() // Invalidate cache instead of manual reload
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to create event')
+			}
+		} catch (error) {
+			console.error('Error creating event:', error)
+			alert('Failed to create event. Please try again.')
 		}
 	}
 
-	async function loadEvents() {
-		const params = new URLSearchParams()
-		if (selectedSemester) {
-			params.append('semester', selectedSemester)
-		}
-
-		const response = await fetch(`/api/timeline?${params}`)
-		if (response.ok) {
-			const data = await response.json()
-			setEvents(data)
-		}
-	}
-
-	async function loadStatistics() {
-		const params = new URLSearchParams({ stats: 'true' })
-		if (selectedSemester) {
-			params.append('semester', selectedSemester)
-		}
-
-		const response = await fetch(`/api/timeline?${params}`)
-		if (response.ok) {
-			const data = await response.json()
-			setStatistics(data)
-		}
-	}
-
-	async function loadUpcomingEvents() {
-		const params = new URLSearchParams({ status: 'upcoming' })
-		if (selectedSemester) {
-			params.append('semester', selectedSemester)
-		}
-
-		const response = await fetch(`/api/timeline?${params}`)
-		if (response.ok) {
-			const data = await response.json()
-			setUpcomingEvents(data)
-		}
-	}
-
-	async function loadOverdueEvents() {
-		const response = await fetch('/api/timeline?overdue=true')
-		if (response.ok) {
-			const data = await response.json()
-			setOverdueEvents(data)
-		}
-	}
-
-	async function handleCreateEvent(data: any) {
-		const response = await fetch('/api/timeline', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(data),
-		})
-
-		if (response.ok) {
-			setShowCreateDialog(false)
-			await loadData()
-		} else {
-			const error = await response.json()
-			alert(error.error || 'Failed to create event')
-		}
-	}
-
-	async function handleUpdateEvent(data: any) {
+	async function handleUpdateEvent(data: Partial<TimelineEvent>) {
 		if (!editingEvent) return
 
-		const response = await fetch(`/api/timeline/${editingEvent.id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(data),
-		})
+		try {
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline/${editingEvent.id}`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': authHeader,
+				},
+				body: JSON.stringify(data),
+			})
 
-		if (response.ok) {
-			setEditingEvent(null)
-			await loadData()
-		} else {
-			const error = await response.json()
-			alert(error.error || 'Failed to update event')
+			if (response.ok) {
+				setEditingEvent(null)
+				invalidateTimelineQueries()
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to update event')
+			}
+		} catch (error) {
+			console.error('Error updating event:', error)
+			alert('Failed to update event. Please try again.')
 		}
 	}
 
 	async function handleDeleteEvent(id: string) {
 		if (!confirm('Are you sure you want to delete this event?')) return
 
-		const response = await fetch(`/api/timeline/${id}`, {
-			method: 'DELETE',
-		})
+		try {
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline/${id}`, {
+				method: 'DELETE',
+				headers: {
+					'Authorization': authHeader,
+				},
+			})
 
-		if (response.ok) {
-			await loadData()
-		} else {
-			const error = await response.json()
-			alert(error.error || 'Failed to delete event')
+			if (response.ok) {
+				invalidateTimelineQueries()
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to delete event')
+			}
+		} catch (error) {
+			console.error('Error deleting event:', error)
+			alert('Failed to delete event. Please try again.')
 		}
 	}
 
 	async function handleMarkComplete(id: string) {
-		await fetch(`/api/timeline/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ status: 'completed' }),
-		})
+		try {
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline/${id}`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': authHeader,
+				},
+				body: JSON.stringify({ status: 'completed' }),
+			})
 
-		await loadData()
+			if (response.ok) {
+				invalidateTimelineQueries()
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to mark event as complete')
+			}
+		} catch (error) {
+			console.error('Error marking event as complete:', error)
+			alert('Failed to mark event as complete. Please try again.')
+		}
 	}
 
 	async function handleCancelEvent(id: string) {
-		await fetch(`/api/timeline/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ status: 'cancelled' }),
-		})
+		try {
+			const authHeader = await getAuthHeader()
+			const response = await fetch(`/api/timeline/${id}`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': authHeader,
+				},
+				body: JSON.stringify({ status: 'cancelled' }),
+			})
 
-		await loadData()
+			if (response.ok) {
+				invalidateTimelineQueries()
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to cancel event')
+			}
+		} catch (error) {
+			console.error('Error cancelling event:', error)
+			alert('Failed to cancel event. Please try again.')
+		}
 	}
 
 	async function handleCheckDeadlines() {
-		const response = await fetch('/api/timeline/check-deadlines', {
-			method: 'POST',
-		})
+		try {
+			const authHeader = await getAuthHeader()
+			const response = await fetch('/api/timeline/check-deadlines', {
+				method: 'POST',
+				headers: {
+					'Authorization': authHeader,
+				},
+			})
 
-		if (response.ok) {
-			const result = await response.json()
-			alert(
-				`Deadline check completed!\n\n` +
-					`Statuses updated: ${result.updated_statuses}\n` +
-					`Notifications sent: ${result.notifications_sent}`
-			)
-			await loadData()
-		} else {
-			alert('Failed to check deadlines')
+			if (response.ok) {
+				const result = await response.json()
+				// API returns { success: true, data: {...} }
+				const data = result.data || result
+				alert(
+					`Deadline check completed!\n\n` +
+						`Notifications sent: ${data.notifications_sent || 0}\n` +
+						`Total recipients: ${data.total_recipients || 0}`
+				)
+				invalidateTimelineQueries()
+			} else {
+				const result = await response.json()
+				alert(result.error || 'Failed to check deadlines')
+			}
+		} catch (error) {
+			console.error('Error checking deadlines:', error)
+			alert('Failed to check deadlines. Please try again.')
 		}
 	}
 
-	async function handlePreviewNotifications() {
-		const response = await fetch('/api/timeline/check-deadlines')
-		if (response.ok) {
-			const preview = await response.json()
-			setNotificationPreview(preview)
-		}
-	}
 
 	if (isLoading) {
 		return (

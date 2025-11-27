@@ -1,17 +1,19 @@
 import { ExamForm } from "@/components/exam-form";
-import { getMockCourses, getMockRooms, getMockUserRole } from "@/lib/demo-data";
+import { getAllCourses, getAllRooms } from "@/lib/data/sections-helpers";
+import { getServerUser } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 
 export default async function NewExamPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole();
+  const user = await getServerUser();
 
-  if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
+  if (!user || !['scheduling', 'registrar'].includes(user.role)) {
     redirect("/dashboard");
   }
 
-  const courses = await getMockCourses();
-  const rooms = await getMockRooms();
+  const [courses, rooms] = await Promise.all([
+    getAllCourses(),
+    getAllRooms(),
+  ]);
 
   return (
     <div className="space-y-6">

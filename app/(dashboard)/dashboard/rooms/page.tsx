@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMockRooms } from "@/lib/demo-data";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { RoomsTable } from "@/components/rooms-table";
+import { getAllRoomsList } from "@/lib/data/sections-helpers";
 
 export default async function RoomsPage() {
-  const rooms = await getMockRooms();
+  const rooms = await getAllRoomsList();
 
   return (
     <div className="p-8">

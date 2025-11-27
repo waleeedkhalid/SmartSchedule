@@ -530,17 +530,30 @@ pnpm db:start
 
 ### Getting Help
 
-- **Local Development**: See [src/docs/LOCAL_DEVELOPMENT.md](src/docs/LOCAL_DEVELOPMENT.md)
-- **Supabase CLI**: See [SUPABASE_CLI_GUIDE.md](SUPABASE_CLI_GUIDE.md)
-- **Database Issues**: Check [src/docs/RLS_FIX_SUMMARY.md](src/docs/RLS_FIX_SUMMARY.md)
-- **API Reference**: See [API_REFERENCE.md](API_REFERENCE.md)
+- **📖 Complete Documentation**: See [COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md) for all guides and references
+- **Local Development**: See [COMPLETE_DOCUMENTATION.md#local-development-with-supabase](COMPLETE_DOCUMENTATION.md#local-development-with-supabase)
+- **Supabase CLI**: See [COMPLETE_DOCUMENTATION.md#development-guides](COMPLETE_DOCUMENTATION.md#development-guides)
+- **Database Issues**: Check [COMPLETE_DOCUMENTATION.md#troubleshooting](COMPLETE_DOCUMENTATION.md#troubleshooting)
+- **API Reference**: See [COMPLETE_DOCUMENTATION.md#api-reference](COMPLETE_DOCUMENTATION.md#api-reference)
 
-## 📚 Additional Documentation
+## 📚 Documentation
 
+**📖 [Complete Documentation](COMPLETE_DOCUMENTATION.md)** - Comprehensive guide covering all aspects of the project including:
+- Quick start guides
+- Architecture and development guides
+- Feature documentation
+- API reference
+- Deployment instructions
+- Troubleshooting
+- Design system
+
+### Additional Resources
+
+- **PRD.md** - Product Requirements Document
+- **timeline.md** - Development timeline and progress
 - **IMPLEMENTATION_ANALYSIS.md** - Detailed V1 vs PRD analysis
 - **seed-data.json** - Sample data for testing
 - **seed-data-enhanced.json** - Comprehensive seed data (33 courses)
-- **CHANGE_REQUESTS.md** - Change request tracking
 
 ## 🤝 Contributing
 

@@ -29,6 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, User, Download, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { cachedFetch, CacheTTL } from "@/lib/utils/api-cache";
 
 interface ScheduleSection {
   id: string;
@@ -80,18 +82,104 @@ export function StudentScheduleView() {
 
   /**
    * Fetch student schedule
-   * DEMO MODE: Uses mock data instead of API calls
+   * Uses real API endpoint for schedule data
    */
   async function fetchSchedule() {
     setLoading(true);
     try {
-      // DEMO MODE: Use mock data function
-      const { getMockStudentSchedule } = await import('@/lib/demo-data');
-      const data = await getMockStudentSchedule();
-      setSchedule(data);
-    } catch (error) {
+      const authHeader = await getAuthHeader();
+      // Cache schedule for 5 minutes - it doesn't change frequently
+      const result = await cachedFetch<{ data: any }>(
+        '/api/v1/schedules/me',
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        },
+        undefined,
+        CacheTTL.MEDIUM
+      );
+      const scheduleData = result.data;
+
+      // Transform API response to component format
+      if (scheduleData.is_empty || !scheduleData.schedule || scheduleData.schedule.length === 0) {
+        setSchedule({
+          student_id: scheduleData.student_id || '',
+          level: scheduleData.level || 1,
+          total_credits: 0,
+          required_credits: 0,
+          elective_credits: 0,
+          sections: [],
+          is_empty: true,
+          message: scheduleData.message || 'No schedule available',
+        });
+        return;
+      }
+
+      // Transform schedule items to sections format
+      const sections: ScheduleSection[] = [];
+      
+      scheduleData.schedule.forEach((courseEntry: any) => {
+        if (courseEntry.sections && Array.isArray(courseEntry.sections)) {
+          courseEntry.sections.forEach((section: any) => {
+            sections.push({
+              id: section.section_id || section.id,
+              course_code: courseEntry.course_code || section.course_code,
+              course_title: courseEntry.course_name || section.course?.title || '',
+              section_no: section.section_no || '',
+              credits: courseEntry.credits || section.course?.credits || 0,
+              is_elective: courseEntry.is_elective || section.course?.is_elective || false,
+              is_enrolled: true,
+              is_swe_scheduled: section.is_swe_scheduled || false,
+              instructor_name: section.instructor?.name || null,
+              room_code: section.room?.code || section.room_code || null,
+              meeting_pattern: section.meeting_pattern || {
+                days: [],
+                start: '',
+                duration: 0,
+                is_lab: false,
+              },
+              state: section.state || 'released',
+            });
+          });
+        }
+      });
+
+      // Calculate credit totals
+      let totalCredits = 0;
+      let requiredCredits = 0;
+      let electiveCredits = 0;
+
+      sections.forEach((section) => {
+        totalCredits += section.credits;
+        if (section.is_elective) {
+          electiveCredits += section.credits;
+        } else {
+          requiredCredits += section.credits;
+        }
+      });
+
+      setSchedule({
+        student_id: scheduleData.student_id || '',
+        level: scheduleData.level || 1,
+        total_credits: totalCredits,
+        required_credits: requiredCredits,
+        elective_credits: electiveCredits,
+        sections,
+        is_empty: sections.length === 0,
+      });
+    } catch (error: unknown) {
       console.error('Error fetching schedule:', error);
-      toast.error('Failed to load schedule');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load schedule';
+      toast.error(errorMessage);
+      setSchedule({
+        student_id: '',
+        level: 1,
+        total_credits: 0,
+        required_credits: 0,
+        elective_credits: 0,
+        sections: [],
+        is_empty: true,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }

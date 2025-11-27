@@ -12,6 +12,31 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import type { Database } from "@/lib/types/database";
+
+// Type for section query result with relations
+type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
+  course: {
+    code: string;
+    title: string;
+    credits: number;
+    is_elective: boolean;
+  } | null;
+  instructor: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  room: {
+    code: string;
+    type: string;
+  } | null;
+};
+
+// Type for schedule section_id query result
+type ScheduleSection = {
+  section_id: string;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +72,7 @@ export async function GET(request: NextRequest) {
         .select("section_id")
         .eq("term_id", termId);
 
-      sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
+      sectionIds = (scheduleSections || []).map((s: ScheduleSection) => s.section_id);
     }
 
     // Build query with filters
@@ -60,7 +85,8 @@ export async function GET(request: NextRequest) {
         course:course_code (
           code,
           title,
-          credits
+          credits,
+          is_elective
         ),
         instructor:instructor_id (
           id,
@@ -115,7 +141,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Map database fields to API response format
-    const sections = (data || []).map((section: any) => ({
+    const sections = (data || []).map((section: SectionWithRelations) => ({
       id: section.id,
       course_code: section.course_code,
       section_no: section.section_no,
@@ -141,6 +167,14 @@ export async function GET(request: NextRequest) {
       group_level: section.group_level,
       state: section.state,
       created_at: section.created_at,
+      course: section.course
+        ? {
+            code: section.course.code,
+            title: section.course.title,
+            credits: section.course.credits,
+            is_elective: section.course.is_elective || false,
+          }
+        : null,
     }));
 
     return createSuccessResponse(sections, 200);
@@ -256,7 +290,8 @@ export async function POST(request: NextRequest) {
         course:course_code (
           code,
           title,
-          credits
+          credits,
+          is_elective
         ),
         instructor:instructor_id (
           id,
@@ -284,8 +319,10 @@ export async function POST(request: NextRequest) {
         });
 
       if (scheduleError) {
-        console.error("Error adding section to schedule:", scheduleError);
-        // Don't fail the request, just log the error
+        // Log error but don't fail the request
+        // The section was created successfully, schedule association can be retried
+        // TODO: Consider adding proper error logging service (e.g., Sentry)
+        // For now, we silently continue as schedule association is non-critical
       }
     }
 

@@ -3,35 +3,42 @@ import { Button } from '@/components/ui/button'
 import { Calendar, Clock, BookOpen, MessageSquare, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getMockFacultyProfile, getMockFacultySections } from '@/lib/demo-data'
+import { getFacultyProfile, getFacultySections } from '@/lib/db/faculty-data'
 import { SectionCard } from '@/components/faculty/section-card'
-import { FacultyDashboardCharts } from '@/components/faculty-dashboard-charts'
-import { getServerUser } from '@/lib/server-auth'
+import { FacultyDashboardChartsWrapper } from '@/components/faculty-dashboard-charts-wrapper'
+import { getServerUser, getDashboardPath } from '@/lib/server-auth'
+import { UpcomingDeadlinesWidget } from '@/components/upcoming-deadlines-widget'
+import { RoleNotificationsWidget } from '@/components/role-notifications-widget'
+import { ClientOnly } from '@/components/client-only'
 
 export default async function FacultyDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser()
 
-  // SUSPECTED ISSUE: Multiple redirects in layout + page can cause RedirectBoundary errors
-  // If layout already checked auth, this might be redundant
   // If not authenticated, redirect to login (prevents infinite redirect loop)
   if (!user) {
     redirect('/login')
   }
 
-  // SUSPECTED ISSUE: Redirecting to /dashboard might cause a loop if /dashboard also redirects
-  // This could trigger RedirectBoundary when both redirects happen in same render
-  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
-  if (user.role !== 'faculty') {
-    redirect('/dashboard')
+  // FIX: Use getDashboardPath instead of hardcoding /dashboard
+  // This ensures we redirect to the correct role-specific dashboard
+  // Also handle undefined/null role by redirecting to onboarding
+  if (!user.role || user.role !== 'faculty') {
+    // If role is missing, user needs onboarding
+    if (!user.role) {
+      redirect('/onboarding')
+    }
+    // Otherwise redirect to their correct dashboard
+    const correctDashboard = getDashboardPath(user.role)
+    redirect(correctDashboard)
   }
 
-  // Get faculty profile using mock data
-  const instructor = await getMockFacultyProfile(user.id)
+  // Get faculty profile from database
+  const instructor = await getFacultyProfile(user.id)
 
   // Get sections assigned to this instructor
   const sections = instructor 
-    ? await getMockFacultySections(instructor.id)
+    ? await getFacultySections(instructor.id)
     : []
 
   // Calculate stats from sections
@@ -64,9 +71,60 @@ export default async function FacultyDashboardPage() {
           </Card>
         ) : (
           <>
-            {/* Charts Section */}
+            {/* Timeline and Notifications Section - Wrapped in ClientOnly to prevent hydration errors from date-fns */}
+            <div className="grid gap-4 md:grid-cols-2 mb-8">
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upcoming Deadlines</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <UpcomingDeadlinesWidget userRole="faculty" />
+              </ClientOnly>
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Notifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <RoleNotificationsWidget role="faculty" />
+              </ClientOnly>
+            </div>
+
+            {/* Charts Section - Wrapped in ClientOnly to prevent hydration errors from Chart.js */}
             <div className="mb-8">
-              <FacultyDashboardCharts />
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Faculty Analytics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading charts...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <FacultyDashboardChartsWrapper />
+              </ClientOnly>
             </div>
 
             {/* Stats Grid */}

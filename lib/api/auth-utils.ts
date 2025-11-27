@@ -20,17 +20,27 @@ export interface AuthenticatedUser {
 }
 
 /**
- * Extracts JWT token from Authorization header
+ * Extracts JWT token from Authorization header or cookies
  * 
- * Why: Standard Bearer token format works identically across
- * all HTTP clients (Fetch, Axios, Retrofit, URLSession).
+ * Priority:
+ * 1. Authorization header (Bearer token)
+ * 2. demo_user_id cookie (for demo users where client can't access HttpOnly cookie)
  */
 export function extractAuthToken(request: NextRequest): string | null {
+  // 1. Check Authorization header
   const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7); // Remove "Bearer " prefix
   }
-  return authHeader.substring(7); // Remove "Bearer " prefix
+
+  // 2. Check cookies for demo user
+  // This is crucial because demo_user_id cookie is HttpOnly and cannot be read by client
+  const demoCookie = request.cookies.get("demo_user_id");
+  if (demoCookie) {
+    return `demo:${demoCookie.value}`;
+  }
+
+  return null;
 }
 
 /**
@@ -100,14 +110,54 @@ export async function getAuthenticatedUser(
     );
   }
 
-  // Fetch user role from user_roles table
-  const { data: userRole, error: roleError } = await supabase
-    .from("user_roles")
-    .select("role, name, email")
-    .eq("user_id", user.id)
-    .single();
+  // Fetch user role from user_roles table with error handling
+  let userRole;
+  let roleError;
+  
+  try {
+    const result = await supabase
+      .from("user_roles")
+      .select("role, name, email")
+      .eq("user_id", user.id)
+      .single();
+    
+    userRole = result.data;
+    roleError = result.error;
+  } catch (error) {
+    // Catch any unexpected errors (network issues, etc.)
+    console.warn('Unexpected error fetching user role in getAuthenticatedUser:', error);
+    throw new ApiException(
+      403,
+      ErrorCodes.FORBIDDEN,
+      "User role not found. Please complete onboarding."
+    );
+  }
 
-  if (roleError || !userRole) {
+  // Handle errors gracefully
+  if (roleError) {
+    // Handle 400 errors specifically - these are query/RLS issues
+    if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error (400) in getAuthenticatedUser:', {
+        code: roleError.code,
+        message: roleError.message,
+        userId: user.id,
+      });
+      throw new ApiException(
+        403,
+        ErrorCodes.FORBIDDEN,
+        "User role not found. Please complete onboarding."
+      );
+    }
+    
+    // For other errors, throw appropriate exception
+    throw new ApiException(
+      403,
+      ErrorCodes.FORBIDDEN,
+      "User role not found. Please complete onboarding."
+    );
+  }
+
+  if (!userRole) {
     throw new ApiException(
       403,
       ErrorCodes.FORBIDDEN,

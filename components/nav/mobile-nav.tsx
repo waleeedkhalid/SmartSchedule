@@ -57,7 +57,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: LayoutDashboard,
     },
     {
-      title: "My Preferences",
+      title: "Electives Preferences",
       href: "/dashboard/preferences",
       icon: Heart,
     },
@@ -102,11 +102,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Exams",
       href: "/dashboard/exams",
       icon: Calendar,
-    },
-    {
-      title: "Student Groups",
-      href: "/dashboard/student-groups",
-      icon: GraduationCap,
     },
     {
       title: "Elective Stats",
@@ -301,24 +296,16 @@ export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {
                       },
                     });
                     
-                    // Clear cookies and localStorage
-                    document.cookie = 'auth_token=; path=/; max-age=0';
-                    document.cookie = 'demo_user_id=; path=/; max-age=0';
-                    if (typeof window !== 'undefined') {
-                      localStorage.removeItem('auth_token');
-                      localStorage.removeItem('auth_user');
-                    }
+                    // Clear all cookies and localStorage using utility
+                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    performClientLogoutCleanup();
                     
                     window.location.href = '/login';
                   } catch (error) {
                     console.error('Logout error:', error);
-                    // Clear local storage even on error
-                    document.cookie = 'auth_token=; path=/; max-age=0';
-                    document.cookie = 'demo_user_id=; path=/; max-age=0';
-                    if (typeof window !== 'undefined') {
-                      localStorage.removeItem('auth_token');
-                      localStorage.removeItem('auth_user');
-                    }
+                    // Clear all cookies and localStorage even on error
+                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    performClientLogoutCleanup();
                     window.location.href = '/login';
                   }
                 }}

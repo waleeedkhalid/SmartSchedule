@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, differenceInDays, isPast, isFuture } from 'date-fns'
 import Link from 'next/link'
+import { getAuthHeader } from '@/lib/utils/client-auth'
 
 interface UpcomingDeadline {
 	id: string
@@ -16,8 +17,8 @@ interface UpcomingDeadline {
 	event_type: string
 	start_date: string
 	end_date: string
-	days_until_start: number
-	days_until_end: number
+	days_until_start?: number | null
+	days_until_end?: number | null
 	priority: string
 	status: string
 	requires_action: boolean
@@ -51,38 +52,87 @@ export function UpcomingDeadlinesWidget({
 	async function loadDeadlines() {
 		setIsLoading(true)
 		try {
+			const authHeader = await getAuthHeader()
 			const response = await fetch(
-				`/api/timeline?role=${userRole}&daysAhead=${showAll ? 90 : 30}`
+				`/api/timeline?role=${userRole}&daysAhead=${showAll ? 90 : 30}`,
+				{
+					headers: {
+						'Authorization': authHeader,
+					},
+				}
 			)
 			if (response.ok) {
-				const data = await response.json()
-				setDeadlines(data)
+				const result = await response.json()
+				setDeadlines(result.data || [])
 			}
 		} finally {
 			setIsLoading(false)
 		}
 	}
 
+	function calculateDaysUntilStart(startDate: string): number {
+		try {
+			const now = new Date()
+			const start = startDate ? new Date(startDate) : null
+			
+			if (!start || isNaN(start.getTime())) {
+				return 0
+			}
+			
+			return differenceInDays(start, now)
+		} catch {
+			return 0
+		}
+	}
+
+	function calculateDaysUntilEnd(endDate: string): number {
+		try {
+			const now = new Date()
+			const end = endDate ? new Date(endDate) : null
+			
+			if (!end || isNaN(end.getTime())) {
+				return 0
+			}
+			
+			return differenceInDays(end, now)
+		} catch {
+			return 0
+		}
+	}
+
 	function getDaysText(deadline: UpcomingDeadline) {
 		if (deadline.status === 'completed') return 'Completed'
 
-		if (deadline.days_until_start > 0) {
-			const days = deadline.days_until_start
-			return `${days} day${days !== 1 ? 's' : ''} away`
+		// Calculate days if not provided by API
+		const daysUntilStart = deadline.days_until_start ?? calculateDaysUntilStart(deadline.start_date)
+		const daysUntilEnd = deadline.days_until_end ?? calculateDaysUntilEnd(deadline.end_date)
+
+		// Check if event hasn't started yet
+		if (daysUntilStart > 0) {
+			return `${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''} away`
 		}
 
-		if (deadline.days_until_end >= 0) {
+		// Check if event is in progress (started but not ended)
+		if (daysUntilEnd >= 0) {
 			return 'In progress'
 		}
 
-		const days = Math.abs(deadline.days_until_end)
+		// Event is overdue
+		const days = Math.abs(daysUntilEnd)
+		if (isNaN(days) || days === 0) {
+			return 'Overdue'
+		}
 		return `${days} day${days !== 1 ? 's' : ''} overdue`
 	}
 
 	function getUrgencyColor(deadline: UpcomingDeadline) {
-		if (deadline.days_until_end < 0) return 'text-red-600'
-		if (deadline.days_until_start <= 3) return 'text-orange-600'
-		if (deadline.days_until_start <= 7) return 'text-yellow-600'
+		// Calculate days if not provided by API
+		const daysUntilStart = deadline.days_until_start ?? calculateDaysUntilStart(deadline.start_date)
+		const daysUntilEnd = deadline.days_until_end ?? calculateDaysUntilEnd(deadline.end_date)
+
+		if (isNaN(daysUntilEnd) || daysUntilEnd < 0) return 'text-red-600'
+		if (isNaN(daysUntilStart) || daysUntilStart <= 3) return 'text-orange-600'
+		if (daysUntilStart <= 7) return 'text-yellow-600'
 		return 'text-muted-foreground'
 	}
 

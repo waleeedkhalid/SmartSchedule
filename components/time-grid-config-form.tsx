@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimeGridConfig } from "@/lib/types/database";
 import { toast } from "sonner";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   teaching_days: z.string(),
@@ -38,6 +40,7 @@ interface TimeGridConfigFormProps {
 
 export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,12 +61,11 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // DEMO MODE: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      const authHeader = await getAuthHeader();
       
-      // Validate the form data (same as before)
+      // Prepare the config data
       const configData = {
-        id: initialConfig.id,
+        id: initialConfig.id || null,
         teaching_days: values.teaching_days.split(",").map((d) => d.trim()),
         daily_start_time: values.daily_start_time + ":00",
         daily_end_time: values.daily_end_time + ":00",
@@ -76,10 +78,26 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
         typical_lab_duration_minutes: values.typical_lab_duration_minutes,
       };
 
-      // DEMO MODE: Show success toast but don't actually save
-      toast.success("Configuration updated successfully (Demo Mode: Not saved)");
+      const response = await fetch("/api/v1/time-grid-config", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
+        body: JSON.stringify(configData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update configuration");
+      }
+
+      toast.success("Configuration updated successfully");
+      router.refresh();
     } catch (error) {
-      toast.error("Failed to update configuration (Demo Mode)");
+      const errorMessage = error instanceof Error ? error.message : "Failed to update configuration";
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);

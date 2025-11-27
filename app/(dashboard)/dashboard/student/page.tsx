@@ -22,15 +22,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { getMockCreditStats, getMockEnrollments, getMockStudentExams } from "@/lib/demo-data";
+import { getStudentCreditStats, getStudentEnrollments, getStudentExams } from "@/lib/db/student-data";
 import { Calendar, BookOpen, MessageSquare, GraduationCap, CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ElectiveRegistrationManager } from "@/components/elective-registration-manager";
 import { StudentScheduleView } from "@/components/student-schedule-view";
 import { StudentExamTimetable } from "@/components/student-exam-timetable";
-import { StudentDashboardCharts } from "@/components/student-dashboard-charts";
-import { getServerUser } from "@/lib/server-auth";
+import { StudentDashboardChartsWrapper } from "@/components/student-dashboard-charts-wrapper";
+import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
+import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
+import { ClientOnly } from "@/components/client-only";
 // import { StudentCommentManager } from "@/components/student-comment-manager"; // Temporarily disabled during maintenance
 
 export default async function StudentDashboardPage() {
@@ -42,18 +45,26 @@ export default async function StudentDashboardPage() {
     redirect("/login");
   }
 
-  // If authenticated but wrong role, redirect to dashboard (which will redirect to correct role)
-  if (user.role !== 'student') {
-    redirect("/dashboard");
+  // FIX: Use getDashboardPath instead of hardcoding /dashboard
+  // This ensures we redirect to the correct role-specific dashboard
+  // Also handle undefined/null role by redirecting to onboarding
+  if (!user.role || user.role !== 'student') {
+    // If role is missing, user needs onboarding
+    if (!user.role) {
+      redirect("/onboarding");
+    }
+    // Otherwise redirect to their correct dashboard
+    const correctDashboard = getDashboardPath(user.role);
+    redirect(correctDashboard);
   }
 
   const studentLevel = user.level || null;
   
-  // Fetch dashboard stats
+  // Fetch dashboard stats from database
   const [creditStats, enrollments, exams] = await Promise.all([
-    getMockCreditStats(),
-    getMockEnrollments(),
-    getMockStudentExams(),
+    getStudentCreditStats(user.id),
+    getStudentEnrollments(user.id),
+    getStudentExams(user.id),
   ]);
   
   const totalEnrollments = enrollments.length;
@@ -93,8 +104,59 @@ export default async function StudentDashboardPage() {
 
         {/* Overview Tab - Quick Summary */}
         <TabsContent value="overview" className="space-y-6">
-          {/* Charts Section */}
-          <StudentDashboardCharts />
+          {/* Timeline and Notifications Section - Wrapped in ClientOnly to prevent hydration errors from date-fns */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Upcoming Deadlines</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-32 flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">Loading...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <UpcomingDeadlinesWidget userRole="student" />
+            </ClientOnly>
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notifications</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-32 flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">Loading...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <RoleNotificationsWidget role="student" />
+            </ClientOnly>
+          </div>
+
+          {/* Charts Section - Wrapped in ClientOnly to prevent hydration errors from chart libraries */}
+          <ClientOnly
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dashboard Analytics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">Loading charts...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            }
+          >
+            <StudentDashboardChartsWrapper />
+          </ClientOnly>
           
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -204,14 +266,44 @@ export default async function StudentDashboardPage() {
           <ElectiveRegistrationManager />
         </TabsContent>
 
-        {/* Schedule Tab - Weekly Schedule View */}
+        {/* Schedule Tab - Weekly Schedule View - Wrapped in ClientOnly for consistency and to prevent any potential hydration issues */}
         <TabsContent value="schedule">
-          <StudentScheduleView />
+          <ClientOnly
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>Weekly Schedule</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">Loading schedule...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            }
+          >
+            <StudentScheduleView />
+          </ClientOnly>
         </TabsContent>
 
-        {/* Exams Tab - Exam Timetable */}
+        {/* Exams Tab - Exam Timetable - Wrapped in ClientOnly to prevent hydration errors from timezone-dependent date formatting */}
         <TabsContent value="exams">
-          <StudentExamTimetable />
+          <ClientOnly
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>Exam Timetable</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">Loading exam schedule...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            }
+          >
+            <StudentExamTimetable />
+          </ClientOnly>
         </TabsContent>
 
         {/* Feedback Tab - Comment System - TEMPORARILY DISABLED */}

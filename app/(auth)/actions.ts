@@ -110,15 +110,43 @@ export async function signup(formData: {
       }
       
       // Check if user_roles entry exists (trigger should have created it)
-      const { data: roleData, error: roleCheckError } = await serviceClient
-        .from("user_roles")
-        .select("user_id")
-        .eq("user_id", authData.user.id)
-        .single();
-      
-      if (!roleCheckError && roleData) {
-        existingRole = roleData;
-        break;
+      try {
+        const { data: roleData, error: roleCheckError } = await serviceClient
+          .from("user_roles")
+          .select("user_id")
+          .eq("user_id", authData.user.id)
+          .single();
+        
+        // Handle errors gracefully - don't retry on 400 errors
+        if (roleCheckError) {
+          // PGRST116 is "not found" - expected, continue retrying
+          if (roleCheckError.code === 'PGRST116') {
+            // Not found yet, continue to next attempt
+            continue;
+          }
+          // 400 errors - log but don't break retry loop
+          if (roleCheckError.status === 400 || roleCheckError.code?.startsWith('PGRST')) {
+            console.warn(`user_roles query error (400) in signup retry attempt ${attempt + 1}:`, {
+              code: roleCheckError.code,
+              message: roleCheckError.message,
+            });
+            // Continue to next attempt
+            continue;
+          }
+          // Other errors - log and continue
+          console.warn(`Error checking user_roles in signup retry attempt ${attempt + 1}:`, roleCheckError);
+          continue;
+        }
+        
+        if (roleData) {
+          existingRole = roleData;
+          break;
+        }
+      } catch (error) {
+        // Catch any unexpected errors
+        console.warn(`Unexpected error checking user_roles in signup retry attempt ${attempt + 1}:`, error);
+        // Continue to next attempt
+        continue;
       }
     }
 
@@ -157,35 +185,52 @@ export async function signup(formData: {
       // Add one more small delay to ensure trigger has had time to run
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      const { error: roleError } = await serviceClient
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          email: formData.email,
-          name: formData.name,
-          role: formData.role,
-          onboarding_completed: false,
-        });
+      try {
+        const { error: roleError } = await serviceClient
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            email: formData.email,
+            name: formData.name,
+            role: formData.role,
+            onboarding_completed: false,
+          });
 
-      if (roleError) {
-        console.error("Failed to create user_roles entry:", roleError);
-        
-        // Check if it's a foreign key constraint error (user still doesn't exist)
-        if (roleError.code === '23503') {
-          console.error("Foreign key violation - user still not in auth.users");
-          // Don't return error - let trigger handle it or user completes onboarding
-          return { success: true };
+        if (roleError) {
+          // Handle 400 errors gracefully
+          if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+            console.warn("user_roles insert error (400):", {
+              code: roleError.code,
+              message: roleError.message,
+            });
+            // Don't return error - let trigger handle it or user completes onboarding
+            return { success: true };
+          }
+          
+          console.error("Failed to create user_roles entry:", roleError);
+          
+          // Check if it's a foreign key constraint error (user still doesn't exist)
+          if (roleError.code === '23503') {
+            console.error("Foreign key violation - user still not in auth.users");
+            // Don't return error - let trigger handle it or user completes onboarding
+            return { success: true };
+          }
+          
+          // For other errors, try to clean up
+          try {
+            await serviceClient.auth.admin.deleteUser(authData.user.id);
+          } catch (deleteError) {
+            console.error("Failed to clean up auth user:", deleteError);
+          }
+          return { 
+            error: `Failed to create user profile: ${roleError.message || 'Unknown error'}. Please contact support.` 
+          };
         }
-        
-        // For other errors, try to clean up
-        try {
-          await serviceClient.auth.admin.deleteUser(authData.user.id);
-        } catch (deleteError) {
-          console.error("Failed to clean up auth user:", deleteError);
-        }
-        return { 
-          error: `Failed to create user profile: ${roleError.message || 'Unknown error'}. Please contact support.` 
-        };
+      } catch (error) {
+        // Catch any unexpected errors
+        console.warn("Unexpected error creating user_roles entry:", error);
+        // Don't return error - let trigger handle it or user completes onboarding
+        return { success: true };
       }
       console.log("Successfully created user_roles entry manually");
     } else {
@@ -254,14 +299,44 @@ export async function login(formData: { email: string; password: string }) {
       return { error: "Failed to establish session. Please try again." };
     }
     
-    // Fetch user role information
-    const { data: userRole, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role, name, email")
-      .eq("user_id", verifiedUser.id)
-      .single();
+    // Fetch user role information with error handling
+    let userRole;
+    let roleError;
     
-    if (roleError || !userRole) {
+    try {
+      const result = await supabase
+        .from("user_roles")
+        .select("role, name, email")
+        .eq("user_id", verifiedUser.id)
+        .single();
+      
+      userRole = result.data;
+      roleError = result.error;
+    } catch (error) {
+      // Catch any unexpected errors (network issues, etc.)
+      console.warn('Unexpected error fetching user role in login:', error);
+      return { error: "User role not found. Please complete onboarding." };
+    }
+    
+    // Handle errors gracefully
+    if (roleError) {
+      // Handle 400 errors specifically - these are query/RLS issues
+      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+        console.warn('user_roles query error (400) in login:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      } else {
+        // Log other errors
+        console.warn('Error fetching user role in login:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      }
+      return { error: "User role not found. Please complete onboarding." };
+    }
+    
+    if (!userRole) {
       return { error: "User role not found. Please complete onboarding." };
     }
     
@@ -294,19 +369,35 @@ export async function login(formData: { email: string; password: string }) {
 
 // Logout - Now handled by client-side API call
 // Note: For client components, use the /api/v1/auth/logout route instead
+// This function is kept for backward compatibility but should use the API route
 export async function logOut() {
   const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
   
-  // Clear the demo_user_id cookie
-  cookieStore.delete('demo_user_id');
+  // Import cookie utility
+  const { AUTH_COOKIE_NAMES } = await import('@/lib/utils/cookie-utils');
   
-  // Also set it to empty with expired date to ensure it's cleared
-  cookieStore.set('demo_user_id', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 0, // Expire immediately
-    path: '/',
+  // Get all cookies to clear
+  const cookiesToClear: string[] = [...AUTH_COOKIE_NAMES];
+  
+  // Also find any cookies that match Supabase patterns
+  allCookies.forEach(cookie => {
+    if ((cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) && 
+        !cookiesToClear.includes(cookie.name)) {
+      cookiesToClear.push(cookie.name);
+    }
+  });
+  
+  // Clear all authentication cookies
+  cookiesToClear.forEach(cookieName => {
+    cookieStore.delete(cookieName);
+    cookieStore.set(cookieName, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
   });
   
   // Return success (client components should handle redirect)

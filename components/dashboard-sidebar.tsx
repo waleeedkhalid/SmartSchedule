@@ -71,12 +71,6 @@ const navigation: NavigationItem[] = [
     roles: ['scheduling', 'teaching_load'] 
   },
   { 
-    name: "Student Groups", 
-    href: "/dashboard/student-groups", 
-    icon: GraduationCap, 
-    roles: ['scheduling'] 
-  },
-  { 
     name: "Exams", 
     href: "/dashboard/exams", 
     icon: CalendarCheck, 
@@ -117,12 +111,6 @@ const navigation: NavigationItem[] = [
     href: "/dashboard/import-export", 
     icon: Download, 
     roles: ['scheduling'] 
-  },
-  { 
-    name: "Notifications", 
-    href: "/dashboard/notifications", 
-    icon: Bell, 
-    roles: ['scheduling', 'teaching_load', 'faculty', 'student', 'registrar'] 
   },
   { 
     name: "Settings", 

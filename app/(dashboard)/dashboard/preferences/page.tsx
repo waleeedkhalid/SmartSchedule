@@ -10,28 +10,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { getServerUser } from "@/lib/server-auth";
 
 export default async function PreferencesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
   if (!user) {
     redirect("/login");
   }
 
   // Verify user has student role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!userRole || userRole.role !== 'student') {
+  if (user.role !== 'student') {
     redirect("/dashboard");
   }
 
+  const supabase = await createClient();
+
   // Get student's current preferences
   // Uses idx_elective_preference_student index
+  // Note: For demo users, this will return empty (demo users don't have DB records)
   const { data: preferences } = await supabase
     .from('elective_preference')
     .select(`

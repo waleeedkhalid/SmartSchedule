@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Section } from "@/lib/types/database";
+import type { Database } from "@/lib/types/database";
 import {
   Table,
   TableBody,
@@ -18,9 +18,28 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Edit, Trash2, AlertTriangle } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useSectionDialog } from "@/components/sections-client";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+
+type Section = (Database["public"]["Tables"]["section"]["Row"] | {
+  id: string;
+  course_code: string;
+  section_no: string;
+  instructor_id: string | null;
+  room_code: string | null;
+  capacity: number;
+  group_level: number;
+  state: 'draft' | 'released';
+  activity?: string | null;
+}) & {
+  meeting_pattern: {
+    days: string[];
+    start: string;
+    duration: number;
+  };
+};
 
 interface SectionsTableProps {
   sections: Section[];
@@ -31,12 +50,12 @@ interface ConflictMap {
     has_conflicts: boolean;
     room_conflicts: any[];
     instructor_conflicts: any[];
-    student_conflicts: any[];
   };
 }
 
 export function SectionsTable({ sections }: SectionsTableProps) {
   const router = useRouter();
+  const { openEditDialog } = useSectionDialog();
   const [conflictMap, setConflictMap] = useState<ConflictMap>({});
   const [isLoadingConflicts, setIsLoadingConflicts] = useState(false);
 
@@ -45,39 +64,110 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     async function checkAllConflicts() {
       if (sections.length === 0) return;
 
+      // Limit the number of sections to check to prevent spam
+      // Only check conflicts for sections with meeting patterns
+      const sectionsToCheck = sections.filter(
+        (s) => s.meeting_pattern?.days && s.meeting_pattern.days.length > 0
+      );
+
+      if (sectionsToCheck.length === 0) return;
+
       setIsLoadingConflicts(true);
       const conflicts: ConflictMap = {};
+      let hasAuthError = false;
 
       try {
-        // Check conflicts for each section
+        // Get auth header once for all requests
+        const authHeader = await getAuthHeader();
+
+        // If no auth header, skip conflict checking to prevent spam
+        if (!authHeader) {
+          console.warn("No auth token available, skipping conflict checks");
+          return;
+        }
+
+        // Get current term_id once (optional - API will use active term if not provided)
+        let termId: string | null = null;
+        try {
+          const termsResponse = await fetch('/api/v1/academic-terms', {
+            headers: {
+              'Authorization': authHeader,
+            },
+          });
+          if (termsResponse.ok) {
+            const termsData = await termsResponse.json();
+            const activeTerm = termsData.data?.find((t: any) => 
+              t.status === 'draft' || t.status === 'released'
+            );
+            if (activeTerm) {
+              termId = activeTerm.id;
+            }
+          }
+        } catch (e) {
+          // If term fetch fails, continue without term_id (API will use active term)
+          console.warn('Could not fetch active term for conflict check:', e);
+        }
+
+        // Check conflicts for each section (with auth header)
         await Promise.all(
-          sections.map(async (section) => {
+          sectionsToCheck.map(async (section) => {
+            // Skip if we already encountered an auth error
+            if (hasAuthError) return;
+
             try {
-              const response = await fetch("/api/sections/check-conflicts", {
+              const response = await fetch("/api/v1/sections/check-conflicts", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": authHeader,
+                },
                 body: JSON.stringify({
                   room_code: section.room_code || null,
                   instructor_id: section.instructor_id || null,
-                  group_level: section.group_level,
                   meeting_days: section.meeting_pattern.days,
                   meeting_start: section.meeting_pattern.start,
                   meeting_duration: section.meeting_pattern.duration,
+                  term_id: termId, // Optional - API will use active term if not provided
                   exclude_section_id: section.id,
                 }),
               });
 
+              // Handle 401 errors - stop making more requests
+              if (response.status === 401) {
+                hasAuthError = true;
+                // Silently handle auth errors to prevent spam
+                return;
+              }
+
               if (response.ok) {
-                const data = await response.json();
-                conflicts[section.id] = data;
+                try {
+                  const responseData = await response.json();
+                  // Extract the actual conflict data from the API response wrapper
+                  // API returns { data: { has_conflicts: ..., ... } }
+                  conflicts[section.id] = responseData.data || responseData;
+                } catch (parseError) {
+                  // Silently handle JSON parse errors
+                  if (process.env.NODE_ENV === 'development') {
+                    console.error(`Error parsing conflict response for section ${section.id}:`, parseError);
+                  }
+                }
               }
             } catch (error) {
-              console.error(`Error checking conflicts for section ${section.id}:`, error);
+              // Silently handle network errors to prevent spam
+              // Only log in development
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`Error checking conflicts for section ${section.id}:`, error);
+              }
             }
           })
         );
 
         setConflictMap(conflicts);
+      } catch (error) {
+        // Silently handle errors to prevent spam
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error in checkAllConflicts:", error);
+        }
       } finally {
         setIsLoadingConflicts(false);
       }
@@ -92,14 +182,19 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     }
 
     try {
+      const authHeader = await getAuthHeader();
+      
       const response = await fetch(`/api/v1/sections/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+        },
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete section');
+        throw new Error(result.error || result.message || 'Failed to delete section');
       }
 
       toast.success(`Section ${courseCode}-${sectionNo} deleted successfully`);
@@ -232,12 +327,6 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                             {conflictMap[section.id].instructor_conflicts.length} conflict(s)
                           </div>
                         )}
-                        {conflictMap[section.id].student_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Student Level:</span>{" "}
-                            {conflictMap[section.id].student_conflicts.length} conflict(s)
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground mt-2">
                           Click edit to see details
                         </p>
@@ -252,13 +341,11 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button
-                  asChild
                   variant="ghost"
                   size="sm"
+                  onClick={() => openEditDialog(section)}
                 >
-                  <Link href={`/dashboard/sections/${section.id}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
+                  <Edit className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"

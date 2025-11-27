@@ -55,9 +55,15 @@ export function ElectiveCommentSection({
 
     setIsSubmitting(true);
     try {
+      const { getAuthHeader } = await import("@/lib/utils/client-auth");
+      const authHeader = await getAuthHeader();
+
       const response = await fetch("/api/elective-preferences/comments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
         body: JSON.stringify({
           course_code: courseCode,
           comment: newComment,
@@ -69,7 +75,8 @@ export function ElectiveCommentSection({
         throw new Error(error.error || "Failed to submit comment");
       }
 
-      const comment = await response.json();
+      const result = await response.json();
+      const comment = result.data || result;
       setComments([comment, ...comments]);
       setNewComment("");
       toast.success("Comment submitted successfully!");
@@ -88,9 +95,15 @@ export function ElectiveCommentSection({
     }
 
     try {
+      const { getAuthHeader } = await import("@/lib/utils/client-auth");
+      const authHeader = await getAuthHeader();
+
       const response = await fetch(`/api/elective-preferences/comments/${commentId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
         body: JSON.stringify({ comment: editText }),
       });
 
@@ -99,7 +112,8 @@ export function ElectiveCommentSection({
         throw new Error(error.error || "Failed to update comment");
       }
 
-      const updatedComment = await response.json();
+      const result = await response.json();
+      const updatedComment = result.data || result;
       setComments(comments.map(c => c.id === commentId ? updatedComment : c));
       setEditingId(null);
       setEditText("");
@@ -116,8 +130,14 @@ export function ElectiveCommentSection({
     }
 
     try {
+      const { getAuthHeader } = await import("@/lib/utils/client-auth");
+      const authHeader = await getAuthHeader();
+
       const response = await fetch(`/api/elective-preferences/comments/${commentId}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": authHeader,
+        },
       });
 
       if (!response.ok) {

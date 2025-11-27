@@ -150,14 +150,43 @@ export async function createSection(formData: {
       throw new Error("Authentication required. Please provide a valid token.");
     }
 
-    // Check user role
-    const { data: userRole, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
+    // Check user role with error handling
+    let userRole;
+    let roleError;
+    
+    try {
+      const result = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      userRole = result.data;
+      roleError = result.error;
+    } catch (error) {
+      // Catch any unexpected errors (network issues, etc.)
+      console.warn('Unexpected error fetching user role in example:', error);
+      throw new Error("User role not found.");
+    }
 
-    if (roleError || !userRole) {
+    // Handle errors gracefully
+    if (roleError) {
+      // Handle 400 errors specifically - these are query/RLS issues
+      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+        console.warn('user_roles query error (400) in example:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      } else {
+        console.warn('Error fetching user role in example:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      }
+      throw new Error("User role not found.");
+    }
+
+    if (!userRole) {
       throw new Error("User role not found.");
     }
 

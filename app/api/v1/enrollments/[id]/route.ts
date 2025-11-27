@@ -7,10 +7,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
+import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { getMockEnrollmentsWithDetails, mockEnrollments } from "@/lib/demo-data";
 
 interface RouteParams {
   params: {
@@ -28,41 +27,7 @@ export async function DELETE(
     // Only students can drop enrollments
     requireRole(user, ["student"]);
 
-    // Check if this is a demo token
-    const token = extractAuthToken(request);
-    const isDemo = token?.startsWith("demo:") === true;
-
-    // Handle demo mode
-    if (isDemo === true) {
-      const enrollments = await getMockEnrollmentsWithDetails(user.id);
-      const enrollment = enrollments.find(e => e.id === params.id);
-
-      if (!enrollment) {
-        return createErrorResponse(
-          404,
-          ErrorCodes.NOT_FOUND,
-          "Enrollment not found or access denied"
-        );
-      }
-
-      // In demo mode, we simulate dropping by returning success
-      // Note: In a real implementation, you'd update the mock data
-      return createSuccessResponse(
-        {
-          success: true,
-          enrollment: {
-            id: enrollment.id,
-            student_id: enrollment.student_id,
-            section_id: enrollment.section_id,
-            status: "dropped",
-            dropped_at: new Date().toISOString(),
-          },
-        },
-        200
-      );
-    }
-
-    // Handle real Supabase mode
+    // Real Supabase mode only - no demo support
     const supabase = await createClient();
 
     // Verify enrollment belongs to user

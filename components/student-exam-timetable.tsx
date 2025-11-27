@@ -23,9 +23,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, Clock, MapPin, AlertTriangle, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { cachedFetch, CacheTTL } from "@/lib/utils/api-cache";
 
 interface ExamData {
   id: string;
@@ -62,54 +64,37 @@ export function StudentExamTimetable() {
   }, []);
 
   /**
-   * Fetch exam timetable
-   * DEMO MODE: Uses mock data instead of API calls
+   * Fetch exam timetable from API
+   * Only fetches if schedule is released
    */
   async function fetchExams() {
     setLoading(true);
     try {
-      // DEMO MODE: Use mock data function
-      const { getMockStudentExams, getMockCourses, getMockSections } = await import('@/lib/demo-data');
-      const [exams, courses, sections] = await Promise.all([
-        getMockStudentExams(),
-        getMockCourses(),
-        getMockSections(),
-      ]);
-      
-      // Format exams to match expected structure
-      const formattedExams: ExamData[] = exams.map(exam => {
-        const course = courses.find(c => c.code === exam.course_code);
-        const section = sections.find(s => s.id === exam.section_id);
-        
-        // Calculate end time
-        const [hours, minutes] = exam.start.split(':').map(Number);
-        const startDate = new Date(`${exam.date}T${exam.start}`);
-        const endDate = new Date(startDate.getTime() + exam.duration * 60000);
-        const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}:00`;
-        
-        return {
-          id: exam.id,
-          course_code: exam.course_code,
-          course_title: course?.title || '',
-          section_no: section?.section_no || null,
-          date: exam.date,
-          start_time: `${exam.start}:00`,
-          duration_minutes: exam.duration,
-          end_time: endTime,
-          room_codes: exam.room_codes,
-          has_conflict: false, // Demo mode: no conflicts
-          conflicting_exams: [],
-        };
-      });
-      
-      const data: ExamsResponse = {
-        exams: formattedExams,
-        total_exams: formattedExams.length,
+      const authHeader = await getAuthHeader();
+      // Cache exams for 15 minutes - exam schedules don't change frequently
+      const result = await cachedFetch<{ data: ExamsResponse }>(
+        '/api/v1/exams/me',
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        },
+        undefined,
+        CacheTTL.LONG
+      );
+      const data: ExamsResponse = result.data || {
+        exams: [],
+        total_exams: 0,
         has_conflicts: false,
+        is_empty: true,
+        message: 'No exams available',
       };
       
+      // Preserve message if it exists in the response
+      if (result.data?.message) {
+        data.message = result.data.message;
+      }
+
       setExamsData(data);
-      
+
       // Find next upcoming exam
       if (data.exams && data.exams.length > 0) {
         const now = new Date();
@@ -119,9 +104,17 @@ export function StudentExamTimetable() {
         });
         setNextExam(upcoming || null);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching exams:', error);
-      toast.error('Failed to load exam timetable');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load exam timetable';
+      toast.error(errorMessage);
+      setExamsData({
+        exams: [],
+        total_exams: 0,
+        has_conflicts: false,
+        is_empty: true,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -174,6 +167,27 @@ export function StudentExamTimetable() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading exam timetable...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If schedule is not released, show only warning message
+  if (examsData?.message && examsData.message.includes("schedule must be released")) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="max-w-2xl w-full">
+          <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 border-2">
+            <div className="flex flex-col items-center text-center space-y-4 p-6">
+              <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-500" />
+              <AlertDescription className="text-yellow-900 dark:text-yellow-100 text-lg font-semibold">
+                <strong className="text-2xl block mb-3">Exams Not Available Yet</strong>
+                <p className="text-base font-normal mt-2">
+                  {examsData.message}
+                </p>
+              </AlertDescription>
+            </div>
+          </Alert>
         </div>
       </div>
     );

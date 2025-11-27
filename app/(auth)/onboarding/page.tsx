@@ -23,16 +23,18 @@
  * - Other roles: minimal setup (department already defaulted)
  */
 
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { OnboardingSkeleton } from "@/components/skeletons/OnboardingSkeleton";
 
 // Force dynamic rendering - never cache this page
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function OnboardingPage() {
+async function OnboardingContent() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();
   
@@ -46,16 +48,45 @@ export default async function OnboardingPage() {
   // This prevents redirect loops when flag is true but profile is missing
   // Uses idx_user_roles_onboarding partial index when onboarding_completed = FALSE
   const supabase = await createClient();
-  const { data: userRole, error } = await supabase
-    .from('user_roles')
-    .select('onboarding_completed, role')
-    .eq('user_id', user.id)
-    .single();
+  let userRole;
+  let error;
   
-  if (error || !userRole) {
+  try {
+    const result = await supabase
+      .from('user_roles')
+      .select('onboarding_completed, role')
+      .eq('user_id', user.id)
+      .single();
+    
+    userRole = result.data;
+    error = result.error;
+  } catch (err) {
+    // Catch any unexpected errors (network issues, etc.)
+    console.warn('Unexpected error fetching user role in onboarding:', err);
+    error = err as any;
+    userRole = null;
+  }
+  
+  // Handle errors gracefully
+  if (error) {
+    // Handle 400 errors specifically - these are query/RLS issues
+    if (error.status === 400 || error.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error (400) in onboarding:', {
+        code: error.code,
+        message: error.message,
+      });
+      // If user_roles doesn't exist or query fails, show onboarding form
+      // (This shouldn't happen, but handle gracefully)
+    } else if (error.code !== 'PGRST116') {
+      // PGRST116 is "not found" - expected for new users, don't log
+      console.warn('Error fetching user role in onboarding:', {
+        code: error.code,
+        message: error.message,
+      });
+    }
     // If user_roles doesn't exist, show onboarding form
     // (This shouldn't happen, but handle gracefully)
-  } else if (userRole.onboarding_completed) {
+  } else if (userRole && userRole.onboarding_completed) {
     // Flag is true - verify profile actually exists
     let profileExists = false;
     
@@ -100,10 +131,27 @@ export default async function OnboardingPage() {
     } else {
       // Flag is true but profile is missing - reset flag to allow retry
       console.warn('Inconsistent onboarding state detected - flag is true but profile missing. Resetting flag.');
-      await supabase
-        .from('user_roles')
-        .update({ onboarding_completed: false })
-        .eq('user_id', user.id);
+      try {
+        const { error: updateError } = await supabase
+          .from('user_roles')
+          .update({ onboarding_completed: false })
+          .eq('user_id', user.id);
+        
+        if (updateError) {
+          // Handle 400 errors gracefully
+          if (updateError.status === 400 || updateError.code?.startsWith('PGRST')) {
+            console.warn('user_roles update error (400) in onboarding:', {
+              code: updateError.code,
+              message: updateError.message,
+            });
+          } else {
+            console.error('Error updating user_roles in onboarding:', updateError);
+          }
+        }
+      } catch (err) {
+        // Catch any unexpected errors
+        console.warn('Unexpected error updating user_roles in onboarding:', err);
+      }
       // Continue to show onboarding form
     }
   }
@@ -115,6 +163,14 @@ export default async function OnboardingPage() {
       userName={user.name}
       userRole={user.role as 'student' | 'faculty' | 'scheduling' | 'teaching_load' | 'registrar'}
     />
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingSkeleton />}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
 

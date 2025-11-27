@@ -1,16 +1,38 @@
 import { redirect } from "next/navigation";
 import { TimeGridConfigForm } from "@/components/time-grid-config-form";
-import { getMockUserRole, getMockTimeGridConfig } from "@/lib/demo-data";
+import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { createClient } from "@/supabase/server";
 
 export default async function SchedulingSettingsPage() {
-	// DEMO MODE: Use mock user data
-	const userRole = await getMockUserRole();
+	const user = await getServerUser();
 	
-	if (!userRole || userRole.role !== 'scheduling') {
+	if (!user || user.role !== 'scheduling') {
 		redirect('/dashboard');
 	}
 
-	const config = await getMockTimeGridConfig();
+	// Fetch time grid config from database
+	const supabase = await createClient();
+	const { data: configData } = await supabase
+		.from("time_grid_config")
+		.select("*")
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.single();
+
+	// Use defaults if no config exists
+	const config = configData || {
+		id: null,
+		teaching_days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+		daily_start_time: '08:00:00',
+		daily_end_time: '17:00:00',
+		slot_duration_minutes: 60,
+		break_start_time: '12:00:00',
+		break_end_time: '13:00:00',
+		exam_days: ['Saturday'],
+		exam_start_time: '09:00:00',
+		exam_end_time: '17:00:00',
+		typical_lab_duration_minutes: 120,
+	};
 
 	return (
 		<div className="p-8">

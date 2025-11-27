@@ -110,6 +110,50 @@ export type Database = {
         }
         Relationships: []
       }
+      elective_comment: {
+        Row: {
+          comment: string
+          course_code: string
+          created_at: string | null
+          id: string
+          is_resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          comment: string
+          course_code: string
+          created_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          comment?: string
+          course_code?: string
+          created_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elective_comment_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       elective_preference: {
         Row: {
           course_code: string
@@ -213,6 +257,33 @@ export type Database = {
           unavailable_times?: Json | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      notification: {
+        Row: {
+          created_at: string | null
+          id: string
+          payload: Json
+          read_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -409,6 +480,77 @@ export type Database = {
           },
         ]
       }
+      semester_timeline: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          end_date: string
+          event_type: string
+          id: string
+          is_deadline: boolean | null
+          is_recurring: boolean | null
+          metadata: Json | null
+          notification_days_before: number[] | null
+          priority: string | null
+          requires_action: boolean | null
+          start_date: string
+          status: string | null
+          target_roles: string[] | null
+          term_code: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          event_type: string
+          id?: string
+          is_deadline?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          notification_days_before?: number[] | null
+          priority?: string | null
+          requires_action?: boolean | null
+          start_date: string
+          status?: string | null
+          target_roles?: string[] | null
+          term_code: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          event_type?: string
+          id?: string
+          is_deadline?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          notification_days_before?: number[] | null
+          priority?: string | null
+          requires_action?: boolean | null
+          start_date?: string
+          status?: string | null
+          target_roles?: string[] | null
+          term_code?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semester_timeline_term_code_fkey"
+            columns: ["term_code"]
+            isOneToOne: false
+            referencedRelation: "academic_term"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       student_enrollment: {
         Row: {
           dropped_at: string | null
@@ -444,42 +586,11 @@ export type Database = {
           },
         ]
       }
-      student_group: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          level: number
-          name: string
-          size: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          level: number
-          name: string
-          size?: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          level?: number
-          name?: string
-          size?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       student_profile: {
         Row: {
           created_at: string | null
           department: string
           level: number
-          student_group_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -487,7 +598,6 @@ export type Database = {
           created_at?: string | null
           department?: string
           level: number
-          student_group_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -495,25 +605,66 @@ export type Database = {
           created_at?: string | null
           department?: string
           level?: number
-          student_group_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "student_profile_student_group_id_fkey"
-            columns: ["student_group_id"]
-            isOneToOne: false
-            referencedRelation: "student_group"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      time_grid_config: {
+        Row: {
+          break_end_time: string
+          break_start_time: string
+          created_at: string | null
+          daily_end_time: string
+          daily_start_time: string
+          exam_days: string[]
+          exam_end_time: string
+          exam_start_time: string
+          id: string
+          slot_duration_minutes: number
+          teaching_days: string[]
+          typical_lab_duration_minutes: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          break_end_time?: string
+          break_start_time?: string
+          created_at?: string | null
+          daily_end_time?: string
+          daily_start_time?: string
+          exam_days?: string[]
+          exam_end_time?: string
+          exam_start_time?: string
+          id?: string
+          slot_duration_minutes?: number
+          teaching_days?: string[]
+          typical_lab_duration_minutes?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          break_end_time?: string
+          break_start_time?: string
+          created_at?: string | null
+          daily_end_time?: string
+          daily_start_time?: string
+          exam_days?: string[]
+          exam_end_time?: string
+          exam_start_time?: string
+          id?: string
+          slot_duration_minutes?: number
+          teaching_days?: string[]
+          typical_lab_duration_minutes?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
           created_at: string | null
           email: string
-          level: number | null
           name: string
           onboarding_completed: boolean | null
           role: Database["public"]["Enums"]["user_role"]
@@ -523,7 +674,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           email: string
-          level?: number | null
           name: string
           onboarding_completed?: boolean | null
           role: Database["public"]["Enums"]["user_role"]
@@ -533,7 +683,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           email?: string
-          level?: number | null
           name?: string
           onboarding_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -603,6 +752,64 @@ export type Database = {
         Returns: string
       }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
+      get_overdue_events: {
+        Args: { semester_code?: string }
+        Returns: {
+          category: string
+          created_at: string | null
+          description: string | null
+          end_date: string
+          event_type: string
+          id: string
+          is_deadline: boolean | null
+          is_recurring: boolean | null
+          metadata: Json | null
+          notification_days_before: number[] | null
+          priority: string | null
+          requires_action: boolean | null
+          start_date: string
+          status: string | null
+          target_roles: string[] | null
+          term_code: string
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "semester_timeline"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_upcoming_deadlines_for_role: {
+        Args: { days_ahead?: number; role_name: string }
+        Returns: {
+          category: string
+          created_at: string | null
+          description: string | null
+          end_date: string
+          event_type: string
+          id: string
+          is_deadline: boolean | null
+          is_recurring: boolean | null
+          metadata: Json | null
+          notification_days_before: number[] | null
+          priority: string | null
+          requires_action: boolean | null
+          start_date: string
+          status: string | null
+          target_roles: string[] | null
+          term_code: string
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "semester_timeline"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -617,6 +824,8 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_registrar_or_admin: { Args: never; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       time_ranges_overlap: {
         Args: {
           duration1: number
@@ -711,8 +920,7 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals }
-    | keyof DefaultSchema["Tables"],
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -791,3 +999,7 @@ export const Constants = {
     },
   },
 } as const
+
+// Type aliases for convenience
+export type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"]
+export type UserRole = Database["public"]["Enums"]["user_role"]

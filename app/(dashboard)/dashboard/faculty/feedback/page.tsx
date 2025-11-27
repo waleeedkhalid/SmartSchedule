@@ -4,20 +4,20 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
-import { getMockUserRole, getMockFacultyProfile } from '@/lib/demo-data'
+import { getFacultyProfile } from '@/lib/db/faculty-data'
+import { getServerUser } from '@/lib/server-auth'
 
 export const dynamic = 'force-dynamic';
 
 export default async function FacultyFeedbackPage() {
-  // DEMO MODE: Use mock user data
-  const userRole = await getMockUserRole()
+  const user = await getServerUser()
 
-  if (!userRole || userRole.role !== 'faculty') {
+  if (!user || user.role !== 'faculty') {
     redirect('/dashboard')
   }
 
-  // Get faculty profile
-  const instructor = await getMockFacultyProfile(userRole.id)
+  // Get faculty profile from database
+  const instructor = await getFacultyProfile(user.id)
 
   return (
     <div className="p-8">

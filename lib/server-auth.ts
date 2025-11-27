@@ -3,8 +3,16 @@
  * 
  * Helper functions for getting authenticated user information in server components.
  * Supports both demo accounts and Supabase production accounts.
+ * 
+ * Uses the standard Supabase SSR pattern: the server client automatically reads
+ * session cookies, so we call `supabase.auth.getUser()` without arguments.
+ * 
+ * CRITICAL: Uses React.cache() to deduplicate multiple calls in the same request.
+ * This ensures that layout + page + components all calling getServerUser() only
+ * result in ONE database query per request, preventing infinite loops and reducing load.
  */
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/supabase/server";
 import { mockUsers } from "@/lib/demo-data";
@@ -20,11 +28,18 @@ export interface ServerUser {
 /**
  * Gets the authenticated user from cookies (for server components)
  * Returns null if not authenticated
+ * 
+ * Uses the standard Supabase SSR pattern where the server client automatically
+ * reads session cookies from the request. No manual token handling required.
+ * 
+ * CRITICAL: Wrapped with React.cache() to ensure only ONE fetch per request.
+ * Multiple calls from layout, page, and components in the same render tree
+ * will all share the same cached result, preventing duplicate database queries
+ * and infinite redirect loops.
  */
-export async function getServerUser(): Promise<ServerUser | null> {
+export const getServerUser = cache(async (): Promise<ServerUser | null> => {
   const cookieStore = await cookies();
   const demoUserId = cookieStore.get('demo_user_id')?.value;
-  const authToken = cookieStore.get('auth_token')?.value;
 
   // Check for demo user first
   if (demoUserId) {
@@ -40,61 +55,75 @@ export async function getServerUser(): Promise<ServerUser | null> {
     }
   }
 
-  // Check for real Supabase user
-  if (authToken) {
-    try {
-      const supabase = await createClient();
-      
-      // Verify token and get user
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser(authToken);
+  // Check for real Supabase user using standard SSR pattern
+  try {
+    const supabase = await createClient();
+    
+    // Standard Supabase SSR pattern: getUser() without arguments
+    // The client automatically reads session cookies from the request
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-      if (authError || !user) {
-        return null;
-      }
-
-      // Fetch user role from user_roles table
-      const { data: userRole, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role, name, email")
-        .eq("user_id", user.id)
-        .single();
-
-      if (roleError || !userRole) {
-        return null;
-      }
-
-      // Fetch student level from student_profile if user is a student
-      let studentLevel: number | undefined = undefined;
-      if (userRole.role === 'student') {
-        const { data: studentProfile } = await supabase
-          .from("student_profile")
-          .select("level")
-          .eq("user_id", user.id)
-          .single();
-        
-        if (studentProfile) {
-          studentLevel = studentProfile.level;
-        }
-      }
-
-      return {
-        id: user.id,
-        email: userRole.email,
-        role: userRole.role,
-        name: userRole.name,
-        level: studentLevel,
-      };
-    } catch (error) {
-      console.error("Error getting server user:", error);
+    if (authError || !user) {
       return null;
     }
-  }
 
-  return null;
-}
+    // Fetch user role from user_roles table
+    // Note: level column was removed in migration 20251030154649_simplify_user_roles_to_basics.sql
+    let userRole;
+    let roleError;
+    
+    try {
+      const result = await supabase
+        .from("user_roles")
+        .select("role, name")
+        .eq("user_id", user.id)
+        .single();
+      
+      userRole = result.data;
+      roleError = result.error;
+    } catch (error) {
+      // Catch any unexpected errors (network issues, etc.)
+      console.warn('Unexpected error fetching user role in getServerUser:', error);
+      return null;
+    }
+
+    // Handle errors gracefully
+    if (roleError) {
+      // PGRST116 is "not found" - expected for new users, don't log
+      if (roleError.code !== 'PGRST116') {
+        // Log other errors (400, RLS violations, etc.) but don't throw
+        console.warn('Error fetching user role in getServerUser:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      }
+      return null;
+    }
+
+    if (!userRole) {
+      return null;
+    }
+
+    // Ensure user has email (required for ServerUser interface)
+    if (!user.email) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email, // Use email from auth user (source of truth)
+      role: userRole.role,
+      name: userRole.name, // Use name from user_roles (application-specific name)
+      // Note: level was removed from user_roles table - student-specific data should be in student_profile table
+    };
+  } catch (error) {
+    console.error("Error getting server user:", error);
+    return null;
+  }
+});
 
 /**
  * Gets the dashboard path for a given role
@@ -112,7 +141,7 @@ export function getDashboardPath(role: string): string {
     case 'registrar':
       return '/dashboard/registrar';
     default:
-      return '/dashboard/student'; // Default fallback
+      return '/dashboard'; // Let dashboard page handle role detection
   }
 }
 

@@ -14,6 +14,7 @@ import { Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 interface InstructorsTableProps {
   instructors: Instructor[];
@@ -28,13 +29,26 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
     }
 
     try {
-      // DEMO MODE: Simulate delete action
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      const authHeader = await getAuthHeader();
       
-      toast.success(`Instructor ${name} deleted successfully (Demo Mode: Not saved)`);
+      const response = await fetch(`/api/v1/instructors/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete instructor');
+      }
+
+      toast.success(`Instructor ${name} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete instructor (Demo Mode)");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete instructor';
+      toast.error(errorMessage);
       console.error(error);
     }
   }
@@ -64,15 +78,15 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
             <TableRow key={instructor.id}>
               <TableCell className="font-medium">{instructor.name}</TableCell>
               <TableCell>{instructor.email || "—"}</TableCell>
-              <TableCell>{instructor.max_load_per_week}h</TableCell>
+              <TableCell>{instructor.max_load_per_week ?? 12}h</TableCell>
               <TableCell>
                 <div className="flex gap-1">
-                  {instructor.preferred_times.length > 0 && (
+                  {instructor.preferred_times && Array.isArray(instructor.preferred_times) && instructor.preferred_times.length > 0 && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       {instructor.preferred_times.length} preferred
                     </span>
                   )}
-                  {instructor.unavailable_times.length > 0 && (
+                  {instructor.unavailable_times && Array.isArray(instructor.unavailable_times) && instructor.unavailable_times.length > 0 && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
                       {instructor.unavailable_times.length} unavailable
                     </span>

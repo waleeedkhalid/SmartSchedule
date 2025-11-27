@@ -52,10 +52,12 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
 
     setIsLoading(true);
     try {
+      const authHeader = await getAuthHeader();
+      
       const response = await fetch(`/api/v1/courses/${selectedCourse.code}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': getAuthHeader(),
+          'Authorization': authHeader,
         },
       });
 

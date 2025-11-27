@@ -14,6 +14,7 @@ import { Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 interface RoomsTableProps {
   rooms: Room[];
@@ -28,13 +29,26 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
     }
 
     try {
-      // DEMO MODE: Simulate delete action
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      const authHeader = await getAuthHeader();
       
-      toast.success(`Room ${code} deleted successfully (Demo Mode: Not saved)`);
+      const response = await fetch(`/api/v1/rooms/${code}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete room');
+      }
+
+      toast.success(`Room ${code} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete room (Demo Mode)");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete room';
+      toast.error(errorMessage);
       console.error(error);
     }
   }

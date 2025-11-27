@@ -14,6 +14,9 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 import { getMockCourses } from "@/lib/demo-data";
 import { extractAuthToken } from "@/lib/api/auth-utils";
+import type { Database } from "@/lib/types/database";
+
+type CourseRow = Database["public"]["Tables"]["course"]["Row"];
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Map database fields to API response format
-    const courses = (data || []).map((course: any) => ({
+    const courses = (data || []).map((course: CourseRow) => ({
       code: course.code,
       name: course.title,
       credits: course.credits,
@@ -116,15 +119,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate weekly_hours: credits + 1, except if credits = 2 then weekly_hours = 2
+    const creditsNum = parseInt(credits);
+    const calculatedWeeklyHours = creditsNum === 2 ? 2 : creditsNum + 1;
+    const finalWeeklyHours = weekly_hours ? parseInt(weekly_hours) : calculatedWeeklyHours;
+
     // Insert new course
     const { data, error } = await supabase
       .from("course")
       .insert({
         code,
         title: name,
-        credits: parseInt(credits),
+        credits: creditsNum,
         level: parseInt(level),
-        weekly_hours: weekly_hours ? parseInt(weekly_hours) : credits * 1, // Default: 1 hour per credit
+        weekly_hours: finalWeeklyHours,
         is_elective: course_type === "elective",
         created_by: user.id,
       })

@@ -1,11 +1,11 @@
 import { SectionForm } from "@/components/section-form";
-import { getMockCourses, getMockInstructors, getMockRooms } from "@/lib/demo-data";
+import { getAllCourses, getAllInstructors, getAllRooms } from "@/lib/data/sections-helpers";
 
 export default async function NewSectionPage() {
   const [courses, instructors, rooms] = await Promise.all([
-    getMockCourses(),
-    getMockInstructors(),
-    getMockRooms(),
+    getAllCourses(),
+    getAllInstructors(),
+    getAllRooms(),
   ]);
 
   return (

@@ -13,6 +13,7 @@ import { authenticateRequest, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 import { cookies } from "next/headers";
+import { AUTH_COOKIE_NAMES } from "@/lib/utils/cookie-utils";
 
 interface LogoutResponse {
   success: boolean;
@@ -45,23 +46,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Clear authentication cookies
+    // Clear all authentication cookies (custom and Supabase)
     const cookieStore = await cookies();
-    cookieStore.delete('auth_token');
-    cookieStore.delete('demo_user_id');
-    cookieStore.set('auth_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
+    const allCookies = cookieStore.getAll();
+    
+    // Get all cookies to find Supabase cookies
+    const cookiesToClear: string[] = [...AUTH_COOKIE_NAMES];
+    
+    // Also find any cookies that match Supabase patterns
+    allCookies.forEach(cookie => {
+      if ((cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) && 
+          !cookiesToClear.includes(cookie.name)) {
+        cookiesToClear.push(cookie.name);
+      }
     });
-    cookieStore.set('demo_user_id', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
+    
+    // Clear each cookie by deleting and setting to empty with maxAge: 0
+    cookiesToClear.forEach(cookieName => {
+      cookieStore.delete(cookieName);
+      cookieStore.set(cookieName, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
     });
 
     // Fix: Use createSuccessResponse for consistency with other endpoints
@@ -73,22 +82,16 @@ export async function POST(request: NextRequest) {
     // Create response with cleared cookies using createSuccessResponse
     const nextResponse = createSuccessResponse(response, 200);
     
-    // Clear cookies in response headers
-    nextResponse.cookies.delete('auth_token');
-    nextResponse.cookies.delete('demo_user_id');
-    nextResponse.cookies.set('auth_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
-    nextResponse.cookies.set('demo_user_id', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
+    // Clear all cookies in response headers (ensures browser removes them)
+    cookiesToClear.forEach(cookieName => {
+      nextResponse.cookies.delete(cookieName);
+      nextResponse.cookies.set(cookieName, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
     });
 
     return nextResponse;

@@ -9,13 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, AlertCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { getMockScheduleStatus } from "@/lib/demo-data";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 interface SchedulingStats {
   total_sections: number;
   assigned: number;
   unassigned: number;
   conflicts_resolved: number;
+  created?: number;
 }
 
 interface UnassignedSection {
@@ -58,56 +59,90 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     setGenerationResult(null);
 
     try {
+      // Get auth header first
+      const authHeader = await getAuthHeader();
+      
       // Get current active term
-      const termsResponse = await fetch('/api/v1/academic-terms');
+      const termsResponse = await fetch('/api/v1/academic-terms', {
+        headers: {
+          'Authorization': authHeader,
+        },
+      });
+      
       if (!termsResponse.ok) {
-        throw new Error('Failed to fetch academic terms');
+        let errorMessage = 'Failed to fetch academic terms';
+        try {
+          const errorData = await termsResponse.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = termsResponse.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const termsData = await termsResponse.json();
-      const activeTerm = termsData.data?.find((t: any) => 
+      const activeTerm = termsData.data?.find((t: { status: string; id: string }) => 
         t.status === 'draft' || t.status === 'released'
       );
 
       if (!activeTerm) {
         throw new Error('No active academic term found. Please create an academic term first.');
       }
-
+      
       // Call schedule generation API
       const response = await fetch('/api/v1/schedules/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': authHeader,
         },
         body: JSON.stringify({
           term_id: activeTerm.id,
         }),
       });
 
-      const result = await response.json();
-
+      // Check response status before parsing JSON
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to generate schedule');
+        // Try to parse error response, but handle non-JSON gracefully
+        let errorMessage = 'Failed to generate schedule';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+
+      // Only parse JSON if response is ok
+      const result = await response.json();
 
       // Map API response to component format
       const generationResult: GenerationResult = {
-        success: result.data.stats.unassigned === 0,
+        success: result.data.stats.unassigned === 0 && result.data.stats.total_sections > 0,
         stats: {
           total_sections: result.data.stats.total_sections,
           assigned: result.data.stats.added,
           unassigned: result.data.stats.unassigned,
-          conflicts_resolved: result.data.stats.added, // Approximate
+          conflicts_resolved: result.data.stats.added,
+          created: result.data.stats.created || 0,
         },
-        unassigned: [], // API doesn't return unassigned details yet
+        unassigned: result.data.unassigned || [],
         message: result.data.message,
       };
 
       setGenerationResult(generationResult);
 
-      if (generationResult.success) {
+      // Handle different response scenarios
+      if (result.data.stats.total_sections === 0) {
+        // No draft sections found
+        toast.info(result.data.message || "No draft sections found to schedule");
+      } else if (generationResult.success) {
+        // All sections successfully assigned
         toast.success("Schedule generated successfully!");
       } else {
+        // Partial generation
         toast.warning(`Partial schedule generated. ${result.data.stats.unassigned} sections remaining unassigned.`);
       }
 
@@ -124,11 +159,30 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
 
   async function refreshStatus() {
     try {
-      // DEMO MODE: Use mock data
-      const data = await getMockScheduleStatus();
-      setStatus(data);
+      const authHeader = await getAuthHeader();
+      
+      const response = await fetch('/api/v1/schedules/status', {
+        headers: {
+          'Authorization': authHeader,
+        },
+      });
+
+      if (response.ok) {
+        try {
+          const result = await response.json();
+          setStatus(result.data);
+        } catch (parseError) {
+          // Handle case where response is ok but not valid JSON
+          console.error("Error parsing status response:", parseError);
+        }
+      }
+      // Silently ignore non-ok responses to prevent error loops
     } catch (error) {
-      console.error("Error refreshing status:", error);
+      // Silently handle errors to prevent continuous error reporting
+      // Only log in development to avoid console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error refreshing status:", error);
+      }
     }
   }
 
@@ -198,7 +252,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           <div className="flex gap-4">
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || status.draft.total === 0}
+              disabled={isGenerating}
               size="lg"
               className="flex-1"
             >
@@ -229,7 +283,8 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>No draft sections</AlertTitle>
               <AlertDescription>
-                There are no draft sections to schedule. Create sections first or change existing
+                There are no draft sections to schedule. The generation will check for draft sections
+                and return a message if none are found. Create sections first or change existing
                 sections to draft state.
               </AlertDescription>
             </Alert>
@@ -239,10 +294,21 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
 
       {/* Generation Results */}
       {generationResult && (
-        <Card className={generationResult.success ? "border-green-500" : "border-orange-500"}>
+        <Card className={
+          generationResult.stats.total_sections === 0 
+            ? "border-blue-500" 
+            : generationResult.success 
+              ? "border-green-500" 
+              : "border-orange-500"
+        }>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {generationResult.success ? (
+              {generationResult.stats.total_sections === 0 ? (
+                <>
+                  <AlertCircle className="h-5 w-5 text-blue-600" />
+                  No Draft Sections
+                </>
+              ) : generationResult.success ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   Generation Complete
@@ -257,32 +323,60 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
             <CardDescription>{generationResult.message}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Total Sections</p>
-                <p className="text-2xl font-bold">{generationResult.stats.total_sections}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Assigned</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {generationResult.stats.assigned}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Unassigned</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {generationResult.stats.unassigned}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Conflicts Resolved</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {generationResult.stats.conflicts_resolved}
-                </p>
-              </div>
-            </div>
+            {generationResult.stats.total_sections === 0 ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Draft Sections Available</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    There are no draft sections in the system to schedule. To generate a schedule:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Create new sections in the <strong>Sections</strong> page</li>
+                    <li>Ensure sections are set to <strong>&quot;draft&quot;</strong> state</li>
+                    <li>Or change existing sections to draft state</li>
+                  </ul>
+                  <p className="mt-2">
+                    Once you have draft sections, click &quot;Generate Schedule&quot; again.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <div className={`grid gap-4 ${generationResult.stats.created && generationResult.stats.created > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Total Sections</p>
+                    <p className="text-2xl font-bold">{generationResult.stats.total_sections}</p>
+                  </div>
+                  {generationResult.stats.created !== undefined && generationResult.stats.created > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Created</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {generationResult.stats.created}
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Assigned</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {generationResult.stats.assigned}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Unassigned</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {generationResult.stats.unassigned}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Conflicts Resolved</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {generationResult.stats.conflicts_resolved}
+                    </p>
+                  </div>
+                </div>
 
-            {generationResult.unassigned.length > 0 && (
+                {generationResult.unassigned.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-2">
                   <XCircle className="h-4 w-4 text-orange-600" />
@@ -312,6 +406,8 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                   </AlertDescription>
                 </Alert>
               </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

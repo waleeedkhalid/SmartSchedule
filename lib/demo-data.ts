@@ -864,21 +864,6 @@ export async function getMockStudentExams(studentId?: string): Promise<MockExam[
   return mockExams.filter(e => enrolledSectionIds.includes(e.section_id));
 }
 
-/**
- * Get student groups
- */
-export async function getMockStudentGroups(): Promise<MockStudentGroup[]> {
-  await delay(50);
-  return mockStudentGroups;
-}
-
-/**
- * Get student group by ID
- */
-export async function getMockStudentGroupById(id: string): Promise<MockStudentGroup | null> {
-  await delay(50);
-  return mockStudentGroups.find(g => g.id === id) || null;
-}
 
 /**
  * Get student schedule (required + elective courses)
@@ -1089,7 +1074,6 @@ export async function getMockSchedulingStats(): Promise<{
   sectionsCount: number;
   roomsCount: number;
   instructorsCount: number;
-  groupsCount: number;
   draftSectionsCount: number;
   releasedSectionsCount: number;
   assignedSectionsCount: number;
@@ -1106,7 +1090,6 @@ export async function getMockSchedulingStats(): Promise<{
     sectionsCount: mockSections.length,
     roomsCount: mockRooms.length,
     instructorsCount: mockInstructors.length,
-    groupsCount: mockStudentGroups.length,
     draftSectionsCount: draftSections.length,
     releasedSectionsCount: releasedSections.length,
     assignedSectionsCount: assignedSections.length,

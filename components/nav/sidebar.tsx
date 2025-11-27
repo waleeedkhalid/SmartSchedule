@@ -37,7 +37,6 @@ interface NavItem {
 interface SidebarProps {
   userRole: string;
   userName: string;
-  userEmail: string;
 }
 
 const roleNavItems: Record<string, NavItem[]> = {
@@ -49,16 +48,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       description: "Overview",
     },
     {
-      title: "My Preferences",
+      title: "Electives Preferences",
       href: "/dashboard/preferences",
       icon: Heart,
       description: "Elective choices",
     },
     {
-      title: "Notifications",
-      href: "/dashboard/notifications",
-      icon: Bell,
-      description: "Updates",
+      title: "Academic Plan",
+      href: "/dashboard/academic-plan",
+      icon: GraduationCap,
+      description: "Course roadmap",
     },
   ],
   scheduling: [
@@ -96,11 +95,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Exams",
       href: "/dashboard/exams",
       icon: Calendar,
-    },
-    {
-      title: "Student Groups",
-      href: "/dashboard/student-groups",
-      icon: GraduationCap,
     },
     {
       title: "Elective Stats",
@@ -186,7 +180,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ]
 };
 
-export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
+export function Sidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname();
   const navItems = roleNavItems[userRole] || [];
 
@@ -293,24 +287,16 @@ export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
                 },
               });
               
-              // Clear cookies and localStorage
-              document.cookie = 'auth_token=; path=/; max-age=0';
-              document.cookie = 'demo_user_id=; path=/; max-age=0';
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
-              }
+              // Clear all cookies and localStorage using utility
+              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              performClientLogoutCleanup();
               
               window.location.href = '/login';
             } catch (error) {
               console.error('Logout error:', error);
-              // Clear local storage even on error
-              document.cookie = 'auth_token=; path=/; max-age=0';
-              document.cookie = 'demo_user_id=; path=/; max-age=0';
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
-              }
+              // Clear all cookies and localStorage even on error
+              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              performClientLogoutCleanup();
               window.location.href = '/login';
             }
           }}

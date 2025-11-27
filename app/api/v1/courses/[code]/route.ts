@@ -95,7 +95,14 @@ export async function PUT(
     // Prepare update data
     const updateData: any = {};
     if (name !== undefined) updateData.title = name;
-    if (credits !== undefined) updateData.credits = parseInt(credits);
+    if (credits !== undefined) {
+      const creditsNum = parseInt(credits);
+      updateData.credits = creditsNum;
+      // Auto-calculate weekly_hours if not explicitly provided: credits + 1, except if credits = 2 then weekly_hours = 2
+      if (weekly_hours === undefined) {
+        updateData.weekly_hours = creditsNum === 2 ? 2 : creditsNum + 1;
+      }
+    }
     if (level !== undefined) updateData.level = parseInt(level);
     if (weekly_hours !== undefined) updateData.weekly_hours = parseInt(weekly_hours);
     if (course_type !== undefined) updateData.is_elective = course_type === "elective";

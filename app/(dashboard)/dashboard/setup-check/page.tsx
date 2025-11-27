@@ -24,7 +24,7 @@ export default async function SetupCheckPage() {
 
   // Check all required tables
   const requiredTables = [
-    'course', 'room', 'instructor', 'student_group', 'section',
+    'course', 'room', 'instructor', 'section',
     'exam', 'rule', 'schedule_doc', 'comment', 'notification',
     'user_roles', 'time_grid_config', 'elective_preference',
     'student_enrollment', 'schedule_comment', 'irregular_student'

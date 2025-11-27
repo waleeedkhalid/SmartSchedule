@@ -9,60 +9,61 @@
  */
 
 import { NextRequest } from "next/server";
-import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
+import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { getMockEnrollmentsWithDetails, mockSections, mockCourses } from "@/lib/demo-data";
+
+/**
+ * Check if two time slots overlap
+ */
+function doTimeSlotsOverlap(
+  days1: string[],
+  start1: string,
+  duration1: number,
+  days2: string[],
+  start2: string,
+  duration2: number
+): boolean {
+  // Check if days overlap
+  const daysOverlap = days1.some((day) => days2.includes(day));
+  if (!daysOverlap) return false;
+
+  // Validate time format (HH:MM)
+  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+  if (!timeRegex.test(start1) || !timeRegex.test(start2)) {
+    return false;
+  }
+
+  // Parse times to minutes
+  const [h1, m1] = start1.split(":").map(Number);
+  const [h2, m2] = start2.split(":").map(Number);
+
+  const start1Minutes = h1 * 60 + m1;
+  const end1Minutes = start1Minutes + duration1;
+  const start2Minutes = h2 * 60 + m2;
+  const end2Minutes = start2Minutes + duration2;
+
+  // Check if times overlap
+  return start1Minutes < end2Minutes && start2Minutes < end1Minutes;
+}
+
+/**
+ * Parse time string (HH:MM) to minutes since midnight
+ */
+function parseTimeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
 
 // GET - List user's enrollments
 export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request);
 
-    // Only students can view enrollments (or they can view their own)
-    if (user.role !== "student") {
-      requireRole(user, ["student"]);
-    }
+    // Only students can view enrollments
+    requireRole(user, ["student"]);
 
-    // Check if this is a demo token
-    const token = extractAuthToken(request);
-    const isDemo = token?.startsWith("demo:") === true;
-
-    // Handle demo mode
-    if (isDemo === true) {
-      const enrollments = await getMockEnrollmentsWithDetails(user.id);
-      
-      // Map to API response format
-      const mappedEnrollments = enrollments.map((enrollment) => ({
-        id: enrollment.id,
-        student_id: enrollment.student_id,
-        section_id: enrollment.section_id,
-        course_code: enrollment.section?.course?.code || null,
-        academic_semester_id: "demo-semester",
-        enrollment_type: enrollment.section?.course?.is_elective ? "elective" : "required",
-        status: enrollment.status === "registered" ? "enrolled" : "dropped",
-        enrolled_at: enrollment.enrolled_at,
-        dropped_at: enrollment.dropped_at,
-        course: enrollment.section?.course
-          ? {
-              code: enrollment.section.course.code,
-              name: enrollment.section.course.title,
-              credits: enrollment.section.course.credits,
-            }
-          : null,
-        section: enrollment.section
-          ? {
-              id: enrollment.section.id,
-              section_no: enrollment.section.section_no,
-              meeting_pattern: enrollment.section.meeting_pattern,
-            }
-          : null,
-      }));
-
-      return createSuccessResponse(mappedEnrollments, 200);
-    }
-
-    // Handle real Supabase mode
+    // Real Supabase mode only - no demo support
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const termId = searchParams.get("semester_id") || searchParams.get("term_id"); // Support both for backward compatibility
@@ -181,71 +182,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if this is a demo token
-    const token = extractAuthToken(request);
-    const isDemo = token?.startsWith("demo:") === true;
-
-    // Handle demo mode
-    if (isDemo === true) {
-      // In demo mode, simulate enrollment creation
-      // Check if section exists in mock data
-      const section = mockSections.find(s => s.id === section_id);
-      if (!section) {
-        return createErrorResponse(
-          404,
-          ErrorCodes.NOT_FOUND,
-          "Section not found"
-        );
-      }
-
-      // Check if already enrolled
-      const existingEnrollments = await getMockEnrollmentsWithDetails(user.id);
-      const alreadyEnrolled = existingEnrollments.some(e => e.section_id === section_id && e.status === "registered");
-      
-      if (alreadyEnrolled) {
-        return createErrorResponse(
-          400,
-          ErrorCodes.VALIDATION_ERROR,
-          "Already enrolled in this section"
-        );
-      }
-
-      // Create mock enrollment
-      const course = mockCourses.find(c => c.code === section.course_code);
-      const newEnrollment = {
-        id: `enrollment-${Date.now()}`,
-        student_id: user.id,
-        section_id: section_id,
-        course_code: section.course_code,
-        academic_semester_id: semester_id || "demo-semester",
-        enrollment_type: course?.is_elective ? "elective" : "required",
-        status: "enrolled",
-        enrolled_at: new Date().toISOString(),
-        dropped_at: null,
-        course: course ? {
-          code: course.code,
-          name: course.title,
-          credits: course.credits,
-        } : null,
-        section: {
-          id: section.id,
-          section_no: section.section_no,
-          meeting_pattern: section.meeting_pattern,
-        },
-      };
-
-      return createSuccessResponse(newEnrollment, 201);
-    }
-
-    // Handle real Supabase mode
+    // Real Supabase mode only - no demo support
     const supabase = await createClient();
 
-    // Check if section exists and get course info
+    // STEP 1: Check if registration is open
+    const { data: registrationStatus, error: regError } = await supabase
+      .rpc("is_registration_open");
+
+    if (regError) {
+      console.error("Error checking registration status:", regError);
+      // Continue if function doesn't exist (backward compatibility)
+    } else if (!registrationStatus) {
+      return createErrorResponse(
+        403,
+        ErrorCodes.VALIDATION_ERROR,
+        "Registration is not currently open. Please check the academic timeline for registration dates."
+      );
+    }
+
+    // STEP 2: Check if section exists and get full section details
     const { data: section, error: sectionError } = await supabase
       .from("section")
       .select(`
+        id,
         course_code,
+        section_no,
+        meeting_pattern,
+        capacity,
         course:course_code (
+          code,
+          title,
+          credits,
           is_elective
         )
       `)
@@ -256,7 +223,22 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        "Section not found"
+        "Section not found or no longer available"
+      );
+    }
+
+    // Check if section is released
+    const { data: sectionState } = await supabase
+      .from("section")
+      .select("state")
+      .eq("id", section_id)
+      .single();
+
+    if (sectionState?.state !== "released") {
+      return createErrorResponse(
+        403,
+        ErrorCodes.VALIDATION_ERROR,
+        "This section is not yet available for registration. Sections must be released before students can enroll."
       );
     }
 
@@ -278,9 +260,152 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine if course is elective
-    // Fix: course is an array from the query, get first element
+    // STEP 3: Check for time/day conflicts with existing enrollments
+    const meetingPattern = section.meeting_pattern as {
+      days?: string[];
+      start?: string;
+      duration?: number;
+    } | null;
+
+    if (meetingPattern?.days && meetingPattern.start && meetingPattern.duration) {
+      // Get all student's current enrollments with their meeting patterns
+      const { data: currentEnrollments } = await supabase
+        .from("student_enrollment")
+        .select(`
+          section:section_id (
+            id,
+            course_code,
+            section_no,
+            meeting_pattern
+          )
+        `)
+        .eq("student_id", user.id)
+        .eq("status", "registered");
+
+      // Check for time conflicts
+      const conflicts: string[] = [];
+      (currentEnrollments || []).forEach((enrollment: any) => {
+        const enrolledSection = enrollment.section;
+        if (!enrolledSection?.meeting_pattern) return;
+
+        const enrolledPattern = enrolledSection.meeting_pattern as {
+          days?: string[];
+          start?: string;
+          duration?: number;
+        };
+
+        if (
+          enrolledPattern.days &&
+          enrolledPattern.start &&
+          enrolledPattern.duration &&
+          doTimeSlotsOverlap(
+            meetingPattern.days,
+            meetingPattern.start,
+            meetingPattern.duration,
+            enrolledPattern.days,
+            enrolledPattern.start,
+            enrolledPattern.duration
+          )
+        ) {
+          conflicts.push(
+            `${enrolledSection.course_code} ${enrolledSection.section_no}`
+          );
+        }
+      });
+
+      if (conflicts.length > 0) {
+        return createErrorResponse(
+          409,
+          ErrorCodes.VALIDATION_ERROR,
+          `Time conflict detected! This section overlaps with: ${conflicts.join(", ")}. Please choose a different section or drop the conflicting enrollment first.`
+        );
+      }
+    }
+
+    // STEP 4: Check for exam conflicts
     const course = Array.isArray(section.course) ? section.course[0] : section.course;
+    const courseCode = section.course_code;
+
+    if (courseCode) {
+      // Get exams for the course being enrolled
+      const { data: newCourseExams } = await supabase
+        .from("exam")
+        .select("date, start_time, duration_minutes")
+        .eq("course_code", courseCode);
+
+      if (newCourseExams && newCourseExams.length > 0) {
+        // Get all courses the student is enrolled in
+        const { data: enrolledSections } = await supabase
+          .from("student_enrollment")
+          .select(`
+            section:section_id (
+              course_code
+            )
+          `)
+          .eq("student_id", user.id)
+          .eq("status", "registered")
+          .neq("section_id", section_id);
+
+        const enrolledCourseCodes = (enrolledSections || [])
+          .map((e: any) => e.section?.course_code)
+          .filter((code: string | undefined): code is string => !!code);
+
+        if (enrolledCourseCodes.length > 0) {
+          // Get exams for enrolled courses
+          const { data: enrolledExams } = await supabase
+            .from("exam")
+            .select("course_code, date, start_time, duration_minutes")
+            .in("course_code", enrolledCourseCodes);
+
+          // Check for exam conflicts
+          const examConflicts: string[] = [];
+          (newCourseExams || []).forEach((newExam: any) => {
+            (enrolledExams || []).forEach((enrolledExam: any) => {
+              // Check if same date
+              if (newExam.date === enrolledExam.date) {
+                // Check if times overlap
+                const newStart = parseTimeToMinutes(newExam.start_time);
+                const newEnd = newStart + (newExam.duration_minutes || 0);
+                const enrolledStart = parseTimeToMinutes(enrolledExam.start_time);
+                const enrolledEnd = enrolledStart + (enrolledExam.duration_minutes || 0);
+
+                if (newStart < enrolledEnd && enrolledStart < newEnd) {
+                  examConflicts.push(
+                    `${enrolledExam.course_code} exam on ${newExam.date}`
+                  );
+                }
+              }
+            });
+          });
+
+          if (examConflicts.length > 0) {
+            return createErrorResponse(
+              409,
+              ErrorCodes.VALIDATION_ERROR,
+              `Exam conflict detected! This course's exams conflict with: ${examConflicts.join(", ")}. Please choose a different section or contact your advisor.`
+            );
+          }
+        }
+      }
+    }
+
+    // STEP 5: Check capacity
+    const { data: enrollmentCount } = await supabase
+      .from("student_enrollment")
+      .select("id", { count: "exact", head: true })
+      .eq("section_id", section_id)
+      .eq("status", "registered");
+
+    const currentEnrollmentCount = enrollmentCount || 0;
+    if (currentEnrollmentCount >= (section.capacity || 0)) {
+      return createErrorResponse(
+        409,
+        ErrorCodes.VALIDATION_ERROR,
+        "This section is full. Please choose another section."
+      );
+    }
+
+    // Determine if course is elective
     const isElective = course?.is_elective || false;
 
     // Create enrollment

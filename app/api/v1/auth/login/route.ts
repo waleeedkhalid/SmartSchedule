@@ -104,14 +104,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch user role information
-    const { data: userRole, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role, name, email")
-      .eq("user_id", authData.user.id)
-      .single();
+    // Fetch user role information with error handling
+    let userRole;
+    let roleError;
+    
+    try {
+      const result = await supabase
+        .from("user_roles")
+        .select("role, name, email")
+        .eq("user_id", authData.user.id)
+        .single();
+      
+      userRole = result.data;
+      roleError = result.error;
+    } catch (error) {
+      // Catch any unexpected errors (network issues, etc.)
+      console.warn('Unexpected error fetching user role in login API:', error);
+      return createErrorResponse(
+        403,
+        "FORBIDDEN",
+        "User role not found. Please complete onboarding."
+      );
+    }
 
-    if (roleError || !userRole) {
+    // Handle errors gracefully
+    if (roleError) {
+      // Handle 400 errors specifically - these are query/RLS issues
+      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+        console.warn('user_roles query error (400) in login API:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      } else {
+        console.warn('Error fetching user role in login API:', {
+          code: roleError.code,
+          message: roleError.message,
+        });
+      }
+      return createErrorResponse(
+        403,
+        "FORBIDDEN",
+        "User role not found. Please complete onboarding."
+      );
+    }
+
+    if (!userRole) {
       return createErrorResponse(
         403,
         "FORBIDDEN",

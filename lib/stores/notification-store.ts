@@ -24,8 +24,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   isLoading: false,
   
   setNotifications: (notifications) => {
-    const unreadCount = notifications.filter((n) => !n.read_at).length;
-    set({ notifications, unreadCount });
+    // Safely handle null/undefined or invalid arrays
+    const safeNotifications = Array.isArray(notifications) ? notifications : [];
+    const unreadCount = safeNotifications.filter((n) => n && !n.read_at).length;
+    set({ notifications: safeNotifications, unreadCount });
   },
   
   addNotification: (notification) => set((state) => {

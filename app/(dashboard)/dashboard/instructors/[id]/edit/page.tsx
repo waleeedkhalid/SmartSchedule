@@ -1,13 +1,18 @@
 import { InstructorForm } from "@/components/instructor-form";
-import { getMockInstructor } from "@/lib/demo-data";
+import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
 export default async function EditInstructorPage({ params }: { params: { id: string } }) {
   const { id } = await params;
+  const supabase = await createClient();
   
-  const instructor = await getMockInstructor(id);
+  const { data: instructor, error } = await supabase
+    .from("instructor")
+    .select("*")
+    .eq("id", id)
+    .single();
   
-  if (!instructor) {
+  if (error || !instructor) {
     notFound();
   }
   

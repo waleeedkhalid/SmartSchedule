@@ -192,24 +192,40 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       // Only set onboarding_completed = true AFTER profile is successfully created
       // This ensures atomicity: either both succeed or both fail
       if (profileCreated) {
-        const { error: updateError } = await supabase
-          .from('user_roles')
-          .update({
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', userId);
-        
-        if (updateError) {
-          console.error('Error updating user_roles:', {
-            error: updateError,
-            message: updateError.message,
-            details: updateError.details,
-            hint: updateError.hint,
-            code: updateError.code
-          });
-          toast.error(`Failed to complete onboarding: ${updateError.message || 'Unknown error'}`);
-          // Profile was created but flag update failed - user can retry
+        try {
+          const { error: updateError } = await supabase
+            .from('user_roles')
+            .update({
+              onboarding_completed: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+          
+          if (updateError) {
+            // Handle 400 errors gracefully
+            if (updateError.status === 400 || updateError.code?.startsWith('PGRST')) {
+              console.warn('user_roles update error (400) in onboarding form:', {
+                code: updateError.code,
+                message: updateError.message,
+              });
+            } else {
+              console.error('Error updating user_roles:', {
+                error: updateError,
+                message: updateError.message,
+                details: updateError.details,
+                hint: updateError.hint,
+                code: updateError.code
+              });
+            }
+            toast.error(`Failed to complete onboarding: ${updateError.message || 'Unknown error'}`);
+            // Profile was created but flag update failed - user can retry
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (error) {
+          // Catch any unexpected errors
+          console.warn('Unexpected error updating user_roles in onboarding form:', error);
+          toast.error(`Failed to complete onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
           setIsSubmitting(false);
           return;
         }

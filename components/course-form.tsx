@@ -22,7 +22,7 @@ import { getAuthHeader } from "@/lib/utils/client-auth";
 const formSchema = z.object({
   code: z.string().min(2).max(20),
   title: z.string().min(3).max(200),
-  level: z.coerce.number().min(1).max(5),
+  level: z.coerce.number().min(4).max(8),
   credits: z.coerce.number().min(1).max(10),
   weekly_hours: z.coerce.number().min(1).max(20),
   is_elective: z.boolean(),
@@ -45,17 +45,20 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
       title: course.title,
       level: course.level,
       credits: course.credits,
-      weekly_hours: course.weekly_hours,
+      weekly_hours: course.weekly_hours || (course.credits === 2 ? 2 : course.credits + 1),
       is_elective: course.is_elective,
     } : {
       code: "",
       title: "",
-      level: 1,
+      level: 4,
       credits: 3,
-      weekly_hours: 3,
+      weekly_hours: 4, // credits (3) + 1
       is_elective: false,
     },
   });
+
+  // Watch credits to show calculated value in description
+  const credits = form.watch("credits");
 
   // Reset form when course changes (for edit mode)
   useEffect(() => {
@@ -65,16 +68,16 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
         title: course.title,
         level: course.level,
         credits: course.credits,
-        weekly_hours: course.weekly_hours,
+        weekly_hours: course.weekly_hours || (course.credits === 2 ? 2 : course.credits + 1),
         is_elective: course.is_elective,
       });
     } else {
       form.reset({
         code: "",
         title: "",
-        level: 1,
+        level: 4,
         credits: 3,
-        weekly_hours: 3,
+        weekly_hours: 4, // credits (3) + 1
         is_elective: false,
       });
     }
@@ -89,19 +92,21 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
       
       const method = isEditing ? 'PUT' : 'POST';
       
+      const authHeader = await getAuthHeader();
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': getAuthHeader(),
+          'Authorization': authHeader,
         },
         body: JSON.stringify({
           code: values.code,
           name: values.title,
           credits: values.credits,
           level: values.level,
-          course_type: values.is_elective ? 'elective' : 'required',
           weekly_hours: values.weekly_hours,
+          course_type: values.is_elective ? 'elective' : 'required',
         }),
       });
 
@@ -167,10 +172,10 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
                     <FormItem>
                       <FormLabel>Level</FormLabel>
                       <FormControl>
-                        <Input type="number" min="1" max="5" {...field} />
+                        <Input type="number" min="4" max="8" {...field} />
                       </FormControl>
                       <FormDescription>
-                        level (1-5)
+                        Level (4-8)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -184,7 +189,21 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
                     <FormItem>
                       <FormLabel>Credits</FormLabel>
                       <FormControl>
-                        <Input type="number" min="1" max="10" {...field} />
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="10" 
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Auto-calculate weekly_hours when credits change
+                            const creditsValue = parseInt(e.target.value) || 0;
+                            if (creditsValue > 0) {
+                              const calculatedWeeklyHours = creditsValue === 2 ? 2 : creditsValue + 1;
+                              form.setValue("weekly_hours", calculatedWeeklyHours);
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -200,6 +219,9 @@ export function CourseForm({ course, isEditing = false, onSuccess, onCancel }: C
                       <FormControl>
                         <Input type="number" min="1" max="20" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Auto-calculated: {credits === 2 ? '2' : `${credits || 0} + 1`}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

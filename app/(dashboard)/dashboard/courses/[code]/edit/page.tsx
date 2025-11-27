@@ -1,13 +1,18 @@
 import { CourseForm } from "@/components/course-form";
-import { getMockCourse } from "@/lib/demo-data";
+import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
 export default async function EditCoursePage({ params }: { params: { code: string } }) {
   const { code } = await params;
+  const supabase = await createClient();
   
-  const course = await getMockCourse(code);
+  const { data: course, error } = await supabase
+    .from("course")
+    .select("*")
+    .eq("code", code)
+    .single();
   
-  if (!course) {
+  if (error || !course) {
     notFound();
   }
   

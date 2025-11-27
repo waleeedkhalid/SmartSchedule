@@ -26,8 +26,8 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Users, Wifi, GitMerge, Activity, RotateCcw, Redo, Save, Check, Clock, Edit, Lock, Calendar, MapPin, User, BookOpen, Trash2, Plus, Copy, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
+// Yjs libraries are dynamically imported to prevent compilation on every page load
+// This fixes the 65ms bubble_compiled.js compilation delay
 import externalData from '@/external_departments_courses_sections.json';
 import swePlan from '@/swe_plan.json';
 import sweSections from '@/swe_departments_sections.json';
@@ -96,9 +96,12 @@ export default function CollaborationPage() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [showReadOnly, setShowReadOnly] = useState<boolean>(true);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<IndexeddbPersistence | null>(null);
-  const undoManagerRef = useRef<Y.UndoManager | null>(null);
+  const [isYjsLoading, setIsYjsLoading] = useState(true);
+  // Type refs to handle dynamic Yjs imports
+  const ydocRef = useRef<any>(null);
+  const providerRef = useRef<any>(null);
+  const undoManagerRef = useRef<any>(null);
+  const yjsModuleRef = useRef<{ Y: any; IndexeddbPersistence: any } | null>(null);
   const currentUserIdRef = useRef<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -177,132 +180,182 @@ export default function CollaborationPage() {
   }, []);
 
   useEffect(() => {
-    // Generate unique user ID for this tab/session
-    currentUserIdRef.current = `user-${Math.random().toString(36).substr(2, 9)}`;
+    let isMounted = true;
     
-    // Load courses for selected level
-    const courses = getCoursesForLevel(selectedLevel);
-    setAllCourses(courses);
-    
-    // Create Yjs document
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
-
-    // Create shared Map type for schedule data
-    const ymap = ydoc.getMap('scheduleData');
-
-    // Set up IndexedDB persistence (persists data to disk)
-    const provider = new IndexeddbPersistence('phase5-schedule-collab', ydoc);
-    providerRef.current = provider;
-
-    // Set up BroadcastChannel for cross-tab real-time sync
-    const bc = new BroadcastChannel('phase5-schedule-sync');
-    broadcastChannelRef.current = bc;
-
-    // Listen for updates from other tabs
-    bc.onmessage = (event) => {
-      if (event.data.type === 'update' && event.data.sender !== currentUserIdRef.current) {
-        Y.applyUpdate(ydoc, new Uint8Array(event.data.update));
-      } else if (event.data.type === 'presence') {
-        // Track active tabs
-        activeTabsRef.current.add(event.data.sender);
-        setActiveUsers(activeTabsRef.current.size + 1); // +1 for current tab
+    // Dynamically import Yjs libraries to prevent compilation on every page load
+    // This fixes the 65ms bubble_compiled.js compilation delay
+    async function initializeYjs() {
+      try {
+        setIsYjsLoading(true);
         
-        // Remove inactive tabs after 3 seconds
-        setTimeout(() => {
-          activeTabsRef.current.delete(event.data.sender);
-          setActiveUsers(activeTabsRef.current.size + 1);
-        }, 3000);
-      } else if (event.data.type === 'ping') {
-        // Respond to presence check
+        // Dynamic imports - only loaded when this page is accessed
+        const [yjsModule, indexeddbModule] = await Promise.all([
+          import('yjs'),
+          import('y-indexeddb')
+        ]);
+        
+        if (!isMounted) return;
+        
+        const Y = yjsModule.default || yjsModule;
+        const IndexeddbPersistence = indexeddbModule.IndexeddbPersistence || indexeddbModule.default;
+        
+        // Store modules in ref for later use
+        yjsModuleRef.current = { Y, IndexeddbPersistence };
+        
+        // Generate unique user ID for this tab/session
+        currentUserIdRef.current = `user-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Load courses for selected level
+        const courses = getCoursesForLevel(selectedLevel);
+        setAllCourses(courses);
+        
+        // Create Yjs document
+        const ydoc = new Y.Doc();
+        ydocRef.current = ydoc;
+
+        // Create shared Map type for schedule data
+        const ymap = ydoc.getMap('scheduleData');
+
+        // Set up IndexedDB persistence (persists data to disk)
+        const provider = new IndexeddbPersistence('phase5-schedule-collab', ydoc);
+        providerRef.current = provider;
+
+        // Set up BroadcastChannel for cross-tab real-time sync
+        const bc = new BroadcastChannel('phase5-schedule-sync');
+        broadcastChannelRef.current = bc;
+
+        // Listen for updates from other tabs
+        bc.onmessage = (event: any) => {
+          if (event.data.type === 'update' && event.data.sender !== currentUserIdRef.current) {
+            Y.applyUpdate(ydoc, new Uint8Array(event.data.update));
+          } else if (event.data.type === 'presence') {
+            // Track active tabs
+            activeTabsRef.current.add(event.data.sender);
+            setActiveUsers(activeTabsRef.current.size + 1); // +1 for current tab
+            
+            // Remove inactive tabs after 3 seconds
+            setTimeout(() => {
+              activeTabsRef.current.delete(event.data.sender);
+              setActiveUsers(activeTabsRef.current.size + 1);
+            }, 3000);
+          } else if (event.data.type === 'ping') {
+            // Respond to presence check
+            bc.postMessage({
+              type: 'presence',
+              sender: currentUserIdRef.current
+            });
+          }
+        };
+
+        // Broadcast updates to other tabs
+        ydoc.on('update', (update: Uint8Array) => {
+          bc.postMessage({
+            type: 'update',
+            update: Array.from(update),
+            sender: currentUserIdRef.current
+          });
+        });
+
+        // Send presence heartbeat
+        const presenceInterval = setInterval(() => {
+          bc.postMessage({
+            type: 'presence',
+            sender: currentUserIdRef.current
+          });
+        }, 1000);
+
+        // Initial presence check
         bc.postMessage({
-          type: 'presence',
+          type: 'ping',
           sender: currentUserIdRef.current
         });
+
+        // Set up undo manager
+        const undoManager = new Y.UndoManager(ymap);
+        undoManagerRef.current = undoManager;
+
+        // Wait for provider to sync
+        provider.on('synced', () => {
+          if (!isMounted) return;
+          setIsConnected(true);
+          
+          // Load schedule data from Yjs
+          const loadedData: ScheduleData = {};
+          ymap.forEach((value, key) => {
+            try {
+              loadedData[key] = JSON.parse(value as string);
+            } catch (e) {
+              console.error('Error parsing schedule data:', e);
+            }
+          });
+          setScheduleData(loadedData);
+        });
+
+        // Listen to changes from other tabs/users
+        const updateHandler = (event: any) => {
+          if (!isMounted) return;
+          
+          const newData: ScheduleData = {};
+          ymap.forEach((value, key) => {
+            try {
+              newData[key] = JSON.parse(value as string);
+            } catch (e) {
+              console.error('Error parsing schedule data:', e);
+            }
+          });
+          setScheduleData(newData);
+          
+          // Add to edit history
+          event.changes.keys.forEach((change: any, key: string) => {
+            if (change.action === 'update' || change.action === 'add') {
+              const now = new Date();
+              const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              setEditHistory(prev => [
+                {
+                  user: 'Collaborator',
+                  action: change.action === 'add' ? 'Added section' : 'Updated section',
+                  time: timeStr,
+                  course: key
+                },
+                ...prev.slice(0, 9) // Keep last 10 edits
+              ]);
+            }
+          });
+        };
+
+        ymap.observe(updateHandler);
+        
+        setIsYjsLoading(false);
+
+        return () => {
+          clearInterval(presenceInterval);
+          ymap.unobserve(updateHandler);
+          provider.destroy();
+          ydoc.destroy();
+          bc.close();
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+        };
+      } catch (error) {
+        console.error('Error initializing Yjs:', error);
+        setIsYjsLoading(false);
       }
-    };
+    }
 
-    // Broadcast updates to other tabs
-    ydoc.on('update', (update: Uint8Array) => {
-      bc.postMessage({
-        type: 'update',
-        update: Array.from(update),
-        sender: currentUserIdRef.current
-      });
-    });
-
-    // Send presence heartbeat
-    const presenceInterval = setInterval(() => {
-      bc.postMessage({
-        type: 'presence',
-        sender: currentUserIdRef.current
-      });
-    }, 1000);
-
-    // Initial presence check
-    bc.postMessage({
-      type: 'ping',
-      sender: currentUserIdRef.current
-    });
-
-    // Set up undo manager
-    const undoManager = new Y.UndoManager(ymap);
-    undoManagerRef.current = undoManager;
-
-    // Wait for provider to sync
-    provider.on('synced', () => {
-      setIsConnected(true);
-      
-      // Load schedule data from Yjs
-      const loadedData: ScheduleData = {};
-      ymap.forEach((value, key) => {
-        try {
-          loadedData[key] = JSON.parse(value as string);
-        } catch (e) {
-          console.error('Error parsing schedule data:', e);
-        }
-      });
-      setScheduleData(loadedData);
-    });
-
-    // Listen to changes from other tabs/users
-    const updateHandler = (event: Y.YMapEvent<any>) => {
-      const newData: ScheduleData = {};
-      ymap.forEach((value, key) => {
-        try {
-          newData[key] = JSON.parse(value as string);
-        } catch (e) {
-          console.error('Error parsing schedule data:', e);
-        }
-      });
-      setScheduleData(newData);
-      
-      // Add to edit history
-      event.changes.keys.forEach((change, key) => {
-        if (change.action === 'update' || change.action === 'add') {
-          const now = new Date();
-          const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          setEditHistory(prev => [
-            {
-              user: 'Collaborator',
-              action: change.action === 'add' ? 'Added section' : 'Updated section',
-              time: timeStr,
-              course: key
-            },
-            ...prev.slice(0, 9) // Keep last 10 edits
-          ]);
-        }
-      });
-    };
-
-    ymap.observe(updateHandler);
+    initializeYjs();
 
     return () => {
-      clearInterval(presenceInterval);
-      ymap.unobserve(updateHandler);
-      provider.destroy();
-      ydoc.destroy();
-      bc.close();
+      isMounted = false;
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
+      if (ydocRef.current) {
+        ydocRef.current.destroy();
+      }
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -556,9 +609,37 @@ export default function CollaborationPage() {
     undoManagerRef.current?.undo();
   };
 
+  const handleUndo = () => {
+    undoManagerRef.current?.undo();
+  };
+
   const handleRedo = () => {
     undoManagerRef.current?.redo();
   };
+
+  // Show loading state while Yjs libraries are being loaded
+  // This prevents the 65ms compilation delay on other pages
+  if (isYjsLoading) {
+    return (
+      <div className="container mx-auto p-8 space-y-6">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Loading Collaboration Editor</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Initializing Yjs libraries for real-time collaboration...
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-8 space-y-6">

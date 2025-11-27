@@ -20,7 +20,6 @@ export interface ProductionReadinessResult {
     instructors: number;
     rooms: number;
     sections: number;
-    student_groups: number;
     exams: number;
   };
   checks: {
@@ -38,7 +37,6 @@ const MINIMUM_REQUIREMENTS = {
   instructors: 5,
   rooms: 5,
   sections: 5,
-  student_groups: 1,
   exams: 0, // Exams are optional initially
 };
 
@@ -60,7 +58,6 @@ export async function checkProductionReadiness(): Promise<ProductionReadinessRes
     instructors: 0,
     rooms: 0,
     sections: 0,
-    student_groups: 0,
     exams: 0,
   };
 
@@ -150,28 +147,6 @@ export async function checkProductionReadiness(): Promise<ProductionReadinessRes
         name: 'Sections',
         status: 'pass',
         message: `${sectionsCount} sections scheduled`,
-      });
-    }
-
-    // Check Student Groups
-    const { count: groupsCount } = await supabase
-      .from('student_groups')
-      .select('*', { count: 'exact', head: true });
-    
-    data_counts.student_groups = groupsCount || 0;
-    
-    if ((groupsCount || 0) < MINIMUM_REQUIREMENTS.student_groups) {
-      critical_missing.push('student_groups');
-      checks.push({
-        name: 'Student Groups',
-        status: 'fail',
-        message: `No student groups found. At least ${MINIMUM_REQUIREMENTS.student_groups} required.`,
-      });
-    } else {
-      checks.push({
-        name: 'Student Groups',
-        status: 'pass',
-        message: `${groupsCount} student groups configured`,
       });
     }
 

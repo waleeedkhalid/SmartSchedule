@@ -39,7 +39,7 @@ const roleBadgeColors: Record<UserRole, string> = {
 };
 
 export default function UserAuthState() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading } = useAuth();
   const [isPending, startTransision] = useTransition();
   const queryClient = useQueryClient();
 
@@ -61,13 +61,9 @@ export default function UserAuthState() {
             },
           });
           
-          // Clear cookies and localStorage
-          document.cookie = 'auth_token=; path=/; max-age=0';
-          document.cookie = 'demo_user_id=; path=/; max-age=0';
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-          }
+          // Clear all cookies and localStorage using utility
+          const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+          performClientLogoutCleanup();
           
           if (response.ok) {
             queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
@@ -81,13 +77,9 @@ export default function UserAuthState() {
           }
         } catch (error) {
           console.error('Logout error:', error);
-          // Clear local storage even on error
-          document.cookie = 'auth_token=; path=/; max-age=0';
-          document.cookie = 'demo_user_id=; path=/; max-age=0';
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-          }
+          // Clear all cookies and localStorage even on error
+          const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+          performClientLogoutCleanup();
           queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
           toast.success("You're logged out!");
           window.location.href = '/login';
@@ -97,7 +89,13 @@ export default function UserAuthState() {
 
   return (
     <div className="flex items-center gap-4">
-      {user ? (
+      {loading ? (
+        // Show loading state while checking authentication
+        <div className="flex items-center gap-2">
+          <Icons.spinner className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      ) : user ? (
         <DropdownMenu>
           <DropdownMenuTrigger disabled={isPending}>
             <Avatar className="relative">

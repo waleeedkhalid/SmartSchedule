@@ -219,9 +219,16 @@ export function ElectivePreferenceManager({
   const savePreferences = async () => {
     setIsSaving(true);
     try {
+      // Get auth header for the request
+      const { getAuthHeader } = await import("@/lib/utils/client-auth");
+      const authHeader = await getAuthHeader();
+
       const response = await fetch("/api/elective-preferences", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
         body: JSON.stringify({
           preferences: preferences.map(p => ({
             course_code: p.course_code,
@@ -231,10 +238,13 @@ export function ElectivePreferenceManager({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save preferences");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save preferences");
       }
 
-      toast.success("Preferences saved successfully!", {
+      const result = await response.json();
+      
+      toast.success(result.data?.message || "Preferences saved successfully!", {
         icon: <CheckCircle2 className="h-4 w-4" />,
       });
       setHasChanges(false);
@@ -242,8 +252,9 @@ export function ElectivePreferenceManager({
       // Refresh the page to get updated data
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
-      toast.error("Failed to save preferences");
-      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to save preferences";
+      toast.error(errorMessage);
+      console.error("Error saving preferences:", error);
     } finally {
       setIsSaving(false);
     }

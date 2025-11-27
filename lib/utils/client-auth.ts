@@ -3,33 +3,61 @@
  * 
  * Helper functions for getting authentication tokens in client components.
  * Follows DRY principle by centralizing token extraction logic.
+ * 
+ * OPTIMIZATION: Caches session tokens to reduce auth requests
  */
 
+import { createClient } from '@/supabase/client';
+
+// Cache for session tokens (valid for 5 minutes)
+let sessionTokenCache: { token: string | null; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Gets the authentication token from cookies or localStorage
+ * Gets the authentication token from Supabase session or demo cookies
  * Returns null if no token is found
  * 
+ * OPTIMIZATION: Uses in-memory cache to avoid repeated getSession() calls
+ * 
  * Priority:
- * 1. auth_token cookie (for Supabase users)
+ * 1. Supabase session access_token (for authenticated Supabase users)
  * 2. demo_user_id cookie (for demo users, returns "demo:{user_id}")
- * 3. localStorage auth_token (fallback)
+ * 3. localStorage auth_token (fallback for legacy support)
  */
-export function getAuthToken(): string | null {
+export async function getAuthToken(): Promise<string | null> {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  // Try to get auth_token from cookies first (Supabase)
-  const authTokenCookie = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('auth_token='))
-    ?.split('=')[1];
+  // Check cache first (only for Supabase tokens, not demo)
+  const now = Date.now();
+  if (sessionTokenCache && (now - sessionTokenCache.timestamp) < CACHE_DURATION) {
+    return sessionTokenCache.token;
+  }
 
-  if (authTokenCookie) {
-    return authTokenCookie;
+  // Try to get Supabase session token first
+  try {
+    const supabase = createClient();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (!error && session?.access_token) {
+      // Cache the token
+      sessionTokenCache = {
+        token: session.access_token,
+        timestamp: now,
+      };
+      return session.access_token;
+    } else {
+      // Clear cache if session is invalid
+      sessionTokenCache = null;
+    }
+  } catch (error) {
+    // If Supabase client fails, clear cache and continue to fallback methods
+    sessionTokenCache = null;
   }
 
   // Try to get demo_user_id from cookies (Demo users)
+  // Note: Demo users don't need caching as cookie access is synchronous
   const demoUserIdCookie = document.cookie
     .split('; ')
     .find(row => row.startsWith('demo_user_id='))
@@ -39,16 +67,18 @@ export function getAuthToken(): string | null {
     return `demo:${demoUserIdCookie}`;
   }
 
-  // Fallback to localStorage
+  // Fallback to localStorage (for legacy support)
   return localStorage.getItem('auth_token');
 }
 
 /**
  * Gets the Authorization header value for API requests
  * Returns "Bearer {token}" or empty string if no token
+ * 
+ * Note: This is now async because it needs to fetch the session from Supabase
  */
-export function getAuthHeader(): string {
-  const token = getAuthToken();
+export async function getAuthHeader(): Promise<string> {
+  const token = await getAuthToken();
   return token ? `Bearer ${token}` : '';
 }
 

@@ -1,13 +1,18 @@
 import { RoomForm } from "@/components/room-form";
-import { getMockRoom } from "@/lib/demo-data";
+import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
 export default async function EditRoomPage({ params }: { params: { code: string } }) {
   const { code } = await params;
+  const supabase = await createClient();
   
-  const room = await getMockRoom(code);
+  const { data: room, error } = await supabase
+    .from("room")
+    .select("*")
+    .eq("code", code)
+    .single();
   
-  if (!room) {
+  if (error || !room) {
     notFound();
   }
   
