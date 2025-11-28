@@ -95,6 +95,7 @@ export async function PUT(
     }
 
     // Prepare update data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {};
     if (type !== undefined) updateData.type = type;
     if (capacity !== undefined) updateData.capacity = capacity ? parseInt(capacity) : null;

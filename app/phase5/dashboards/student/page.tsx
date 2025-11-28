@@ -123,7 +123,7 @@ export default function StudentDashboardPage() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           usePointStyle: true,
         },
       },
@@ -144,7 +144,7 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
         },
         border: { display: false },
@@ -155,7 +155,7 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -175,7 +175,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { x?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return 'Interest: ' + (context.parsed?.x || 0) + '%';
           }
         }
@@ -190,9 +191,9 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
-          callback: function(value: string | number) {
+          callback: function (value: string | number) {
             return value + '%';
           }
         },
@@ -204,7 +205,7 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -220,7 +221,7 @@ export default function StudentDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -231,7 +232,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + ' credits';
           }
         }
@@ -251,7 +253,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return 'GPA: ' + (context.parsed?.y || 0).toFixed(2);
           }
         }
@@ -266,7 +269,7 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
           stepSize: 0.5,
         },
@@ -278,7 +281,7 @@ export default function StudentDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },

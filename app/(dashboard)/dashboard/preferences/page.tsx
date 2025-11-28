@@ -37,7 +37,7 @@ export default async function PreferencesPage() {
       id,
       course_code,
       rank,
-      course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective)
+      course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective, weekly_hours)
     `)
     .eq('student_id', user.id)
     .order('rank', { ascending: true });
@@ -112,7 +112,7 @@ export default async function PreferencesPage() {
             Add More Preferences
           </AlertTitle>
           <AlertDescription className="text-amber-800 dark:text-amber-200">
-            You have {preferenceCount} of {recommendedMinPrefs} recommended preferences. 
+            You have {preferenceCount} of {recommendedMinPrefs} recommended preferences.
             Adding more increases your chances of enrollment!
           </AlertDescription>
         </Alert>
@@ -166,7 +166,8 @@ export default async function PreferencesPage() {
             initialPreferences={(preferences?.map(p => ({
               course_code: p.course_code,
               rank: p.rank,
-              course: extractJoinedRelation(p.course)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              course: (extractJoinedRelation(p.course) || undefined) as any
             })) || [])}
             availableElectives={electiveCourses || []}
           />

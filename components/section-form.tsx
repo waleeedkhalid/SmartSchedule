@@ -14,10 +14,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { SectionConflictDisplay } from "@/components/section-conflict-display";
+import { SectionConflictDisplay, type ConflictData } from "@/components/section-conflict-display";
 import { parseMeetingPattern } from "@/lib/types/scheduling";
 import type { Database } from "@/lib/types/database";
-import type { Course } from "@/lib/data/courses";
+
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { toast } from "sonner";
 
@@ -42,7 +42,7 @@ const formSchema = z.object({
 
 interface SectionFormProps {
   section?: Section;
-  courses: Course[];
+  courses: Array<{ code: string; title: string }>;
   instructors: Array<{ id: string; name: string }>;
   rooms: Array<{ code: string; type: string }>;
   isEditing?: boolean;
@@ -52,22 +52,13 @@ interface SectionFormProps {
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
-interface Conflict {
-  section_id?: string;
-  conflict_type?: string;
-  message?: string;
-}
-interface ConflictData {
-  room_conflicts: Conflict[];
-  instructor_conflicts: Conflict[];
-  has_conflicts: boolean;
-}
 
-export function SectionForm({ 
-  section, 
-  courses, 
-  instructors, 
-  rooms, 
+
+export function SectionForm({
+  section,
+  courses,
+  instructors,
+  rooms,
   isEditing = false,
   onSuccess,
   onCancel
@@ -129,7 +120,7 @@ export function SectionForm({
       try {
         // Get auth header for API request
         const authHeader = await getAuthHeader();
-        
+
         if (!authHeader) {
           // If no auth, skip conflict checking
           setConflicts(null);
@@ -149,7 +140,7 @@ export function SectionForm({
             interface Term {
               status?: string;
             }
-            const activeTerm = termsData.data?.find((t: Term) => 
+            const activeTerm = termsData.data?.find((t: Term) =>
               t.status === 'draft' || t.status === 'released'
             );
             if (activeTerm) {
@@ -225,12 +216,12 @@ export function SectionForm({
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing 
+      const url = isEditing
         ? `/api/v1/sections/${section?.id}`
         : '/api/v1/sections';
-      
+
       const method = isEditing ? 'PUT' : 'POST';
-      
+
       // Get current term_id (for now, we'll get the active term)
       // TODO: Add term selection to form
       let termId = null;
@@ -242,7 +233,7 @@ export function SectionForm({
             id: string;
             status?: string;
           }
-          const activeTerm = termsData.data?.find((t: Term) => 
+          const activeTerm = termsData.data?.find((t: Term) =>
             t.status === 'draft' || t.status === 'released'
           );
           if (activeTerm) {
@@ -281,7 +272,7 @@ export function SectionForm({
       }
 
       toast.success(`Section ${isEditing ? 'updated' : 'created'} successfully`);
-      
+
       // Call onSuccess callback if provided (for dialog mode)
       if (onSuccess) {
         onSuccess();
@@ -297,178 +288,178 @@ export function SectionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="course_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Course</FormLabel>
-                      <FormControl>
-                        <select
-                          {...field}
-                          disabled={isEditing}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="">Select a course</option>
-                          {courses.map((course) => (
-                            <option key={course.code} value={course.code}>
-                              {course.code} - {course.title}
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="section_no"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Section Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="01" {...field} disabled={isEditing} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="instructor_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Instructor (Optional)</FormLabel>
-                      <FormControl>
-                        <select
-                          {...field}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="">Unassigned</option>
-                          {instructors.map((instructor) => (
-                            <option key={instructor.id} value={instructor.id}>
-                              {instructor.name}
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="room_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Room (Optional)</FormLabel>
-                      <FormControl>
-                        <select
-                          {...field}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="">Unassigned</option>
-                          {rooms.map((room) => (
-                            <option key={room.code} value={room.code}>
-                              {room.code} ({room.type})
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacity</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" max="500" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="meeting_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Meeting Days</FormLabel>
-                    <div className="flex flex-wrap gap-2">
-                      {DAYS.map((day) => (
-                        <label
-                          key={day}
-                          className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-md border hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={field.value.includes(day)}
-                            onChange={(e) => {
-                              const updatedDays = e.target.checked
-                                ? [...field.value, day]
-                                : field.value.filter((d) => d !== day);
-                              field.onChange(updatedDays);
-                            }}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{day.substring(0, 3)}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="meeting_start"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Time</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="meeting_duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (minutes)</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="30" max="300" step="15" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-
-          {/* Conflict Detection Display */}
-          <SectionConflictDisplay
-            conflicts={conflicts}
-            isLoading={isCheckingConflicts}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="course_code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Course</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    disabled={isEditing}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select a course</option>
+                    {courses.map((course) => (
+                      <option key={course.code} value={course.code}>
+                        {course.code} - {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
+
+          <FormField
+            control={form.control}
+            name="section_no"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Section Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="01" {...field} disabled={isEditing} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="instructor_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Instructor (Optional)</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Unassigned</option>
+                    {instructors.map((instructor) => (
+                      <option key={instructor.id} value={instructor.id}>
+                        {instructor.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="room_code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Room (Optional)</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Unassigned</option>
+                    {rooms.map((room) => (
+                      <option key={room.code} value={room.code}>
+                        {room.code} ({room.type})
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="capacity"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Capacity</FormLabel>
+                <FormControl>
+                  <Input type="number" min="1" max="500" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="meeting_days"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Meeting Days</FormLabel>
+              <div className="flex flex-wrap gap-2">
+                {DAYS.map((day) => (
+                  <label
+                    key={day}
+                    className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-md border hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={field.value.includes(day)}
+                      onChange={(e) => {
+                        const updatedDays = e.target.checked
+                          ? [...field.value, day]
+                          : field.value.filter((d) => d !== day);
+                        field.onChange(updatedDays);
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm">{day.substring(0, 3)}</span>
+                  </label>
+                ))}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="meeting_start"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="meeting_duration"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Duration (minutes)</FormLabel>
+                <FormControl>
+                  <Input type="number" min="30" max="300" step="15" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+
+        {/* Conflict Detection Display */}
+        <SectionConflictDisplay
+          conflicts={conflicts}
+          isLoading={isCheckingConflicts}
+        />
 
         <div className="flex justify-end gap-4">
           {onCancel && (

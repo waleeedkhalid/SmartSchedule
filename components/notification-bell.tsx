@@ -88,15 +88,15 @@ function getNotificationDescription(type: string, payload: Record<string, unknow
 			}
 			return (typeof payload.description === 'string' ? payload.description : null) || 'Deadline approaching'
 		case 'section_updated':
-			return payload.section_code || 'A section has been updated'
+			return (payload.section_code as string) || 'A section has been updated'
 		case 'section_deleted':
-			return payload.section_code || 'A section has been deleted'
+			return (payload.section_code as string) || 'A section has been deleted'
 		case 'exam_updated':
-			return payload.exam_id || 'An exam has been updated'
+			return (payload.exam_id as string) || 'An exam has been updated'
 		case 'exam_deleted':
-			return payload.exam_id || 'An exam has been deleted'
+			return (payload.exam_id as string) || 'An exam has been deleted'
 		case 'schedule_released':
-			return payload.release_tag || 'A new schedule has been released'
+			return (payload.release_tag as string) || 'A new schedule has been released'
 		default:
 			return 'You have a new notification'
 	}
@@ -122,7 +122,7 @@ function getNotificationLink(type: string): string | null {
 export function NotificationBell() {
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
-	
+
 	const { data: recentNotifications = [], isLoading } = useRecentNotifications()
 	const { data: unreadNotifications = [] } = useUnreadNotifications()
 	const markAsRead = useMarkAsRead()
@@ -139,7 +139,7 @@ export function NotificationBell() {
 		if (link) {
 			router.push(link)
 		}
-		
+
 		setOpen(false)
 	}
 
@@ -233,7 +233,7 @@ export function NotificationBell() {
 												{getNotificationDescription(notification.type, notification.payload)}
 											</p>
 											<p className="text-xs text-muted-foreground mt-1">
-												{notification.created_at 
+												{notification.created_at
 													? (() => {
 														try {
 															return format(new Date(notification.created_at), 'MMM d, h:mm a')

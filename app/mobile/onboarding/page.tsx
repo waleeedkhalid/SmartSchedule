@@ -50,7 +50,8 @@ export default function OnboardingPage() {
         .maybeSingle();
 
       // If onboarding is already marked as completed, redirect
-      if (userRole?.onboarding_completed === true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((userRole as any)?.onboarding_completed === true) {
         router.push("/mobile/schedule");
         return;
       }

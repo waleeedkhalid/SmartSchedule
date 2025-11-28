@@ -135,6 +135,7 @@ export async function PUT(request: NextRequest) {
     const supabase = await createClient();
 
     // Prepare update data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {
       teaching_days,
       daily_start_time,

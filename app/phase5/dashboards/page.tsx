@@ -8,7 +8,8 @@ import { Loader2 } from 'lucide-react';
 
 export default function DashboardsPage() {
   const router = useRouter();
-  const { role, loading } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { role, loading } = useAuth() as any;
 
   useEffect(() => {
     if (loading) return;

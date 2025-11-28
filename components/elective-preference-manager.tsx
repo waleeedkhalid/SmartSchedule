@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Course } from "@/lib/types/database";
+import { Course } from "@/lib/types";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  DndContext, 
+import {
+  DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
@@ -25,10 +25,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { 
+import {
   GripVertical,
-  X, 
-  Plus, 
+  X,
+  Plus,
   Heart,
   BookOpen,
   Save,
@@ -82,9 +82,8 @@ function SortablePreferenceItem({ pref, index, onRemove, onShowDetails }: Sortab
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -100 }}
       transition={{ duration: 0.2 }}
-      className={`flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-900 hover:shadow-md transition-all ${
-        isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''
-      }`}
+      className={`flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-900 hover:shadow-md transition-all ${isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''
+        }`}
     >
       <div
         {...attributes}
@@ -97,7 +96,7 @@ function SortablePreferenceItem({ pref, index, onRemove, onShowDetails }: Sortab
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-md">
         {index + 1}
       </div>
-      
+
       <div className="flex-1 min-w-0">
         <p className="font-semibold truncate">{pref.course?.code || pref.course_code}</p>
         <p className="text-sm text-muted-foreground truncate">
@@ -117,7 +116,7 @@ function SortablePreferenceItem({ pref, index, onRemove, onShowDetails }: Sortab
           </Badge>
         </div>
       </div>
-      
+
       <Button
         size="sm"
         variant="ghost"
@@ -126,7 +125,7 @@ function SortablePreferenceItem({ pref, index, onRemove, onShowDetails }: Sortab
       >
         <Info className="h-4 w-4" />
       </Button>
-      
+
       <Button
         size="sm"
         variant="ghost"
@@ -173,9 +172,9 @@ export function ElectivePreferenceManager({
       setPreferences((items) => {
         const oldIndex = items.findIndex(item => item.course_code === active.id);
         const newIndex = items.findIndex(item => item.course_code === over.id);
-        
+
         const newItems = arrayMove(items, oldIndex, newIndex);
-        
+
         // Update ranks
         return newItems.map((item, index) => ({
           ...item,
@@ -227,7 +226,7 @@ export function ElectivePreferenceManager({
 
       const response = await fetch("/api/elective-preferences", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": authHeader,
         },
@@ -245,12 +244,12 @@ export function ElectivePreferenceManager({
       }
 
       const result = await response.json();
-      
+
       toast.success(result.data?.message || "Preferences saved successfully!", {
         icon: <CheckCircle2 className="h-4 w-4" />,
       });
       setHasChanges(false);
-      
+
       // Refresh the page to get updated data
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
@@ -269,10 +268,10 @@ export function ElectivePreferenceManager({
 
   const selectedCodes = new Set(preferences.map(p => p.course_code));
   const filteredCourses = availableElectives.filter(
-    course => !selectedCodes.has(course.code) && 
-      (searchQuery === "" || 
-       course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       course.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    course => !selectedCodes.has(course.code) &&
+      (searchQuery === "" ||
+        course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const completionPercentage = Math.min((preferences.length / 3) * 100, 100);
@@ -347,7 +346,7 @@ export function ElectivePreferenceManager({
                   </SortableContext>
                 </DndContext>
               )}
-              
+
               {preferences.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0 }}

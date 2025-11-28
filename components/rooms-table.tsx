@@ -1,6 +1,6 @@
 "use client";
 
-import { Room } from "@/lib/types/database";
+import { Room } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
 
     try {
       const authHeader = await getAuthHeader();
-      
+
       const response = await fetch(`/api/v1/rooms/${code}`, {
         method: 'DELETE',
         headers: {
@@ -77,11 +77,10 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
               <TableCell className="font-medium">{room.code}</TableCell>
               <TableCell>
                 <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    room.type === 'Lab'
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${room.type === 'Lab'
                       ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
                       : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  }`}
+                    }`}
                 >
                   {room.type}
                 </span>

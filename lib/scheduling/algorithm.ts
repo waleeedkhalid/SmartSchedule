@@ -60,6 +60,9 @@ export interface SchedulingInput {
     break_start_time: string;
     break_end_time: string;
     typical_lab_duration_minutes: number;
+    exam_days?: string[];
+    exam_start_time?: string;
+    exam_end_time?: string;
   };
 }
 
@@ -120,7 +123,7 @@ export function generateTimeSlots(config: SchedulingInput["timeGridConfig"], wee
       const durationPerMeetingMinutes = Math.round(durationPerMeetingHours * 60);
       // Round to nearest 30 minutes
       const durationMinutes = Math.max(30, Math.round(durationPerMeetingMinutes / 30) * 30);
-      
+
       // Generate slots for this pattern with calculated duration
       for (let currentMinutes = startMinutes; currentMinutes + durationMinutes <= endMinutes; currentMinutes += slot_duration_minutes) {
         const slotEndMinutes = currentMinutes + durationMinutes;
@@ -356,9 +359,9 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
     let assigned = false;
 
     // Check if section already has a meeting pattern (manually assigned)
-    const hasExistingAssignment = 
-      section.meeting_pattern.days.length > 0 && 
-      section.meeting_pattern.start && 
+    const hasExistingAssignment =
+      section.meeting_pattern.days.length > 0 &&
+      section.meeting_pattern.start &&
       section.meeting_pattern.duration > 0;
 
     if (hasExistingAssignment) {

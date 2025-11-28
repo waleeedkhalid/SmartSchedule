@@ -44,7 +44,7 @@ export default function SchedulingDashboardPage() {
   useEffect(() => {
     setIsMounted(true);
     setLastUpdate(new Date());
-    
+
     const interval = setInterval(() => {
       setLastUpdate(new Date());
     }, 60000);
@@ -94,7 +94,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.parsed?.y || 0) + ' students enrolled';
           }
         }
@@ -108,7 +109,7 @@ export default function SchedulingDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
         },
         border: {
@@ -121,7 +122,7 @@ export default function SchedulingDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: {
@@ -156,7 +157,7 @@ export default function SchedulingDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -169,7 +170,8 @@ export default function SchedulingDashboardPage() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         }
@@ -216,7 +218,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.parsed?.y || 0) + ' hours per week';
           }
         }
@@ -231,9 +234,9 @@ export default function SchedulingDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
-          callback: function(value: string | number) {
+          callback: function (value: string | number) {
             return value + 'h';
           }
         },
@@ -247,7 +250,7 @@ export default function SchedulingDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: {
@@ -282,7 +285,7 @@ export default function SchedulingDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -295,7 +298,8 @@ export default function SchedulingDashboardPage() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         },
@@ -341,7 +345,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { r?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.parsed?.r || 0) + '% performance';
           }
         }
@@ -357,7 +362,7 @@ export default function SchedulingDashboardPage() {
           backdropColor: 'transparent',
         },
         pointLabels: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.08)',

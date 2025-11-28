@@ -160,7 +160,7 @@ export function checkExamHardConstraints(
 ): ExamConstraintCheck {
   // 1. Student Conflict Avoidance (ABSOLUTE PRIORITY)
   const conflictingStudents: string[] = [];
-  
+
   for (const [courseCode, existingAssignment] of currentState.assignments.entries()) {
     if (courseCode === variable.course_code) continue;
 
@@ -355,7 +355,7 @@ export function selectExamMCV(state: ExamCSPState): ExamVariable | null {
 
   for (const variable of state.unassigned) {
     const domain = state.domains.get(variable.course_code) || [];
-    
+
     // Prioritize by enrollment (larger = more constrained)
     // If enrollment is same, prefer smaller domain
     if (
@@ -492,7 +492,8 @@ function calculateStudentLoadPenalty(
 
           if (daysDiff <= 2) {
             // Within 3-day window (0, 1, or 2 days apart)
-            const key = `${studentId}-${Math.min(assignment.date, otherAssignment.date)}`;
+            const earlierDate = assignment.date < otherAssignment.date ? assignment.date : otherAssignment.date;
+            const key = `${studentId}-${earlierDate}`;
             studentWindowCounts.set(key, (studentWindowCounts.get(key) || 0) + 1);
           }
         }

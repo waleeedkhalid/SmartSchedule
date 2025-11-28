@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Icons } from "@/components/ui/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserRole } from "@/lib/types/database";
+import { UserRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const roleLabels: Record<UserRole, string> = {
@@ -43,47 +43,47 @@ export default function UserAuthState() {
   const queryClient = useQueryClient();
 
   async function removeUser() {
-      startTransision(async () => {
-        try {
-          // Get token from cookie or localStorage
-          const token = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('auth_token='))
-            ?.split('=')[1] || 
-            (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
-          
-          // Use the unified logout API route
-          const response = await fetch('/api/v1/auth/logout', {
-            method: 'POST',
-            headers: {
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
-          });
-          
-          // Clear all cookies and localStorage using utility
-          const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
-          performClientLogoutCleanup();
-          
-          if (response.ok) {
-            queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
-            toast.success("You're logged out!");
-            window.location.href = '/login';
-          } else {
-            // Even if API fails, clear local storage and redirect
-            queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
-            toast.success("You're logged out!");
-            window.location.href = '/login';
-          }
-        } catch (error) {
-          console.error('Logout error:', error);
-          // Clear all cookies and localStorage even on error
-          const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
-          performClientLogoutCleanup();
+    startTransision(async () => {
+      try {
+        // Get token from cookie or localStorage
+        const token = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('auth_token='))
+          ?.split('=')[1] ||
+          (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+
+        // Use the unified logout API route
+        const response = await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+        });
+
+        // Clear all cookies and localStorage using utility
+        const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+        performClientLogoutCleanup();
+
+        if (response.ok) {
+          queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
+          toast.success("You're logged out!");
+          window.location.href = '/login';
+        } else {
+          // Even if API fails, clear local storage and redirect
           queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
           toast.success("You're logged out!");
           window.location.href = '/login';
         }
-      });
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Clear all cookies and localStorage even on error
+        const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+        performClientLogoutCleanup();
+        queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
+        toast.success("You're logged out!");
+        window.location.href = '/login';
+      }
+    });
   }
 
   return (
@@ -130,8 +130,8 @@ export default function UserAuthState() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <button 
-                onClick={removeUser} 
+              <button
+                onClick={removeUser}
                 disabled={isPending}
                 className="w-full cursor-pointer"
               >
@@ -146,9 +146,9 @@ export default function UserAuthState() {
         </DropdownMenu>
       ) : (
         <>
-          <Button 
-            variant="ghost" 
-            disabled={isPending} 
+          <Button
+            variant="ghost"
+            disabled={isPending}
             asChild
             className="hover:bg-brand-blue-50 hover:text-brand-blue-700 dark:hover:bg-brand-blue-950/30 dark:hover:text-brand-blue-400"
           >
@@ -160,8 +160,8 @@ export default function UserAuthState() {
               )}
             </Link>
           </Button>
-          <Button 
-            disabled={isPending} 
+          <Button
+            disabled={isPending}
             asChild
             className="bg-brand-blue-600 text-white hover:bg-brand-blue-700 dark:bg-brand-blue-500 dark:hover:bg-brand-blue-600"
           >

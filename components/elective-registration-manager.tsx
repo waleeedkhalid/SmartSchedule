@@ -26,12 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Users, 
-  Clock, 
-  MapPin, 
-  BookOpen, 
-  AlertCircle, 
+import {
+  Users,
+  Clock,
+  MapPin,
+  BookOpen,
+  AlertCircle,
   CheckCircle,
   XCircle,
   Calendar
@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { cachedFetch, CacheTTL, apiCache } from "@/lib/utils/api-cache";
+import { parseMeetingPattern } from "@/lib/types";
 
 interface EnrollmentInfo {
   id: string;
@@ -132,7 +133,7 @@ export function ElectiveRegistrationManager() {
         setAvailableSections([]);
         setCreditStats(null);
         setErrorMessage(
-          regData.data?.message || 
+          regData.data?.message ||
           'Registration is currently closed. Please check the academic timeline for registration dates.'
         );
         setLoading(false);
@@ -163,13 +164,19 @@ export function ElectiveRegistrationManager() {
 
       const formattedEnrollments = enrollmentsList
         .filter((e: EnrollmentResponse) => e.enrollment_type === 'elective')
-        .map((e: EnrollmentResponse) => ({
-          id: e.id,
-          section_id: e.section_id,
-          course: e.course || { code: e.course_code || '', title: '', credits: 0 },
-          section: e.section || { section_no: '', meeting_pattern: { days: [], start: '', duration: 0 } },
-          instructor: e.section?.instructor || null,
-        }));
+        .map((e: EnrollmentResponse) => {
+          const mp = e.section?.meeting_pattern ? parseMeetingPattern(e.section.meeting_pattern) : null;
+          return {
+            id: e.id,
+            section_id: e.section_id,
+            course: e.course || { code: e.course_code || '', title: '', credits: 0 },
+            section: {
+              section_no: e.section?.section_no || '',
+              meeting_pattern: mp || { days: [], start: 'TBA', duration: 0 }
+            },
+            instructor: e.section?.instructor || null,
+          };
+        });
 
       // Fetch available sections (released sections, then filter for electives)
       // Cache for 5 minutes - sections don't change frequently during registration
@@ -226,7 +233,7 @@ export function ElectiveRegistrationManager() {
           enrolled_count: enrolledCount,
           available_seats: availableSeats,
           is_full: availableSeats <= 0,
-          meeting_pattern: section.meeting_pattern || null,
+          meeting_pattern: (section.meeting_pattern ? parseMeetingPattern(section.meeting_pattern) : null) || { days: [], start: 'TBA', duration: 0 },
         };
       });
 
@@ -314,7 +321,7 @@ export function ElectiveRegistrationManager() {
 
       await response.json(); // Response data not needed, just verify success
       toast.success(`Successfully enrolled in ${section.course_code} ${section.section_no}`);
-      
+
       // Refresh data to show updated enrollments and credits
       await fetchData();
     } catch (error: unknown) {
@@ -352,7 +359,7 @@ export function ElectiveRegistrationManager() {
       }
 
       toast.success(`Successfully dropped ${courseName}`);
-      
+
       // Refresh data
       await fetchData();
     } catch (error: unknown) {
@@ -391,7 +398,7 @@ export function ElectiveRegistrationManager() {
               <AlertDescription className="text-yellow-900 dark:text-yellow-100 text-lg font-semibold">
                 <strong className="text-2xl block mb-3">Registration is Currently Closed</strong>
                 <p className="text-base font-normal mt-2">
-                  Please check the academic timeline for when registration opens. 
+                  Please check the academic timeline for when registration opens.
                   Registration will be available during the designated registration period.
                 </p>
               </AlertDescription>
@@ -422,8 +429,8 @@ export function ElectiveRegistrationManager() {
             </span>
           </CardTitle>
           <CardDescription>
-            Required: {creditStats?.required_credits || 0} credits | 
-            Electives: {creditStats?.elective_credits || 0} credits | 
+            Required: {creditStats?.required_credits || 0} credits |
+            Electives: {creditStats?.elective_credits || 0} credits |
             Available: {creditStats?.available_credits || 0} credits
           </CardDescription>
         </CardHeader>
@@ -487,7 +494,7 @@ export function ElectiveRegistrationManager() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {enrollment.section.meeting_pattern.start} 
+                        {enrollment.section.meeting_pattern.start}
                         ({enrollment.section.meeting_pattern.duration}min)
                       </span>
                       {enrollment.instructor && (
@@ -528,7 +535,7 @@ export function ElectiveRegistrationManager() {
               <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p className="font-medium mb-2">No elective sections available</p>
               <p className="text-sm">
-                {errorMessage || 
+                {errorMessage ||
                   'No elective sections have been released for registration yet. ' +
                   'Please check back later or contact your department for more information.'}
               </p>
@@ -537,7 +544,7 @@ export function ElectiveRegistrationManager() {
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
               {availableSections.map((section) => {
                 const isEnrolled = enrollments.some(e => e.section_id === section.section_id);
-                
+
                 return (
                   <div
                     key={section.section_id}
@@ -600,15 +607,15 @@ export function ElectiveRegistrationManager() {
                             size="sm"
                             onClick={() => handleEnroll(section)}
                             disabled={!!(
-                              section.is_full || 
+                              section.is_full ||
                               actionLoading === section.section_id ||
                               (creditStats && creditStats.total + section.course_credits > 20)
                             )}
                             title={
                               section.is_full ? 'Section is full' :
-                              actionLoading === section.section_id ? 'Loading...' :
-                              (creditStats && creditStats.total + section.course_credits > 20) ? 'Would exceed 20-credit limit' :
-                              undefined
+                                actionLoading === section.section_id ? 'Loading...' :
+                                  (creditStats && creditStats.total + section.course_credits > 20) ? 'Would exceed 20-credit limit' :
+                                    undefined
                             }
                           >
                             Register

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
-import { UserRole } from "@/lib/types/database";
+import { UserRole } from "@/lib/types";
 import { useEffect, useState } from "react";
 import {
   Calendar,
@@ -28,83 +28,83 @@ interface NavigationItem {
 }
 
 const navigation: NavigationItem[] = [
-  { 
-    name: "Dashboard", 
-    href: "/dashboard", 
-    icon: BarChart3, 
-    roles: ['scheduling', 'teaching_load', 'faculty', 'student', 'registrar'] 
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: BarChart3,
+    roles: ['scheduling', 'teaching_load', 'faculty', 'student', 'registrar']
   },
-  { 
-    name: "Courses", 
-    href: "/dashboard/courses", 
-    icon: BookOpen, 
-    roles: ['scheduling'] 
+  {
+    name: "Courses",
+    href: "/dashboard/courses",
+    icon: BookOpen,
+    roles: ['scheduling']
   },
-  { 
-    name: "Sections", 
-    href: "/dashboard/sections", 
-    icon: Calendar, 
-    roles: ['scheduling', 'teaching_load'] 
+  {
+    name: "Sections",
+    href: "/dashboard/sections",
+    icon: Calendar,
+    roles: ['scheduling', 'teaching_load']
   },
-  { 
-    name: "Rooms", 
-    href: "/dashboard/rooms", 
-    icon: DoorOpen, 
-    roles: ['scheduling', 'teaching_load'] 
+  {
+    name: "Rooms",
+    href: "/dashboard/rooms",
+    icon: DoorOpen,
+    roles: ['scheduling', 'teaching_load']
   },
-  { 
-    name: "Instructors", 
-    href: "/dashboard/instructors", 
-    icon: Users, 
-    roles: ['scheduling', 'teaching_load'] 
+  {
+    name: "Instructors",
+    href: "/dashboard/instructors",
+    icon: Users,
+    roles: ['scheduling', 'teaching_load']
   },
-  { 
-    name: "Exams", 
-    href: "/dashboard/exams", 
-    icon: CalendarCheck, 
-    roles: ['scheduling'] 
+  {
+    name: "Exams",
+    href: "/dashboard/exams",
+    icon: CalendarCheck,
+    roles: ['scheduling']
   },
-  { 
-    name: "Elective Stats", 
-    href: "/dashboard/elective-stats", 
-    icon: BarChart3, 
-    roles: ['scheduling'] 
+  {
+    name: "Elective Stats",
+    href: "/dashboard/elective-stats",
+    icon: BarChart3,
+    roles: ['scheduling']
   },
-  { 
-    name: "Level Overview", 
-    href: "/dashboard/level-overview", 
-    icon: TrendingUp, 
-    roles: ['scheduling', 'teaching_load'] 
+  {
+    name: "Level Overview",
+    href: "/dashboard/level-overview",
+    icon: TrendingUp,
+    roles: ['scheduling', 'teaching_load']
   },
-  { 
-    name: "Course Overview", 
-    href: "/dashboard/course-overview", 
-    icon: BookOpen, 
-    roles: ['scheduling', 'teaching_load'] 
+  {
+    name: "Course Overview",
+    href: "/dashboard/course-overview",
+    icon: BookOpen,
+    roles: ['scheduling', 'teaching_load']
   },
-  { 
-    name: "My Schedule", 
-    href: "/dashboard/faculty", 
-    icon: Calendar, 
-    roles: ['faculty'] 
+  {
+    name: "My Schedule",
+    href: "/dashboard/faculty",
+    icon: Calendar,
+    roles: ['faculty']
   },
-  { 
-    name: "My Preferences", 
-    href: "/dashboard/preferences", 
-    icon: Heart, 
-    roles: ['student'] 
+  {
+    name: "My Preferences",
+    href: "/dashboard/preferences",
+    icon: Heart,
+    roles: ['student']
   },
-  { 
-    name: "Import/Export", 
-    href: "/dashboard/import-export", 
-    icon: Download, 
-    roles: ['scheduling'] 
+  {
+    name: "Import/Export",
+    href: "/dashboard/import-export",
+    icon: Download,
+    roles: ['scheduling']
   },
-  { 
-    name: "Settings", 
-    href: "/dashboard/settings", 
-    icon: Settings, 
-    roles: ['scheduling'] 
+  {
+    name: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+    roles: ['scheduling']
   },
 ];
 
@@ -152,10 +152,10 @@ export function DashboardSidebar() {
     }
 
     fetchUnreadCount();
-    
+
     // Poll for updates every 60 seconds
     const interval = setInterval(fetchUnreadCount, 60000);
-    
+
     return () => clearInterval(interval);
   }, [user]);
 
@@ -182,7 +182,7 @@ export function DashboardSidebar() {
             const isActive = pathname === item.href;
             const isNotifications = item.name === "Notifications";
             const showBadge = isNotifications && unreadCount > 0;
-            
+
             return (
               <Link
                 key={item.name}
@@ -197,8 +197,8 @@ export function DashboardSidebar() {
                 <item.icon className="h-5 w-5" />
                 {item.name}
                 {showBadge && (
-                  <Badge 
-                    variant="destructive" 
+                  <Badge
+                    variant="destructive"
                     className="ml-auto h-5 min-w-5 px-1 text-xs"
                   >
                     {unreadCount > 99 ? '99+' : unreadCount}

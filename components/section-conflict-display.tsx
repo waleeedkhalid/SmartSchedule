@@ -5,13 +5,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface Conflict {
+export interface Conflict {
   conflict_section_id: string;
   conflict_section_no: string;
   conflict_course_code: string;
 }
 
-interface ConflictData {
+export interface ConflictData {
   room_conflicts: Conflict[];
   instructor_conflicts: Conflict[];
   has_conflicts: boolean;

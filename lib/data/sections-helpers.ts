@@ -12,25 +12,17 @@ import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
 import type { Course } from "@/lib/data/courses";
 import type { Room } from "@/lib/data/rooms";
+import type { Instructor } from "@/lib/types";
 
 type CourseRow = Database["public"]["Tables"]["course"]["Row"];
-type FacultyProfile = Database["public"]["Tables"]["faculty_profile"]["Row"];
 
-type SectionListItem = {
-  id: string;
-  course_code: string;
-  section_no: string;
-  instructor_id: string | null;
-  room_code: string | null;
-  capacity: number;
+
+type Section = Database["public"]["Tables"]["section"]["Row"] & {
   meeting_pattern: {
     days: string[];
     start: string;
     duration: number;
   };
-  group_level: number;
-  state: 'draft' | 'released';
-  activity?: string | null;
 };
 
 /**
@@ -42,17 +34,17 @@ type SectionListItem = {
  */
 export const getAllCourses = cache(async (): Promise<Course[]> => {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("course")
     .select("*")
     .order("code", { ascending: true });
-  
+
   if (error) {
     console.error("Error fetching courses:", error);
     throw new Error(`Failed to fetch courses: ${error.message}`);
   }
-  
+
   // Map database results to Course type with level property for backward compatibility
   return (data || []).map((course: CourseRow): Course => ({
     code: course.code,
@@ -77,18 +69,19 @@ export const getAllCourses = cache(async (): Promise<Course[]> => {
  */
 export const getAllInstructors = cache(async (): Promise<Array<{ id: string; name: string }>> => {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("faculty_profile")
     .select("user_id, name")
     .order("name", { ascending: true });
-  
+
   if (error) {
     console.error("Error fetching faculty profiles:", error);
     throw new Error(`Failed to fetch faculty profiles: ${error.message}`);
   }
-  
-  return (data || []).map((faculty: FacultyProfile) => ({
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data || []).map((faculty: any) => ({
     id: faculty.user_id,
     name: faculty.name || "",
   }));
@@ -103,17 +96,17 @@ export const getAllInstructors = cache(async (): Promise<Array<{ id: string; nam
  */
 export const getAllRooms = cache(async (): Promise<Room[]> => {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("room")
     .select("*")
     .order("code", { ascending: true });
-  
+
   if (error) {
     console.error("Error fetching rooms:", error);
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
-  
+
   return (data || []) as Room[];
 });
 
@@ -123,28 +116,20 @@ export const getAllRooms = cache(async (): Promise<Room[]> => {
  * 
  * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export const getAllRoomsList = cache(async (): Promise<Array<{
-  code: string;
-  type: string;
-  capacity: number | null;
-}>> => {
+export const getAllRoomsList = cache(async (): Promise<Room[]> => {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("room")
-    .select("code, type, capacity")
+    .select("*")
     .order("code", { ascending: true });
-  
+
   if (error) {
     console.error("Error fetching rooms:", error);
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
-  
-  return (data || []).map((room: Room) => ({
-    code: room.code,
-    type: room.type,
-    capacity: room.capacity,
-  }));
+
+  return (data || []) as Room[];
 });
 
 /**
@@ -153,34 +138,20 @@ export const getAllRoomsList = cache(async (): Promise<Array<{
  * 
  * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export const getAllInstructorsList = cache(async (): Promise<Array<{
-  id: string;
-  name: string;
-  email: string | null;
-  max_load_per_week: number | null;
-  preferred_times: Array<{ day?: string; start?: string; end?: string }> | null;
-  unavailable_times: Array<{ day?: string; start?: string; end?: string }> | null;
-}>> => {
+export const getAllInstructorsList = cache(async (): Promise<Instructor[]> => {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("faculty_profile")
-    .select("user_id, name, email, max_load_per_week, preferred_times, unavailable_times")
+    .select("*")
     .order("name", { ascending: true });
-  
+
   if (error) {
     console.error("Error fetching faculty profiles:", error);
     throw new Error(`Failed to fetch faculty profiles: ${error.message}`);
   }
-  
-  return (data || []).map((faculty: FacultyProfile) => ({
-    id: faculty.user_id,
-    name: faculty.name || "",
-    email: faculty.email,
-    max_load_per_week: faculty.max_load_per_week,
-    preferred_times: Array.isArray(faculty.preferred_times) ? faculty.preferred_times : null,
-    unavailable_times: Array.isArray(faculty.unavailable_times) ? faculty.unavailable_times : null,
-  }));
+
+  return (data || []) as Instructor[];
 });
 
 /**
@@ -189,9 +160,9 @@ export const getAllInstructorsList = cache(async (): Promise<Array<{
  * 
  * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export const getAllSections = cache(async (): Promise<SectionListItem[]> => {
+export const getAllSections = cache(async (): Promise<Section[]> => {
   const supabase = await createClient();
-  
+
   // Get current active term (status = 'draft' or 'released')
   const { data: currentTerm } = await supabase
     .from("academic_term")
@@ -207,7 +178,7 @@ export const getAllSections = cache(async (): Promise<SectionListItem[]> => {
       .from("schedule")
       .select("section_id")
       .eq("term_id", currentTerm.id);
-    
+
     sectionIds = (scheduleSections || []).map((s: { section_id: string }) => s.section_id);
   }
 
@@ -232,20 +203,12 @@ export const getAllSections = cache(async (): Promise<SectionListItem[]> => {
   }
 
   return (data || []).map((section: Database["public"]["Tables"]["section"]["Row"]) => ({
-    id: section.id,
-    course_code: section.course_code,
-    section_no: section.section_no,
-    instructor_id: section.instructor_id,
-    room_code: section.room_code,
-    capacity: section.capacity,
+    ...section,
     meeting_pattern: section.meeting_pattern as {
       days: string[];
       start: string;
       duration: number;
     },
-    group_level: section.group_level,
-    state: section.state as 'draft' | 'released',
-    activity: section.activity || null,
   }));
 });
 

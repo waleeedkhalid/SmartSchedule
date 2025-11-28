@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     preferences?.forEach((pref) => {
       const courseCode = pref.course_code;
-      const course = pref.course as
+      const course = (pref.course as unknown) as
         | { code: string; title: string; recommended_level: number | null }
         | null;
 

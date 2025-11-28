@@ -66,14 +66,14 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   // This provides accurate conversion from Gregorian to Hijri calendar
   function getCurrentHijriYear(): number {
     const currentDate = new Date();
-    
+
     // Use 'en' locale to get Western numerals instead of Arabic numerals
     const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
       year: 'numeric',
     });
     const parts = hijriFormatter.formatToParts(currentDate);
     const yearPart = parts.find(part => part.type === 'year');
-    
+
     if (yearPart) {
       const yearValue = parseInt(yearPart.value, 10);
       // Validate the parsed year is reasonable (between 1400 and 1500)
@@ -81,53 +81,53 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         return yearValue;
       }
     }
-    
+
     // Fallback to approximation if parsing fails
     return new Date().getFullYear() - 621;
   }
-  
+
   const currentHijriYear = getCurrentHijriYear();
   // Ensure we have a valid Hijri year, fallback to approximation if needed
-  const validHijriYear = isNaN(currentHijriYear) || currentHijriYear <= 0 
-    ? new Date().getFullYear() - 621 
+  const validHijriYear = isNaN(currentHijriYear) || currentHijriYear <= 0
+    ? new Date().getFullYear() - 621
     : currentHijriYear;
-  
+
   // Form state
   const [academicLevel, setAcademicLevel] = useState<string>("4");
   const [enrollmentYear, setEnrollmentYear] = useState<string>(validHijriYear.toString());
   const [confirmed, setConfirmed] = useState(false);
-  
+
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+
   // Create Supabase client - will be created fresh for each operation
   // This ensures we have a valid client instance
-  
+
   // Academic level options (1-8 for full system support)
   // DO NOT CHANGE THIS ARRAY. IT IS USED TO GENERATE THE LEVEL OPTIONS FOR THE SELECT DROP DOWN.
   // Our scope is only for levels 4-8.
   const levelOptions = [4, 5, 6, 7, 8];
-  
+
   // Generate enrollment year options (current year - 10 to current year)
   // Filter out any invalid values (NaN, undefined, null) and ensure they're valid numbers
   const enrollmentYearOptions = Array.from({ length: 11 }, (_, i) => validHijriYear - 10 + i)
     .filter(year => !isNaN(year) && year > 0 && Number.isInteger(year))
     .reverse(); // Reverse to show current year first (highest to lowest)
-  
+
   /**
    * Validate form before submission
    * Returns true if validation passes, false otherwise
    */
   function validateForm(): boolean {
     const newErrors: { [key: string]: string } = {};
-    
+
     // Check academic level for students
     if (userRole === 'student') {
       if (!academicLevel || academicLevel.trim() === '') {
         newErrors.academicLevel = "Please select your academic level";
       }
-      
+
       // Check enrollment year for students
       if (!enrollmentYear || enrollmentYear.trim() === '') {
         newErrors.enrollmentYear = "Please select your enrollment year";
@@ -138,15 +138,15 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         }
       }
     }
-    
+
     // Check confirmation checkbox
     if (!confirmed) {
       newErrors.confirmed = "Please confirm that your information is accurate";
     }
-    
+
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
-    
+
     console.log('Validation check:', {
       userRole,
       academicLevel,
@@ -155,10 +155,10 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       isValid,
       errors: newErrors
     });
-    
+
     return isValid;
   }
-  
+
   /**
    * Submit onboarding data to Supabase
    * 
@@ -175,21 +175,21 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     // Early return if already submitting
     if (isSubmitting) {
       console.log('Already submitting, ignoring duplicate click');
       return;
     }
-    
+
     console.log('Onboarding form submit started', { userRole, userId, userName, confirmed, academicLevel });
-    
+
     // Validate form BEFORE setting isSubmitting to prevent stuck loading state
     // Double-check values directly instead of relying on state
     const hasValidLevel = userRole !== 'student' || (academicLevel && academicLevel.trim() !== '');
     const hasValidEnrollmentYear = userRole !== 'student' || (enrollmentYear && enrollmentYear.trim() !== '');
     const hasConfirmed = confirmed === true;
-    
+
     console.log('Pre-validation check:', {
       userRole,
       academicLevel,
@@ -199,11 +199,11 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       hasValidEnrollmentYear,
       hasConfirmed
     });
-    
+
     if (!hasValidLevel || !hasValidEnrollmentYear || !hasConfirmed) {
       // Run validation to set error messages
       validateForm();
-      
+
       // Show error toast with specific messages
       if (!hasConfirmed) {
         toast.error('Please confirm that your information is accurate');
@@ -217,20 +217,20 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       // Don't set isSubmitting - validation failed, button should remain clickable
       return;
     }
-    
+
     // Validation passed - now run validateForm to clear any previous errors
     validateForm();
-    
+
     console.log('Form validated, starting submission...');
     setIsSubmitting(true);
-    
+
     // Add timeout safeguard - if submission takes more than 30 seconds, reset button
     const timeoutId: NodeJS.Timeout = setTimeout(() => {
       console.warn('Onboarding submission taking too long, resetting button state');
       setIsSubmitting(false);
       toast.error('Submission is taking longer than expected. Please try again.');
     }, 30000);
-    
+
     // Create Supabase client for this operation
     let supabase;
     try {
@@ -243,15 +243,15 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       setIsSubmitting(false);
       return;
     }
-    
+
     try {
       console.log('Starting profile creation for role:', userRole);
       // CRITICAL FIX: Create profile FIRST, then set onboarding_completed flag
       // This prevents inconsistent state if profile creation fails
-      
+
       // Create role-specific profile based on user role
       let profileCreated = false;
-      
+
       if (userRole === 'student') {
         // Create student_profile for students
         console.log('Creating student profile...');
@@ -262,14 +262,16 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           department: 'Software Engineering',
           enrollment_year: enrollmentYearInt,
         };
-        const { data: studentData, error: profileError } = await supabase
-          .from('student_profile')
-          .insert(profileData)
+        const { data: studentData, error: profileError } = await (supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('student_profile') as any)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .insert(profileData as any)
           .select()
           .single();
-        
+
         console.log('Student profile insert result:', { data: studentData, error: profileError });
-        
+
         if (profileError) {
           console.error('Error creating student_profile:', {
             error: profileError,
@@ -278,7 +280,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             hint: profileError.hint,
             code: profileError.code
           });
-          
+
           // Check for RLS violations
           // PostgrestError doesn't have status, but code indicates the error type
           if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
@@ -301,7 +303,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           } else {
             toast.error(`Failed to create student profile: ${profileError.message || 'Unknown error'}`);
           }
-          
+
           setIsSubmitting(false);
           return;
         }
@@ -311,53 +313,56 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         // Create faculty_profile for faculty with all instructor data directly
         // Get user email from auth
         console.log('Getting user email for faculty profile creation...');
-        
+
         try {
           const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-          
+
           if (authError) {
             console.error('Error getting auth user:', authError);
             toast.error(`Failed to get user information: ${authError.message}. Please try again.`);
             setIsSubmitting(false);
             return;
           }
-          
+
           if (!authUser?.email) {
             console.error('Error: Could not get user email for faculty profile creation');
             toast.error('Failed to get user email. Please try again or contact support.');
             setIsSubmitting(false);
             return;
           }
-          
+
           console.log('Creating faculty profile with email:', authUser.email);
-          
+
           // First, check if profile already exists
           console.log('Checking if faculty profile already exists...');
-          const { data: existingProfile, error: checkError } = await supabase
-            .from('faculty_profile')
+          const { data: existingProfile, error: checkError } = await (supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from('faculty_profile') as any)
             .select('user_id, name, email')
             .eq('user_id', userId)
             .maybeSingle();
-          
+
           console.log('Profile check result:', { existing: existingProfile, error: checkError });
-          
+
           if (existingProfile) {
             // Profile already exists - update it
             console.log('Faculty profile already exists, updating instead...');
-            const { data: updateData, error: updateError } = await supabase
-              .from('faculty_profile')
+            const { data: updateData, error: updateError } = await (supabase
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .from('faculty_profile') as any)
               .update({
                 name: userName,
                 email: authUser.email,
                 max_load_per_week: existingProfile.max_load_per_week || 12,
                 updated_at: new Date().toISOString(),
-              })
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              } as any)
               .eq('user_id', userId)
               .select()
               .single();
-            
+
             console.log('Update result:', { data: updateData, error: updateError });
-            
+
             if (updateError) {
               console.error('Error updating faculty profile:', updateError);
               toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
@@ -370,8 +375,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           } else {
             // Profile doesn't exist - create it
             console.log('Faculty profile does not exist, creating new one...');
-            const { data: insertData, error: profileError } = await supabase
-              .from('faculty_profile')
+            const { data: insertData, error: profileError } = await (supabase
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .from('faculty_profile') as any)
               .insert({
                 user_id: userId,
                 department: 'Software Engineering',
@@ -380,12 +386,13 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 max_load_per_week: 12, // Default value
                 preferred_times: [], // Empty array for JSONB
                 unavailable_times: [], // Empty array for JSONB
-              })
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              } as any)
               .select()
               .single();
-            
+
             console.log('Insert result:', { data: insertData, error: profileError });
-            
+
             if (profileError) {
               console.error('Error creating faculty_profile:', {
                 error: profileError,
@@ -394,22 +401,24 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 hint: profileError.hint,
                 code: profileError.code
               });
-              
+
               // Check if it's a duplicate key error (race condition - profile was created between check and insert)
               if (profileError.code === '23505') {
                 // Profile was created by another request - try to update it
                 console.log('Profile was created between check and insert, updating instead...');
-                const { error: updateError } = await supabase
-                  .from('faculty_profile')
+                const { error: updateError } = await (supabase
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  .from('faculty_profile') as any)
                   .update({
                     name: userName,
                     email: authUser.email,
                     updated_at: new Date().toISOString(),
-                  })
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  } as any)
                   .eq('user_id', userId)
                   .select()
                   .single();
-                
+
                 if (updateError) {
                   console.error('Error updating faculty profile after race condition:', updateError);
                   toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
@@ -442,30 +451,33 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole)) {
         // Create committee_profile for committee roles
         console.log('Creating committee profile for role:', userRole);
-        
+
         // First check if profile already exists (race condition protection)
-        const { data: existingProfile } = await supabase
-          .from('committee_profile')
+        const { data: existingProfile } = await (supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('committee_profile') as any)
           .select('user_id')
           .eq('user_id', userId)
           .maybeSingle();
-        
+
         if (existingProfile) {
           console.log('Committee profile already exists, skipping insert');
           profileCreated = true;
         } else {
-          const { data: committeeData, error: profileError } = await supabase
-            .from('committee_profile')
+          const { data: committeeData, error: profileError } = await (supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from('committee_profile') as any)
             .insert({
               user_id: userId,
               committee_role: userRole,
               department: 'Software Engineering',
-            })
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any)
             .select()
             .single();
-          
+
           console.log('Committee profile insert result:', { data: committeeData, error: profileError });
-          
+
           if (profileError) {
             // Check for unique constraint violation (profile created by another request)
             if (profileError.code === '23505') {
@@ -476,7 +488,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 .select('user_id')
                 .eq('user_id', userId)
                 .single();
-              
+
               if (verifyError) {
                 console.error('Error verifying committee profile after race condition:', verifyError);
                 toast.error(`Failed to create committee profile: ${profileError.message || 'Unknown error'}`);
@@ -495,7 +507,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 hint: profileError.hint,
                 code: profileError.code
               });
-              
+
               // Check for RLS violations
               if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
                 toast.error(
@@ -519,20 +531,22 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           }
         }
       }
-      
+
       // Only proceed if profile is successfully created
       if (profileCreated) {
         console.log('Profile created successfully, updating onboarding_completed flag...');
-        
+
         // Update onboarding_completed flag in user_roles table
-        const { error: updateError } = await supabase
-          .from('user_roles')
-          .update({ 
+        const { error: updateError } = await (supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('user_roles') as any)
+          .update({
             onboarding_completed: true,
             updated_at: new Date().toISOString()
-          })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any)
           .eq('user_id', userId);
-        
+
         if (updateError) {
           // Log the error but don't fail - profile was created successfully
           console.warn('Failed to update onboarding_completed flag:', updateError);
@@ -540,28 +554,28 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         } else {
           console.log('onboarding_completed flag updated successfully');
         }
-        
+
         // Clear timeout on success
         if (timeoutId) clearTimeout(timeoutId);
-        
+
         // Success! Show success message
         toast.success('Welcome to SmartSchedule! Your profile is all set up.');
-        
+
         // Small delay to show success message, then redirect
         setTimeout(() => {
           // Redirect based on role to appropriate dashboard
-          const dashboardRoute = userRole === 'student' 
+          const dashboardRoute = userRole === 'student'
             ? '/dashboard/student'
             : userRole === 'faculty'
-            ? '/dashboard/faculty'
-            : userRole === 'scheduling'
-            ? '/dashboard/scheduling'
-            : userRole === 'teaching_load'
-            ? '/dashboard/teaching-load'
-            : userRole === 'registrar'
-            ? '/dashboard/registrar'
-            : '/dashboard';
-          
+              ? '/dashboard/faculty'
+              : userRole === 'scheduling'
+                ? '/dashboard/scheduling'
+                : userRole === 'teaching_load'
+                  ? '/dashboard/teaching-load'
+                  : userRole === 'registrar'
+                    ? '/dashboard/registrar'
+                    : '/dashboard';
+
           // Use hard navigation to bypass Next.js Router Cache
           // This ensures middleware re-checks onboarding status with fresh data
           window.location.href = dashboardRoute;
@@ -572,11 +586,11 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         setIsSubmitting(false);
         return;
       }
-      
+
     } catch (error) {
       // Clear timeout on error
       if (timeoutId) clearTimeout(timeoutId);
-      
+
       console.error('Unexpected error during onboarding:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Full error details:', {
@@ -587,13 +601,13 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       toast.error(`An unexpected error occurred: ${errorMessage}. Please try again.`);
       setIsSubmitting(false);
     }
-    
+
     // Note: We don't use finally here because:
     // 1. Success case redirects (doesn't need to reset)
     // 2. All error cases explicitly reset isSubmitting
     // 3. Using finally would reset isSubmitting even on success, causing flicker
   }
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
@@ -608,7 +622,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Student Academic Level */}
           {userRole === 'student' && (
@@ -619,7 +633,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   Tell us your current academic level so we can show you the right courses and schedule.
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="level">
                   Current Academic Level <span className="text-red-500">*</span>
@@ -643,7 +657,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   Level indicates your academic standing. Levels 1-3: Foundation, Levels 4-8: Major (4=Year 1 Sem 1, 5=Year 1 Sem 2, etc.)
                 </p>
               </div>
-              
+
               {/* Enrollment Year */}
               <div className="space-y-2">
                 <Label htmlFor="enrollmentYear">
@@ -668,7 +682,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   The Hijri year when you first enrolled. This is used to generate your student number.
                 </p>
               </div>
-              
+
               {/* Program (Prefilled) */}
               <div className="space-y-2">
                 <Label htmlFor="program">Program</Label>
@@ -684,27 +698,27 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   SmartSchedule currently supports Software Engineering students
                 </p>
               </div>
-              
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Your level determines which required courses you&apos;ll be automatically enrolled in. 
+                  <strong>Note:</strong> Your level determines which required courses you&apos;ll be automatically enrolled in.
                   You can register for elective courses separately.
                 </p>
               </div>
             </div>
           )}
-          
+
           {/* Summary Section */}
           <div className="space-y-4 pt-4 border-t">
             <div>
               <h3 className="text-lg font-semibold mb-2">Confirm Your Information</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {userRole === 'student' 
+                {userRole === 'student'
                   ? 'Please review before continuing.'
                   : 'Please confirm your role information to complete setup.'}
               </p>
             </div>
-            
+
             {/* Summary */}
             <div className="bg-gray-50 border rounded-lg p-4 space-y-2">
               {userRole === 'student' ? (
@@ -742,7 +756,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 </>
               )}
             </div>
-            
+
             {/* Confirmation Checkbox */}
             <div className="flex items-start space-x-3 pt-2">
               <input
@@ -760,20 +774,20 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
               <p className="text-sm text-red-500 ml-7">{errors.confirmed}</p>
             )}
           </div>
-          
+
           {/* Submit Button */}
           <div className="flex justify-end pt-6 border-t">
-            <Button 
+            <Button
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 // Prevent double-clicks
                 if (isSubmitting) {
                   console.log('Button already submitting, ignoring click');
                   return;
                 }
-                
+
                 try {
                   await handleSubmit(e);
                 } catch (error) {

@@ -60,13 +60,13 @@ export interface StudentExam {
  */
 export const getStudentLevel = cache(async (studentId: string): Promise<number | null> => {
   const supabase = await createClient();
-  
+
   const { data: profile, error } = await supabase
     .from("student_profile")
     .select("level")
     .eq("user_id", studentId)
     .single();
-  
+
   if (error) {
     // PGRST116 is "not found" - expected for students without profile yet
     if (error.code !== 'PGRST116') {
@@ -74,7 +74,7 @@ export const getStudentLevel = cache(async (studentId: string): Promise<number |
     }
     return null;
   }
-  
+
   return profile?.level ?? null;
 });
 
@@ -86,13 +86,13 @@ export const getStudentLevel = cache(async (studentId: string): Promise<number |
  */
 export const getStudentNumber = cache(async (studentId: string): Promise<string | null> => {
   const supabase = await createClient();
-  
+
   const { data: profile, error } = await supabase
     .from("student_profile")
     .select("student_number")
     .eq("user_id", studentId)
     .single();
-  
+
   if (error) {
     // PGRST116 is "not found" - expected for students without profile yet
     if (error.code !== 'PGRST116') {
@@ -100,7 +100,7 @@ export const getStudentNumber = cache(async (studentId: string): Promise<string 
     }
     return null;
   }
-  
+
   return profile?.student_number ?? null;
 });
 
@@ -149,7 +149,7 @@ export const getStudentCreditStats = cache(async (studentId: string): Promise<Cr
       const course = section.course as Course;
       const credits = course.credits || 0;
       totalCredits += credits;
-      
+
       if (course.is_elective) {
         electiveCredits += credits;
       } else {
@@ -200,27 +200,22 @@ export const getStudentEnrollments = cache(async (studentId: string): Promise<St
     return [];
   }
 
-  interface EnrollmentWithSection {
-    section?: {
-      course_code?: string;
-      section_no?: string;
-      course?: {
-        title?: string;
-        credits?: number;
-      };
-    };
-  }
-  return (enrollments || []).map((enrollment: EnrollmentWithSection) => {
-    const section = enrollment.section;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (enrollments || []).map((enrollment: any) => {
+    const sectionData = Array.isArray(enrollment.section) ? enrollment.section[0] : enrollment.section;
+    const courseData = Array.isArray(sectionData?.course) ? sectionData.course[0] : sectionData?.course;
+    const instructorData = Array.isArray(sectionData?.instructor) ? sectionData.instructor[0] : sectionData?.instructor;
+
     return {
       id: enrollment.id,
       section_id: enrollment.section_id,
-      course_code: section?.course_code || "",
-      course_title: section?.course?.title || "",
-      section_no: section?.section_no || "",
-      instructor_name: section?.instructor?.name || null,
-      room_code: section?.room_code || null,
-      meeting_pattern: section?.meeting_pattern as {
+      course_code: sectionData?.course_code || "",
+      course_title: courseData?.title || "",
+      section_no: sectionData?.section_no || "",
+      instructor_name: instructorData?.name || null,
+      room_code: sectionData?.room_code || null,
+      meeting_pattern: sectionData?.meeting_pattern as {
         days: string[];
         start: string;
         duration: number;
@@ -253,13 +248,12 @@ export const getStudentExams = cache(async (studentId: string): Promise<StudentE
     return [];
   }
 
-  interface EnrollmentWithSection {
-    section?: {
-      course_code?: string;
-    };
-  }
-  const courseCodes = enrollments
-    .map((e: EnrollmentWithSection) => e.section?.course_code)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const courseCodes = (enrollments as any[])
+    .map((e) => {
+      const sectionData = Array.isArray(e.section) ? e.section[0] : e.section;
+      return sectionData?.course_code;
+    })
     .filter((code: string | undefined): code is string => !!code);
 
   if (courseCodes.length === 0) {
@@ -287,19 +281,19 @@ export const getStudentExams = cache(async (studentId: string): Promise<StudentE
     return [];
   }
 
-  interface ExamData {
-    id?: string;
-    course_code?: string;
-  }
-  return (exams || []).map((exam: ExamData) => ({
-    id: exam.id,
-    course_code: exam.course_code,
-    course_title: exam.course?.title || "",
-    date: exam.date,
-    start: exam.start_time,
-    duration: exam.duration_minutes,
-    room_codes: exam.room_codes || [],
-  }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (exams || []).map((exam: any) => {
+    const courseData = Array.isArray(exam.course) ? exam.course[0] : exam.course;
+    return {
+      id: exam.id,
+      course_code: exam.course_code,
+      course_title: courseData?.title || "",
+      date: exam.date,
+      start: exam.start_time,
+      duration: exam.duration_minutes,
+      room_codes: exam.room_codes || [],
+    };
+  });
 });
 
 /**
@@ -398,23 +392,8 @@ export const getAvailableElectiveSections = cache(async (): Promise<AvailableEle
   });
 
   // Map to response format
-  interface SectionWithRelations {
-    id: string;
-    capacity?: number;
-    course?: {
-      code?: string;
-      title?: string;
-    } | Array<{
-      code?: string;
-      title?: string;
-    }>;
-    instructor?: {
-      name?: string;
-    } | Array<{
-      name?: string;
-    }>;
-  }
-  return electiveSections.map((section: SectionWithRelations) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return electiveSections.map((section: any) => {
     const course = Array.isArray(section.course) ? section.course[0] : section.course;
     const instructor = Array.isArray(section.instructor) ? section.instructor[0] : section.instructor;
     const enrolledCount = enrollmentCounts.get(section.id) || 0;

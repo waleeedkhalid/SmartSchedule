@@ -134,14 +134,14 @@ export function FacultyDashboardCharts() {
 
   useEffect(() => {
     setIsMounted(true);
-    
+
     async function loadData() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const response = await fetch('/api/v1/faculty/stats');
-        
+
         if (!response.ok) {
           if (response.status === 401) {
             setError('Please log in to view your dashboard');
@@ -153,9 +153,9 @@ export function FacultyDashboardCharts() {
           }
           throw new Error('Failed to load faculty statistics');
         }
-        
+
         const data: FacultyStatsResponse = await response.json();
-        
+
         // Teaching load by course (Bar)
         const courseCodes = data.teachingLoad.map(t => t.course_code);
         const colors = [
@@ -174,7 +174,7 @@ export function FacultyDashboardCharts() {
           'rgb(251, 146, 60)',
           'rgb(20, 184, 166)',
         ];
-        
+
         setTeachingLoadData({
           labels: courseCodes,
           datasets: [{
@@ -222,13 +222,13 @@ export function FacultyDashboardCharts() {
         });
 
         // Student performance (Radar) - simulated based on sections
-        const performanceLabels = courseCodes.length > 0 
-          ? [...courseCodes, 'Overall'] 
+        const performanceLabels = courseCodes.length > 0
+          ? [...courseCodes, 'Overall']
           : ['No Sections'];
         const performanceData = courseCodes.length > 0
           ? [...courseCodes.map(() => 75 + Math.floor(Math.random() * 20)), 80]
           : [0];
-          
+
         setStudentPerformanceData({
           labels: performanceLabels,
           datasets: [{
@@ -262,7 +262,7 @@ export function FacultyDashboardCharts() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           usePointStyle: true,
         },
       },
@@ -283,10 +283,10 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
           stepSize: 1,
-          callback: function(value: string | number) {
+          callback: function (value: string | number) {
             if (Number.isInteger(value)) {
               return value;
             }
@@ -301,7 +301,7 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -317,7 +317,7 @@ export function FacultyDashboardCharts() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -328,7 +328,8 @@ export function FacultyDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
           }
         }
@@ -348,7 +349,8 @@ export function FacultyDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.parsed?.y || 0) + ' hours';
           }
         }
@@ -363,9 +365,9 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
-          callback: function(value: string | number) {
+          callback: function (value: string | number) {
             return value + 'h';
           }
         },
@@ -377,7 +379,7 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -396,7 +398,8 @@ export function FacultyDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { r?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return 'Avg: ' + (context.parsed?.r || 0) + '%';
           }
         }
@@ -412,7 +415,7 @@ export function FacultyDashboardCharts() {
           backdropColor: 'transparent',
         },
         pointLabels: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
         },
         grid: { color: 'rgba(0, 0, 0, 0.08)' },
         angleLines: { color: 'rgba(0, 0, 0, 0.08)' },
@@ -423,7 +426,7 @@ export function FacultyDashboardCharts() {
   if (!isMounted) {
     return <div className="text-center py-8 text-muted-foreground">Loading charts...</div>;
   }
-  
+
   if (isLoading) {
     return (
       <Card>
@@ -436,7 +439,7 @@ export function FacultyDashboardCharts() {
       </Card>
     );
   }
-  
+
   if (error) {
     return (
       <Card className="border-yellow-200 dark:border-yellow-800">
@@ -449,7 +452,7 @@ export function FacultyDashboardCharts() {
       </Card>
     );
   }
-  
+
   if (!teachingLoadData) {
     return (
       <Card>

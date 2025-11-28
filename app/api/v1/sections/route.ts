@@ -24,7 +24,7 @@ type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
     is_elective: boolean;
   } | null;
   instructor: {
-    id: string;
+    user_id: string;
     name: string;
     email: string;
   } | null;
@@ -150,17 +150,17 @@ export async function GET(request: NextRequest) {
       instructor_id: section.instructor_id,
       instructor: section.instructor
         ? {
-            id: section.instructor.user_id,
-            name: section.instructor.name || "",
-            email: section.instructor.email || "",
-          }
+          id: section.instructor.user_id,
+          name: section.instructor.name || "",
+          email: section.instructor.email || "",
+        }
         : null,
       room_code: section.room_code,
       room: section.room
         ? {
-            code: section.room.code,
-            type: section.room.type,
-          }
+          code: section.room.code,
+          type: section.room.type,
+        }
         : null,
       capacity: section.capacity,
       current_enrollment: 0, // Will be calculated from student_enrollment
@@ -170,11 +170,11 @@ export async function GET(request: NextRequest) {
       created_at: section.created_at,
       course: section.course
         ? {
-            code: section.course.code,
-            title: section.course.title,
-            credits: section.course.credits,
-            is_elective: section.course.is_elective || false,
-          }
+          code: section.course.code,
+          title: section.course.title,
+          credits: section.course.credits,
+          is_elective: section.course.is_elective || false,
+        }
         : null,
     }));
 
@@ -336,17 +336,17 @@ export async function POST(request: NextRequest) {
       instructor_id: data.instructor_id,
       instructor: data.instructor
         ? {
-            id: data.instructor.id,
-            name: data.instructor.name,
-            email: data.instructor.email,
-          }
+          id: data.instructor.user_id,
+          name: data.instructor.name,
+          email: data.instructor.email,
+        }
         : null,
       room_code: data.room_code,
       room: data.room
         ? {
-            code: data.room.code,
-            type: data.room.type,
-          }
+          code: data.room.code,
+          type: data.room.type,
+        }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,

@@ -117,9 +117,12 @@ export async function GET(request: NextRequest) {
         enrollment_id: string;
         course_code: string;
         course_title: string;
+        course_name: string;
+        credits: number;
         sections: Array<{
           section_id: string;
           section_no: string;
+          type: string;
           instructor?: string;
           room?: string;
           meeting_pattern?: {
@@ -131,36 +134,16 @@ export async function GET(request: NextRequest) {
       }
       const scheduleMap = new Map<string, ScheduleItem>();
 
-      interface EnrollmentWithSection {
-        enrollment_id: string;
-        section?: {
-          id: string;
-          section_no: string;
-          course?: {
-            code: string;
-            title: string;
-          };
-          instructor?: {
-            name?: string;
-          };
-          room?: {
-            code?: string;
-          };
-          meeting_pattern?: {
-            days?: string[];
-            start?: string;
-            duration?: number;
-          };
-        };
-      }
-      (enrollments || []).forEach((enrollment: EnrollmentWithSection) => {
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (enrollments || []).forEach((enrollment: any) => {
         if (!enrollment.section) return;
-        
+
         // Safely extract joined relations (can be arrays from Supabase)
         const course = extractJoinedRelation(enrollment.section.course);
         const instructor = extractJoinedRelation(enrollment.section.instructor);
         const room = extractJoinedRelation(enrollment.section.room);
-        
+
         const courseCode = course?.code;
         if (!courseCode) return;
 
@@ -168,13 +151,14 @@ export async function GET(request: NextRequest) {
           scheduleMap.set(courseCode, {
             enrollment_id: enrollment.enrollment_id,
             course_code: courseCode,
+            course_title: course?.title || "",
             course_name: course?.title || "",
             credits: course?.credits || 0,
             sections: [],
           });
         }
 
-        const courseEntry = scheduleMap.get(courseCode);
+        const courseEntry = scheduleMap.get(courseCode)!;
         courseEntry.sections.push({
           section_id: enrollment.section.section_id,
           section_no: enrollment.section.section_no,
@@ -249,7 +233,7 @@ export async function GET(request: NextRequest) {
       if (!sections || sections.length === 0) {
         return createSuccessResponse(
           {
-            instructor_id: instructor.id,
+            instructor_id: user.id,
             instructor_name: user.name,
             semester_id: finalTermId,
             schedule: [],
@@ -276,7 +260,7 @@ export async function GET(request: NextRequest) {
       );
 
       // Filter sections to only include those in the schedule for this term
-      const filteredSections = sections.filter((section: SectionWithId) => 
+      const filteredSections = sections.filter((section: SectionWithId) =>
         scheduledSectionIds.has(section.id)
       );
 
@@ -286,6 +270,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate current enrollment for each section
       interface SectionForSchedule extends SectionWithId {
+        section_id?: string;
         course_code?: string;
         section_no?: string;
         course?: { code?: string; title?: string; credits?: number } | Array<{ code?: string; title?: string; credits?: number }>;
@@ -307,7 +292,7 @@ export async function GET(request: NextRequest) {
           const room = extractJoinedRelation(section.room);
 
           return {
-            section_id: section.section_id,
+            section_id: section.section_id || section.id,
             section_no: section.section_no,
             course_code: course?.code || "",
             course_name: course?.title || "",
@@ -322,7 +307,7 @@ export async function GET(request: NextRequest) {
 
       return createSuccessResponse(
         {
-          instructor_id: instructor.id,
+          instructor_id: user.id,
           instructor_name: user.name,
           semester_id: finalTermId,
           schedule,

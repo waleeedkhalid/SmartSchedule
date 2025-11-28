@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     // Check if term exists
     const { data: term } = await supabase
       .from("academic_term")
-      .select("id, code, name")
+      .select("id, code, name, start_date, end_date")
       .eq("id", term_id)
       .single();
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Create draft sections for courses that don't have any sections
     // Only create sections for SWE courses in levels 4-8 (per PRD scheduling scope)
-    const sweCourses = courses.filter((c: { code: string; recommended_level: number | null; is_elective: boolean }) => 
+    const sweCourses = courses.filter((c: { code: string; recommended_level: number | null; is_elective: boolean }) =>
       c.code.startsWith('SWE') && c.recommended_level !== null && c.recommended_level >= 4 && c.recommended_level <= 8 && !c.is_elective
     );
 
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Use the actual configured settings from database - MUST follow scheduling settings
       const config = timeGridResult.data;
-      
+
       // Validate that all required settings are present
       if (!config.teaching_days || !Array.isArray(config.teaching_days) || config.teaching_days.length === 0) {
         return createErrorResponse(
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
           "Invalid scheduling settings: teaching_days must be a non-empty array. Please update Scheduling Settings."
         );
       }
-      
+
       if (!config.daily_start_time || !config.daily_end_time) {
         return createErrorResponse(
           400,
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
           "Invalid scheduling settings: daily_start_time and daily_end_time are required. Please update Scheduling Settings."
         );
       }
-      
+
       if (!config.slot_duration_minutes || config.slot_duration_minutes < 15 || config.slot_duration_minutes > 180) {
         return createErrorResponse(
           400,
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
           "Invalid scheduling settings: slot_duration_minutes must be between 15 and 180. Please update Scheduling Settings."
         );
       }
-      
+
       if (!config.break_start_time || !config.break_end_time) {
         return createErrorResponse(
           400,
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
           "Invalid scheduling settings: break_start_time and break_end_time are required. Please update Scheduling Settings."
         );
       }
-      
+
       if (!config.typical_lab_duration_minutes || config.typical_lab_duration_minutes < 60 || config.typical_lab_duration_minutes > 300) {
         return createErrorResponse(
           400,
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
           "Invalid scheduling settings: typical_lab_duration_minutes must be between 60 and 300. Please update Scheduling Settings."
         );
       }
-      
+
       // Use the configured settings exactly as stored in database
       timeGridConfig = {
         teaching_days: config.teaching_days,
@@ -244,8 +244,9 @@ export async function POST(request: NextRequest) {
         break_start_time: config.break_start_time,
         break_end_time: config.break_end_time,
         typical_lab_duration_minutes: config.typical_lab_duration_minutes,
-        // Note: exam_days, exam_start_time, exam_end_time are stored but not used in schedule generation
-        // They are used for exam scheduling (separate feature)
+        exam_days: config.exam_days,
+        exam_start_time: config.exam_start_time,
+        exam_end_time: config.exam_end_time,
       };
     }
 
@@ -309,8 +310,8 @@ export async function POST(request: NextRequest) {
     // Even sections with existing assignments need to be validated for conflicts
     const sectionsForAlgorithm = sectionsToSchedule.map((s) => {
       const pattern = s.meeting_pattern as MeetingPattern | null;
-      const hasPattern = pattern && 
-        typeof pattern === 'object' && 
+      const hasPattern = pattern &&
+        typeof pattern === 'object' &&
         Object.keys(pattern).length > 0 &&
         pattern.days &&
         pattern.days.length > 0;
@@ -330,15 +331,15 @@ export async function POST(request: NextRequest) {
         activity: (s.activity || 'lecture') as 'lecture' | 'tutorial' | 'lab',
         meeting_pattern: hasPattern && pattern
           ? {
-              days: pattern.days || [],
-              start: pattern.start || '',
-              duration: pattern.duration || 0,
-            }
+            days: pattern.days || [],
+            start: pattern.start || '',
+            duration: pattern.duration || 0,
+          }
           : {
-              days: [],
-              start: '',
-              duration: 0,
-            },
+            days: [],
+            start: '',
+            duration: 0,
+          },
       };
     });
 
@@ -427,7 +428,7 @@ export async function POST(request: NextRequest) {
 
     // Get exam rooms (use lecture rooms for exams)
     const examRooms = rooms.filter((r) => r.type === "Lecture");
-    
+
     if (examRooms.length === 0) {
       console.warn("No lecture rooms available for exam scheduling");
     }
@@ -437,7 +438,7 @@ export async function POST(request: NextRequest) {
     if (term.start_date && term.end_date && timeGridConfig.exam_days && timeGridConfig.exam_days.length > 0) {
       const startDate = new Date(term.start_date);
       const endDate = new Date(term.end_date);
-      
+
       // Day name to day of week mapping
       const dayMap: { [key: string]: number } = {
         Sunday: 0,
@@ -448,22 +449,22 @@ export async function POST(request: NextRequest) {
         Friday: 5,
         Saturday: 6,
       };
-      
-      const examDayNumbers = timeGridConfig.exam_days.map((day) => dayMap[day] ?? -1).filter((d) => d >= 0);
-      
+
+      const examDayNumbers = timeGridConfig.exam_days.map((day: string) => dayMap[day] ?? -1).filter((d: number) => d >= 0);
+
       // Find exam dates within term (typically midterm and final)
       // Midterm: around 1/3 of term
       // Final: near end of term
       const termDuration = endDate.getTime() - startDate.getTime();
       const midtermDate = new Date(startDate.getTime() + termDuration / 3);
       const finalDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 1 week before end
-      
+
       // Find closest exam day to midterm and final dates
       for (const targetDate of [midtermDate, finalDate]) {
         for (let i = 0; i < 7; i++) {
           const checkDate = new Date(targetDate);
           checkDate.setDate(targetDate.getDate() + i - 3);
-          
+
           if (checkDate >= startDate && checkDate <= endDate) {
             const dayOfWeek = checkDate.getDay();
             if (examDayNumbers.includes(dayOfWeek)) {
@@ -497,14 +498,14 @@ export async function POST(request: NextRequest) {
 
       // Default exam duration: 2 hours (120 minutes)
       const defaultExamDuration = 120;
-      
+
       let roomIndex = 0;
       let currentTime = examStartMinutes;
 
       for (const courseCode of scheduledCourses) {
         for (const examDate of examDates) {
           const examKey = `${courseCode}-${examDate}`;
-          
+
           // Skip if exam already exists
           if (existingExamKeys.has(examKey)) {
             continue;

@@ -137,7 +137,13 @@ export async function GET(request: NextRequest) {
       id: string;
       student_id: string;
       section_id: string;
+      status: string;
+      enrolled_at: string;
+      dropped_at: string | null;
       section?: {
+        id: string;
+        section_no: number;
+        meeting_pattern: string;
         course?: {
           code: string;
           title?: string;
@@ -165,17 +171,17 @@ export async function GET(request: NextRequest) {
         dropped_at: enrollment.dropped_at,
         course: course
           ? {
-              code: course.code,
-              name: course.title || "",
-              credits: course.credits || 0,
-            }
+            code: course.code,
+            name: course.title || "",
+            credits: course.credits || 0,
+          }
           : null,
         section: enrollment.section
           ? {
-              id: enrollment.section.id,
-              section_no: enrollment.section.section_no,
-              meeting_pattern: enrollment.section.meeting_pattern,
-            }
+            id: enrollment.section.id,
+            section_no: enrollment.section.section_no,
+            meeting_pattern: enrollment.section.meeting_pattern,
+          }
           : null,
       };
     });
@@ -188,6 +194,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Register for a section
 export async function POST(request: NextRequest) {
+
+
   try {
     const user = await authenticateRequest(request);
 
@@ -307,18 +315,12 @@ export async function POST(request: NextRequest) {
 
       // Check for time conflicts
       const conflicts: string[] = [];
-      interface EnrollmentWithSectionPattern {
-        section?: {
-          meeting_pattern?: {
-            days?: string[];
-            start?: string;
-            duration?: number;
-          };
-        };
-      }
-      (currentEnrollments || []).forEach((enrollment: EnrollmentWithSectionPattern) => {
-        const enrolledSection = enrollment.section;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (currentEnrollments || []).forEach((enrollment: any) => {
+        const enrolledSection = Array.isArray(enrollment.section) ? enrollment.section[0] : enrollment.section;
         if (!enrolledSection?.meeting_pattern) return;
+
 
         const enrolledPattern = enrolledSection.meeting_pattern as {
           days?: string[];
@@ -331,13 +333,15 @@ export async function POST(request: NextRequest) {
           enrolledPattern.start &&
           enrolledPattern.duration &&
           doTimeSlotsOverlap(
-            meetingPattern.days,
-            meetingPattern.start,
-            meetingPattern.duration,
-            enrolledPattern.days,
-            enrolledPattern.start,
-            enrolledPattern.duration
+            meetingPattern.days || [],
+            meetingPattern.start!,
+            meetingPattern.duration!,
+            enrolledPattern.days || [],
+            enrolledPattern.start!,
+            enrolledPattern.duration!
           )
+
+
         ) {
           conflicts.push(
             `${enrolledSection.course_code} ${enrolledSection.section_no}`
@@ -378,14 +382,16 @@ export async function POST(request: NextRequest) {
           .eq("status", "registered")
           .neq("section_id", section_id);
 
-        interface EnrolledSection {
-          section?: {
-            course_code?: string;
-          };
-        }
+
         const enrolledCourseCodes = (enrolledSections || [])
-          .map((e: EnrolledSection) => e.section?.course_code)
-          .filter((code): code is string => !!code);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((e: any) => {
+            const section = Array.isArray(e.section) ? e.section[0] : e.section;
+            return section?.course_code;
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((code: any): code is string => !!code);
+
 
         if (enrolledCourseCodes.length > 0) {
           // Get exams for enrolled courses
@@ -396,10 +402,12 @@ export async function POST(request: NextRequest) {
 
           // Check for exam conflicts
           interface ExamData {
+            course_code?: string;
             date: string;
             start_time: string;
             duration_minutes?: number;
           }
+
           const examConflicts: string[] = [];
           (newCourseExams || []).forEach((newExam: ExamData) => {
             (enrolledExams || []).forEach((enrolledExam: ExamData) => {
@@ -447,9 +455,11 @@ export async function POST(request: NextRequest) {
 
     // Calculate total credits
     let totalCredits = 0;
-    (currentEnrollments || []).forEach((enrollment: EnrollmentWithSectionPattern) => {
-      const enrolledSection = enrollment.section;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (currentEnrollments || []).forEach((enrollment: any) => {
+      const enrolledSection = Array.isArray(enrollment.section) ? enrollment.section[0] : enrollment.section;
       const enrolledCourse = Array.isArray(enrolledSection?.course) ? enrolledSection.course[0] : enrolledSection?.course;
+
       if (enrolledCourse?.credits) {
         totalCredits += enrolledCourse.credits;
       }
@@ -526,17 +536,17 @@ export async function POST(request: NextRequest) {
       dropped_at: enrollment.dropped_at,
       course: enrollmentCourse
         ? {
-            code: enrollmentCourse.code,
-            name: enrollmentCourse.title || "",
-            credits: enrollmentCourse.credits || 0,
-          }
+          code: enrollmentCourse.code,
+          name: enrollmentCourse.title || "",
+          credits: enrollmentCourse.credits || 0,
+        }
         : null,
       section: enrollment.section
         ? {
-            id: enrollment.section.id,
-            section_no: enrollment.section.section_no,
-            meeting_pattern: enrollment.section.meeting_pattern,
-          }
+          id: enrollment.section.id,
+          section_no: enrollment.section.section_no,
+          meeting_pattern: enrollment.section.meeting_pattern,
+        }
         : null,
     };
 

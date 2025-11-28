@@ -84,12 +84,12 @@ export function ManualStudentRegistration() {
   const [students, setStudents] = useState<Student[]>([])
   const [sections, setSections] = useState<Section[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  
+
   const [selectedStudent, setSelectedStudent] = useState("")
   const [selectedSection, setSelectedSection] = useState("")
   const [sectionSearch, setSectionSearch] = useState("")
   const [studentSearch, setStudentSearch] = useState("")
-  
+
   const [isLoading, setIsLoading] = useState(false)
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
 
@@ -118,12 +118,12 @@ export function ManualStudentRegistration() {
         toast.error(error.error || "Failed to load students")
         return
       }
-      
+
       const result = await response.json()
       // API returns { data: [...] } format
       const studentsData = result.data || result || []
       setStudents(studentsData)
-      
+
       if (studentsData.length === 0) {
         console.warn("No students found in database")
       }
@@ -145,11 +145,11 @@ export function ManualStudentRegistration() {
           headers: authHeader ? { Authorization: authHeader } : {},
         }),
       ])
-      
+
       if (sectionsRes.ok && enrollmentsRes.ok) {
         const sectionsData = await sectionsRes.json()
         const enrollmentsData = await enrollmentsRes.json()
-        
+
         // Calculate enrollment counts per section
         const enrollmentCounts = new Map<string, number>()
         interface EnrollmentData {
@@ -160,7 +160,7 @@ export function ManualStudentRegistration() {
             enrollmentCounts.set(e.section_id, (enrollmentCounts.get(e.section_id) || 0) + 1)
           }
         })
-        
+
         // Filter sections to only show those that are 15-50% over capacity
         interface SectionData {
           id: string;
@@ -169,14 +169,14 @@ export function ManualStudentRegistration() {
         const eligibleSections = sectionsData.filter((section: SectionData) => {
           const currentEnrollments = enrollmentCounts.get(section.id) || 0
           const capacity = section.capacity || 0
-          
+
           if (capacity === 0) return false
           if (currentEnrollments <= capacity) return false
-          
+
           const overCapacityPercent = ((currentEnrollments - capacity) / capacity) * 100
           return overCapacityPercent >= 15 && overCapacityPercent <= 50
         })
-        
+
         setSections(eligibleSections)
       }
     } catch (error) {
@@ -240,12 +240,13 @@ export function ManualStudentRegistration() {
       // Refresh enrollments and sections (sections may change eligibility)
       fetchStudentEnrollments(selectedStudent)
       fetchSections()
-      
+
       // Reset section selection
       setSelectedSection("")
     } catch (error) {
       console.error("Error registering student:", error)
-      toast.error(error.message || "Failed to register student")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((error as any).message || "Failed to register student")
     } finally {
       setIsLoading(false)
     }
@@ -267,7 +268,7 @@ export function ManualStudentRegistration() {
       }
 
       toast.success("Enrollment dropped successfully")
-      
+
       // Refresh enrollments
       if (selectedStudent) {
         fetchStudentEnrollments(selectedStudent)
@@ -341,8 +342,8 @@ export function ManualStudentRegistration() {
               }}
               className="mb-2"
             />
-            <Select 
-              value={selectedStudent} 
+            <Select
+              value={selectedStudent}
               onValueChange={(value) => {
                 setSelectedStudent(value)
                 setStudentSearch("") // Clear search when selecting from dropdown
@@ -444,7 +445,7 @@ export function ManualStudentRegistration() {
                   Over-Capacity Registration
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  You can only register students in sections that are 15-50% over capacity. 
+                  You can only register students in sections that are 15-50% over capacity.
                   Sections at or below capacity cannot be manually registered.
                 </p>
               </div>

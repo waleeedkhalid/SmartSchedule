@@ -194,7 +194,8 @@ export default function TeachingLoadDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + ' instructors';
           }
         }
@@ -213,7 +214,8 @@ export default function TeachingLoadDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { r?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.parsed?.r || 0) + '% of total credits';
           }
         }
@@ -450,7 +452,7 @@ export default function TeachingLoadDashboardPage() {
                   const totalSections = [45, 38, 32, 28, 35][idx];
                   const instructors = [8, 7, 6, 5, 6][idx];
                   const avgSections = Math.round(totalSections / instructors);
-                  
+
                   return (
                     <div key={dept} className="text-center p-4 bg-gray-50 rounded-lg border">
                       <p className="text-sm font-semibold text-gray-700">{dept}</p>

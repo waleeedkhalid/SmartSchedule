@@ -162,9 +162,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           enrollment_year: enrollmentYearInt,
         };
 
-        const { error: profileError } = await supabase
-          .from("student_profile")
-          .insert(profileData)
+        const { error: profileError } = await (supabase
+          .from("student_profile") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+          .insert(profileData as any) // eslint-disable-line @typescript-eslint/no-explicit-any
           .select()
           .single();
 
@@ -195,13 +195,13 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           .maybeSingle();
 
         if (existingProfile) {
-          const { error: updateError } = await supabase
-            .from("faculty_profile")
+          const { error: updateError } = await (supabase
+            .from("faculty_profile") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .update({
               name: userName,
               email: authUser.email,
               updated_at: new Date().toISOString(),
-            })
+            } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .eq("user_id", userId);
 
           if (updateError) {
@@ -210,8 +210,8 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             return;
           }
         } else {
-          const { error: profileError } = await supabase
-            .from("faculty_profile")
+          const { error: profileError } = await (supabase
+            .from("faculty_profile") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .insert({
               user_id: userId,
               department: "Software Engineering",
@@ -220,20 +220,20 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
               max_load_per_week: 12,
               preferred_times: [],
               unavailable_times: [],
-            })
+            } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .select()
             .single();
 
           if (profileError) {
             if (profileError.code === "23505") {
               // Race condition - profile was created, try update
-              const { error: updateError } = await supabase
-                .from("faculty_profile")
+              const { error: updateError } = await (supabase
+                .from("faculty_profile") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
                 .update({
                   name: userName,
                   email: authUser.email,
                   updated_at: new Date().toISOString(),
-                })
+                } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
                 .eq("user_id", userId);
 
               if (updateError) {
@@ -261,13 +261,13 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           // Profile exists, just update
           profileCreated = true;
         } else {
-          const { error: profileError } = await supabase
-            .from("committee_profile")
+          const { error: profileError } = await (supabase
+            .from("committee_profile") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .insert({
               user_id: userId,
               role: userRole,
               department: "Software Engineering",
-            })
+            } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .select()
             .single();
 
@@ -288,12 +288,12 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
 
       if (profileCreated) {
         // Update onboarding_completed flag
-        await supabase
-          .from("user_roles")
+        await (supabase
+          .from("user_roles") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
           .update({
             onboarding_completed: true,
             updated_at: new Date().toISOString(),
-          })
+          } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
           .eq("user_id", userId);
 
         clearTimeout(timeoutId);

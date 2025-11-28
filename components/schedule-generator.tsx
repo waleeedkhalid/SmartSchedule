@@ -96,28 +96,28 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
       let authHeader: string;
       try {
         const authHeaderPromise = getAuthHeader();
-        const authTimeoutPromise = new Promise<string>((_, reject) => 
+        const authTimeoutPromise = new Promise<string>((_, reject) =>
           setTimeout(() => reject(new Error('Authentication timeout')), 5000)
         );
-        
+
         authHeader = await Promise.race([authHeaderPromise, authTimeoutPromise]);
         console.log('Auth header obtained:', authHeader ? 'Bearer ***' : 'empty');
       } catch (authError) {
         console.error('Auth header error:', authError);
-        const errorMessage = authError instanceof Error 
-          ? authError.message 
+        const errorMessage = authError instanceof Error
+          ? authError.message
           : 'Authentication failed';
-        
+
         if (errorMessage.includes('timeout')) {
           throw new Error('Authentication timeout: Please refresh the page and try again');
         }
         throw new Error(`Authentication failed: ${errorMessage}`);
       }
-      
+
       if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
         throw new Error('Authentication required: No auth token available. Please log in again.');
       }
-      
+
       console.log('Fetching academic terms...');
       // Get current active term
       const termsResponse = await fetch('/api/v1/academic-terms?current=true', {
@@ -125,9 +125,9 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           'Authorization': authHeader,
         },
       });
-      
+
       console.log('Terms response status:', termsResponse.status);
-      
+
       if (!termsResponse.ok) {
         let errorMessage = 'Failed to fetch academic terms';
         try {
@@ -148,7 +148,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
       if (!activeTerm) {
         throw new Error('No active academic term found. Please create an academic term first.');
       }
-      
+
       // Fetch external schedules (released sections from other departments) for CSP constraints
       let externalSchedules: ExternalScheduleEntry[] = [];
       if (useCSPSolver) {
@@ -158,7 +158,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               'Authorization': authHeader,
             },
           });
-          
+
           if (externalResponse.ok) {
             const externalData = await externalResponse.json();
             // Convert sections to external schedule entries
@@ -170,12 +170,14 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               };
               course_code?: string;
               section_no?: string;
+              room_code?: string;
+              capacity?: number;
             }
             externalSchedules = (externalData.data || []).map((section: ExternalSection) => {
               const pattern = section.meeting_pattern || {};
               const days = pattern.days || [];
               const start = pattern.start || '';
-              
+
               return days.map((day: string) => ({
                 course_id: section.course_code,
                 day,
@@ -210,7 +212,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           } : undefined,
         }),
       });
-      
+
       console.log('Schedule generation response status:', response.status);
 
       // Check response status before parsing JSON
@@ -274,7 +276,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     } catch (error) {
       console.error("Error generating schedule:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to generate schedule";
-      
+
       // Log detailed error for debugging
       if (error instanceof Error) {
         console.error("Error details:", {
@@ -283,9 +285,9 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           name: error.name,
         });
       }
-      
+
       toast.error(errorMessage);
-      
+
       // Set error state for UI feedback
       setGenerationResult({
         success: false,
@@ -307,7 +309,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
   async function refreshStatus() {
     try {
       const authHeader = await getAuthHeader();
-      
+
       const response = await fetch('/api/v1/schedules/status', {
         headers: {
           'Authorization': authHeader,
@@ -439,9 +441,9 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                   {cspProgress.assigned} / {cspProgress.total} assigned
                 </span>
               </div>
-              <Progress 
-                value={(cspProgress.assigned / cspProgress.total) * 100} 
-                className="h-2" 
+              <Progress
+                value={(cspProgress.assigned / cspProgress.total) * 100}
+                className="h-2"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Backtracks: {cspProgress.backtracks.toLocaleString()}</span>
@@ -508,10 +510,10 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
       {/* Generation Results */}
       {generationResult && (
         <Card className={
-          generationResult.stats.total_sections === 0 
-            ? "border-blue-500" 
-            : generationResult.success 
-              ? "border-green-500" 
+          generationResult.stats.total_sections === 0
+            ? "border-blue-500"
+            : generationResult.success
+              ? "border-green-500"
               : "border-orange-500"
         }>
           <CardHeader>
@@ -631,35 +633,35 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                 )}
 
                 {generationResult.unassigned.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-orange-600" />
-                  Unassigned Sections ({generationResult.unassigned.length})
-                </h4>
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {generationResult.unassigned.map((section, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-md bg-orange-50 dark:bg-orange-950/20 p-2 text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {section.course_code} - Section {section.section_no}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{section.reason}</span>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-orange-600" />
+                      Unassigned Sections ({generationResult.unassigned.length})
+                    </h4>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {generationResult.unassigned.map((section, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between rounded-md bg-orange-50 dark:bg-orange-950/20 p-2 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              {section.course_code} - Section {section.section_no}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{section.reason}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Manual Assignment Required</AlertTitle>
-                  <AlertDescription>
-                    These sections could not be automatically assigned. Please manually assign rooms
-                    and times in the Sections page, or adjust existing assignments to free up slots.
-                  </AlertDescription>
-                </Alert>
-              </div>
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Manual Assignment Required</AlertTitle>
+                      <AlertDescription>
+                        These sections could not be automatically assigned. Please manually assign rooms
+                        and times in the Sections page, or adjust existing assignments to free up slots.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
                 )}
               </>
             )}
@@ -699,16 +701,16 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                 setExamResult(null);
                 try {
                   const authHeader = await getAuthHeader();
-                  
+
                   // Get active term
                   const termsResponse = await fetch('/api/v1/academic-terms?current=true', {
                     headers: { 'Authorization': authHeader },
                   });
-                  
+
                   if (!termsResponse.ok) {
                     throw new Error('Failed to fetch academic term');
                   }
-                  
+
                   const termsData = await termsResponse.json();
                   const activeTerm = Array.isArray(termsData.data) && termsData.data.length > 0
                     ? termsData.data[0]

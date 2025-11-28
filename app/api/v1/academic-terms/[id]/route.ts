@@ -58,6 +58,7 @@ export async function PUT(
 
     const supabase = await createClient();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (start_date !== undefined) updateData.start_date = start_date;

@@ -81,44 +81,44 @@ export interface EnrollmentView {
  */
 export const getAllStudents = cache(async (): Promise<StudentView[]> => {
   const supabase = await createClient();
-  
+
   // Get all students
   const { data: students, error: studentsError } = await supabase
     .from("user_roles")
     .select("user_id, name, email")
     .eq("role", "student")
     .order("name", { ascending: true });
-  
+
   if (studentsError) {
     console.error("Error fetching students:", studentsError);
     throw studentsError;
   }
-  
+
   if (!students || students.length === 0) {
     return [];
   }
-  
+
   // Get student profiles separately (more reliable with RLS)
   const studentIds = students.map(s => s.user_id);
   const { data: profiles, error: profilesError } = await supabase
     .from("student_profile")
     .select("user_id, level, department, student_number")
     .in("user_id", studentIds);
-  
+
   if (profilesError) {
     // Log but don't fail - students without profiles are valid
     console.warn("Error fetching student profiles:", profilesError);
   }
-  
+
   // Create a map for quick lookup
   const profileMap = new Map(
-    (profiles || []).map(p => [p.user_id, { 
-      level: p.level, 
+    (profiles || []).map(p => [p.user_id, {
+      level: p.level,
       department: p.department,
-      student_number: p.student_number 
+      student_number: p.student_number
     }])
   );
-  
+
   return students.map(s => {
     const profile = profileMap.get(s.user_id);
     return {
@@ -140,7 +140,7 @@ export const getAllStudents = cache(async (): Promise<StudentView[]> => {
  */
 export const getStudentAcademicProgress = cache(async (studentId: string): Promise<StudentAcademicProgress | null> => {
   const supabase = await createClient();
-  
+
   // Get student basic info
   const { data: student, error: studentError } = await supabase
     .from("user_roles")
@@ -148,18 +148,18 @@ export const getStudentAcademicProgress = cache(async (studentId: string): Promi
     .eq("user_id", studentId)
     .eq("role", "student")
     .single();
-  
+
   if (studentError || !student) {
     return null;
   }
-  
+
   // Get student profile separately
   const { data: profile } = await supabase
     .from("student_profile")
     .select("level, department")
     .eq("user_id", studentId)
     .single();
-  
+
   // Get all enrollments with course details
   const { data: enrollments, error: enrollmentsError } = await supabase
     .from("student_enrollment")
@@ -180,11 +180,11 @@ export const getStudentAcademicProgress = cache(async (studentId: string): Promi
     `)
     .eq("student_id", studentId)
     .order("enrolled_at", { ascending: false });
-  
+
   if (enrollmentsError) {
     console.error("Error fetching enrollments:", enrollmentsError);
   }
-  
+
   // Calculate statistics
   interface EnrollmentWithStatus {
     status?: string;
@@ -195,44 +195,38 @@ export const getStudentAcademicProgress = cache(async (studentId: string): Promi
   const droppedEnrollments = (enrollments || []).filter(
     (e: EnrollmentWithStatus) => e.status === "dropped"
   );
-  
+
   let totalCredits = 0;
   let requiredCredits = 0;
   let electiveCredits = 0;
-  
-  interface EnrollmentWithSection {
-    section?: {
-      course?: {
-        credits?: number;
-        is_elective?: boolean;
-      };
-    };
-  }
-  const enrolledCourses = activeEnrollments.map((enrollment: EnrollmentWithSection) => {
-    const section = enrollment.section;
-    const course = section?.course;
-    
-    if (course) {
-      const credits = course.credits || 0;
+
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enrolledCourses = activeEnrollments.map((enrollment: any) => {
+    const sectionData = Array.isArray(enrollment.section) ? enrollment.section[0] : enrollment.section;
+    const courseData = Array.isArray(sectionData?.course) ? sectionData.course[0] : sectionData?.course;
+
+    if (courseData) {
+      const credits = courseData.credits || 0;
       totalCredits += credits;
-      
-      if (course.is_elective) {
+
+      if (courseData.is_elective) {
         electiveCredits += credits;
       } else {
         requiredCredits += credits;
       }
     }
-    
+
     return {
-      course_code: section?.course_code || "",
-      course_title: course?.title || "",
-      credits: course?.credits || 0,
-      is_elective: course?.is_elective || false,
-      section_no: section?.section_no || "",
+      course_code: sectionData?.course_code || "",
+      course_title: courseData?.title || "",
+      credits: courseData?.credits || 0,
+      is_elective: courseData?.is_elective || false,
+      section_no: sectionData?.section_no || "",
       enrolled_at: enrollment.enrolled_at || "",
     };
   });
-  
+
   return {
     user_id: student.user_id,
     name: student.name,
@@ -262,7 +256,7 @@ export const getStudentEnrollments = cache(async (filters: {
   status?: "registered" | "dropped";
 } = {}): Promise<EnrollmentView[]> => {
   const supabase = await createClient();
-  
+
   // Fetch enrollments with section and course info
   let query = supabase
     .from("student_enrollment")
@@ -282,26 +276,26 @@ export const getStudentEnrollments = cache(async (filters: {
         )
       )
     `);
-  
+
   if (filters.student_id) {
     query = query.eq("student_id", filters.student_id);
   }
-  
+
   if (filters.status) {
     query = query.eq("status", filters.status);
   }
-  
+
   const { data: enrollments, error } = await query.order("enrolled_at", { ascending: false });
-  
+
   if (error) {
     console.error("Error fetching enrollments:", error);
     throw error;
   }
-  
+
   if (!enrollments || enrollments.length === 0) {
     return [];
   }
-  
+
   // Fetch student info from user_roles separately
   // student_enrollment.student_id = auth.users.id = user_roles.user_id
   const studentIds = [...new Set(enrollments.map(e => e.student_id))];
@@ -309,16 +303,16 @@ export const getStudentEnrollments = cache(async (filters: {
     .from("user_roles")
     .select("user_id, name, email")
     .in("user_id", studentIds);
-  
+
   if (studentsError) {
     console.warn("Error fetching student info:", studentsError);
   }
-  
+
   // Create a map for quick lookup
   const studentMap = new Map(
     (students || []).map(s => [s.user_id, { name: s.name, email: s.email }])
   );
-  
+
   interface SectionWithDetails {
     course_code?: string;
     section_no?: string;
@@ -327,7 +321,7 @@ export const getStudentEnrollments = cache(async (filters: {
       credits?: number;
     };
   }
-  
+
   return enrollments.map(item => ({
     id: item.id,
     student_id: item.student_id,
@@ -340,11 +334,11 @@ export const getStudentEnrollments = cache(async (filters: {
       email: studentMap.get(item.student_id)!.email,
     } : undefined,
     section: item.section ? {
-      course_code: (item.section as SectionWithDetails).course_code,
-      section_no: (item.section as SectionWithDetails).section_no,
+      course_code: (item.section as SectionWithDetails).course_code || "",
+      section_no: (item.section as SectionWithDetails).section_no || "",
       course: (item.section as SectionWithDetails).course ? {
-        title: (item.section as SectionWithDetails).course?.title,
-        credits: (item.section as SectionWithDetails).course?.credits,
+        title: (item.section as SectionWithDetails).course?.title || "",
+        credits: (item.section as SectionWithDetails).course?.credits || 0,
       } : undefined,
     } : undefined,
   }));
@@ -359,31 +353,31 @@ export async function createStudentEnrollment(
   sectionId: string
 ): Promise<{ id: string; message: string }> {
   const supabase = await createClient();
-  
+
   // Get section details
   const { data: section, error: sectionError } = await supabase
     .from("section")
     .select("capacity, course_code")
     .eq("id", sectionId)
     .single();
-  
+
   if (sectionError || !section) {
     throw new Error("Section not found");
   }
-  
+
   // Count current enrollments
   const { count } = await supabase
     .from("student_enrollment")
     .select("*", { count: "exact", head: true })
     .eq("section_id", sectionId)
     .eq("status", "registered");
-  
+
   const currentEnrollments = count || 0;
   const capacity = section.capacity;
-  
+
   // Calculate over-capacity percentage
   const overCapacityPercent = ((currentEnrollments - capacity) / capacity) * 100;
-  
+
   // Check if section is within 15-50% over capacity range
   if (currentEnrollments < capacity) {
     throw new Error(
@@ -391,14 +385,14 @@ export async function createStudentEnrollment(
       `Registrar can only register students when section is 15-50% over capacity.`
     );
   }
-  
+
   if (overCapacityPercent < 15) {
     throw new Error(
       `Section is only ${overCapacityPercent.toFixed(1)}% over capacity. ` +
       `Must be at least 15% over capacity (currently ${currentEnrollments}/${capacity}).`
     );
   }
-  
+
   if (overCapacityPercent > 50) {
     throw new Error(
       `Section is ${overCapacityPercent.toFixed(1)}% over capacity. ` +
@@ -406,7 +400,7 @@ export async function createStudentEnrollment(
       `(currently ${currentEnrollments}/${capacity}, max allowed: ${Math.floor(capacity * 1.5)}).`
     );
   }
-  
+
   // Check if already enrolled
   const { data: existing } = await supabase
     .from("student_enrollment")
@@ -415,11 +409,11 @@ export async function createStudentEnrollment(
     .eq("section_id", sectionId)
     .eq("status", "registered")
     .maybeSingle();
-  
+
   if (existing) {
     throw new Error("Student is already enrolled in this section");
   }
-  
+
   // Create enrollment
   const { data, error } = await supabase
     .from("student_enrollment")
@@ -430,12 +424,12 @@ export async function createStudentEnrollment(
     })
     .select()
     .single();
-  
+
   if (error) {
     console.error("Error creating enrollment:", error);
     throw error;
   }
-  
+
   return {
     id: data.id,
     message: `Student registered successfully. Section is now ${((currentEnrollments + 1 - capacity) / capacity * 100).toFixed(1)}% over capacity.`,
@@ -447,7 +441,7 @@ export async function createStudentEnrollment(
  */
 export async function deleteStudentEnrollment(enrollmentId: string): Promise<void> {
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from("student_enrollment")
     .update({
@@ -455,7 +449,7 @@ export async function deleteStudentEnrollment(enrollmentId: string): Promise<voi
       dropped_at: new Date().toISOString(),
     })
     .eq("id", enrollmentId);
-  
+
   if (error) {
     console.error("Error dropping enrollment:", error);
     throw error;

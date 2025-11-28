@@ -23,17 +23,7 @@ import { useRouter } from "next/navigation";
 import { useSectionDialog } from "@/components/sections-client";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 
-type Section = (Database["public"]["Tables"]["section"]["Row"] | {
-  id: string;
-  course_code: string;
-  section_no: string;
-  instructor_id: string | null;
-  room_code: string | null;
-  capacity: number;
-  group_level: number;
-  state: 'draft' | 'released';
-  activity?: string | null;
-}) & {
+type Section = Database["public"]["Tables"]["section"]["Row"] & {
   meeting_pattern: {
     days: string[];
     start: string;
@@ -113,7 +103,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
             interface Term {
               status?: string;
             }
-            const activeTerm = termsData.data?.find((t: Term) => 
+            const activeTerm = termsData.data?.find((t: Term) =>
               t.status === 'draft' || t.status === 'released'
             );
             if (activeTerm) {
@@ -200,7 +190,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
 
     try {
       const authHeader = await getAuthHeader();
-      
+
       const response = await fetch(`/api/v1/sections/${id}`, {
         method: 'DELETE',
         headers: {
@@ -279,11 +269,11 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell>
                 {section.room_code || "—"}
                 {section.activity && (
-                  <Badge 
+                  <Badge
                     variant={
-                      section.activity === 'lab' ? 'default' : 
-                      section.activity === 'tutorial' ? 'secondary' : 
-                      'outline'
+                      section.activity === 'lab' ? 'default' :
+                        section.activity === 'tutorial' ? 'secondary' :
+                          'outline'
                     }
                     className="ml-2"
                   >
@@ -307,11 +297,10 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               </TableCell>
               <TableCell>
                 <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    section.state === 'released'
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${section.state === 'released'
                       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                       : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                  }`}
+                    }`}
                 >
                   {section.state}
                 </span>

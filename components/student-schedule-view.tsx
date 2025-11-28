@@ -50,6 +50,8 @@ interface ScheduleSection {
     is_lab: boolean;
   };
   state: string;
+  activity?: string;
+  enrollment_type?: string;
 }
 
 interface ScheduleData {
@@ -89,10 +91,14 @@ export function StudentScheduleView() {
     try {
       const authHeader = await getAuthHeader();
       // Cache schedule for 5 minutes - it doesn't change frequently
-      interface ScheduleData {
+      interface ApiScheduleData {
+        student_id?: string;
+        level?: number;
         schedule?: unknown[];
+        is_empty?: boolean;
+        message?: string;
       }
-      const result = await cachedFetch<{ data: ScheduleData }>(
+      const result = await cachedFetch<{ data: ApiScheduleData }>(
         '/api/v1/schedules/me',
         {
           headers: authHeader ? { Authorization: authHeader } : {},
@@ -119,10 +125,11 @@ export function StudentScheduleView() {
 
       // Transform schedule items to sections format
       const sections: ScheduleSection[] = [];
-      
+
       interface CourseEntry {
         sections?: Array<{
           id?: string;
+          section_id?: string;
           section_no?: string;
           meeting_pattern?: {
             days?: string[];
@@ -132,16 +139,35 @@ export function StudentScheduleView() {
           room?: {
             code?: string;
           };
+          room_code?: string;
           instructor?: {
             name?: string;
           };
-          credits?: number;
+          course?: {
+            title?: string;
+            credits?: number;
+            is_elective?: boolean;
+          };
+          course_code?: string;
+          state?: string;
+          activity?: string;
           enrollment_type?: string;
+          is_swe_scheduled?: boolean;
         }>;
+        course_code?: string;
+        course_name?: string;
+        credits?: number;
+        is_elective?: boolean;
+        enrollment_type?: string;
       }
-      scheduleData.schedule.forEach((courseEntry: CourseEntry) => {
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const scheduleArray = (scheduleData.schedule || []) as any[];
+
+      scheduleArray.forEach((courseEntry: CourseEntry) => {
         if (courseEntry.sections && Array.isArray(courseEntry.sections)) {
-          courseEntry.sections.forEach((section: CourseEntry['sections'][0]) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          courseEntry.sections.forEach((section: any) => {
             sections.push({
               id: section.section_id || section.id,
               course_code: courseEntry.course_code || section.course_code,
@@ -160,6 +186,8 @@ export function StudentScheduleView() {
                 is_lab: false,
               },
               state: section.state || 'released',
+              activity: section.activity,
+              enrollment_type: courseEntry.enrollment_type || section.enrollment_type,
             });
           });
         }
@@ -217,16 +245,16 @@ export function StudentScheduleView() {
    */
   function sectionOccupiesSlot(section: ScheduleSection, day: string, timeSlot: string): boolean {
     const { days, start, duration } = section.meeting_pattern;
-    
+
     // Check if section meets on this day
     if (!days.includes(day)) return false;
-    
+
     // Parse times
     const slotTime = parseTime(timeSlot);
     const startTime = parseTime(start);
     const endTime = startTime + duration;
     const slotEnd = slotTime + 60; // Each slot is 1 hour
-    
+
     // Check if times overlap
     return slotTime < endTime && startTime < slotEnd;
   }
@@ -291,7 +319,7 @@ export function StudentScheduleView() {
                 My Weekly Schedule
               </CardTitle>
               <CardDescription>
-                Level {schedule.level} | {schedule.total_credits} Credits 
+                Level {schedule.level} | {schedule.total_credits} Credits
                 ({schedule.required_credits} required + {schedule.elective_credits} elective)
               </CardDescription>
             </div>
@@ -345,8 +373,8 @@ export function StudentScheduleView() {
                     {DAYS.map(day => {
                       // Find sections that occupy this slot
                       // Ensure schedule.sections is an array
-                      const sections = (schedule?.sections && Array.isArray(schedule.sections)) 
-                        ? schedule.sections 
+                      const sections = (schedule?.sections && Array.isArray(schedule.sections))
+                        ? schedule.sections
                         : [];
                       const sectionsInSlot = sections.filter(
                         section => sectionOccupiesSlot(section, day, timeSlot)
@@ -357,13 +385,12 @@ export function StudentScheduleView() {
                           {sectionsInSlot.map(section => (
                             <div
                               key={`${section.id}-${day}-${timeSlot}`}
-                              className={`p-2 rounded text-xs ${
-                                section.is_swe_scheduled
-                                  ? 'bg-blue-100 border border-blue-300'
-                                  : section.is_elective
+                              className={`p-2 rounded text-xs ${section.is_swe_scheduled
+                                ? 'bg-blue-100 border border-blue-300'
+                                : section.is_elective
                                   ? 'bg-green-100 border border-green-300'
                                   : 'bg-purple-100 border border-purple-300'
-                              } mb-1 last:mb-0`}
+                                } mb-1 last:mb-0`}
                             >
                               <div className="font-semibold">
                                 {section.course_code}
@@ -402,60 +429,60 @@ export function StudentScheduleView() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
-            {schedule && schedule.sections && Array.isArray(schedule.sections) 
+            {schedule && schedule.sections && Array.isArray(schedule.sections)
               ? schedule.sections.map(section => (
-                  <div
-                    key={section.id}
-                    className="flex items-start justify-between p-3 border rounded-lg"
-                  >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold">{section.course_code}</span>
-                    <Badge variant="secondary">{section.section_no}</Badge>
-                    <Badge className={
-                      section.is_swe_scheduled
-                        ? 'bg-blue-600'
-                        : section.is_elective
-                        ? 'bg-green-600'
-                        : 'bg-purple-600'
-                    }>
-                      {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
-                    </Badge>
-                    <Badge variant="outline">{section.credits} cr</Badge>
-                    {section.enrollment_type && (
-                      <Badge variant={section.enrollment_type === 'required' ? 'default' : 'secondary'}>
-                        {section.enrollment_type === 'required' ? 'Required' : 'Elective'}
+                <div
+                  key={section.id}
+                  className="flex items-start justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">{section.course_code}</span>
+                      <Badge variant="secondary">{section.section_no}</Badge>
+                      <Badge className={
+                        section.is_swe_scheduled
+                          ? 'bg-blue-600'
+                          : section.is_elective
+                            ? 'bg-green-600'
+                            : 'bg-purple-600'
+                      }>
+                        {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
                       </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {section.course_title}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    {section.instructor_name && (
+                      <Badge variant="outline">{section.credits} cr</Badge>
+                      {section.enrollment_type && (
+                        <Badge variant={section.enrollment_type === 'required' ? 'default' : 'secondary'}>
+                          {section.enrollment_type === 'required' ? 'Required' : 'Elective'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {section.course_title}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {section.instructor_name && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {section.instructor_name}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {section.instructor_name}
+                        <Calendar className="h-3 w-3" />
+                        {section.meeting_pattern.days.join(', ')}
                       </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {section.meeting_pattern.days.join(', ')}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {section.meeting_pattern.start} ({section.meeting_pattern.duration}min)
-                    </span>
-                    {section.room_code && (
                       <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {section.room_code}
+                        <Clock className="h-3 w-3" />
+                        {section.meeting_pattern.start} ({section.meeting_pattern.duration}min)
                       </span>
-                    )}
+                      {section.room_code && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {section.room_code}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-                ))
+              ))
               : (
                 <div className="text-center py-8 text-muted-foreground">
                   No sections found in schedule

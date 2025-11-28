@@ -42,6 +42,8 @@ interface ChartData {
     data?: number[];
     backgroundColor?: string | string[];
     borderColor?: string | string[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
   }>;
 }
 
@@ -55,8 +57,8 @@ export function SchedulingDashboardChartsNew() {
 
   useEffect(() => {
     setIsMounted(true);
-    setLastUpdate(new Date());
-    
+    setIsMounted(true);
+
     async function loadData() {
       // TODO: Replace with real API calls
       // For now, using empty data structure
@@ -68,9 +70,12 @@ export function SchedulingDashboardChartsNew() {
         electives: { courses: [], totalEnrollments: 0 },
         progress: { totalSections: 0, assigned: 0, unassigned: 0 },
       };
-      const sections: unknown[] = [];
-      const courses: unknown[] = [];
-      const instructors: unknown[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sections: any[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const courses: any[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const instructors: any[] = [];
 
       // Enrollment by Level (Bar Chart)
       interface EnrollmentByLevel {
@@ -211,7 +216,7 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          label: function (context: { parsed?: { y?: number } }) {
             return (context.parsed?.y || 0) + ' students enrolled';
           }
         }
@@ -269,7 +274,7 @@ export function SchedulingDashboardChartsNew() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          label: function (context: { label?: string; parsed?: number }) {
             return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         }
@@ -293,7 +298,7 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { y?: number } }) {
+          label: function (context: { parsed?: { y?: number } }) {
             return (context.parsed?.y || 0) + ' hours per week';
           }
         }
@@ -310,7 +315,7 @@ export function SchedulingDashboardChartsNew() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: string | number) {
+          callback: function (value: string | number) {
             return value + 'h';
           }
         },
@@ -355,7 +360,7 @@ export function SchedulingDashboardChartsNew() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          label: function (context: { label?: string; parsed?: number }) {
             return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         },
@@ -380,7 +385,7 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: { parsed?: { r?: number } }) {
+          label: function (context: { parsed?: { r?: number } }) {
             return (context.parsed?.r || 0) + '% performance';
           }
         }
@@ -412,10 +417,10 @@ export function SchedulingDashboardChartsNew() {
     return <div>Loading charts...</div>;
   }
 
-  const requiredPercent = courseTypeData?.datasets[0].data[0] || 0;
-  const electivePercent = courseTypeData?.datasets[0].data[1] || 0;
-  const filledPercent = capacityData?.datasets[0].data[0] || 0;
-  const availablePercent = capacityData?.datasets[0].data[1] || 0;
+  const requiredPercent = courseTypeData?.datasets?.[0]?.data?.[0] || 0;
+  const electivePercent = courseTypeData?.datasets?.[0]?.data?.[1] || 0;
+  const filledPercent = capacityData?.datasets?.[0]?.data?.[0] || 0;
+  const availablePercent = capacityData?.datasets?.[0]?.data?.[1] || 0;
 
   return (
     <Tabs defaultValue="enrollment" className="space-y-6">
@@ -449,20 +454,21 @@ export function SchedulingDashboardChartsNew() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
-              <Bar data={enrollmentData} options={barOptions} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <Bar data={enrollmentData as any} options={barOptions as any} />
             </div>
-            {enrollmentData.labels.length > 0 && (
+            {enrollmentData.labels && enrollmentData.labels.length > 0 && (
               <div className="grid grid-cols-5 gap-4 mt-6">
-                {enrollmentData.labels.map((label: string, idx: number) => (
+                {enrollmentData.labels?.map((label: string, idx: number) => (
                   <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
                     <p className="text-sm font-semibold text-gray-700">{label}</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-2">{enrollmentData.datasets[0].data[idx]}</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-2">{enrollmentData.datasets?.[0]?.data?.[idx]}</p>
                     <p className="text-xs text-muted-foreground mt-1">students</p>
                   </div>
                 ))}
               </div>
             )}
-            {enrollmentData.labels.length === 0 && (
+            {(!enrollmentData.labels || enrollmentData.labels.length === 0) && (
               <div className="text-center py-8 text-muted-foreground">
                 No enrollment data available
               </div>
@@ -485,7 +491,8 @@ export function SchedulingDashboardChartsNew() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
-              {courseTypeData && <Pie data={courseTypeData} options={pieOptions} />}
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {courseTypeData && <Pie data={courseTypeData as any} options={pieOptions as any} />}
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
               <div className="flex items-center gap-4 p-6 bg-green-50 rounded-lg border border-green-100">
@@ -532,14 +539,15 @@ export function SchedulingDashboardChartsNew() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
-              {instructorLoadData && <Line data={instructorLoadData} options={lineOptions} />}
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {instructorLoadData && <Line data={instructorLoadData as any} options={lineOptions as any} />}
             </div>
             {instructorLoadData?.labels && instructorLoadData.labels.length > 0 ? (
               <div className="grid grid-cols-5 gap-4 mt-6">
-                {instructorLoadData.labels.map((name: string, idx: number) => (
+                {instructorLoadData.labels?.map((name: string, idx: number) => (
                   <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
                     <p className="text-sm font-semibold text-gray-700">{name.replace('Dr. ', '')}</p>
-                    <p className="text-2xl font-bold text-purple-600 mt-2">{instructorLoadData.datasets[0].data[idx]}h</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-2">{instructorLoadData.datasets?.[0]?.data?.[idx]}h</p>
                     <p className="text-xs text-muted-foreground mt-1">per week</p>
                   </div>
                 ))}
@@ -574,7 +582,8 @@ export function SchedulingDashboardChartsNew() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-8 border border-orange-100">
-              {capacityData && <Doughnut data={capacityData} options={doughnutOptions} />}
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {capacityData && <Doughnut data={capacityData as any} options={doughnutOptions as any} />}
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
               <div className="p-6 bg-orange-50 rounded-lg border border-orange-100">
@@ -610,14 +619,15 @@ export function SchedulingDashboardChartsNew() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-8 border border-pink-100">
-              {radarData && <Radar data={radarData} options={radarOptions} />}
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {radarData && <Radar data={radarData as any} options={radarOptions as any} />}
             </div>
             {radarData?.labels && radarData.labels.length > 0 ? (
               <div className="grid grid-cols-5 gap-4 mt-8">
-                {radarData.labels.map((label: string, idx: number) => (
+                {radarData.labels?.map((label: string, idx: number) => (
                   <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
                     <p className="text-sm font-semibold text-gray-700">{label}</p>
-                    <p className="text-2xl font-bold text-pink-600 mt-2">{radarData.datasets[0].data[idx]}%</p>
+                    <p className="text-2xl font-bold text-pink-600 mt-2">{radarData.datasets?.[0]?.data?.[idx]}%</p>
                   </div>
                 ))}
               </div>

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Instructor } from "@/lib/types/database";
+import { Instructor } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -41,9 +41,9 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: instructor ? {
-      name: instructor.name,
+      name: instructor.name || "",
       email: instructor.email || "",
-      max_load_per_week: instructor.max_load_per_week,
+      max_load_per_week: instructor.max_load_per_week || 12,
     } : {
       name: "",
       email: "",
@@ -55,15 +55,15 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
     setIsLoading(true);
     try {
       const authHeader = await getAuthHeader();
-      
+
       // Get id from instructor (could be id or user_id)
       const instructorId = instructor && ('id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : undefined));
-      const url = isEditing 
+      const url = isEditing
         ? `/api/v1/instructors/${instructorId}`
         : '/api/v1/instructors';
-      
+
       const method = isEditing ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {

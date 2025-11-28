@@ -1,6 +1,6 @@
 "use client";
 
-import { Instructor } from "@/lib/types/database";
+import { Instructor } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
 
     try {
       const authHeader = await getAuthHeader();
-      
+
       const response = await fetch(`/api/v1/instructors/${id}`, {
         method: 'DELETE',
         headers: {
@@ -76,7 +76,8 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
         <TableBody>
           {instructors.map((instructor) => {
             // Map user_id to id for backward compatibility
-            const instructorId = 'id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : '');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const instructorId = ((instructor as any).id || instructor.user_id) as string;
             const instructorName = instructor.name || '';
             return (
               <TableRow key={instructorId}>

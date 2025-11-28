@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Room } from "@/lib/types/database";
+import { Room } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -52,13 +52,13 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
     setIsLoading(true);
     try {
       const authHeader = await getAuthHeader();
-      
-      const url = isEditing 
+
+      const url = isEditing
         ? `/api/v1/rooms/${room?.code}`
         : '/api/v1/rooms';
-      
+
       const method = isEditing ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {

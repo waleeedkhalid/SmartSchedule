@@ -144,7 +144,7 @@ export default function RegistrarDashboardPage() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           usePointStyle: true,
         },
       },
@@ -165,7 +165,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
         },
         border: { display: false },
@@ -176,7 +176,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -196,7 +196,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { parsed?: { x?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return 'Enrolled: ' + (context.parsed?.x || 0) + ' students';
           }
         }
@@ -210,7 +211,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
         },
         border: { display: false },
@@ -221,7 +222,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -237,7 +238,7 @@ export default function RegistrarDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -248,7 +249,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { label?: string; parsed?: number }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
           }
         }
@@ -265,7 +267,7 @@ export default function RegistrarDashboardPage() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           usePointStyle: true,
         },
       },
@@ -275,7 +277,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: { dataset?: { label?: string }; parsed?: { y?: number } }) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
             return (context.dataset?.label || '') + ': ' + (context.parsed?.y || 0) + ' students';
           }
         }
@@ -289,7 +292,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
         },
         border: { display: false },
@@ -300,7 +303,7 @@ export default function RegistrarDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Exam } from "@/lib/data/exams";
+import { Exam } from "@/lib/types";
 import { Course } from "@/lib/data/courses";
 import { Room } from "@/lib/data/rooms";
 import { toast } from "sonner";
@@ -89,7 +89,7 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
     try {
       // DEMO MODE: Simulate conflict check
       await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
-      
+
       // Return no conflicts in demo mode
       setConflicts({
         room_conflicts: [],
@@ -107,14 +107,14 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
     try {
       // DEMO MODE: Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
-      
+
       // Simulate conflict check in demo mode
       setConflicts({
         room_conflicts: [],
         student_conflicts: [],
         has_conflicts: false,
       });
-      
+
       toast.success(`Exam ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
       router.push("/dashboard/exams");
       router.refresh();
@@ -291,11 +291,10 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
                             key={room.code}
                             type="button"
                             onClick={() => toggleRoom(room.code)}
-                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                              isSelected
+                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${isSelected
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-background hover:bg-gray-50 dark:hover:bg-gray-800"
-                            }`}
+                              }`}
                           >
                             <div className="font-medium">{room.code}</div>
                             <div className="text-xs opacity-70">{room.type}</div>

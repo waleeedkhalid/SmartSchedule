@@ -76,17 +76,17 @@ export async function GET(
       instructor_id: data.instructor_id,
       instructor: data.instructor
         ? {
-            id: data.instructor.user_id,
-            name: data.instructor.name || "",
-            email: data.instructor.email || "",
-          }
+          id: data.instructor.user_id,
+          name: data.instructor.name || "",
+          email: data.instructor.email || "",
+        }
         : null,
       room_code: data.room_code,
       room: data.room
         ? {
-            code: data.room.code,
-            type: data.room.type,
-          }
+          code: data.room.code,
+          type: data.room.type,
+        }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,
@@ -143,6 +143,7 @@ export async function PUT(
     }
 
     // Prepare update data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {};
     if (instructor_id !== undefined) updateData.instructor_id = instructor_id || null;
     if (room_code !== undefined) updateData.room_code = room_code || null;
@@ -206,17 +207,17 @@ export async function PUT(
       instructor_id: data.instructor_id,
       instructor: data.instructor
         ? {
-            id: data.instructor.user_id,
-            name: data.instructor.name || "",
-            email: data.instructor.email || "",
-          }
+          id: data.instructor.user_id,
+          name: data.instructor.name || "",
+          email: data.instructor.email || "",
+        }
         : null,
       room_code: data.room_code,
       room: data.room
         ? {
-            code: data.room.code,
-            type: data.room.type,
-          }
+          code: data.room.code,
+          type: data.room.type,
+        }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,

@@ -129,13 +129,13 @@ export function TimelineEventsTable({
 						events.map((event) => {
 							const daysUntilStart = getDaysUntil(event.start_date)
 							const daysUntilEnd = getDaysUntil(event.end_date)
-							
+
 							// Calculate status dynamically based on dates
 							const calculatedStatus = calculateTimelineStatus({
 								status: event.status || 'upcoming',
 								start_date: event.start_date,
 								end_date: event.end_date,
-								is_deadline: event.is_deadline,
+								is_deadline: event.is_deadline === null ? undefined : event.is_deadline,
 							})
 
 							return (

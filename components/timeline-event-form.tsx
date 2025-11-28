@@ -68,30 +68,32 @@ export function TimelineEventForm({
 	function handleChange(field: string, value: unknown) {
 		setFormData((prev) => {
 			const updates: Partial<TimelineEventInsert> = { [field]: value as string | number | null }
-			
+
 			// Auto-fill title based on event type if title is empty or matches a type label
 			if (field === 'event_type') {
 				const typeOption = EVENT_TYPES.find(t => t.value === value)
 				if (typeOption) {
 					updates.title = typeOption.label
-					
+
 					// Set appropriate category
-					if (value.includes('exam') || value.includes('grade')) {
+					const val = value as string;
+					if (val.includes('exam') || val.includes('grade')) {
 						updates.category = 'exam'
-					} else if (value === 'registration' || value === 'add_drop') {
+					} else if (val === 'registration' || val === 'add_drop') {
 						updates.category = 'registration'
 					} else {
 						updates.category = 'administrative'
 					}
 				}
 			}
-			
+
 			// If setting deadline, sync start date to same day if not set
 			if (field === 'end_date' && !prev.start_date) {
-				updates.start_date = value
+				updates.start_date = value as string
 			}
 
-			return { ...prev, ...updates }
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			return { ...prev, ...updates } as any
 		})
 	}
 
@@ -129,8 +131,8 @@ export function TimelineEventForm({
 				{/* Event Type */}
 				<div className="space-y-2">
 					<Label htmlFor="event_type">Event Type</Label>
-					<Select 
-						value={formData.event_type} 
+					<Select
+						value={formData.event_type}
 						onValueChange={(value) => handleChange('event_type', value)}
 						required
 					>

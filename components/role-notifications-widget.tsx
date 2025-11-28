@@ -60,7 +60,7 @@ function getNotificationColor(type: string) {
 function getNotificationTitle(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
-			return payload.event_title || 'Timeline Deadline'
+			return (payload.event_title as string) || 'Timeline Deadline'
 		case 'section_updated':
 			return 'Section Updated'
 		case 'section_deleted':
@@ -79,21 +79,21 @@ function getNotificationTitle(type: string, payload: Record<string, unknown>): s
 function getNotificationDescription(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
-			const daysBefore = payload.days_before || 0
+			const daysBefore = (payload.days_before as number) || 0
 			if (daysBefore > 0) {
 				return `${daysBefore} day${daysBefore !== 1 ? 's' : ''} until deadline`
 			}
-			return payload.description || 'Deadline approaching'
+			return (payload.description as string) || 'Deadline approaching'
 		case 'section_updated':
-			return payload.section_code || 'A section has been updated'
+			return (payload.section_code as string) || 'A section has been updated'
 		case 'section_deleted':
-			return payload.section_code || 'A section has been deleted'
+			return (payload.section_code as string) || 'A section has been deleted'
 		case 'exam_updated':
-			return payload.exam_id || 'An exam has been updated'
+			return (payload.exam_id as string) || 'An exam has been updated'
 		case 'exam_deleted':
-			return payload.exam_id || 'An exam has been deleted'
+			return (payload.exam_id as string) || 'An exam has been deleted'
 		case 'schedule_released':
-			return payload.release_tag || 'A new schedule has been released'
+			return (payload.release_tag as string) || 'A new schedule has been released'
 		default:
 			return 'You have a new notification'
 	}
@@ -183,57 +183,57 @@ export function RoleNotificationsWidget({ initialData }: RoleNotificationsWidget
 						{recentNotifications
 							.filter((n) => n && n.id) // Filter out invalid notifications
 							.map((notification) => {
-							if (!notification || !notification.id) return null
-							
-							const isUnread = !notification.read_at
-							const iconColor = getNotificationColor(notification.type || '')
-							const notificationType = notification.type || ''
+								if (!notification || !notification.id) return null
 
-							// Safely format date
-							let formattedDate = 'Just now'
-							try {
-								if (notification.created_at) {
-									formattedDate = format(new Date(notification.created_at), 'MMM d, h:mm a')
+								const isUnread = !notification.read_at
+								const iconColor = getNotificationColor(notification.type || '')
+								const notificationType = notification.type || ''
+
+								// Safely format date
+								let formattedDate = 'Just now'
+								try {
+									if (notification.created_at) {
+										formattedDate = format(new Date(notification.created_at), 'MMM d, h:mm a')
+									}
+								} catch {
+									// Keep default if date parsing fails
 								}
-							} catch {
-								// Keep default if date parsing fails
-							}
 
-							return (
-								<div
-									key={notification.id}
-									className={cn(
-										'border rounded-lg p-3 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950 dark:hover:border-indigo-700 transition-colors',
-										isUnread && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-									)}
-								>
-									<div className="flex items-start gap-3">
-										<div className={cn('mt-0.5 flex-shrink-0', iconColor)}>
-											{getNotificationIcon(notificationType)}
-										</div>
-										<div className="flex-1 min-w-0">
-											<div className="flex items-start justify-between gap-2 mb-1">
-												<p className={cn(
-													'text-sm font-medium',
-													isUnread && 'font-semibold'
-												)}>
-													{getNotificationTitle(notificationType, notification.payload || {})}
-												</p>
-												{isUnread && (
-													<div className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 flex-shrink-0 mt-1.5" />
-												)}
+								return (
+									<div
+										key={notification.id}
+										className={cn(
+											'border rounded-lg p-3 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950 dark:hover:border-indigo-700 transition-colors',
+											isUnread && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+										)}
+									>
+										<div className="flex items-start gap-3">
+											<div className={cn('mt-0.5 flex-shrink-0', iconColor)}>
+												{getNotificationIcon(notificationType)}
 											</div>
-											<p className="text-xs text-muted-foreground line-clamp-2 mb-1">
-												{getNotificationDescription(notificationType, notification.payload || {})}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												{formattedDate}
-											</p>
+											<div className="flex-1 min-w-0">
+												<div className="flex items-start justify-between gap-2 mb-1">
+													<p className={cn(
+														'text-sm font-medium',
+														isUnread && 'font-semibold'
+													)}>
+														{getNotificationTitle(notificationType, notification.payload || {})}
+													</p>
+													{isUnread && (
+														<div className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 flex-shrink-0 mt-1.5" />
+													)}
+												</div>
+												<p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+													{getNotificationDescription(notificationType, notification.payload || {})}
+												</p>
+												<p className="text-xs text-muted-foreground">
+													{formattedDate}
+												</p>
+											</div>
 										</div>
 									</div>
-								</div>
-							)
-						})}
+								)
+							})}
 
 						{notifications.length > 5 && (
 							<Button variant="ghost" className="w-full" asChild>

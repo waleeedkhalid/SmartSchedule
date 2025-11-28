@@ -44,16 +44,19 @@ export function RegistrarStats() {
         // Count sections that are 15-50% over capacity
         interface SectionWithCode {
           course_code?: string;
+          section_no?: string;
+          capacity?: number;
         }
         interface EnrollmentWithSection {
           section?: {
             course_code?: string;
+            section_no?: string;
           };
         }
         const overCapacitySections = sections.filter((section: SectionWithCode) => {
           const sectionEnrollments = enrollments.filter(
-            (e: EnrollmentWithSection) => e.section?.course_code === section.course_code && 
-                       e.section?.section_no === section.section_no
+            (e: EnrollmentWithSection) => e.section?.course_code === section.course_code &&
+              e.section?.section_no === section.section_no
           ).length
           const capacity = section.capacity || 0
           if (sectionEnrollments <= capacity) return false

@@ -38,9 +38,11 @@ export async function getElectivePreferenceStats(): Promise<ElectivePreferenceSt
   // Group preferences by course_code
   const statsMap = new Map<string, ElectivePreferenceStat>();
 
-  preferences?.forEach((pref) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  preferences?.forEach((pref: any) => {
     const courseCode = pref.course_code;
-    const course = pref.course as { code: string; title: string; recommended_level: number | null } | null;
+    const courseData = Array.isArray(pref.course) ? pref.course[0] : pref.course;
+    const course = courseData as { code: string; title: string; recommended_level: number | null } | null;
 
     if (!course) return;
 

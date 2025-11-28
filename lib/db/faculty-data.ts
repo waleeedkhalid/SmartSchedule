@@ -203,14 +203,14 @@ export async function getFacultySections(userId: string): Promise<FacultySection
   // Get enrollment counts for each section
   const sectionIds = (sections || []).map((s: { id: string }) => s.id);
   const enrollmentCounts: Record<string, number> = {};
-  
+
   if (sectionIds.length > 0) {
     const { data: enrollments } = await supabase
       .from("student_enrollment")
       .select("section_id")
       .in("section_id", sectionIds)
       .eq("status", "registered");
-    
+
     if (enrollments) {
       enrollments.forEach((e: { section_id: string }) => {
         enrollmentCounts[e.section_id] = (enrollmentCounts[e.section_id] || 0) + 1;
@@ -218,36 +218,30 @@ export async function getFacultySections(userId: string): Promise<FacultySection
     }
   }
 
-  return (sections || []).map((section: {
-    id: string;
-    course_code: string;
-    section_no: string;
-    room_code: string | null;
-    capacity: number;
-    meeting_pattern: { days: string[]; start: string; duration: number; is_lab?: boolean };
-    group_level: number;
-    state: string;
-    activity: string | null;
-    course: { title: string; credits: number } | null;
-  }) => ({
-    id: section.id,
-    course_code: section.course_code,
-    course_title: section.course?.title || "",
-    section_no: section.section_no,
-    room_code: section.room_code,
-    capacity: section.capacity,
-    current_enrollment: enrollmentCounts[section.id] || 0,
-    meeting_pattern: section.meeting_pattern as {
-      days: string[];
-      start: string;
-      duration: number;
-      is_lab?: boolean;
-    },
-    group_level: section.group_level,
-    state: section.state as "draft" | "released",
-    activity: section.activity,
-    credits: section.course?.credits,
-  }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (sections || []).map((section: any) => {
+    const courseData = Array.isArray(section.course) ? section.course[0] : section.course;
+
+    return {
+      id: section.id,
+      course_code: section.course_code,
+      course_title: courseData?.title || "",
+      section_no: section.section_no,
+      room_code: section.room_code,
+      capacity: section.capacity,
+      current_enrollment: enrollmentCounts[section.id] || 0,
+      meeting_pattern: section.meeting_pattern as {
+        days: string[];
+        start: string;
+        duration: number;
+        is_lab?: boolean;
+      },
+      group_level: section.group_level,
+      state: section.state as "draft" | "released",
+      activity: section.activity,
+      credits: courseData?.credits,
+    };
+  });
 }
 
 /**
@@ -270,35 +264,35 @@ export async function getFacultyStats(userId: string): Promise<FacultyStats> {
     .eq("instructor_id", userId);
 
   const sectionsList = sections || [];
-  
+
   // Get unique courses
   const uniqueCourses = new Set(sectionsList.map((s: { course_code: string }) => s.course_code));
-  
+
   // Get enrollment counts
   const sectionIds = sectionsList.map((s: { id: string }) => s.id);
   let totalStudents = 0;
-  
+
   if (sectionIds.length > 0) {
     const { count } = await supabase
       .from("student_enrollment")
       .select("*", { count: 'exact', head: true })
       .in("section_id", sectionIds)
       .eq("status", "registered");
-    
+
     totalStudents = count || 0;
   }
 
   // Calculate weekly hours
   let weeklyHours = 0;
-  sectionsList.forEach((section: { 
-    meeting_pattern: { duration?: number; days?: string[] } | null;
-    course: { weekly_hours?: number } | null;
-  }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sectionsList.forEach((section: any) => {
     const pattern = section.meeting_pattern;
+    const courseData = Array.isArray(section.course) ? section.course[0] : section.course;
+
     if (pattern && pattern.duration && pattern.days) {
       weeklyHours += (pattern.duration / 60) * pattern.days.length;
-    } else if (section.course?.weekly_hours) {
-      weeklyHours += section.course.weekly_hours;
+    } else if (courseData?.weekly_hours) {
+      weeklyHours += courseData.weekly_hours;
     }
   });
 
@@ -326,7 +320,7 @@ export async function getFacultyWeeklySchedule(userId: string): Promise<{
   sections: number;
 }[]> {
   const sections = await getFacultySections(userId);
-  
+
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
   const weeklyData = days.map(day => ({
     day,
@@ -361,7 +355,7 @@ export async function getFacultyTeachingLoad(userId: string): Promise<{
   enrolled: number;
 }[]> {
   const sections = await getFacultySections(userId);
-  
+
   const courseMap = new Map<string, {
     course_code: string;
     course_title: string;
@@ -421,29 +415,23 @@ export async function getFacultyComments(userId: string): Promise<FacultyComment
     return [];
   }
 
-  return (comments || []).map((comment: {
-    id: string;
-    section_id: string | null;
-    schedule_id: string | null;
-    comment_text: string;
-    rating: number | null;
-    is_resolved: boolean | null;
-    resolved_at: string | null;
-    resolved_by: string | null;
-    created_at: string | null;
-    section: { course_code: string; section_no: string } | null;
-  }) => ({
-    id: comment.id,
-    section_id: comment.section_id,
-    schedule_id: comment.schedule_id,
-    comment_text: comment.comment_text,
-    rating: comment.rating,
-    is_resolved: comment.is_resolved || false,
-    resolved_at: comment.resolved_at,
-    resolved_by: comment.resolved_by,
-    created_at: comment.created_at || new Date().toISOString(),
-    section: comment.section,
-  }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (comments || []).map((comment: any) => {
+    const sectionData = Array.isArray(comment.section) ? comment.section[0] : comment.section;
+
+    return {
+      id: comment.id,
+      section_id: comment.section_id,
+      schedule_id: comment.schedule_id,
+      comment_text: comment.comment_text,
+      rating: comment.rating,
+      is_resolved: comment.is_resolved || false,
+      resolved_at: comment.resolved_at,
+      resolved_by: comment.resolved_by,
+      created_at: comment.created_at || new Date().toISOString(),
+      section: sectionData,
+    };
+  });
 }
 
 /**
@@ -556,7 +544,7 @@ export async function linkFacultyProfileToInstructor(
     // Check if faculty_profile already exists
     const { data: existingProfile, error: findError } = await supabase
       .from("faculty_profile")
-      .select("user_id, name, email")
+      .select("user_id, name, email, max_load_per_week")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -564,7 +552,7 @@ export async function linkFacultyProfileToInstructor(
       // PGRST116 is "not found" which is expected for new profiles
       const errorMessage = findError.message || 'Unknown error';
       const errorCode = findError.code || 'UNKNOWN';
-      
+
       // Check for RLS violations
       if (findError.code?.startsWith('PGRST')) {
         throw new Error(
@@ -572,7 +560,7 @@ export async function linkFacultyProfileToInstructor(
           `This may be due to Row Level Security policies. Error: ${errorMessage} (${errorCode})`
         );
       }
-      
+
       throw new Error(`Failed to search for faculty profile: ${errorMessage} (${errorCode})`);
     }
 
@@ -591,7 +579,7 @@ export async function linkFacultyProfileToInstructor(
       if (updateError) {
         const errorMessage = updateError.message || 'Unknown error';
         const errorCode = updateError.code || 'UNKNOWN';
-        
+
         // Check for RLS violations
         if (updateError.code?.startsWith('PGRST')) {
           throw new Error(
@@ -600,7 +588,7 @@ export async function linkFacultyProfileToInstructor(
             `Please ensure you have the faculty role. Error: ${errorMessage} (${errorCode})`
           );
         }
-        
+
         throw new Error(`Failed to update faculty profile: ${errorMessage} (${errorCode})`);
       }
 
@@ -625,7 +613,7 @@ export async function linkFacultyProfileToInstructor(
       if (createError) {
         const errorMessage = createError.message || 'Unknown error';
         const errorCode = createError.code || 'UNKNOWN';
-        
+
         // Check for RLS violations or constraint violations
         if (createError.code?.startsWith('PGRST')) {
           throw new Error(
@@ -634,7 +622,7 @@ export async function linkFacultyProfileToInstructor(
             `Please ensure you have the faculty role. Error: ${errorMessage} (${errorCode})`
           );
         }
-        
+
         // Check for unique constraint violations
         if (createError.code === '23505') {
           throw new Error(
@@ -642,7 +630,7 @@ export async function linkFacultyProfileToInstructor(
             `Please contact support if you believe this is an error.`
           );
         }
-        
+
         throw new Error(`Failed to create faculty profile: ${errorMessage} (${errorCode})`);
       }
 
@@ -653,7 +641,7 @@ export async function linkFacultyProfileToInstructor(
     if (error instanceof Error) {
       throw error;
     }
-    
+
     // Otherwise wrap in Error
     console.error("Unexpected error updating faculty profile:", error);
     throw new Error(

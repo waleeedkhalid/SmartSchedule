@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useRef,
 import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/supabase/client";
 import { useRouter } from "next/navigation";
-import type { UserRoleRow } from "@/lib/types/database";
+import type { UserRoleRow } from "@/lib/types";
 
 interface AuthContextType {
   user: User | null;
@@ -21,13 +21,13 @@ const AuthContext = createContext<AuthContextType>({
   userRole: null,
   isLoading: true,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const router = useRouter();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<UserRoleRow | null>(null);
@@ -99,15 +99,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       try {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.warn("Error getting session:", error);
         }
-        
+
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
-          
+
           if (currentSession?.user) {
             await fetchUserRole(currentSession.user.id);
           } else {
@@ -156,12 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Optional: Redirect to login on sign out
         // router.push('/login'); 
       }
-      
+
       setIsLoading(false);
-      
+
       // If the session expired/refreshed, we might want to refresh router
       if (event === 'TOKEN_REFRESHED') {
-        router.refresh(); 
+        router.refresh();
       }
     });
 
@@ -175,21 +175,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Sign out from Supabase
       await supabase.auth.signOut();
-      
+
       // Clear all cookies and localStorage on client side
       if (typeof window !== 'undefined') {
         // Clear all auth cookies
         const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
         performClientLogoutCleanup();
       }
-      
+
       // Clear cache and state
       cachedRoleRef.current.clear();
       fetchingRef.current.clear();
       setUser(null);
       setSession(null);
       setUserRole(null);
-      
+
       // Redirect to login
       router.push("/login");
     } catch (error) {

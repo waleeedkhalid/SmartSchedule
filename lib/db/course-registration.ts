@@ -57,14 +57,14 @@ export async function getAvailableCoursesForStudent(
   // For now, we'll consider courses with status 'registered' as potentially passed
   // In a full implementation, you'd have a separate grades/completion table
   const passedCourseCodes = new Set<string>();
-  interface EnrollmentWithCourse {
-    course_code?: {
-      course_code?: string;
-    };
-    status?: string;
-  }
-  (enrollments || []).forEach((enrollment: EnrollmentWithCourse) => {
-    const courseCode = enrollment.course_code?.course_code;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (enrollments || []).forEach((enrollment: any) => {
+    // Handle both array (if one-to-many inferred) and object (if one-to-one)
+    const sectionData = Array.isArray(enrollment.course_code)
+      ? enrollment.course_code[0]
+      : enrollment.course_code;
+
+    const courseCode = sectionData?.course_code;
     if (courseCode && enrollment.status === 'registered') {
       // Note: In production, you'd check a grade/completion status
       // For now, we'll assume registered courses are passed
@@ -110,7 +110,7 @@ export async function getAvailableCoursesForStudent(
     const missingPrerequisites = coursePrerequisites.filter(
       (prereqCode) => !passedCourseCodes.has(prereqCode)
     );
-    // const isLocked = missingPrerequisites.length > 0;
+    const isLocked = missingPrerequisites.length > 0;
 
     return {
       code: course.code,
@@ -119,7 +119,7 @@ export async function getAvailableCoursesForStudent(
       weekly_hours: course.weekly_hours,
       is_elective: course.is_elective,
       recommended_level: course.recommended_level,
-      is_locked,
+      is_locked: isLocked,
       missing_prerequisites: missingPrerequisites,
       prerequisites: coursePrerequisites,
     };
@@ -160,7 +160,7 @@ export async function getCourseWithPrerequisites(
     prerequisites?.map((p) => p.prerequisite_course_code) || [];
 
   // If student ID provided, use optimized SQL function to check lock status
-  // let isLocked = false; // Unused variable
+  let isLocked = false;
   let missingPrerequisites: string[] = [];
 
   if (studentId) {
@@ -188,14 +188,14 @@ export async function getCourseWithPrerequisites(
         .eq('student_id', studentId);
 
       const passedCourseCodes = new Set<string>();
-      interface EnrollmentWithCourse {
-    course_code?: {
-      course_code?: string;
-    };
-    status?: string;
-  }
-  (enrollments || []).forEach((enrollment: EnrollmentWithCourse) => {
-        const code = enrollment.course_code?.course_code;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (enrollments || []).forEach((enrollment: any) => {
+        // Handle both array (if one-to-many inferred) and object (if one-to-one)
+        const sectionData = Array.isArray(enrollment.course_code)
+          ? enrollment.course_code[0]
+          : enrollment.course_code;
+
+        const code = sectionData?.course_code;
         if (code && enrollment.status === 'registered') {
           passedCourseCodes.add(code);
         }
@@ -204,7 +204,7 @@ export async function getCourseWithPrerequisites(
       missingPrerequisites = prerequisiteCodes.filter(
         (code) => !passedCourseCodes.has(code)
       );
-      // isLocked = missingPrerequisites.length > 0; // Unused variable
+      isLocked = missingPrerequisites.length > 0;
     }
   }
 
@@ -215,7 +215,7 @@ export async function getCourseWithPrerequisites(
     weekly_hours: course.weekly_hours,
     is_elective: course.is_elective,
     recommended_level: course.recommended_level,
-    is_locked,
+    is_locked: isLocked,
     missing_prerequisites: missingPrerequisites,
     prerequisites: prerequisiteCodes,
   };

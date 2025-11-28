@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Exam } from "@/lib/types/database";
+import { Exam } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,7 +38,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
     try {
       // DEMO MODE: Simulate delete action
       await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
-      
+
       toast.success(`Exam for ${courseCode} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
@@ -50,7 +50,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
   }
 
   const filteredExams = exams.filter((exam) => {
-    const matchesSearch = 
+    const matchesSearch =
       exam.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false;
     const matchesDate = !dateFilter || exam.date === dateFilter;
     return matchesSearch && matchesDate;
