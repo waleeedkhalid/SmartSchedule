@@ -19,6 +19,7 @@ export default async function EditSectionPage({ params }: { params: Promise<{ id
   }
   
   // Transform section data to match expected format
+  // Include all required properties from Database["public"]["Tables"]["section"]["Row"]
   const section = {
     id: sectionData.id,
     course_code: sectionData.course_code,
@@ -34,6 +35,9 @@ export default async function EditSectionPage({ params }: { params: Promise<{ id
     group_level: sectionData.group_level,
     state: sectionData.state as 'draft' | 'released',
     activity: sectionData.activity || null,
+    created_at: sectionData.created_at,
+    created_by: sectionData.created_by,
+    updated_at: sectionData.updated_at,
   };
   
   const [courses, instructors, rooms] = await Promise.all([

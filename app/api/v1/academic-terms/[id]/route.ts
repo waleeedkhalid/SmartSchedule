@@ -58,13 +58,7 @@ export async function PUT(
 
     const supabase = await createClient();
 
-    interface UpdateData {
-      name?: string;
-      start_date?: string;
-      end_date?: string;
-      status?: string;
-    }
-    const updateData: UpdateData = {};
+    const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (start_date !== undefined) updateData.start_date = start_date;
     if (end_date !== undefined) updateData.end_date = end_date;

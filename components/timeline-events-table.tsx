@@ -29,11 +29,11 @@ interface TimelineEvent {
 	category: string
 	start_date: string
 	end_date: string
-	priority: string
-	status: string
-	requires_action: boolean
+	priority: string | null
+	status: string | null
+	requires_action: boolean | null
 	target_roles: string[] | null
-	is_deadline: boolean
+	is_deadline: boolean | null
 }
 
 interface TimelineEventsTableProps {
@@ -132,7 +132,7 @@ export function TimelineEventsTable({
 							
 							// Calculate status dynamically based on dates
 							const calculatedStatus = calculateTimelineStatus({
-								status: event.status,
+								status: event.status || 'upcoming',
 								start_date: event.start_date,
 								end_date: event.end_date,
 								is_deadline: event.is_deadline,
@@ -187,9 +187,9 @@ export function TimelineEventsTable({
 									<TableCell>
 										<Badge
 											variant="outline"
-											className={priorityColors[event.priority as keyof typeof priorityColors]}
+											className={priorityColors[(event.priority || 'medium') as keyof typeof priorityColors]}
 										>
-											{event.priority}
+											{event.priority || 'medium'}
 										</Badge>
 									</TableCell>
 									<TableCell className="text-sm">

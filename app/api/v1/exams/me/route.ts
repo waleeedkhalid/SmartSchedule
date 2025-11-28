@@ -11,6 +11,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -177,6 +178,9 @@ export async function GET(request: NextRequest) {
       const courseCode = exam.course_code;
       const sectionNos = courseSectionMap.get(courseCode) || [];
       
+      // Safely extract joined relation (can be array from Supabase)
+      const course = extractJoinedRelation(exam.course);
+      
       // Calculate end time
       exam.start_time.split(':').map(Number);
       const startDate = new Date(`${exam.date}T${exam.start_time}`);
@@ -186,7 +190,7 @@ export async function GET(request: NextRequest) {
       return {
         id: exam.id,
         course_code: courseCode,
-        course_title: exam.course?.title || "",
+        course_title: course?.title || "",
         section_no: sectionNos.length > 0 ? sectionNos.join(", ") : null,
         date: exam.date,
         start_time: exam.start_time,

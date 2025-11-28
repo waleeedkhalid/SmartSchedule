@@ -33,25 +33,24 @@ The SmartSchedule mobile architecture follows these key principles:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Backend API Layer                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │   Auth   │  │ Courses  │  │ Sections │  │ Schedules│  │
-│  │   API    │  │   API    │  │   API    │  │   API    │  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
-│         │            │            │            │          │
-│         └────────────┴────────────┴────────────┘          │
+│                    Backend API Layer                        │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
+│  │   Auth   │  │ Courses  │  │ Sections │  │ Schedules│     │
+│  │   API    │  │   API    │  │   API    │  │   API    │     │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘     │
+│         │            │            │            │            │
+│         └────────────┴────────────┴────────────┘            │
 │                    (RESTful JSON APIs)                      │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            │ HTTP/HTTPS
-                            │ Bearer Token Auth
+                            │ Token Auth
                             │
         ┌───────────────────┼───────────────────┐
         │                   │                   │
         ▼                   ▼                   ▼
 ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│  PWA Client  │   │ React Native │   │ Android Native│
-│  (Current)   │   │  (Future)    │   │  (Future)    │
+│  PWA Client  │   │   Web App    │   │   Android    │
+│  (Current)   │   │   (Current)  │   │   (Future)   │
 └──────────────┘   └──────────────┘   └──────────────┘
         │                   │                   │
         ▼                   ▼                   ▼

@@ -11,10 +11,10 @@ import { cache } from 'react';
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
 import type { Course } from "@/lib/data/courses";
+import type { Room } from "@/lib/data/rooms";
 
 type CourseRow = Database["public"]["Tables"]["course"]["Row"];
 type FacultyProfile = Database["public"]["Tables"]["faculty_profile"]["Row"];
-type Room = Database["public"]["Tables"]["room"]["Row"];
 
 type SectionListItem = {
   id: string;
@@ -96,16 +96,17 @@ export const getAllInstructors = cache(async (): Promise<Array<{ id: string; nam
 
 /**
  * Fetches all rooms from database (for dropdowns)
+ * Returns full Room type with all fields
  * Wrapped with React.cache() for request memoization
  * 
  * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export const getAllRooms = cache(async (): Promise<Array<{ code: string; type: string }>> => {
+export const getAllRooms = cache(async (): Promise<Room[]> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("room")
-    .select("code, type")
+    .select("*")
     .order("code", { ascending: true });
   
   if (error) {
@@ -113,10 +114,7 @@ export const getAllRooms = cache(async (): Promise<Array<{ code: string; type: s
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
   
-  return (data || []).map((room: Room) => ({
-    code: room.code,
-    type: room.type,
-  }));
+  return (data || []) as Room[];
 });
 
 /**

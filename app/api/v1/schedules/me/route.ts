@@ -16,6 +16,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -153,16 +154,22 @@ export async function GET(request: NextRequest) {
         };
       }
       (enrollments || []).forEach((enrollment: EnrollmentWithSection) => {
-        // Fix: course_code doesn't exist on enrollment, it comes from section.course.code
-        const courseCode = enrollment.section?.course?.code;
-        if (!courseCode || !enrollment.section) return;
+        if (!enrollment.section) return;
+        
+        // Safely extract joined relations (can be arrays from Supabase)
+        const course = extractJoinedRelation(enrollment.section.course);
+        const instructor = extractJoinedRelation(enrollment.section.instructor);
+        const room = extractJoinedRelation(enrollment.section.room);
+        
+        const courseCode = course?.code;
+        if (!courseCode) return;
 
         if (!scheduleMap.has(courseCode)) {
           scheduleMap.set(courseCode, {
             enrollment_id: enrollment.enrollment_id,
             course_code: courseCode,
-            course_name: enrollment.section.course?.title || "",
-            credits: enrollment.section.course?.credits || 0,
+            course_name: course?.title || "",
+            credits: course?.credits || 0,
             sections: [],
           });
         }
@@ -173,8 +180,8 @@ export async function GET(request: NextRequest) {
           section_no: enrollment.section.section_no,
           // Fix: query selects 'activity' field, not 'type'
           type: enrollment.section.activity || "lecture",
-          instructor: enrollment.section.instructor?.name || "TBA",
-          room: enrollment.section.room?.code || "TBA",
+          instructor: instructor?.name || "TBA",
+          room: room?.code || "TBA",
           meeting_pattern: enrollment.section.meeting_pattern,
         });
       });
@@ -281,6 +288,10 @@ export async function GET(request: NextRequest) {
       interface SectionForSchedule extends SectionWithId {
         course_code?: string;
         section_no?: string;
+        course?: { code?: string; title?: string; credits?: number } | Array<{ code?: string; title?: string; credits?: number }>;
+        room?: { code?: string } | Array<{ code?: string }>;
+        meeting_pattern?: unknown;
+        capacity?: number;
       }
       const schedule = await Promise.all(
         (filteredSections || []).map(async (section: SectionForSchedule) => {
@@ -291,13 +302,17 @@ export async function GET(request: NextRequest) {
             .eq("section_id", section.id)
             .eq("status", "registered");
 
+          // Safely extract joined relations (can be arrays from Supabase)
+          const course = extractJoinedRelation(section.course);
+          const room = extractJoinedRelation(section.room);
+
           return {
             section_id: section.section_id,
             section_no: section.section_no,
-            course_code: section.course?.code || "",
-            course_name: section.course?.title || "",
-            credits: section.course?.credits || 0,
-            room: section.room?.code || "TBA",
+            course_code: course?.code || "",
+            course_name: course?.title || "",
+            credits: course?.credits || 0,
+            room: room?.code || "TBA",
             meeting_pattern: section.meeting_pattern,
             capacity: section.capacity,
             current_enrollment: count || 0,

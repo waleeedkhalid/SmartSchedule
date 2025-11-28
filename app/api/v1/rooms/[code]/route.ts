@@ -95,11 +95,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    interface UpdateData {
-      type?: string;
-      capacity?: number | null;
-    }
-    const updateData: UpdateData = {};
+    const updateData: Record<string, any> = {};
     if (type !== undefined) updateData.type = type;
     if (capacity !== undefined) updateData.capacity = capacity ? parseInt(capacity) : null;
 

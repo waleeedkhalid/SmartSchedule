@@ -143,14 +143,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    interface UpdateData {
-      instructor_id?: string | null;
-      room_code?: string | null;
-      capacity?: number;
-      group_level?: number;
-      activity?: string;
-    }
-    const updateData: UpdateData = {};
+    const updateData: Record<string, any> = {};
     if (instructor_id !== undefined) updateData.instructor_id = instructor_id || null;
     if (room_code !== undefined) updateData.room_code = room_code || null;
     if (capacity !== undefined) updateData.capacity = parseInt(capacity);

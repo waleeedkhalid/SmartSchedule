@@ -12,6 +12,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { extractJoinedRelation } from "@/lib/utils";
 
 /**
  * Check if two time slots overlap
@@ -139,34 +140,45 @@ export async function GET(request: NextRequest) {
       section?: {
         course?: {
           code: string;
-        };
+          title?: string;
+          credits?: number;
+          is_elective?: boolean;
+        } | Array<{
+          code: string;
+          title?: string;
+          credits?: number;
+          is_elective?: boolean;
+        }>;
         course_code?: string;
       };
     }
-    const enrollments = (data || []).map((enrollment: EnrollmentWithSection) => ({
-      id: enrollment.id,
-      student_id: enrollment.student_id,
-      section_id: enrollment.section_id,
-      course_code: enrollment.section?.course?.code || null, // Fix: course_code comes from section.course.code, not section.course_code
-      enrollment_type: enrollment.section?.course?.is_elective ? "elective" : "required",
-      status: enrollment.status === "registered" ? "enrolled" : "dropped",
-      enrolled_at: enrollment.enrolled_at,
-      dropped_at: enrollment.dropped_at,
-      course: enrollment.section?.course
-        ? {
-            code: enrollment.section.course.code,
-            name: enrollment.section.course.title,
-            credits: enrollment.section.course.credits,
-          }
-        : null,
-      section: enrollment.section
-        ? {
-            id: enrollment.section.id,
-            section_no: enrollment.section.section_no,
-            meeting_pattern: enrollment.section.meeting_pattern,
-          }
-        : null,
-    }));
+    const enrollments = (data || []).map((enrollment: EnrollmentWithSection) => {
+      const course = extractJoinedRelation(enrollment.section?.course);
+      return {
+        id: enrollment.id,
+        student_id: enrollment.student_id,
+        section_id: enrollment.section_id,
+        course_code: course?.code || null, // Fix: course_code comes from section.course.code, not section.course_code
+        enrollment_type: course?.is_elective ? "elective" : "required",
+        status: enrollment.status === "registered" ? "enrolled" : "dropped",
+        enrolled_at: enrollment.enrolled_at,
+        dropped_at: enrollment.dropped_at,
+        course: course
+          ? {
+              code: course.code,
+              name: course.title || "",
+              credits: course.credits || 0,
+            }
+          : null,
+        section: enrollment.section
+          ? {
+              id: enrollment.section.id,
+              section_no: enrollment.section.section_no,
+              meeting_pattern: enrollment.section.meeting_pattern,
+            }
+          : null,
+      };
+    });
 
     return createSuccessResponse(enrollments, 200);
   } catch (error) {
@@ -343,7 +355,7 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 4: Check for exam conflicts
-    const course = Array.isArray(section.course) ? section.course[0] : section.course;
+    const course = extractJoinedRelation(section.course);
     const courseCode = section.course_code;
 
     if (courseCode) {
@@ -502,20 +514,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Map to API response format
+    const enrollmentCourse = extractJoinedRelation(enrollment.section?.course);
     const mappedEnrollment = {
       id: enrollment.id,
       student_id: enrollment.student_id,
       section_id: enrollment.section_id,
-      course_code: enrollment.section?.course?.code || null, // Fix: course_code comes from section.course.code, not section.course_code
+      course_code: enrollmentCourse?.code || null, // Fix: course_code comes from section.course.code, not section.course_code
       enrollment_type: isElective ? "elective" : "required",
       status: "enrolled",
       enrolled_at: enrollment.enrolled_at,
       dropped_at: enrollment.dropped_at,
-      course: enrollment.section?.course
+      course: enrollmentCourse
         ? {
-            code: enrollment.section.course.code,
-            name: enrollment.section.course.title,
-            credits: enrollment.section.course.credits,
+            code: enrollmentCourse.code,
+            name: enrollmentCourse.title || "",
+            credits: enrollmentCourse.credits || 0,
           }
         : null,
       section: enrollment.section

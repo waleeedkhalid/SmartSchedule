@@ -113,12 +113,12 @@ export async function GET(request: NextRequest) {
 			const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
 				...event,
 				status: calculateTimelineStatus({
-					status: event.status,
+					status: event.status || 'upcoming',
 					start_date: event.start_date,
 					end_date: event.end_date,
-					is_deadline: event.is_deadline,
+					is_deadline: event.is_deadline || false,
 				}),
-			})).filter((event) => 
+			})).filter((event: TimelineEvent & { status: string }) =>
 				event.status === 'upcoming' || event.status === 'in_progress'
 			);
 
@@ -154,12 +154,12 @@ export async function GET(request: NextRequest) {
 		// Calculate status dynamically based on dates
 		const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
 			...event,
-			status: calculateTimelineStatus({
-				status: event.status,
-				start_date: event.start_date,
-				end_date: event.end_date,
-				is_deadline: event.is_deadline,
-			}),
+				status: calculateTimelineStatus({
+					status: event.status || 'upcoming',
+					start_date: event.start_date,
+					end_date: event.end_date,
+					is_deadline: event.is_deadline || false,
+				}),
 		}));
 
 		return createSuccessResponse(eventsWithCalculatedStatus, 200);

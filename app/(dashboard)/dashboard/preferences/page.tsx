@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { getServerUser } from "@/lib/server-auth";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export default async function PreferencesPage() {
   // Get authenticated user (supports both demo and Supabase)
@@ -165,7 +166,7 @@ export default async function PreferencesPage() {
             initialPreferences={(preferences?.map(p => ({
               course_code: p.course_code,
               rank: p.rank,
-              course: Array.isArray(p.course) ? p.course[0] : p.course
+              course: extractJoinedRelation(p.course)
             })) || [])}
             availableElectives={electiveCourses || []}
           />
@@ -185,36 +186,39 @@ export default async function PreferencesPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {preferences && preferences.map((pref, index) => (
-                <Card key={pref.course_code}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold">
-                          #{index + 1}
+              {preferences && preferences.map((pref, index) => {
+                const course = extractJoinedRelation(pref.course);
+                return (
+                  <Card key={pref.course_code}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold">
+                            #{index + 1}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{course?.code}</CardTitle>
+                            <CardDescription>{course?.title}</CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle className="text-lg">{pref.course?.code}</CardTitle>
-                          <CardDescription>{pref.course?.title}</CardDescription>
+                        <div className="flex gap-2">
+                          {course?.recommended_level && (
+                            <Badge variant="secondary">Level {course.recommended_level}</Badge>
+                          )}
+                          <Badge variant="secondary">{course?.credits} cr</Badge>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        {pref.course?.recommended_level && (
-                          <Badge variant="secondary">Level {pref.course.recommended_level}</Badge>
-                        )}
-                        <Badge variant="secondary">{pref.course?.credits} cr</Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ElectiveCommentSection
-                      courseCode={pref.course_code}
-                      courseTitle={pref.course?.title || pref.course_code}
-                      initialComments={commentsByCourse[pref.course_code] || []}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent>
+                      <ElectiveCommentSection
+                        courseCode={pref.course_code}
+                        courseTitle={course?.title || pref.course_code}
+                        initialComments={commentsByCourse[pref.course_code] || []}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

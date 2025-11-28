@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, BookOpen, Plus, X, ArrowLeft, Save, RotateCcw, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export default function PreferencesPage() {
   const router = useRouter();
@@ -227,45 +228,48 @@ export default function PreferencesPage() {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      {preferences.map((pref, index) => (
-                        <div
-                          key={pref.course_code}
-                          className="flex items-center gap-2 p-3 border rounded-lg bg-card"
-                        >
-                          <div className="flex-shrink-0">
-                            <GripVertical className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-white flex items-center justify-center font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm truncate">
-                              {pref.course?.code || pref.course_code}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {pref.course?.title}
-                            </p>
-                            <div className="flex gap-2 mt-1">
-                              {pref.course?.recommended_level && (
-                                <Badge variant="outline" className="text-xs">
-                                  Level {pref.course.recommended_level}
-                                </Badge>
-                              )}
-                              <Badge variant="outline" className="text-xs">
-                                {pref.course?.credits} cr
-                              </Badge>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removePreference(pref.course_code)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                      {preferences.map((pref, index) => {
+                        const course = extractJoinedRelation(pref.course);
+                        return (
+                          <div
+                            key={pref.course_code}
+                            className="flex items-center gap-2 p-3 border rounded-lg bg-card"
                           >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex-shrink-0">
+                              <GripVertical className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-white flex items-center justify-center font-bold text-sm">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">
+                                {course?.code || pref.course_code}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {course?.title}
+                              </p>
+                              <div className="flex gap-2 mt-1">
+                                {course?.recommended_level && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Level {course.recommended_level}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  {course?.credits} cr
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removePreference(pref.course_code)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Action Buttons */}

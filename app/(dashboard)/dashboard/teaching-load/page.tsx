@@ -13,6 +13,7 @@ import { TeachingLoadDashboardCharts } from "@/components/teaching-load-dashboar
 import { TeachingLoadSectionsTable } from "@/components/teaching-load-sections-table";
 import { TeachingLoadRoomsTable } from "@/components/teaching-load-rooms-table";
 import { getAllInstructors, getAllRoomsList } from "@/lib/data/sections-helpers";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export default async function TeachingLoadDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
@@ -98,6 +99,18 @@ export default async function TeachingLoadDashboardPage() {
   }
 
   const { data: sections } = await sectionsQuery.order('course_code', { ascending: true });
+
+  // Normalize sections data - Supabase joins can return arrays
+  // Use type assertion to maintain all section properties while normalizing joins
+  const normalizedSections = (sections || []).map((section) => {
+    const normalized = {
+      ...section,
+      course: extractJoinedRelation(section.course),
+      instructor: extractJoinedRelation(section.instructor),
+      room: extractJoinedRelation(section.room),
+    };
+    return normalized;
+  });
 
   // Get instructors and rooms lists for the tables
   const instructorsList = await getAllInstructors();
@@ -251,7 +264,7 @@ export default async function TeachingLoadDashboardPage() {
                   }
                 >
                   <TeachingLoadSectionsTable 
-                    sections={sections || []} 
+                    sections={normalizedSections} 
                     instructors={instructorsList.map(i => ({ user_id: i.id, name: i.name }))}
                   />
                 </ClientOnly>
@@ -281,7 +294,7 @@ export default async function TeachingLoadDashboardPage() {
                   }
                 >
                   <TeachingLoadRoomsTable 
-                    sections={sections || []} 
+                    sections={normalizedSections} 
                     rooms={roomsList.map(r => ({ code: r.code, type: r.type, capacity: r.capacity }))}
                   />
                 </ClientOnly>

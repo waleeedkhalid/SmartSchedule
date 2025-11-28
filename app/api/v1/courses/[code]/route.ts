@@ -97,15 +97,7 @@ export async function PUT(
       .single();
 
     // Prepare update data
-    interface UpdateData {
-      title?: string;
-      credits?: number;
-      weekly_hours?: number;
-      level?: number;
-      is_elective?: boolean;
-      prerequisite?: string;
-    }
-    const updateData: UpdateData = {};
+    const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.title = name;
     if (credits !== undefined) {
       const creditsNum = parseInt(credits);

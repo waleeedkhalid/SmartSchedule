@@ -120,12 +120,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    interface UpdateData {
-      name?: string;
-      email?: string | null;
-      max_load_per_week?: number;
-    }
-    const updateData: UpdateData = {};
+    const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email || null;
     if (max_load_per_week !== undefined) updateData.max_load_per_week = parseInt(max_load_per_week);

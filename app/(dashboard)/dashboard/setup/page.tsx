@@ -110,8 +110,8 @@ export default function SetupPage() {
                   <p><strong>Name:</strong> {semesterInfo.currentSemester.name}</p>
                   <p><strong>Code:</strong> {semesterInfo.currentSemester.code}</p>
                   <p><strong>Status:</strong> {semesterInfo.currentSemester.status}</p>
-                  <p><strong>Start Date:</strong> {new Date(semesterInfo.currentSemester.start_date).toLocaleDateString()}</p>
-                  <p><strong>End Date:</strong> {new Date(semesterInfo.currentSemester.end_date).toLocaleDateString()}</p>
+                  <p><strong>Start Date:</strong> {semesterInfo.currentSemester.start_date ? new Date(semesterInfo.currentSemester.start_date).toLocaleDateString() : 'N/A'}</p>
+                  <p><strong>End Date:</strong> {semesterInfo.currentSemester.end_date ? new Date(semesterInfo.currentSemester.end_date).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </div>
             )}

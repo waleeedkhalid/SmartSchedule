@@ -15,6 +15,10 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { TimelineEventsTable } from '@/components/timeline-events-table'
 import { TimelineEventForm } from '@/components/timeline-event-form'
+import type { Database } from '@/lib/types/database'
+
+type TimelineEventInsert = Database['public']['Tables']['semester_timeline']['Insert']
+type TimelineEventRow = Database['public']['Tables']['semester_timeline']['Row']
 import {
 	Calendar,
 	Clock,
@@ -38,21 +42,9 @@ interface Semester {
 	name: string
 }
 
-interface TimelineEvent {
-	id: string
-	title: string
-	description: string | null
-	event_type: string
-	category: string
-	start_date: string
-	end_date: string
-	priority: string
-	status: string
-	requires_action: boolean
-	target_roles: string[] | null
-	is_deadline: boolean
-	term_code?: string
-}
+// Use database type for TimelineEvent to match form expectations
+// The database allows null for priority, but we'll handle it in the component
+type TimelineEvent = TimelineEventRow
 
 interface TimelineStatistics {
 	total: number
@@ -186,7 +178,23 @@ export function TimelineManagement({
 		queryClient.invalidateQueries({ queryKey: ['timeline'] })
 	}, [queryClient])
 
-	async function handleCreateEvent(data: Partial<TimelineEvent> & { term_code: string; title: string; start_date: string; end_date: string }) {
+	// Helper to map database events to table format
+	const mapEventForTable = useCallback((e: TimelineEventRow) => ({
+		id: e.id,
+		title: e.title,
+		description: e.description,
+		event_type: e.event_type,
+		category: e.category,
+		start_date: e.start_date,
+		end_date: e.end_date,
+		priority: e.priority,
+		status: e.status,
+		requires_action: e.requires_action,
+		target_roles: e.target_roles,
+		is_deadline: e.is_deadline,
+	}), [])
+
+	async function handleCreateEvent(data: TimelineEventInsert) {
 		try {
 			const authHeader = await getAuthHeader()
 			const response = await fetch('/api/timeline', {
@@ -480,8 +488,8 @@ export function TimelineManagement({
 						</CardHeader>
 						<CardContent>
 							<TimelineEventsTable
-								events={events}
-								onEdit={setEditingEvent}
+								events={events.map(mapEventForTable)}
+								onEdit={(event) => setEditingEvent(event as TimelineEvent)}
 								onDelete={handleDeleteEvent}
 								onMarkComplete={handleMarkComplete}
 								onCancel={handleCancelEvent}
@@ -499,8 +507,8 @@ export function TimelineManagement({
 						</CardHeader>
 						<CardContent>
 							<TimelineEventsTable
-								events={upcomingEvents}
-								onEdit={setEditingEvent}
+								events={upcomingEvents.map(mapEventForTable)}
+								onEdit={(event) => setEditingEvent(event as TimelineEvent)}
 								onDelete={handleDeleteEvent}
 								onMarkComplete={handleMarkComplete}
 								onCancel={handleCancelEvent}
@@ -520,8 +528,8 @@ export function TimelineManagement({
 						</CardHeader>
 						<CardContent>
 							<TimelineEventsTable
-								events={events.filter((e) => e.status === 'in_progress')}
-								onEdit={setEditingEvent}
+								events={events.filter((e) => e.status === 'in_progress').map(mapEventForTable)}
+								onEdit={(event) => setEditingEvent(event as TimelineEvent)}
 								onDelete={handleDeleteEvent}
 								onMarkComplete={handleMarkComplete}
 								onCancel={handleCancelEvent}
@@ -539,8 +547,8 @@ export function TimelineManagement({
 						</CardHeader>
 						<CardContent>
 							<TimelineEventsTable
-								events={overdueEvents}
-								onEdit={setEditingEvent}
+								events={overdueEvents.map(mapEventForTable)}
+								onEdit={(event) => setEditingEvent(event as TimelineEvent)}
 								onDelete={handleDeleteEvent}
 								onMarkComplete={handleMarkComplete}
 								onCancel={handleCancelEvent}
@@ -558,8 +566,8 @@ export function TimelineManagement({
 						</CardHeader>
 						<CardContent>
 							<TimelineEventsTable
-								events={events.filter((e) => e.status === 'completed')}
-								onEdit={setEditingEvent}
+								events={events.filter((e) => e.status === 'completed').map(mapEventForTable)}
+								onEdit={(event) => setEditingEvent(event as TimelineEvent)}
 								onDelete={handleDeleteEvent}
 								canEdit={userRole === 'scheduling'}
 							/>
