@@ -21,8 +21,8 @@ export class SemestersRepository {
   async getSemesters(currentOnly: boolean = false): Promise<Semester[]> {
     // Use backward-compatible semesters endpoint
     const url = currentOnly
-      ? `${API_ENDPOINTS.ACADEMIC_TERMS.LIST}?current=true`
-      : API_ENDPOINTS.ACADEMIC_TERMS.LIST;
+      ? `${API_ENDPOINTS.SEMESTERS.LIST}?current=true`
+      : API_ENDPOINTS.SEMESTERS.LIST;
 
     return apiClient.get<Semester[]>(url);
   }
@@ -36,7 +36,7 @@ export class SemestersRepository {
   async getCurrentSemester(): Promise<Semester | null> {
     // Use backward-compatible semesters/current endpoint
     // This endpoint internally uses academic_term
-    return apiClient.get<Semester | null>(`${API_ENDPOINTS.ACADEMIC_TERMS.LIST}?current=true`);
+    return apiClient.get<Semester | null>(API_ENDPOINTS.SEMESTERS.CURRENT);
   }
 }
 

@@ -1,6 +1,7 @@
 /**
  * Elective Preferences API Route
  * 
+ * GET /api/elective-preferences - Get preferences and available electives for current user
  * POST /api/elective-preferences - Bulk update preferences for current user
  * 
  * Handles student elective preference operations.
@@ -11,6 +12,56 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+
+// GET - Get preferences and available electives
+export async function GET(request: NextRequest) {
+  try {
+    const user = await authenticateRequest(request);
+
+    // Only students can view preferences
+    requireRole(user, ["student"]);
+
+    const supabase = await createClient();
+
+    // Get student's current preferences
+    const { data: preferences, error: prefError } = await supabase
+      .from('elective_preference')
+      .select(`
+        id,
+        course_code,
+        rank,
+        course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective)
+      `)
+      .eq('student_id', user.id)
+      .order('rank', { ascending: true });
+
+    if (prefError) {
+      throw prefError;
+    }
+
+    // Get all available elective courses
+    const { data: electiveCourses, error: coursesError } = await supabase
+      .from('course')
+      .select('code, title, recommended_level, credits, is_elective, weekly_hours')
+      .eq('is_elective', true)
+      .order('recommended_level', { ascending: true, nullsFirst: false })
+      .order('code', { ascending: true });
+
+    if (coursesError) {
+      throw coursesError;
+    }
+
+    return createSuccessResponse(
+      {
+        preferences: preferences || [],
+        availableElectives: electiveCourses || [],
+      },
+      200
+    );
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
 
 // POST - Bulk update preferences
 export async function POST(request: NextRequest) {

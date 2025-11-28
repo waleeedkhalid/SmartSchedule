@@ -27,10 +27,17 @@ export const API_ENDPOINTS = {
     ME: `${API_BASE_URL}/api/${API_VERSION}/auth/me`,
   },
 
-  // Academic Terms
+  // Academic Terms (preferred)
   ACADEMIC_TERMS: {
     LIST: `${API_BASE_URL}/api/${API_VERSION}/academic-terms`,
     DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/academic-terms/${id}`,
+  },
+
+  // Semesters (backward compatibility - maps to academic-terms)
+  SEMESTERS: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/semesters`,
+    CURRENT: `${API_BASE_URL}/api/${API_VERSION}/semesters/current`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/semesters/${id}`,
   },
 
   // Courses
@@ -49,6 +56,7 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/api/${API_VERSION}/sections`,
     UPDATE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/sections/${id}`,
     DELETE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/sections/${id}`,
+    CHECK_CONFLICTS: `${API_BASE_URL}/api/${API_VERSION}/sections/check-conflicts`,
   },
 
   // Enrollments
@@ -62,9 +70,27 @@ export const API_ENDPOINTS = {
   SCHEDULES: {
     ME: `${API_BASE_URL}/api/${API_VERSION}/schedules/me`,
     LIST: `${API_BASE_URL}/api/${API_VERSION}/schedules`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/schedules/${id}`,
     CREATE: `${API_BASE_URL}/api/${API_VERSION}/schedules`,
     DELETE: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/schedules/${id}`,
     GENERATE: `${API_BASE_URL}/api/${API_VERSION}/schedules/generate`,
+    STATUS: `${API_BASE_URL}/api/${API_VERSION}/schedules/status`,
+  },
+
+  // Academic Plan
+  ACADEMIC_PLAN: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/academic-plan`,
+  },
+
+  // Elective Preferences
+  ELECTIVE_PREFERENCES: {
+    GET: `${API_BASE_URL}/api/elective-preferences`,
+    UPDATE: `${API_BASE_URL}/api/elective-preferences`,
+  },
+
+  // Elective Stats (Scheduling role only)
+  ELECTIVE_STATS: {
+    GET: `${API_BASE_URL}/api/${API_VERSION}/elective-stats`,
   },
 } as const;
 

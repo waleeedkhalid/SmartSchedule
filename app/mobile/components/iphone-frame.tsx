@@ -8,7 +8,7 @@
 
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface iPhoneFrameProps {
@@ -36,6 +36,24 @@ export default function iPhoneFrame({
   frameColor = 'space-gray',
   className
 }: iPhoneFrameProps) {
+  // Register service worker for PWA support
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      process.env.NODE_ENV === "production"
+    ) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => {
+          // Service Worker registered successfully
+        })
+        .catch(() => {
+          // Service Worker registration failed - fail silently
+        });
+    }
+  }, []);
+
   // Clamp scale between 0.5 and 2.0
   const clampedScale = Math.max(0.5, Math.min(2.0, scale));
   const frameGradient = FRAME_COLORS[frameColor];

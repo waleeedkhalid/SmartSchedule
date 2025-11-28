@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import iPhoneFrameComponent from "@/app/mobile/components/iphone-frame";
 import type { ReactNode } from "react";
 import React from "react";
+import iPhoneFrameComponent from "@/app/mobile/components/iphone-frame";
 
 export const metadata: Metadata = {
   title: "SmartSchedule Mobile",
@@ -13,5 +13,5 @@ export default function MobileLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  return React.createElement(iPhoneFrameComponent, { children });
+  return React.createElement(iPhoneFrameComponent, null, children);
 }

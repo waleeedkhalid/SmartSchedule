@@ -73,13 +73,60 @@ export interface Course {
 }
 
 // ============================================================================
+// Academic Plan Types
+// ============================================================================
+
+export interface AcademicPlanCourse {
+  code: string;
+  name: string;
+  credits: number;
+  level: number;
+  course_type: "required" | "elective";
+  created_at?: string;
+}
+
+// ============================================================================
+// Elective Preferences Types
+// ============================================================================
+
+export interface ElectivePreference {
+  id: string;
+  course_code: string;
+  rank: number;
+  course?: {
+    code: string;
+    title: string;
+    recommended_level: number | null;
+    credits: number;
+    is_elective: boolean;
+  };
+}
+
+export interface AvailableElective {
+  code: string;
+  title: string;
+  recommended_level: number | null;
+  credits: number;
+  is_elective: boolean;
+  weekly_hours?: number;
+}
+
+export interface ElectivePreferencesResponse {
+  preferences: ElectivePreference[];
+  availableElectives: AvailableElective[];
+}
+
+// ============================================================================
 // Section Types
 // ============================================================================
 
 export interface MeetingPattern {
   days: string[];
-  start_time: string;
-  duration_minutes: number;
+  // Support both formats for backward compatibility
+  start_time?: string; // Database format (from migrations)
+  start?: string; // API POST format
+  duration_minutes?: number; // Database format
+  duration?: number; // API POST format
   type?: string;
 }
 
@@ -108,8 +155,13 @@ export interface Section {
   meeting_pattern: MeetingPattern;
   group_level: number;
   state: "draft" | "released";
-  academic_semester_id?: string; // Optional - backward compatibility (not in new schema)
   created_at: string;
+  course?: {
+    code: string;
+    title: string;
+    credits: number;
+    is_elective: boolean;
+  } | null;
 }
 
 // ============================================================================
@@ -121,7 +173,6 @@ export interface Enrollment {
   student_id: string;
   section_id: string;
   course_code: string | null;
-  academic_semester_id?: string; // Optional - backward compatibility (not in new schema)
   enrollment_type: "required" | "elective";
   status: "enrolled" | "dropped";
   enrolled_at: string;
@@ -176,6 +227,7 @@ export interface StudentSchedule {
   semester_id: string | null;
   schedule: ScheduleCourse[];
   is_empty: boolean;
+  message?: string;
 }
 
 export interface FacultySchedule {
@@ -194,6 +246,7 @@ export interface FacultySchedule {
     current_enrollment: number;
   }>;
   is_empty: boolean;
+  message?: string;
 }
 
 // ============================================================================

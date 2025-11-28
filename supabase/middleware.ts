@@ -94,12 +94,17 @@ export async function updateSession(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const url = request.nextUrl.toString();
   
-  // CRITICAL: Early return for Next.js internal requests
+  // CRITICAL: Early return for Next.js internal requests and static files
   // This includes static assets, RSC requests, fetch-server-response, and other internal Next.js paths
   // Skip ALL Next.js internal requests to prevent infinite redirect loops when session is invalid
   
-  // Check for standard Next.js internal paths
-  if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
+  // Check for standard Next.js internal paths and static files
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js'
+  ) {
     return NextResponse.next({
       request,
     });
@@ -224,6 +229,8 @@ export async function updateSession(request: NextRequest) {
   
   // Public routes that don't require authentication
   // Note: /_next and /favicon.ico are already handled by the early return above
+  // All /mobile routes are public (PWA - users can access landing, login, register without auth)
+  // Static files like manifest.json and sw.js are also public
   const publicRoutes = [
     '/',
     '/login',
@@ -232,7 +239,9 @@ export async function updateSession(request: NextRequest) {
     '/error',
     '/onboarding',
     '/api',
-    '/mobile/login'
+    '/mobile', // All mobile routes are public
+    '/manifest.json', // PWA manifest
+    '/sw.js', // Service worker
   ];
   
   const isPublicRoute = publicRoutes.some(route => 
@@ -268,7 +277,8 @@ export async function updateSession(request: NextRequest) {
   
   // Redirect logged-in users away from auth pages
   // Redirect to /dashboard which will detect role
-  if (isAuthenticated && (pathname === '/login' || pathname === '/register')) {
+  // Note: Don't redirect from mobile routes - mobile handles its own auth flow
+  if (isAuthenticated && (pathname === '/login' || pathname === '/register') && !pathname.startsWith('/mobile')) {
     // Supabase user - redirect to /dashboard which will detect role
     // Session is already validated by getUser() call above
     // Note: hasSupabaseSession is defined as !!supabaseUser && !authError,

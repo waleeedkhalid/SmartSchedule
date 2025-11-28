@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/mobile/lib/stores/auth.store";
 import { schedulesRepository } from "@/app/mobile/lib/repositories/schedules.repository";
+import { createClient } from "@/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StudentSchedule, FacultySchedule } from "@/app/mobile/lib/api/types";
@@ -36,8 +37,64 @@ export default function SchedulePage() {
       return;
     }
 
-    loadSchedule();
+    // Check onboarding status first
+    checkOnboarding();
   }, [isAuthenticated, router]);
+
+  const checkOnboarding = async () => {
+    if (!user) return;
+
+    try {
+      const supabase = createClient();
+
+      // Check onboarding_completed flag
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("onboarding_completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (userRole?.onboarding_completed !== true) {
+        // Check profile existence
+        let profileExists = false;
+
+        if (user.role === "student") {
+          const { data: studentProfile } = await supabase
+            .from("student_profile")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          profileExists = !!studentProfile;
+        } else if (user.role === "faculty") {
+          const { data: facultyProfile } = await supabase
+            .from("faculty_profile")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          profileExists = !!facultyProfile;
+        } else if (["scheduling", "teaching_load", "registrar"].includes(user.role)) {
+          const { data: committeeProfile } = await supabase
+            .from("committee_profile")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          profileExists = !!committeeProfile;
+        }
+
+        if (!profileExists) {
+          router.push("/mobile/onboarding");
+          return;
+        }
+      }
+
+      // Onboarding complete, load schedule
+      loadSchedule();
+    } catch (error) {
+      console.error("Error checking onboarding:", error);
+      // On error, try to load schedule anyway
+      loadSchedule();
+    }
+  };
 
   const loadSchedule = async () => {
     setIsLoading(true);
@@ -120,9 +177,9 @@ export default function SchedulePage() {
                 {schedule.schedule && Array.isArray(schedule.schedule) && schedule.schedule.length > 0 ? (
                   schedule.schedule.map((item, index) => {
                     // Handle both student and faculty schedule formats
-                    const courseCode = "course_code" in item ? item.course_code : item.course_code;
-                    const courseName = "course_name" in item ? item.course_name : item.course_name;
-                    const credits = "credits" in item ? item.credits : item.credits;
+                    const courseCode = "course_code" in item ? item.course_code : "";
+                    const courseName = "course_name" in item ? item.course_name : "";
+                    const credits = "credits" in item ? item.credits : 0;
                     const sections = "sections" in item ? item.sections : null;
                     const isStudentSchedule = sections !== null;
 
@@ -159,7 +216,9 @@ export default function SchedulePage() {
                                   {section.meeting_pattern && (
                                     <p className="text-sm text-muted-foreground">
                                       {section.meeting_pattern.days?.join(", ")} at{" "}
-                                      {section.meeting_pattern.start_time}
+                                      {section.meeting_pattern.start_time || section.meeting_pattern.start || "TBA"}
+                                      {section.meeting_pattern.duration_minutes && ` (${section.meeting_pattern.duration_minutes} min)`}
+                                      {section.meeting_pattern.duration && !section.meeting_pattern.duration_minutes && ` (${section.meeting_pattern.duration} min)`}
                                     </p>
                                   )}
                                 </div>
@@ -169,7 +228,7 @@ export default function SchedulePage() {
                             <div className="space-y-2">
                               <div className="border-l-4 border-purple-500 pl-4 py-2">
                                 <p className="font-medium">
-                                  Section {item.section_no} ({item.meeting_pattern?.type || "lecture"})
+                                  Section {item.section_no}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                   Room: {item.room || "TBA"}
@@ -177,7 +236,9 @@ export default function SchedulePage() {
                                 {item.meeting_pattern && (
                                   <p className="text-sm text-muted-foreground">
                                     {item.meeting_pattern.days?.join(", ")} at{" "}
-                                    {item.meeting_pattern.start_time}
+                                    {item.meeting_pattern.start_time || item.meeting_pattern.start || "TBA"}
+                                    {item.meeting_pattern.duration_minutes && ` (${item.meeting_pattern.duration_minutes} min)`}
+                                    {item.meeting_pattern.duration && !item.meeting_pattern.duration_minutes && ` (${item.meeting_pattern.duration} min)`}
                                   </p>
                                 )}
                                 {"capacity" in item && (
@@ -205,7 +266,7 @@ export default function SchedulePage() {
         )}
 
         {/* Navigation */}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               onClick={() => router.push("/mobile/courses")}
@@ -214,12 +275,37 @@ export default function SchedulePage() {
               View Courses
             </Button>
             {user.role === "student" && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/mobile/enrollments")}
+                  className="flex-1"
+                >
+                  My Enrollments
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/mobile/academic-plan")}
+                  className="flex-1"
+                >
+                  Academic Plan
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/mobile/preferences")}
+                  className="flex-1"
+                >
+                  Preferences
+                </Button>
+              </>
+            )}
+            {user.role === "scheduling" && (
               <Button
                 variant="outline"
-                onClick={() => router.push("/mobile/enrollments")}
+                onClick={() => router.push("/mobile/elective-stats")}
                 className="flex-1"
               >
-                My Enrollments
+                Elective Stats
               </Button>
             )}
         </div>

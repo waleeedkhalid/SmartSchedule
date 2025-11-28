@@ -13,8 +13,9 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/mobile/lib/stores/auth.store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,10 +36,12 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-      router.push("/mobile/schedule");
+      // Check onboarding status after login
+      // The onboarding page will handle the redirect logic
+      router.push("/mobile/onboarding");
     } catch (err) {
       // Error is handled by store
-      console.error("Login failed:", err);
+      // Silently handle - error state is managed by auth store
     }
   };
 
@@ -94,6 +97,23 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex flex-col space-y-3 pt-4 border-t">
+          <p className="text-center text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <Link
+              href="/register"
+              className="text-primary hover:underline font-medium"
+            >
+              Create one
+            </Link>
+          </p>
+          <Link
+            href="/mobile"
+            className="text-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Back to home
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );

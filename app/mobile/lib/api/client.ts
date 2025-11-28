@@ -12,7 +12,6 @@
  * - Can be replaced with Axios, Retrofit, or URLSession without changing business logic
  */
 
-import { API_ENDPOINTS } from "./endpoints";
 import type { ApiError } from "./types";
 
 export class ApiClient {
@@ -71,10 +70,25 @@ export class ApiClient {
   ): Promise<T> {
     const token = this.getToken();
 
-    const headers: HeadersInit = {
+    // Build headers object
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...options.headers,
     };
+
+    // Merge existing headers
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+      } else if (Array.isArray(options.headers)) {
+        options.headers.forEach(([key, value]) => {
+          headers[key] = value;
+        });
+      } else {
+        Object.assign(headers, options.headers);
+      }
+    }
 
     // Add auth token if available
     if (token) {
@@ -107,9 +121,16 @@ export class ApiClient {
       );
     }
 
-    // Unwrap data property if present (API returns { data: {...} } format)
-    if (data && typeof data === "object" && "data" in data) {
-      return (data as { data: T }).data;
+    // Unwrap data property if present
+    // API returns either { data: {...} } or { success: true, data: {...} } format
+    if (data && typeof data === "object") {
+      if ("data" in data) {
+        return (data as { data: T }).data;
+      }
+      // Some endpoints return { success: true, data: {...} }
+      if ("success" in data && "data" in data) {
+        return (data as { success: boolean; data: T }).data;
+      }
     }
 
     return data as T;
