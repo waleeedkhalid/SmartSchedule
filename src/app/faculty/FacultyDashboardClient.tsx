@@ -81,12 +81,12 @@ export default function FacultyDashboardClient({
 
       {/* Alert Messages */}
       {showScheduleAlert && (
-        <Alert className="border-2 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950 shadow-sm">
-          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-          <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold">
+        <Alert className="border-2 border-warning/20 bg-warning/5 shadow-sm">
+          <AlertCircle className="h-5 w-5 text-warning" />
+          <AlertTitle className="font-semibold">
             Schedule In Progress
           </AlertTitle>
-          <AlertDescription className="text-amber-800 dark:text-amber-200 mt-2">
+          <AlertDescription className="mt-2">
             The academic schedule is currently being finalized. Your course assignments
             will be available once the schedule is published.
           </AlertDescription>
@@ -94,12 +94,12 @@ export default function FacultyDashboardClient({
       )}
 
       {showFeedbackAlert && (
-        <Alert className="border-2 border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950 shadow-sm">
-          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
+        <Alert className="border-2 border-primary/20 bg-primary/5 shadow-sm">
+          <Info className="h-5 w-5 text-primary" />
+          <AlertTitle className="font-semibold">
             Feedback Available
           </AlertTitle>
-          <AlertDescription className="text-blue-800 dark:text-blue-200 mt-2">
+          <AlertDescription className="mt-2">
             Student feedback for your courses is now available. Review aggregated,
             anonymized responses to improve your teaching.
           </AlertDescription>
@@ -139,7 +139,7 @@ export default function FacultyDashboardClient({
       <TeachingScheduleCard />
 
       {/* Profile Card */}
-      <Card className="border-2 bg-white dark:bg-gray-950 shadow-sm">
+      <Card className="border-2 shadow-sm">
         <CardHeader className="border-b bg-muted/30 pb-4">
           <CardTitle className="text-xl">Faculty Profile</CardTitle>
           <CardDescription>

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/supabase/client";
 import {
   studentSetupFormSchema,
   type StudentSetupFormData,

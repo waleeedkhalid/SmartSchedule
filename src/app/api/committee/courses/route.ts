@@ -26,7 +26,10 @@ import {
  * Verify committee membership helper
  * Extracted for reuse across mutation endpoints
  */
-async function verifyCommitteeMembership(userId: string, supabase: any) {
+async function verifyCommitteeMembership(
+  userId: string, 
+  supabase: Awaited<ReturnType<typeof createServerClient>>
+) {
   const { data: committee } = await supabase
     .from("committee_members")
     .select("committee_type")
@@ -136,12 +139,12 @@ export async function GET(request: NextRequest) {
           }
 
           // Process enrolled count
-          const processedSections = sections?.map((section: any) => ({
+          const processedSections = sections?.map((section: Record<string, unknown>) => ({
             ...section,
-            instructor_name: (section.instructor as any)?.full_name || null,
+            instructor_name: (section.instructor as Record<string, unknown> | null)?.full_name || null,
             enrolled_count:
               Array.isArray(section.enrolled_count) && section.enrolled_count.length > 0
-                ? section.enrolled_count[0].count
+                ? (section.enrolled_count[0] as Record<string, unknown>).count
                 : 0,
           }));
 

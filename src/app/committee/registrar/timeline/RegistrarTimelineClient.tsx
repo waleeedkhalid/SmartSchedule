@@ -93,19 +93,19 @@ export default function RegistrarTimelineClient({
   }, [selectedTermCode]);
 
   // Handle event created
-  const handleEventCreated = (event: EnrichedEvent) => {
+  const handleEventCreated = () => {
     toast.success("Event created successfully");
     fetchTimelineData(selectedTermCode);
   };
 
   // Handle event updated
-  const handleEventUpdated = (event: EnrichedEvent) => {
+  const handleEventUpdated = () => {
     toast.success("Event updated successfully");
     fetchTimelineData(selectedTermCode);
   };
 
   // Handle event deleted
-  const handleEventDeleted = (eventId: string) => {
+  const handleEventDeleted = () => {
     toast.success("Event deleted successfully");
     fetchTimelineData(selectedTermCode);
   };
@@ -336,7 +336,7 @@ export default function RegistrarTimelineClient({
                 <li>
                   Create events for important deadlines and milestones
                 </li>
-                <li>Mark events with "Requires Action" to alert students</li>
+                <li>Mark events with &quot;Requires Action&quot; to alert students</li>
                 <li>
                   Use appropriate categories to organize events effectively
                 </li>

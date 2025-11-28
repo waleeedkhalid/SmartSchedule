@@ -2,7 +2,11 @@
 
 /**
  * Authentication Provider
- * Provides authentication state and methods throughout the app via React Context
+ * Provides authentication state throughout the app via React Context
+ * 
+ * NOTE: Authentication mutations (sign-in, sign-up, sign-out) should now use
+ * Server Actions from @/app/actions/auth for built-in CSRF protection.
+ * This provider only manages client-side session state.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";

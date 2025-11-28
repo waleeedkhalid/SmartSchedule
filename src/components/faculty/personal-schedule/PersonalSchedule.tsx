@@ -39,13 +39,13 @@ const WEEK_DAYS: Array<FacultyAssignment["dow"]> = [
 function activityColor(activity?: string): string {
 	switch (activity) {
 		case "Lecture":
-			return "bg-blue-100 text-blue-800 border-blue-200";
+			return "bg-primary/10 text-primary border-primary/20";
 		case "Lab":
-			return "bg-green-100 text-green-800 border-green-200";
+			return "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20";
 		case "Tutorial":
-			return "bg-orange-100 text-orange-800 border-orange-200";
+			return "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20";
 		default:
-			return "bg-gray-100 text-gray-800 border-gray-200";
+			return "bg-muted text-muted-foreground border-border";
 	}
 }
 
@@ -77,16 +77,16 @@ export function PersonalSchedule({
 			<CardContent>
 				<div className="overflow-x-auto">
 					<div className="grid grid-cols-6 gap-2 min-w-[800px]">
-						<div className="font-semibold text-center py-2 bg-gray-50 rounded">Time</div>
+						<div className="font-semibold text-center py-2 bg-muted rounded">Time</div>
 						{WEEK_DAYS.map((day) => (
-							<div key={day} className="font-semibold text-center py-2 bg-gray-50 rounded">
+							<div key={day} className="font-semibold text-center py-2 bg-muted rounded">
 								{day}
 							</div>
 						))}
 
 						{timeSlots.map((time) => (
 							<React.Fragment key={time}>
-								<div className="text-sm text-gray-600 py-4 text-center font-medium">{time}</div>
+								<div className="text-sm text-muted-foreground py-4 text-center font-medium">{time}</div>
 								{WEEK_DAYS.map((day) => {
 									const a = findAssignment(assignments, day, time);
 									return (
@@ -104,7 +104,7 @@ export function PersonalSchedule({
 													</div>
 												</div>
 											) : (
-												<div className="h-full border border-dashed border-gray-200 rounded-lg"></div>
+												<div className="h-full border border-dashed border-muted rounded-lg"></div>
 											)}
 										</div>
 									);

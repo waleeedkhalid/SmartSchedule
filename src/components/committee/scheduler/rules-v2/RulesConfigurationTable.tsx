@@ -45,24 +45,24 @@ export function RulesConfigurationTable({
   const getRuleTypeColor = (type: string) => {
     switch (type) {
       case "TIME_CONSTRAINT":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
       case "ROOM_CONSTRAINT":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20";
       case "INSTRUCTOR_CONSTRAINT":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20";
       case "ENROLLMENT_CONSTRAINT":
-        return "bg-orange-100 text-orange-800 border-orange-200";
+        return "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20";
       case "CUSTOM":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
   const getPriorityColor = (priority: number) => {
-    if (priority >= 8) return "text-red-600 font-bold";
-    if (priority >= 5) return "text-orange-600 font-semibold";
-    return "text-gray-600";
+    if (priority >= 8) return "text-destructive font-bold";
+    if (priority >= 5) return "text-orange-600 dark:text-orange-400 font-semibold";
+    return "text-muted-foreground";
   };
 
   return (

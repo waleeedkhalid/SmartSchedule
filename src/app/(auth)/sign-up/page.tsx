@@ -15,13 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -216,27 +209,23 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/sign-up", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName,
-          email,
-          password,
-          role,
-        }),
-      });
+      // Create FormData for Server Action
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      formData.append("fullName", fullName);
+      formData.append("role", role);
 
-      const responseData = await response.json();
+      // Call Server Action (has built-in CSRF protection)
+      const { signUpAction } = await import("@/app/actions/auth");
+      const result = await signUpAction(formData);
 
-      if (!response.ok || !responseData.success) {
-        throw new Error(responseData.error ?? "Unable to create account");
+      if (!result.success) {
+        throw new Error(result.error ?? "Unable to create account");
       }
 
       setSuccessMessage(
-        responseData.message ?? "Check your email to verify your account."
+        result.message ?? "Check your email to verify your account."
       );
 
       // Start countdown to redirect

@@ -33,7 +33,7 @@ export default async function FacultyAvailabilityPage() {
     supabase
       .from("faculty_availability")
       .select("availability_data, updated_at")
-      .eq("user_id", user.id)
+      .eq("faculty_id", user.id)
       .maybeSingle()
   ]);
 

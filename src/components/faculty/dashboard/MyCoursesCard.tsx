@@ -61,7 +61,7 @@ export default function MyCoursesCard() {
 
   if (loading) {
     return (
-      <Card className="border-2 bg-white dark:bg-gray-950 shadow-sm">
+      <Card className="border-2 shadow-sm">
         <CardHeader className="border-b bg-muted/30">
           <CardTitle className="flex items-center gap-2 text-xl">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -83,7 +83,7 @@ export default function MyCoursesCard() {
 
   if (error) {
     return (
-      <Card className="border-2 bg-white dark:bg-gray-950 shadow-sm">
+      <Card className="border-2 shadow-sm">
         <CardHeader className="border-b bg-muted/30">
           <CardTitle className="flex items-center gap-2 text-xl">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -100,7 +100,7 @@ export default function MyCoursesCard() {
   }
 
   return (
-    <Card className="border-2 bg-white dark:bg-gray-950 shadow-sm">
+    <Card className="border-2 shadow-sm">
       <CardHeader className="border-b bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

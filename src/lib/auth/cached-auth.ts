@@ -17,9 +17,27 @@ interface UserProfile {
 
 /**
  * Get authenticated user (memoized per request)
+ * Includes automatic session refresh if expiring soon
  */
 export const getAuthenticatedUser = cache(async () => {
   const supabase = await createServerClient();
+
+  // Get current session to check expiry
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // Refresh if expiring soon (within 10 minutes)
+  if (session?.expires_at) {
+    const TEN_MINUTES_MS = 10 * 60 * 1000;
+    const expiresAtMs = session.expires_at * 1000;
+    const now = Date.now();
+
+    if (expiresAtMs - now < TEN_MINUTES_MS) {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("Session refresh error:", error);
+      }
+    }
+  }
 
   const {
     data: { user },
@@ -40,19 +58,31 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
 
   const supabase = await createServerClient();
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("users")
     .select("id, role, full_name, email")
     .eq("id", user.id)
     .maybeSingle();
 
+  if (error) {
+    console.error("Error fetching user profile:", error);
+    return null;
+  }
+
   if (!profile) {
+    return null;
+  }
+
+  // SECURITY FIX: Only use database role, never fall back to user_metadata
+  // user_metadata can be manipulated and should not be trusted for authorization
+  if (!profile.role) {
+    console.error("User profile missing role:", profile.id);
     return null;
   }
 
   return {
     id: profile.id,
-    role: (profile.role ?? user.user_metadata?.role) as UserRole,
+    role: profile.role as UserRole,
     full_name: profile.full_name,
     email: profile.email,
   };
@@ -62,15 +92,25 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
  * Get committee membership (memoized per request)
  */
 export const getCommitteeMembership = cache(async (userId: string) => {
-  const supabase = await createServerClient();
+  try {
+    const supabase = await createServerClient();
 
-  const { data: membership } = await supabase
-    .from("committee_members")
-    .select("id, committee_type, created_at")
-    .eq("id", userId)
-    .maybeSingle();
+    const { data: membership, error } = await supabase
+      .from("committee_members")
+      .select("id, committee_type, created_at")
+      .eq("id", userId)
+      .maybeSingle();
 
-  return membership;
+    if (error) {
+      console.error("Error fetching committee membership:", error);
+      return null;
+    }
+
+    return membership;
+  } catch (error) {
+    console.error("Failed to fetch committee membership:", error);
+    return null;
+  }
 });
 
 /**

@@ -1,182 +1,217 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-
-export const dynamic = "force-dynamic";
-
-interface PreferencePayload {
-  course_code: string;
-  term_code: string;
-}
-
 /**
- * POST /api/student/electives/submit
- * Submits student's elective course preference survey responses
- * This is NOT enrollment - it's collecting preferences for future term planning
+ * Student Elective Preferences Submit API
+ * POST: Submit final preferences (3-10 courses required)
  */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
+import { validateAllPreferences } from '@/lib/validations/preference-validator';
+import { z } from 'zod';
+
+// Validation schema for submitted preferences
+const submitPreferenceSchema = z.object({
+  preferences: z.array(
+    z.object({
+      course_code: z.string().min(1).max(10),
+      preference_order: z.number().int().min(1).max(10),
+    })
+  ).min(3, 'Minimum 3 preferences required').max(10, 'Maximum 10 preferences allowed'),
+  term_code: z.string().optional(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-        const supabase = await createServerClient();
-
-    // Get the current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Parse request body
-    const body = await request.json();
-    const { selections } = body as { selections: PreferencePayload[] };
-
-    if (!selections || !Array.isArray(selections)) {
       return NextResponse.json(
-        { error: "Invalid preferences format" },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
-
-    if (selections.length === 0 || selections.length > 6) {
-      return NextResponse.json(
-        { error: "Please select 1-6 elective preferences" },
-        { status: 400 }
-      );
-    }
-
-    // Verify all selections have the same term_code
-    const termCodes = new Set(selections.map(s => s.term_code));
-    if (termCodes.size !== 1) {
-      return NextResponse.json(
-        { error: "All preferences must be for the same term" },
-        { status: 400 }
-      );
-    }
-
-    const termCode = selections[0].term_code;
-
-    // Verify student exists
-    const { data: studentData, error: studentError } = await supabase
-      .from("students")
-      .select("id")
-      .eq("id", user.id)
+    
+    // Get student profile
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id, level, status')
+      .eq('id', user.id)
       .single();
-
-    if (studentError || !studentData) {
+    
+    if (studentError || !student) {
       return NextResponse.json(
-        { error: "Student not found" },
+        { error: 'Student profile not found' },
         { status: 404 }
       );
     }
-
-    // Validate that all course codes exist and are electives
-    const courseCodes = selections.map((s) => s.course_code);
+    
+    // Check student status
+    if (student.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: `Cannot submit preferences. Student status: ${student.status}` },
+        { status: 403 }
+      );
+    }
+    
+    // Parse and validate body
+    const body = await request.json();
+    const validated = submitPreferenceSchema.parse(body);
+    
+    // Get active term if not provided
+    let termCode = validated.term_code;
+    if (!termCode) {
+      const { data: activeTerm } = await supabase
+        .from('academic_term')
+        .select('code')
+        .eq('is_active', true)
+        .single();
+      
+      if (!activeTerm) {
+        return NextResponse.json(
+          { error: 'No active term found' },
+          { status: 400 }
+        );
+      }
+      
+      termCode = activeTerm.code;
+    }
+    
+    // Validate with preference validator
+    const validationResult = validateAllPreferences(
+      validated.preferences.map(p => ({
+        student_id: user.id,
+        course_code: p.course_code,
+        preference_order: p.preference_order,
+        term_code: termCode,
+      }))
+    );
+    
+    if (!validationResult.valid) {
+      return NextResponse.json(
+        { 
+          error: 'Preference validation failed',
+          details: validationResult.errors
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Validate course codes exist and are electives
+    const courseCodes = validated.preferences.map(p => p.course_code);
     const { data: courses, error: coursesError } = await supabase
-      .from("course")
-      .select("code")
-      .in("code", courseCodes)
-      .eq("type", "ELECTIVE");
-
+      .from('course')
+      .select('code, type, is_active')
+      .in('code', courseCodes);
+    
     if (coursesError) {
-      console.error("Error validating courses:", coursesError);
       return NextResponse.json(
-        { error: "Failed to validate courses" },
+        { error: 'Failed to validate courses' },
         { status: 500 }
       );
     }
-
-    const validCodes = new Set(courses?.map((c) => c.code) || []);
-    const invalidCodes = courseCodes.filter((code) => !validCodes.has(code));
-
-    if (invalidCodes.length > 0) {
+    
+    // Check all courses are valid electives
+    const invalidCourses = courseCodes.filter(
+      code => !courses?.some(c => c.code === code && c.type === 'ELECTIVE' && c.is_active)
+    );
+    
+    if (invalidCourses.length > 0) {
       return NextResponse.json(
-        { error: `Invalid course codes: ${invalidCodes.join(", ")}` },
+        { 
+          error: 'Invalid course codes',
+          details: `The following courses are not valid electives: ${invalidCourses.join(', ')}`
+        },
         { status: 400 }
       );
     }
-
-    // Verify the term exists and electives survey is open
-    const { data: term, error: termError } = await supabase
-      .from("academic_term")
-      .select("code, name, electives_survey_open")
-      .eq("code", termCode)
-      .single();
-
-    if (termError || !term) {
-      console.error("Error fetching term:", termError);
+    
+    // Check for duplicates
+    const uniqueCourses = new Set(courseCodes);
+    if (uniqueCourses.size !== courseCodes.length) {
       return NextResponse.json(
-        { error: "Invalid academic term" },
+        { error: 'Duplicate course codes found. Each course can only be selected once.' },
         { status: 400 }
       );
     }
-
-    if (!term.electives_survey_open) {
-      return NextResponse.json(
-        { error: "Elective preference survey is not currently open for this term" },
-        { status: 400 }
-      );
-    }
-
-    // Check if draft exists
-    const { data: existingDraft } = await supabase
-      .from("elective_preferences")
-      .select("id")
-      .eq("student_id", user.id)
-      .eq("term_code", termCode)
-      .eq("status", "DRAFT")
+    
+    // Check if preferences already submitted for this term
+    const { data: existingPrefs, error: existingError } = await supabase
+      .from('elective_preferences')
+      .select('id')
+      .eq('student_id', user.id)
+      .eq('term_code', termCode)
+      .eq('is_submitted', true)
       .limit(1);
-
-    // Delete ALL existing preferences (both draft and submitted) for this student and term
-    const { error: deleteError } = await supabase
-      .from("elective_preferences")
+    
+    if (existingError) {
+      console.error('Existing prefs check error:', existingError);
+      return NextResponse.json(
+        { error: 'Failed to check existing preferences' },
+        { status: 500 }
+      );
+    }
+    
+    if (existingPrefs && existingPrefs.length > 0) {
+      return NextResponse.json(
+        { error: 'Preferences already submitted for this term. Please contact your advisor to make changes.' },
+        { status: 409 }
+      );
+    }
+    
+    // Delete any draft preferences
+    await supabase
+      .from('elective_preferences')
       .delete()
-      .eq("student_id", user.id)
-      .eq("term_code", termCode);
-
-    if (deleteError) {
-      console.error("Error deleting old preferences:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to clear old preferences" },
-        { status: 500 }
-      );
-    }
-
-    // Insert new preferences with SUBMITTED status
-    const now = new Date().toISOString();
-    const insertData = selections.map((s, index) => ({
+      .eq('student_id', user.id)
+      .eq('term_code', termCode)
+      .eq('is_submitted', false);
+    
+    // Insert submitted preferences
+    const preferencesToInsert = validated.preferences.map(p => ({
       student_id: user.id,
-      course_code: s.course_code,
-      term_code: s.term_code,
-      preference_order: index + 1,
-      status: "SUBMITTED",
-      submitted_at: now,
+      term_code: termCode,
+      course_code: p.course_code,
+      preference_order: p.preference_order,
+      is_submitted: true,
+      submitted_at: new Date().toISOString(),
     }));
-
-    const { error: insertError } = await supabase
-      .from("elective_preferences")
-      .insert(insertData);
-
+    
+    const { data: insertedData, error: insertError } = await supabase
+      .from('elective_preferences')
+      .insert(preferencesToInsert)
+      .select();
+    
     if (insertError) {
-      console.error("Error inserting preferences:", insertError);
+      console.error('Insert error:', insertError);
       return NextResponse.json(
-        { error: "Failed to save preferences" },
+        { error: 'Failed to submit preferences' },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({
+    
+    return NextResponse.json({ 
       success: true,
-      message: "Your elective preferences have been recorded successfully",
-      count: selections.length,
-      term: term.name,
-    });
+      message: 'Preferences submitted successfully',
+      data: insertedData,
+      count: insertedData.length
+    }, { status: 201 });
+    
   } catch (error) {
-    console.error("Unexpected error:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          details: error.issues 
+        },
+        { status: 400 }
+      );
+    }
+    
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

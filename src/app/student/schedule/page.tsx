@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/empty";
 import { ScheduleViewer } from "@/components/student/ScheduleViewer";
 import { ScheduleLoadingSkeleton } from "@/components/student/ScheduleLoadingSkeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ElectiveBrowser } from "@/components/student/ElectiveBrowser";
+import { RegistrationSummary } from "@/components/student/RegistrationSummary";
 
 /**
  * Student Schedule Page - Main Component
@@ -50,16 +53,33 @@ export default async function StudentSchedulePage() {
             Back to Dashboard
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold mb-2">My Schedule</h1>
+        <h1 className="text-3xl font-bold mb-2">My Schedule & Registration</h1>
         <p className="text-muted-foreground">
-          View your course schedule and exam dates
+          View your schedule and register for elective courses
         </p>
       </div>
 
-      {/* ✅ PERFORMANCE: Suspense boundary for streaming */}
-      <Suspense fallback={<ScheduleLoadingSkeleton />}>
-        <ScheduleContent userId={user.id} />
-      </Suspense>
+      {/* Tabs for Schedule and Registration */}
+      <Tabs defaultValue="my-schedule" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="my-schedule">My Schedule</TabsTrigger>
+          <TabsTrigger value="register-electives">Register Electives</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="my-schedule" className="space-y-6">
+          {/* Current Enrollments Summary */}
+          <RegistrationSummary />
+
+          {/* Generated Schedule View */}
+          <Suspense fallback={<ScheduleLoadingSkeleton />}>
+            <ScheduleContent userId={user.id} />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="register-electives" className="space-y-6">
+          <ElectiveBrowser />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

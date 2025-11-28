@@ -71,7 +71,7 @@ export function FacultySidebar({ fullName, title }: FacultySidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 bg-card border-r border-border">
         <SidebarContent fullName={fullName} title={title} />
       </aside>
 
@@ -93,7 +93,7 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col gap-4 p-6 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-col gap-4 p-6 border-b border-border">
         <Link
           href="/"
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -127,10 +127,10 @@ function SidebarContent({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-gray-100 dark:hover:bg-gray-800",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-muted",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 dark:hover:bg-primary/90"
-                    : "text-gray-700 dark:text-gray-300"
+                    ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    : "text-foreground"
                 )}
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
@@ -150,7 +150,7 @@ function SidebarContent({
       </ScrollArea>
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between gap-2 p-4 border-t border-border">
         <ThemeToggleButton />
         <NotificationsDropdown />
       </div>
@@ -173,7 +173,7 @@ function MobileSidebar({
   return (
     <div className="lg:hidden">
       {/* Mobile Header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b bg-white dark:bg-gray-950 px-4 py-3">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="lg:hidden">

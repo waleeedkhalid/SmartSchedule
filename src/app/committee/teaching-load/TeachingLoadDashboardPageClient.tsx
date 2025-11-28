@@ -1,414 +1,133 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Users,
-  BookOpen,
-  TrendingUp,
-  Settings,
-  ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
-} from "lucide-react";
-import { createBrowserClient } from "@/lib/supabase/client";
-import { useDashboardCache } from "@/lib/dashboard-cache";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChangeRequestForm } from "@/components/committee/teaching-load/ChangeRequestForm";
+import { ChangeRequestsList } from "@/components/committee/teaching-load/ChangeRequestsList";
+import { WorkloadAnalyticsChart } from "@/components/committee/teaching-load/WorkloadAnalyticsChart";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
-interface TeachingLoadData {
-  name: string;
-  email: string;
-  role: string;
-  totalFaculty: number;
-  averageLoad: number;
-  conflictsDetected: number;
+interface TeachingLoadDashboardPageClientProps {
+  displayName: string;
 }
 
-export default function TeachingLoadDashboardPage() {
-  const cache = useDashboardCache();
-  const [teachingLoadData, setTeachingLoadData] =
-    useState<TeachingLoadData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const fetchedRef = useRef(false);
+export default function TeachingLoadDashboardPageClient({
+  displayName,
+}: TeachingLoadDashboardPageClientProps) {
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<any>(null);
+  const [scheduleVersionId, setScheduleVersionId] = useState<string | null>(null);
+  const [workloadData, setWorkloadData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Prevent double-fetch on mount (React StrictMode)
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    // TODO: Fetch latest schedule version and workload data
+    // This would come from an API endpoint that provides:
+    // 1. Latest schedule version ID
+    // 2. Faculty workload statistics
+    
+    // For now, we'll show placeholder message
+    fetchScheduleData();
+  }, []);
 
-    const fetchTeachingLoadData = async () => {
-      try {
-        const supabase = createBrowserClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  const fetchScheduleData = async () => {
+    // TODO: Implement API call to fetch schedule version and workload data
+    // Example:
+    // const response = await fetch('/api/committee/teaching-load/current-schedule');
+    // const data = await response.json();
+    // setScheduleVersionId(data.scheduleVersionId);
+    // setWorkloadData(data.workloadData);
+  };
 
-        if (!user) {
-          setLoading(false);
-          return;
-        }
-
-        // Check cache first
-        const cacheKey = `teaching-load-dashboard-${user.id}`;
-        const cached = cache.get<TeachingLoadData>(cacheKey, 30000); // 30s TTL
-        
-        if (cached) {
-          setTeachingLoadData(cached);
-          setLoading(false);
-          return;
-        }
-
-        // Parallel queries for better performance
-        const [
-          { data: userData, error: userError },
-          { count: facultyCount }
-        ] = await Promise.all([
-          supabase
-            .from("users")
-            .select("full_name,email,role")
-            .eq("id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("users")
-            .select("*", { count: "exact", head: true })
-            .eq("role", "faculty")
-        ]);
-
-        if (userError || !userData) {
-          console.error("Error fetching teaching load data:", userError);
-          setLoading(false);
-          return;
-        }
-
-        const profile = userData as {
-          full_name?: string | null;
-          email?: string | null;
-          role?: string | null;
-        };
-
-        const result = {
-          name:
-            profile.full_name ??
-            user.user_metadata?.full_name ??
-            "Committee Member",
-          email: profile.email ?? user.email ?? "",
-          role: profile.role ?? "teaching_load_committee",
-          totalFaculty: facultyCount || 0,
-          averageLoad: 0, // TODO: Calculate from actual data
-          conflictsDetected: 0, // TODO: Calculate from actual conflicts
-        };
-
-        setTeachingLoadData(result);
-        cache.set(cacheKey, result);
-      } catch (error) {
-        console.error("Error fetching teaching load data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTeachingLoadData();
-  }, [cache]);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-8">
-          <Skeleton className="h-9 w-64 mb-2" />
-          <Skeleton className="h-5 w-48" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-8 w-32" />
-                  </div>
-                  <Skeleton className="h-12 w-12 rounded-lg" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-48 mb-2" />
-                <Skeleton className="h-4 w-full" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-24 w-full mb-4" />
-                <Skeleton className="h-10 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!teachingLoadData) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">
-            Teaching Load Committee Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Unable to load teaching load data.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const handleOpenRequestForm = () => {
+    // For demo purposes, we'll set a mock section
+    // In production, this would be selected from the schedule view
+    setSelectedSection({
+      section_id: 'DEMO-SECTION-01',
+      course_code: 'SWE301',
+      section_number: '01',
+      current_instructor: 'faculty-001',
+      current_capacity: 40,
+      current_room: 'B204',
+    });
+    setShowRequestForm(true);
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
+    <div className="container mx-auto max-w-7xl px-4 py-12 space-y-8">
+      <header className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">
           Teaching Load Committee Dashboard
         </h1>
         <p className="text-muted-foreground">
-          Welcome back, {teachingLoadData.name}
+          Monitor workload distribution and submit change requests for schedule refinements.
         </p>
-      </div>
+        <p className="text-sm text-muted-foreground">
+          Signed in as {displayName}
+        </p>
+      </header>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Faculty
-                </p>
-                <p className="text-2xl font-bold">
-                  {teachingLoadData.totalFaculty}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Info Alert */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          This dashboard allows you to review faculty workload distribution and submit change requests.
+          Once a schedule version is generated by the scheduling committee, you can propose adjustments
+          that will be validated against irregular student requirements.
+        </AlertDescription>
+      </Alert>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Average Load
-                </p>
-                <p className="text-2xl font-bold">
-                  {teachingLoadData.averageLoad} hours
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-blue-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>
+            Submit change requests and review pending proposals
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <Button onClick={handleOpenRequestForm}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Change Request
+            </Button>
+            <Button variant="outline" disabled>
+              View Schedule
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Note: Full schedule view and section selection coming soon. For now, use the demo section for testing.
+          </p>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Conflicts Detected
-                </p>
-                <p className="text-2xl font-bold flex items-center gap-2">
-                  {teachingLoadData.conflictsDetected > 0 ? (
-                    <>
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      {teachingLoadData.conflictsDetected}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      None
-                    </>
-                  )}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-purple-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Workload Analytics */}
+      <WorkloadAnalyticsChart 
+        workloadData={workloadData}
+        standardLoad={12}
+      />
 
-      {/* Main Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Load Analysis */}
-        <Card className="hover:shadow-lg transition-all border-2 hover:border-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Load Analysis
-            </CardTitle>
-            <CardDescription>
-              Analyze faculty teaching loads and identify imbalances
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">Analysis tools:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>View faculty load distribution</li>
-                  <li>Identify overloaded faculty</li>
-                  <li>Detect underutilized resources</li>
-                  <li>Generate load reports</li>
-                </ul>
-              </div>
-              <Button asChild className="w-full" size="lg">
-                <Link href="/committee/teaching-load/analysis">
-                  Analyze Loads
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Change Requests List */}
+      <ChangeRequestsList 
+        scheduleVersionId={scheduleVersionId || undefined}
+        userRole="teaching_load"
+      />
 
-        {/* Conflict Resolution */}
-        <Card className="hover:shadow-lg transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Conflict Resolution
-            </CardTitle>
-            <CardDescription>
-              Identify and resolve teaching load conflicts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">Conflict management:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>View detected conflicts</li>
-                  <li>Resolve scheduling issues</li>
-                  <li>Balance faculty workloads</li>
-                  <li>Track resolution progress</li>
-                </ul>
-              </div>
-              <Button asChild className="w-full" variant="outline" size="lg">
-                <Link href="/committee/teaching-load/conflicts">
-                  Resolve Conflicts
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Load Suggestions */}
-        <Card className="hover:shadow-lg transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Load Suggestions
-            </CardTitle>
-            <CardDescription>
-              Get AI-powered suggestions for optimal load distribution
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">Smart suggestions:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>AI-powered load balancing</li>
-                  <li>Optimal assignment recommendations</li>
-                  <li>Workload optimization tips</li>
-                  <li>Faculty preference matching</li>
-                </ul>
-              </div>
-              <Button asChild className="w-full" variant="outline" size="lg">
-                <Link href="/committee/teaching-load/suggestions">
-                  View Suggestions
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Settings */}
-        <Card className="hover:shadow-lg transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Settings
-            </CardTitle>
-            <CardDescription>
-              Configure load management rules and preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">Configuration options:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Set load limits and rules</li>
-                  <li>Configure faculty preferences</li>
-                  <li>Manage assignment priorities</li>
-                  <li>System preferences</li>
-                </ul>
-              </div>
-              <Button asChild className="w-full" variant="outline" size="lg">
-                <Link href="/committee/teaching-load/settings">
-                  Configure Settings
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Important Notice */}
-      {teachingLoadData.conflictsDetected > 0 && (
-        <Card className="mt-8 border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900 dark:text-red-100 mb-1">
-                  Teaching Load Conflicts Detected
-                </h3>
-                <p className="text-sm text-red-800 dark:text-red-200">
-                  {teachingLoadData.conflictsDetected} teaching load conflicts
-                  have been detected. Please review and resolve these conflicts
-                  to ensure optimal faculty workload distribution.
-                </p>
-                <Button asChild className="mt-3" size="sm">
-                  <Link href="/committee/teaching-load/conflicts">
-                    Resolve Conflicts Now
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Change Request Form Dialog */}
+      {selectedSection && (
+        <ChangeRequestForm
+          open={showRequestForm}
+          onClose={() => setShowRequestForm(false)}
+          sectionId={selectedSection.section_id}
+          sectionDetails={selectedSection}
+          scheduleVersionId={scheduleVersionId || 'demo-version-01'}
+          onSuccess={() => {
+            // Refresh the change requests list
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );

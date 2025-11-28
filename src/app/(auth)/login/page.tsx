@@ -138,37 +138,25 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const signInResponse = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          role: selectedRole ?? undefined,
-        }),
-      });
-
-      const signInData = await signInResponse.json();
-
-      if (!signInResponse.ok || !signInData.success) {
-        throw new Error(signInData.error ?? "Unable to sign in");
+      // Create FormData for Server Action
+      const formData = new FormData();
+      formData.append("email", data.email);
+      formData.append("password", data.password);
+      if (selectedRole) {
+        formData.append("role", selectedRole);
       }
 
-      try {
-        await fetch("/api/auth/bootstrap", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ role: selectedRole ?? undefined }),
-        });
-      } catch (bootstrapError) {
-        console.warn("Bootstrap onboarding error", bootstrapError);
+      // Call Server Action (has built-in CSRF protection)
+      const { signInAction } = await import("@/app/actions/auth");
+      const result = await signInAction(formData);
+
+      if (!result.success) {
+        throw new Error(result.error ?? "Unable to sign in");
       }
 
-      router.replace(signInData.redirect ?? "/dashboard");
+      // Redirect to appropriate dashboard
+      router.replace(result.redirect ?? "/dashboard");
+      router.refresh(); // Refresh server components
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

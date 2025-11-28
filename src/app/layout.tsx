@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 // PRD 3.4 - SEO Metadata: Production-ready SEO optimization
 export const metadata: Metadata = {
-  metadataBase: new URL("https://smart-schedule-lime.vercel.app"),
+  metadataBase: new URL("https://smartschedule.xyz"),
   title: {
     default:
       "SmartSchedule - Intelligent Academic Timetabling System | King Saud University",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
       "Transform academic planning with AI-powered scheduling, automated conflict resolution, and comprehensive resource optimization. Designed for KSU Software Engineering Department.",
     type: "website",
     locale: "en_US",
-    url: "https://smart-schedule-lime.vercel.app",
+    url: "https://smartschedule.xyz",
     siteName: "SmartSchedule",
   },
   twitter: {
@@ -83,10 +83,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className="theme-ksu-royal">
-      <head>
-        <link rel="preconnect" href="https://supabase.com" />
-        <link rel="preconnect" href="https://supabase.com" crossOrigin="anonymous" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >

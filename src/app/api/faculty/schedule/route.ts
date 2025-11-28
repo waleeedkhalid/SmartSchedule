@@ -1,127 +1,169 @@
 /**
- * Faculty Schedule API Route (Optimized)
- * GET: Fetch faculty teaching schedule for the current term
- * 
- * Performance Optimizations:
- * - Uses cached auth and profile functions
- * - Parallel data fetching with Promise.all()
- * - Select only required columns
- * - Removed force-dynamic for better caching
- * - Optimized time calculation
+ * Faculty Teaching Schedule API
+ * GET: View faculty's teaching schedule
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser, getUserProfile } from "@/lib/auth/cached-auth";
-
-/**
- * Calculate total teaching hours from time slots
- */
-function calculateTotalHours(sections: any[]): number {
-  return sections.reduce((sum, section) => {
-    const sectionHours = (section.times || []).reduce((timeSum: number, time: any) => {
-      const [startHour, startMinute] = time.start_time.split(':').map(Number);
-      const [endHour, endMinute] = time.end_time.split(':').map(Number);
-      const hours = (endHour * 60 + endMinute - startHour * 60 - startMinute) / 60;
-      return timeSum + hours;
-    }, 0);
-    return sum + sectionHours;
-  }, 0);
-}
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Use cached auth function (10-100x faster)
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Use cached profile function
-    const profile = await getUserProfile();
-
-    if (profile?.role !== "faculty") {
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "Faculty access required" },
-        { status: 403 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
-
-    const supabase = await createServerClient();
-
-    // Parallel fetching: Get active term and sections simultaneously
-    const [activeTermResult, sectionsResult] = await Promise.all([
-      supabase
-        .from("academic_term")
-        .select("code, name")
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("section")
-        .select(`
-          id,
-          section_id,
-          course:course_code (
-            code,
-            name,
-            credits
-          ),
-          room:room_id (
-            room_id
-          ),
-          section_time (
-            day,
-            start_time,
-            end_time
-          )
-        `)
-        .eq("faculty_id", user.id),
-    ]);
-
-    const { data: activeTerm } = activeTermResult;
-    const { data: sections, error: sectionsError } = sectionsResult;
-
-    if (!activeTerm) {
+    
+    // Verify faculty exists
+    const { data: faculty, error: facultyError } = await supabase
+      .from('faculty')
+      .select('id, name_en, name_ar, department')
+      .eq('id', user.id)
+      .single();
+    
+    if (facultyError || !faculty) {
       return NextResponse.json(
-        { error: "No active academic term" },
+        { error: 'Faculty profile not found' },
         { status: 404 }
       );
     }
-
-    if (sectionsError) {
-      console.error("Error fetching sections:", sectionsError);
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const termCode = searchParams.get('term_code');
+    
+    // Get active term if not specified
+    let activeTermCode = termCode;
+    if (!activeTermCode) {
+      const { data: activeTerm } = await supabase
+        .from('academic_term')
+        .select('code')
+        .eq('is_active', true)
+        .single();
+      
+      activeTermCode = activeTerm?.code;
+    }
+    
+    if (!activeTermCode) {
       return NextResponse.json(
-        { error: "Failed to fetch schedule" },
+        { error: 'No active term found. Please specify term_code.' },
+        { status: 400 }
+      );
+    }
+    
+    // Get sections assigned to this faculty
+    const { data: sections, error: sectionsError } = await supabase
+      .from('section')
+      .select(`
+        section_id,
+        section_number,
+        course_code,
+        term_code,
+        capacity,
+        instructor_id,
+        room_number,
+        course:course_code (
+          code,
+          name_en,
+          name_ar,
+          credits,
+          type
+        ),
+        room:room_number (
+          number,
+          name_en,
+          name_ar,
+          capacity,
+          type
+        )
+      `)
+      .eq('instructor_id', user.id)
+      .eq('term_code', activeTermCode);
+    
+    if (sectionsError) {
+      console.error('Sections error:', sectionsError);
+      return NextResponse.json(
+        { error: 'Failed to fetch teaching schedule' },
         { status: 500 }
       );
     }
-
-    // Format sections
-    const formattedSections = (sections || []).map((section: any) => ({
-      section_id: section.section_id,
-      course_code: section.course?.code,
-      course_name: section.course?.name,
-      credits: section.course?.credits,
-      room: section.room?.room_id,
-      times: section.section_time || [],
-    }));
-
-    // Calculate total teaching hours per week
-    const totalHours = calculateTotalHours(formattedSections);
-
-    return NextResponse.json({
+    
+    // Get time slots for these sections
+    const sectionIds = sections?.map(s => s.section_id) || [];
+    
+    let sectionsWithTimes = sections || [];
+    
+    if (sectionIds.length > 0) {
+      const { data: times, error: timesError } = await supabase
+        .from('section_time')
+        .select('*')
+        .in('section_id', sectionIds);
+      
+      if (timesError) {
+        console.error('Times error:', timesError);
+      } else {
+        // Group times by section_id
+        const timesBySection = times?.reduce((acc, time) => {
+          if (!acc[time.section_id]) {
+            acc[time.section_id] = [];
+          }
+          acc[time.section_id].push({
+            day: time.day,
+            start_time: time.start_time,
+            end_time: time.end_time,
+          });
+          return acc;
+        }, {} as Record<string, Array<{ day_of_week: string; start_time: string; end_time: string }>>) || {};
+        
+        // Add times to sections
+        sectionsWithTimes = sections.map(section => ({
+          ...section,
+          times: timesBySection[section.section_id] || [],
+        }));
+      }
+    }
+    
+    // Calculate statistics
+    const totalSections = sectionsWithTimes.length;
+    const totalCredits = sectionsWithTimes.reduce((sum, s) => {
+      return sum + (s.course?.credits || 0);
+    }, 0);
+    
+    const sectionsByType = sectionsWithTimes.reduce((acc, s) => {
+      const type = s.course?.type || 'UNKNOWN';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return NextResponse.json({ 
       success: true,
-      term: activeTerm,
-      sections: formattedSections,
-      total_hours: Math.round(totalHours * 10) / 10, // Round to 1 decimal
+      data: {
+        faculty: {
+          id: faculty.id,
+          name_en: faculty.name_en,
+          name_ar: faculty.name_ar,
+          department: faculty.department,
+        },
+        term_code: activeTermCode,
+        sections: sectionsWithTimes,
+        statistics: {
+          total_sections: totalSections,
+          total_credits: totalCredits,
+          sections_by_type: sectionsByType,
+        }
+      }
     });
+    
   } catch (error) {
-    console.error("Error in /api/faculty/schedule:", error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

@@ -125,7 +125,7 @@ export async function PATCH(
     }
 
     // Build update object (only include provided fields)
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (term_code !== undefined) updateData.term_code = term_code;
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;

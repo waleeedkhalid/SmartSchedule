@@ -29,12 +29,16 @@ export default function DashboardPage() {
         }
 
         if (!user) {
-          console.log("No user found, redirecting to login");
+          if (process.env.NODE_ENV === "development") {
+            console.log("No user found, redirecting to login");
+          }
           router.push("/login");
           return;
         }
 
-        console.log("User authenticated:", user.id);
+        if (process.env.NODE_ENV === "development") {
+          console.log("User authenticated:", user.id);
+        }
 
         // Get user role from the database
         const { data: userData, error: dbError } = await supabase
@@ -57,7 +61,9 @@ export default function DashboardPage() {
           return;
         }
 
-        console.log("User role:", userData.role);
+        if (process.env.NODE_ENV === "development") {
+          console.log("User role:", userData.role);
+        }
 
         // Redirect based on role
         switch (userData.role) {
@@ -80,6 +86,7 @@ export default function DashboardPage() {
             console.error("Unknown role:", userData.role);
             setError(`Unknown role: ${userData.role}`);
             setTimeout(() => router.push("/login"), 2000);
+            break;
         }
       } catch (error) {
         console.error("Unexpected error checking user:", error);

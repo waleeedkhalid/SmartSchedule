@@ -2,6 +2,37 @@
 
 SmartSchedule is a modern web application for managing course schedules, faculty assignments, and student preferences **specifically for the Software Engineering (SWE) Department**. This application is built with Next.js 15, TypeScript, and TailwindCSS.
 
+---
+
+## 🚨 IMPORTANT: Requirements & Implementation Plan
+
+**📖 Read This Document:**
+
+**[FINAL-REQUIREMENTS-CORRECT.md](FINAL-REQUIREMENTS-CORRECT.md)** ⭐ - Based on your PRD v1.1 (20 min)
+
+**Key Understanding:**
+- ✅ Schedule generator with **one-click generation** (≤10 seconds)
+- ✅ **Google AI Studio** integration for recommendations
+- ✅ Students submit **preference survey** + **manual elective registration**
+- ✅ **Auto-enrollment** for required courses
+- ✅ Real-time collaboration (Yjs), version control (jsondiffpatch), dashboards (Chart.js)
+
+**Current Status:** 75% complete
+- ✅ Yjs, jsondiffpatch, Chart.js backends ready
+- ✅ Conflict detection working
+- ✅ Preference survey done
+- ⚠️ Schedule generator needs enhancement (≤10s target)
+- ❌ Student registration system not built
+- ❌ Auto-enrollment not built
+- ❌ UI for collaboration/versioning/dashboards not connected
+
+**3-Week Plan:**
+- Week 1: Schedule generator, auto-enrollment, student registration, collaboration UI
+- Week 2: Version control UI, dashboards, notifications
+- Week 3: Registrar tools, comments, testing, deployment
+
+---
+
 ## Important Scope Note
 
 **This system is designed exclusively for the Software Engineering (SWE) department:**
@@ -69,12 +100,12 @@ For non-SWE courses, the system only tracks them as external course offerings th
 Create a `.env.local` file in the root directory with the following variables:
 
 ```env
-# Supabase (Client)
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
-# Supabase (Server - API routes only)
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Optional: Service role key for admin operations (server-side only)
+# SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ### Demo Accounts & Live Mode

@@ -1,118 +1,82 @@
 /**
- * Elective Preferences API Route
- * GET: Fetch student's elective preferences
- * POST: Create/update student's elective preferences
- * DELETE: Remove specific preference
+ * Student Preferences API
+ * GET: Retrieve student's submitted preferences
  */
 
-import { NextRequest } from "next/server";
-import { z } from "zod";
-import { 
-  getAuthenticatedUser, 
-  successResponse, 
-  errorResponse, 
-  unauthorizedResponse,
-  validationErrorResponse 
-} from "@/lib/api";
-import type { StudentElectiveWithDetails } from "@/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
 
-const preferencesSchema = z.object({
-  preferences: z.array(
-    z.object({
-      electiveId: z.string().uuid(),
-      preferenceOrder: z.number().int().positive(),
-    })
-  ).min(1).max(10),
-});
-
-export async function GET() {
-  const { user, supabase, error: authError } = await getAuthenticatedUser();
-
-  if (authError || !user) {
-    return unauthorizedResponse();
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const termCode = searchParams.get('term_code');
+    const includeDrafts = searchParams.get('include_drafts') === 'true';
+    
+    // Build query
+    let query = supabase
+      .from('elective_preferences')
+      .select(`
+        id,
+        student_id,
+        term_code,
+        course_code,
+        preference_order,
+        is_submitted,
+        submitted_at,
+        created_at,
+        course:course_code (
+          code,
+          name_en,
+          name_ar,
+          credits
+        )
+      `)
+      .eq('student_id', user.id)
+      .order('preference_order', { ascending: true });
+    
+    // Filter by term if provided
+    if (termCode) {
+      query = query.eq('term_code', termCode);
+    }
+    
+    // Filter by submission status
+    if (!includeDrafts) {
+      query = query.eq('is_submitted', true);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch preferences' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      success: true,
+      data: data || [],
+      count: data?.length || 0
+    });
+    
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-
-  const { data: preferences, error } = await supabase
-    .from("student_electives")
-    .select(`*, elective:electives(*)`)
-    .eq("student_id", user.id)
-    .order("preference_order", { ascending: true });
-
-  if (error) {
-    return errorResponse(error.message);
-  }
-
-  return successResponse({ 
-    preferences: (preferences || []) as StudentElectiveWithDetails[] 
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const { user, supabase, error: authError } = await getAuthenticatedUser();
-
-  if (authError || !user) {
-    return unauthorizedResponse();
-  }
-
-  const body = await request.json();
-  const validated = preferencesSchema.safeParse(body);
-
-  if (!validated.success) {
-    return validationErrorResponse(validated.error);
-  }
-
-  // Delete existing preferences
-  const { error: deleteError } = await supabase
-    .from("student_electives")
-    .delete()
-    .eq("student_id", user.id);
-
-  if (deleteError) {
-    return errorResponse(deleteError.message);
-  }
-
-  // Insert new preferences
-  const preferencesToInsert = validated.data.preferences.map((pref) => ({
-    student_id: user.id,
-    elective_id: pref.electiveId,
-    preference_order: pref.preferenceOrder,
-  }));
-
-  const { data, error: insertError } = await supabase
-    .from("student_electives")
-    .insert(preferencesToInsert)
-    .select();
-
-  if (insertError) {
-    return errorResponse(insertError.message);
-  }
-
-  return successResponse({ preferences: data });
-}
-
-export async function DELETE(request: NextRequest) {
-  const { user, supabase, error: authError } = await getAuthenticatedUser();
-
-  if (authError || !user) {
-    return unauthorizedResponse();
-  }
-
-  const { searchParams } = new URL(request.url);
-  const electiveId = searchParams.get("electiveId");
-
-  if (!electiveId) {
-    return validationErrorResponse("electiveId is required");
-  }
-
-  const { error } = await supabase
-    .from("student_electives")
-    .delete()
-    .eq("student_id", user.id)
-    .eq("elective_id", electiveId);
-
-  if (error) {
-    return errorResponse(error.message);
-  }
-
-  return successResponse({ message: "Preference deleted successfully" });
 }

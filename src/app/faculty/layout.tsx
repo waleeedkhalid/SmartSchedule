@@ -39,11 +39,11 @@ export default async function FacultyLayout({ children }: FacultyLayoutProps) {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-screen flex-col bg-secondary/30">
         <PersonaNavigation
           personaName="Faculty Portal"
           navItems={navigationItems}
-          className="sticky top-0 z-40 border-b bg-white dark:bg-gray-950 shadow-sm"
+          className="sticky top-0 z-40 border-b bg-card shadow-sm"
         />
         <main className="flex-1">
           <div className="container mx-auto max-w-7xl px-4 py-8">

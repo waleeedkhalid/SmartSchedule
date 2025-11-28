@@ -26,15 +26,27 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
+  // PERFORMANCE OPTIMIZATION: Get role from user metadata (cached in JWT)
+  // instead of database query. Role is stored in user_metadata during sign-in.
+  // This eliminates a database query on every protected route request.
+  const role = user.user_metadata?.role as UserRole | undefined;
 
-  const role = (profile?.role ?? user.user_metadata?.role) as
-    | UserRole
-    | undefined;
+  // If no role in metadata (legacy users), fall back to database
+  // This ensures backward compatibility
+  if (!role) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Update user metadata with role for future requests
+    if (profile?.role) {
+      await supabase.auth.updateUser({
+        data: { role: profile.role },
+      });
+    }
+  }
 
   if (pathname === "/login") {
     const redirectUrl = request.nextUrl.clone();

@@ -84,7 +84,7 @@ export function FacultyAvailability({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ availability }),
+        body: JSON.stringify({ availability_data: availability }),
       });
 
       const result = await response.json();

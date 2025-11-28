@@ -28,7 +28,7 @@ export default function FacultyStatusCards({
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Assigned Courses */}
-      <Card className="border-2 bg-white dark:bg-gray-950 transition-all hover:shadow-lg hover:border-primary/50">
+      <Card className="border-2 transition-all hover:shadow-lg hover:border-primary/50">
         <CardContent className="pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -46,7 +46,7 @@ export default function FacultyStatusCards({
               className={cn(
                 "flex h-14 w-14 items-center justify-center rounded-xl shadow-sm",
                 assignedCoursesCount > 0
-                  ? "bg-blue-100 dark:bg-blue-900/30"
+                  ? "bg-primary/10"
                   : "bg-muted"
               )}
             >
@@ -54,7 +54,7 @@ export default function FacultyStatusCards({
                 className={cn(
                   "h-7 w-7",
                   assignedCoursesCount > 0
-                    ? "text-blue-600 dark:text-blue-400"
+                    ? "text-primary"
                     : "text-muted-foreground"
                 )}
               />
@@ -64,7 +64,7 @@ export default function FacultyStatusCards({
       </Card>
 
       {/* Schedule Status */}
-      <Card className="border-2 bg-white dark:bg-gray-950 transition-all hover:shadow-lg hover:border-primary/50">
+      <Card className="border-2 transition-all hover:shadow-lg hover:border-primary/50">
         <CardContent className="pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -74,12 +74,12 @@ export default function FacultyStatusCards({
               <div className="flex items-center gap-2">
                 {schedulePublished ? (
                   <>
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <CheckCircle2 className="h-5 w-5 text-success" />
                     <p className="text-xl font-bold">Published</p>
                   </>
                 ) : (
                   <>
-                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <Clock className="h-5 w-5 text-warning" />
                     <p className="text-xl font-bold">In Progress</p>
                   </>
                 )}
@@ -89,16 +89,16 @@ export default function FacultyStatusCards({
               className={cn(
                 "flex h-14 w-14 items-center justify-center rounded-xl shadow-sm",
                 schedulePublished
-                  ? "bg-green-100 dark:bg-green-900/30"
-                  : "bg-amber-100 dark:bg-amber-900/30"
+                  ? "bg-success/10"
+                  : "bg-warning/10"
               )}
             >
               <Calendar
                 className={cn(
                   "h-7 w-7",
                   schedulePublished
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-amber-600 dark:text-amber-400"
+                    ? "text-success"
+                    : "text-warning"
                 )}
               />
             </div>
@@ -107,7 +107,7 @@ export default function FacultyStatusCards({
       </Card>
 
       {/* Feedback Status */}
-      <Card className="border-2 bg-white dark:bg-gray-950 transition-all hover:shadow-lg hover:border-primary/50">
+      <Card className="border-2 transition-all hover:shadow-lg hover:border-primary/50">
         <CardContent className="pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -117,12 +117,12 @@ export default function FacultyStatusCards({
               <div className="flex items-center gap-2">
                 {canViewFeedback ? (
                   <>
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <CheckCircle2 className="h-5 w-5 text-success" />
                     <p className="text-xl font-bold">Available</p>
                   </>
                 ) : feedbackOpen ? (
                   <>
-                    <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <Clock className="h-5 w-5 text-primary" />
                     <p className="text-xl font-bold">In Progress</p>
                   </>
                 ) : (
@@ -137,9 +137,9 @@ export default function FacultyStatusCards({
               className={cn(
                 "flex h-14 w-14 items-center justify-center rounded-xl shadow-sm",
                 canViewFeedback
-                  ? "bg-green-100 dark:bg-green-900/30"
+                  ? "bg-success/10"
                   : feedbackOpen
-                    ? "bg-blue-100 dark:bg-blue-900/30"
+                    ? "bg-primary/10"
                     : "bg-muted"
               )}
             >
@@ -147,9 +147,9 @@ export default function FacultyStatusCards({
                 className={cn(
                   "h-7 w-7",
                   canViewFeedback
-                    ? "text-green-600 dark:text-green-400"
+                    ? "text-success"
                     : feedbackOpen
-                      ? "text-blue-600 dark:text-blue-400"
+                      ? "text-primary"
                       : "text-muted-foreground"
                 )}
               />

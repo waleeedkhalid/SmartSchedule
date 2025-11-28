@@ -15,6 +15,9 @@ export default defineConfig(() => {
       globals: true,
       setupFiles: ["./vitest.setup.ts"],
       include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+      // Increase timeouts for integration tests with database operations
+      testTimeout: 30000, // 30 seconds for test execution
+      hookTimeout: 30000, // 30 seconds for beforeAll/afterAll hooks
     },
   };
 });

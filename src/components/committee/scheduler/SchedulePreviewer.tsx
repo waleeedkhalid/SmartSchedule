@@ -58,16 +58,16 @@ const TIME_SLOTS = [
   "18:00", "19:00", "20:00"
 ];
 
-// Color palette for different courses
+// Color palette for different courses (using design tokens with opacity)
 const COURSE_COLORS = [
-  "bg-blue-100 border-blue-300 text-blue-900",
-  "bg-green-100 border-green-300 text-green-900",
-  "bg-purple-100 border-purple-300 text-purple-900",
-  "bg-orange-100 border-orange-300 text-orange-900",
-  "bg-pink-100 border-pink-300 text-pink-900",
-  "bg-indigo-100 border-indigo-300 text-indigo-900",
-  "bg-teal-100 border-teal-300 text-teal-900",
-  "bg-amber-100 border-amber-300 text-amber-900",
+  "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400",
+  "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400",
+  "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400",
+  "bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-400",
+  "bg-pink-500/10 border-pink-500/30 text-pink-700 dark:text-pink-400",
+  "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-400",
+  "bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400",
+  "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400",
 ];
 
 export function SchedulePreviewer({

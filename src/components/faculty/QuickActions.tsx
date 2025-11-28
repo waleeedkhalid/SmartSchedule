@@ -28,32 +28,32 @@ const quickActions: QuickAction[] = [
     description: "Check your teaching schedule",
     href: "/faculty/schedule",
     icon: Calendar,
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-950",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
   },
   {
     title: "Set Availability",
     description: "Update your weekly availability",
     href: "/faculty/availability",
     icon: Clock,
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-100 dark:bg-green-950",
+    color: "text-success",
+    bgColor: "bg-success/10",
   },
   {
     title: "My Courses",
     description: "View course assignments",
     href: "/faculty/courses",
     icon: BookOpen,
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-950",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
   },
   {
     title: "Student Feedback",
     description: "Review course feedback",
     href: "/faculty/feedback",
     icon: MessageSquare,
-    color: "text-orange-600 dark:text-orange-400",
-    bgColor: "bg-orange-100 dark:bg-orange-950",
+    color: "text-info",
+    bgColor: "bg-info/10",
   },
 ];
 
@@ -85,7 +85,7 @@ export function QuickActions({ className }: QuickActionsProps) {
               <Link
                 key={action.href}
                 href={action.href}
-                className="group relative overflow-hidden rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 transition-all hover:border-primary hover:shadow-md hover:-translate-y-0.5"
+                className="group relative overflow-hidden rounded-lg border-2 border-border bg-card p-4 transition-all hover:border-primary hover:shadow-md hover:-translate-y-0.5"
               >
                 <div className="flex items-start gap-4">
                   <div

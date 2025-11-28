@@ -1,219 +1,268 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@/lib/supabase/server";
-
 /**
- * GET /api/faculty/availability
- * Fetch faculty availability for the current active term
+ * Faculty Availability API
+ * GET: Retrieve faculty availability
+ * POST: Submit/update faculty availability
  */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
+import { z } from 'zod';
+
+// Validation schema for availability
+const availabilitySchema = z.object({
+  availability_data: z.record(z.any()), // JSONB - flexible structure
+  notes: z.string().max(500).optional(),
+  preferred_load: z.number().int().min(0).max(18).optional(),
+  term_code: z.string().optional(),
+});
+
 export async function GET(request: NextRequest) {
   try {
-        const supabase = await createServerClient();
-
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-
-    // Verify user is faculty
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
+    
+    // Verify faculty exists
+    const { data: faculty, error: facultyError } = await supabase
+      .from('faculty')
+      .select('id')
+      .eq('id', user.id)
       .single();
-
-    if (userError || userData?.role !== "faculty") {
+    
+    if (facultyError || !faculty) {
       return NextResponse.json(
-        { success: false, error: "Faculty access required" },
-        { status: 403 }
-      );
-    }
-
-    // Get active term
-    const { data: activeTerm, error: termError } = await supabase
-      .from("academic_term")
-      .select("*")
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (termError) {
-      console.error("Error fetching active term:", termError);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch active term" },
-        { status: 500 }
-      );
-    }
-
-    if (!activeTerm) {
-      return NextResponse.json(
-        { success: false, error: "No active academic term" },
+        { error: 'Faculty profile not found' },
         { status: 404 }
       );
     }
-
-    // Fetch availability for current term
-    const { data: availability, error: availError } = await supabase
-      .from("faculty_availability")
-      .select("*")
-      .eq("faculty_id", user.id)
-      .eq("term_code", activeTerm.code)
-      .maybeSingle();
-
-    if (availError) {
-      console.error("Error fetching availability:", availError);
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const termCode = searchParams.get('term_code');
+    
+    // Build query
+    let query = supabase
+      .from('faculty_availability')
+      .select(`
+        id,
+        faculty_id,
+        term_code,
+        availability_data,
+        notes,
+        preferred_load,
+        created_at,
+        updated_at
+      `)
+      .eq('faculty_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    // Filter by term if provided
+    if (termCode) {
+      query = query.eq('term_code', termCode);
+      
+      const { data: availability, error } = await query.maybeSingle();
+      
+      if (error) {
+        console.error('Database error:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch availability' },
+          { status: 500 }
+        );
+      }
+      
+      if (!availability) {
+        return NextResponse.json(
+          { 
+            success: true,
+            message: 'No availability submitted for this term',
+            data: null
+          },
+          { status: 200 }
+        );
+      }
+      
+      return NextResponse.json({ 
+        success: true,
+        data: availability
+      });
+    }
+    
+    // Get all availability records if no term specified
+    const { data: availabilities, error } = await query;
+    
+    if (error) {
+      console.error('Database error:', error);
       return NextResponse.json(
-        { success: false, error: "Failed to fetch availability" },
+        { error: 'Failed to fetch availability records' },
         { status: 500 }
       );
     }
-
-    // Return availability data or empty state
-    return NextResponse.json({
+    
+    return NextResponse.json({ 
       success: true,
-      data: availability
-        ? {
-            availability_data: availability.availability_data,
-            lastUpdated: availability.updated_at,
-            termCode: availability.term_code,
-          }
-        : null,
+      data: availabilities || [],
+      count: availabilities?.length || 0
     });
+    
   } catch (error) {
-    console.error("Error in /api/faculty/availability GET:", error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-/**
- * POST /api/faculty/availability
- * Save or update faculty availability for the current active term
- */
 export async function POST(request: NextRequest) {
   try {
-        const supabase = await createServerClient();
-
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
+    const supabase = await createServerClient();
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-
-    // Verify user is faculty
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
+    
+    // Verify faculty exists
+    const { data: faculty, error: facultyError } = await supabase
+      .from('faculty')
+      .select('id, status')
+      .eq('id', user.id)
       .single();
-
-    if (userError || userData?.role !== "faculty") {
+    
+    if (facultyError || !faculty) {
       return NextResponse.json(
-        { success: false, error: "Faculty access required" },
-        { status: 403 }
-      );
-    }
-
-    // Get active term
-    const { data: activeTerm, error: termError } = await supabase
-      .from("academic_term")
-      .select("*")
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (termError) {
-      console.error("Error fetching active term:", termError);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch active term" },
-        { status: 500 }
-      );
-    }
-
-    if (!activeTerm) {
-      return NextResponse.json(
-        { success: false, error: "No active academic term" },
+        { error: 'Faculty profile not found' },
         { status: 404 }
       );
     }
-
-    // Check if faculty availability submission is open
-    if (!activeTerm.is_faculty_availability_open) {
+    
+    // Check faculty status
+    if (faculty.status !== 'ACTIVE') {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Faculty availability submission is currently closed",
-        },
+        { error: `Cannot submit availability. Faculty status: ${faculty.status}` },
         { status: 403 }
       );
     }
-
-    // Parse request body
+    
+    // Parse and validate body
     const body = await request.json();
-    const { availability } = body;
-
-    if (!availability || typeof availability !== "object") {
+    const validated = availabilitySchema.parse(body);
+    
+    // Get active term if not provided
+    let termCode = validated.term_code;
+    if (!termCode) {
+      const { data: activeTerm } = await supabase
+        .from('academic_term')
+        .select('code')
+        .eq('is_active', true)
+        .single();
+      
+      if (!activeTerm) {
+        return NextResponse.json(
+          { error: 'No active term found' },
+          { status: 400 }
+        );
+      }
+      
+      termCode = activeTerm.code;
+    }
+    
+    // Check if availability already exists for this term
+    const { data: existing, error: existingError } = await supabase
+      .from('faculty_availability')
+      .select('id')
+      .eq('faculty_id', user.id)
+      .eq('term_code', termCode)
+      .maybeSingle();
+    
+    if (existingError) {
+      console.error('Existing check error:', existingError);
+    }
+    
+    // Upsert availability
+    const availabilityData = {
+      faculty_id: user.id,
+      term_code: termCode,
+      availability_data: validated.availability_data,
+      notes: validated.notes || null,
+      preferred_load: validated.preferred_load || null,
+      updated_at: new Date().toISOString(),
+    };
+    
+    let result;
+    
+    if (existing) {
+      // Update existing
+      const { data, error } = await supabase
+        .from('faculty_availability')
+        .update(availabilityData)
+        .eq('id', existing.id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Update error:', error);
+        return NextResponse.json(
+          { error: 'Failed to update availability' },
+          { status: 500 }
+        );
+      }
+      
+      result = data;
+    } else {
+      // Insert new
+      const { data, error } = await supabase
+        .from('faculty_availability')
+        .insert({
+          ...availabilityData,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Insert error:', error);
+        return NextResponse.json(
+          { error: 'Failed to submit availability' },
+          { status: 500 }
+        );
+      }
+      
+      result = data;
+    }
+    
+    return NextResponse.json({ 
+      success: true,
+      message: existing ? 'Availability updated successfully' : 'Availability submitted successfully',
+      data: result
+    }, { status: existing ? 200 : 201 });
+    
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: "Invalid availability data" },
+        { 
+          error: 'Validation failed',
+          details: error.issues 
+        },
         { status: 400 }
       );
     }
-
-    // Upsert availability record
-    const { data, error: upsertError } = await supabase
-      .from("faculty_availability")
-      .upsert(
-        {
-          faculty_id: user.id,
-          term_code: activeTerm.code,
-          availability_data: availability,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "faculty_id,term_code",
-        }
-      )
-      .select()
-      .single();
-
-    if (upsertError) {
-      console.error("Error upserting availability:", upsertError);
-      return NextResponse.json(
-        { success: false, error: "Failed to save availability" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Availability saved successfully",
-      data: {
-        availability_data: data.availability_data,
-        lastUpdated: data.updated_at,
-        termCode: data.term_code,
-      },
-    });
-  } catch (error) {
-    console.error("Error in /api/faculty/availability POST:", error);
+    
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-
