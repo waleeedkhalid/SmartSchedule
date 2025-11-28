@@ -442,32 +442,82 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole)) {
         // Create committee_profile for committee roles
         console.log('Creating committee profile for role:', userRole);
-        const { data: committeeData, error: profileError } = await supabase
+        
+        // First check if profile already exists (race condition protection)
+        const { data: existingProfile } = await supabase
           .from('committee_profile')
-          .insert({
-            user_id: userId,
-            committee_role: userRole,
-            department: 'Software Engineering',
-          })
-          .select()
-          .single();
+          .select('user_id')
+          .eq('user_id', userId)
+          .maybeSingle();
         
-        console.log('Committee profile insert result:', { data: committeeData, error: profileError });
-        
-        if (profileError) {
-          console.error('Error creating committee_profile:', {
-            error: profileError,
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-            code: profileError.code
-          });
-          toast.error(`Failed to create committee profile: ${profileError.message || 'Unknown error'}`);
-          setIsSubmitting(false);
-          return;
+        if (existingProfile) {
+          console.log('Committee profile already exists, skipping insert');
+          profileCreated = true;
+        } else {
+          const { data: committeeData, error: profileError } = await supabase
+            .from('committee_profile')
+            .insert({
+              user_id: userId,
+              committee_role: userRole,
+              department: 'Software Engineering',
+            })
+            .select()
+            .single();
+          
+          console.log('Committee profile insert result:', { data: committeeData, error: profileError });
+          
+          if (profileError) {
+            // Check for unique constraint violation (profile created by another request)
+            if (profileError.code === '23505') {
+              // Profile was created by another request - try to read it
+              console.log('Profile was created between check and insert, verifying...');
+              const { data: verifyData, error: verifyError } = await supabase
+                .from('committee_profile')
+                .select('user_id')
+                .eq('user_id', userId)
+                .single();
+              
+              if (verifyError) {
+                console.error('Error verifying committee profile after race condition:', verifyError);
+                toast.error(`Failed to create committee profile: ${profileError.message || 'Unknown error'}`);
+                setIsSubmitting(false);
+                return;
+              }
+              console.log('Committee profile verified after race condition');
+              profileCreated = true;
+            } else {
+              // Other error - show message
+              const errorMsg = profileError.message || 'Unknown error';
+              console.error('Error creating committee_profile:', {
+                error: profileError,
+                message: errorMsg,
+                details: profileError.details,
+                hint: profileError.hint,
+                code: profileError.code
+              });
+              
+              // Check for RLS violations
+              if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
+                toast.error(
+                  `Permission denied: Unable to create committee profile. ` +
+                  `This may be due to Row Level Security policies. ` +
+                  `Please ensure you are logged in correctly. ` +
+                  `Error: ${errorMsg}`
+                );
+              } else if (profileError.code === '23503') {
+                toast.error('Invalid user ID. Please log out and log back in.');
+              } else {
+                toast.error(`Failed to create committee profile: ${errorMsg}`);
+              }
+              setIsSubmitting(false);
+              return;
+            }
+          } else {
+            // Insert succeeded
+            console.log('Committee profile created successfully:', committeeData);
+            profileCreated = true;
+          }
         }
-        console.log('Committee profile created successfully');
-        profileCreated = true;
       }
       
       // Only proceed if profile is successfully created
@@ -649,7 +699,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             <div>
               <h3 className="text-lg font-semibold mb-2">Confirm Your Information</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Please review before continuing.
+                {userRole === 'student' 
+                  ? 'Please review before continuing.'
+                  : 'Please confirm your role information to complete setup.'}
               </p>
             </div>
             
@@ -671,10 +723,23 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   </div>
                 </>
               ) : (
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Role:</span>
-                  <span className="text-sm capitalize">{userRole.replace('_', ' ')}</span>
-                </div>
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Role:</span>
+                    <span className="text-sm capitalize">{userRole.replace('_', ' ')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Department:</span>
+                    <span className="text-sm">Software Engineering</span>
+                  </div>
+                  {userRole === 'teaching_load' && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        As a Teaching Load Committee member, you'll be able to review and balance instructor teaching loads.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             

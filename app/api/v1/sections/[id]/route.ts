@@ -37,7 +37,7 @@ export async function GET(
       .select(`
         *,
         activity,
-        course:course_code (
+        course:course!section_course_code_fkey (
           code,
           title,
           credits
@@ -47,7 +47,7 @@ export async function GET(
           name,
           email
         ),
-        room:room_code (
+        room:room!section_room_code_fkey (
           code,
           type
         )
@@ -184,7 +184,7 @@ export async function PUT(
           name,
           email
         ),
-        room:room_code (
+        room:room!section_room_code_fkey (
           code,
           type
         )

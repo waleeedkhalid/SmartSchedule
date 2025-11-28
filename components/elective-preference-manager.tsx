@@ -104,9 +104,11 @@ function SortablePreferenceItem({ pref, index, onRemove, onShowDetails }: Sortab
           {pref.course?.title}
         </p>
         <div className="flex gap-2 mt-1">
-          <Badge variant="outline" className="text-xs">
-            Level {pref.course?.level}
-          </Badge>
+          {pref.course?.recommended_level && (
+            <Badge variant="outline" className="text-xs">
+              Level {pref.course.recommended_level}
+            </Badge>
+          )}
           <Badge variant="outline" className="text-xs">
             {pref.course?.credits} cr
           </Badge>
@@ -426,9 +428,11 @@ export function ElectivePreferenceManager({
                             {course.title}
                           </p>
                           <div className="flex gap-2 mt-1 flex-wrap">
-                            <Badge variant="secondary" className="text-xs">
-                              Level {course.level}
-                            </Badge>
+                            {course.recommended_level && (
+                              <Badge variant="secondary" className="text-xs">
+                                Level {course.recommended_level}
+                              </Badge>
+                            )}
                             <Badge variant="secondary" className="text-xs">
                               {course.credits} cr
                             </Badge>

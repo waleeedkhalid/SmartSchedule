@@ -2,7 +2,6 @@
  * Server-Side Authentication Utilities
  * 
  * Helper functions for getting authenticated user information in server components.
- * Supports both demo accounts and Supabase production accounts.
  * 
  * Uses the standard Supabase SSR pattern: the server client automatically reads
  * session cookies, so we call `supabase.auth.getUser()` without arguments.
@@ -13,9 +12,7 @@
  */
 
 import { cache } from "react";
-import { cookies } from "next/headers";
 import { createClient } from "@/supabase/server";
-import { mockUsers } from "@/lib/demo-data";
 
 export interface ServerUser {
   id: string;
@@ -37,23 +34,7 @@ export interface ServerUser {
  * and infinite redirect loops.
  */
 export const getServerUser = cache(async (): Promise<ServerUser | null> => {
-  const cookieStore = await cookies();
-  const demoUserId = cookieStore.get('demo_user_id')?.value;
-
-  // Check for demo user first
-  if (demoUserId) {
-    const user = mockUsers.find(u => u.id === demoUserId);
-    if (user) {
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      };
-    }
-  }
-
-  // Check for real Supabase user using standard SSR pattern
+  // Check for Supabase user using standard SSR pattern
   try {
     const supabase = await createClient();
     

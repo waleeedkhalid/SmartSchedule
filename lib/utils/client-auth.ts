@@ -14,28 +14,23 @@ let sessionTokenCache: { token: string | null; timestamp: number } | null = null
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Gets the authentication token from Supabase session or demo cookies
+ * Gets the authentication token from Supabase session
  * Returns null if no token is found
  * 
  * OPTIMIZATION: Uses in-memory cache to avoid repeated getSession() calls
- * 
- * Priority:
- * 1. Supabase session access_token (for authenticated Supabase users)
- * 2. demo_user_id cookie (for demo users, returns "demo:{user_id}")
- * 3. localStorage auth_token (fallback for legacy support)
  */
 export async function getAuthToken(): Promise<string | null> {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  // Check cache first (only for Supabase tokens, not demo)
+  // Check cache first
   const now = Date.now();
   if (sessionTokenCache && (now - sessionTokenCache.timestamp) < CACHE_DURATION) {
     return sessionTokenCache.token;
   }
 
-  // Try to get Supabase session token first
+  // Try to get Supabase session token
   try {
     const supabase = createClient();
     const { data: { session }, error } = await supabase.auth.getSession();
@@ -52,19 +47,8 @@ export async function getAuthToken(): Promise<string | null> {
       sessionTokenCache = null;
     }
   } catch (error) {
-    // If Supabase client fails, clear cache and continue to fallback methods
+    // If Supabase client fails, clear cache
     sessionTokenCache = null;
-  }
-
-  // Try to get demo_user_id from cookies (Demo users)
-  // Note: Demo users don't need caching as cookie access is synchronous
-  const demoUserIdCookie = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('demo_user_id='))
-    ?.split('=')[1];
-
-  if (demoUserIdCookie) {
-    return `demo:${demoUserIdCookie}`;
   }
 
   // Fallback to localStorage (for legacy support)

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           id,
           course_code,
           rank,
-          course:course!elective_preference_course_code_fkey(code, title, level, credits, is_elective)
+          course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective)
         `);
 
       if (insertError) {

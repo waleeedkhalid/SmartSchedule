@@ -11,7 +11,6 @@
  */
 export const AUTH_COOKIE_NAMES = [
   'auth_token',
-  'demo_user_id',
   'onboarding_verified',
   // Supabase SSR cookie patterns
   'sb-access-token',

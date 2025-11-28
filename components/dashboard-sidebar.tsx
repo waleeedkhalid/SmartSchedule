@@ -41,16 +41,10 @@ const navigation: NavigationItem[] = [
     roles: ['scheduling', 'teaching_load', 'faculty', 'student', 'registrar'] 
   },
   { 
-    name: "Setup Check", 
-    href: "/dashboard/setup-check", 
-    icon: Wrench, 
-    roles: ['scheduling', 'teaching_load'] 
-  },
-  { 
     name: "Courses", 
     href: "/dashboard/courses", 
     icon: BookOpen, 
-    roles: ['scheduling', 'teaching_load'] 
+    roles: ['scheduling'] 
   },
   { 
     name: "Sections", 
@@ -62,7 +56,7 @@ const navigation: NavigationItem[] = [
     name: "Rooms", 
     href: "/dashboard/rooms", 
     icon: DoorOpen, 
-    roles: ['scheduling'] 
+    roles: ['scheduling', 'teaching_load'] 
   },
   { 
     name: "Instructors", 

@@ -36,7 +36,7 @@ export default async function PreferencesPage() {
       id,
       course_code,
       rank,
-      course:course!elective_preference_course_code_fkey(code, title, level, credits, is_elective)
+      course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective)
     `)
     .eq('student_id', user.id)
     .order('rank', { ascending: true });
@@ -47,7 +47,7 @@ export default async function PreferencesPage() {
     .from('course')
     .select('*')
     .eq('is_elective', true)
-    .order('level', { ascending: true })
+    .order('recommended_level', { ascending: true, nullsFirst: false })
     .order('code', { ascending: true });
 
   // Get student's comments
@@ -55,7 +55,7 @@ export default async function PreferencesPage() {
     .from('elective_comment')
     .select(`
       *,
-      course:course!elective_comment_course_code_fkey(code, title, level, credits)
+      course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
     `)
     .eq('student_id', user.id)
     .order('created_at', { ascending: false });
@@ -195,7 +195,9 @@ export default async function PreferencesPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Badge variant="secondary">Level {pref.course?.level}</Badge>
+                        {pref.course?.recommended_level && (
+                          <Badge variant="secondary">Level {pref.course.recommended_level}</Badge>
+                        )}
                         <Badge variant="secondary">{pref.course?.credits} cr</Badge>
                       </div>
                     </div>

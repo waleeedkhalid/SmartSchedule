@@ -11,7 +11,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/supabase/server";
 import { createSuccessResponse, createErrorResponse, handleApiError } from "@/lib/api/error-handler";
-import { verifyDemoCredentials } from "@/lib/demo-data";
 import { cookies } from "next/headers";
 
 interface LoginRequest {
@@ -43,51 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for demo credentials first
-    const demoAuth = verifyDemoCredentials(body.email, body.password);
-    if (demoAuth.valid && demoAuth.user) {
-      // Generate demo token (format: "demo:{user_id}")
-      const demoToken = `demo:${demoAuth.user.id}`;
-
-      // Set demo_user_id cookie
-      const cookieStore = await cookies();
-      cookieStore.set('demo_user_id', demoAuth.user.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: '/',
-      });
-
-      const response: LoginResponse = {
-        token: demoToken,
-        user: {
-          id: demoAuth.user.id,
-          email: demoAuth.user.email,
-          name: demoAuth.user.name,
-          role: demoAuth.user.role,
-          level: demoAuth.user.level ?? undefined,
-        },
-      };
-
-      const nextResponse = NextResponse.json({
-        success: true,
-        data: response,
-      });
-      
-      // Also set cookie in response headers
-      nextResponse.cookies.set('demo_user_id', demoAuth.user.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
-        path: '/',
-      });
-
-      return nextResponse;
-    }
-
-    // Try real Supabase authentication
+    // Authenticate with Supabase
     const supabase = await createClient();
 
     // Authenticate with Supabase

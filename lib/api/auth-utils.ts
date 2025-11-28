@@ -9,7 +9,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/supabase/server";
 import { ErrorCodes, ApiException } from "./error-handler";
-import { mockUsers } from "@/lib/demo-data";
 
 export interface AuthenticatedUser {
   id: string;
@@ -20,38 +19,19 @@ export interface AuthenticatedUser {
 }
 
 /**
- * Extracts JWT token from Authorization header or cookies
- * 
- * Priority:
- * 1. Authorization header (Bearer token) - for client-side API calls
- * 2. demo_user_id cookie (for demo users where client can't access HttpOnly cookie)
+ * Extracts JWT token from Authorization header
  * 
  * Note: For Supabase SSR, we don't need to extract tokens from cookies.
  * The createClient() function automatically reads session cookies.
  */
 export function extractAuthToken(request: NextRequest): string | null {
-  // 1. Check Authorization header (for client-side API calls)
+  // Check Authorization header (for client-side API calls)
   const authHeader = request.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.substring(7); // Remove "Bearer " prefix
   }
 
-  // 2. Check cookies for demo user
-  // This is crucial because demo_user_id cookie is HttpOnly and cannot be read by client
-  const demoCookie = request.cookies.get("demo_user_id");
-  if (demoCookie) {
-    return `demo:${demoCookie.value}`;
-  }
-
   return null;
-}
-
-/**
- * Validates demo token format
- * Demo tokens are in format: "demo:{user_id}"
- */
-function isDemoToken(token: string): boolean {
-  return token.startsWith("demo:");
 }
 
 /**
@@ -59,38 +39,14 @@ function isDemoToken(token: string): boolean {
  * 
  * Why: Centralized auth validation ensures consistent security
  * across all API endpoints, regardless of which client calls them.
- * Supports both real Supabase sessions (via cookies) and demo tokens.
  * 
  * Authentication methods (in priority order):
  * 1. Authorization header with Bearer token (for client-side API calls)
- * 2. Demo user cookie (demo_user_id)
- * 3. Supabase session cookies (automatically read by createClient())
+ * 2. Supabase session cookies (automatically read by createClient())
  */
 export async function getAuthenticatedUser(
   request: NextRequest
 ): Promise<AuthenticatedUser> {
-  // Check for demo user first (via cookie)
-  const demoCookie = request.cookies.get("demo_user_id");
-  if (demoCookie) {
-    const user = mockUsers.find(u => u.id === demoCookie.value);
-    
-    if (!user) {
-      throw new ApiException(
-        401,
-        ErrorCodes.AUTH_INVALID,
-        "Invalid demo authentication token."
-      );
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      level: user.level ?? undefined,
-    };
-  }
-
   // Check for Authorization header token (for client-side API calls)
   const token = extractAuthToken(request);
   
@@ -100,7 +56,7 @@ export async function getAuthenticatedUser(
   let user;
   let authError;
 
-  if (token && !isDemoToken(token)) {
+  if (token) {
     // If token is provided in Authorization header, use it
     const result = await supabase.auth.getUser(token);
     user = result.data?.user || null;

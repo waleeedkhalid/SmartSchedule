@@ -120,11 +120,6 @@ const roleNavItems: Record<string, NavItem[]> = {
   teaching_load: [
     {
       title: "Dashboard",
-      href: "/dashboard/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Teaching Load",
       href: "/dashboard/teaching-load",
       icon: Clock,
     },
@@ -133,6 +128,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/instructors",
       icon: Users,
     },
+    {
+      title: "Sections",
+      href: "/dashboard/sections",
+      icon: FileText,
+    },
+    {
+      title: "Rooms",
+      href: "/dashboard/rooms",
+      icon: MapPin,
+    }
   ],
   faculty: [
     {

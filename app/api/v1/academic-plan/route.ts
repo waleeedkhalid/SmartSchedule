@@ -11,8 +11,6 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { getMockCourses } from "@/lib/demo-data";
-import { extractAuthToken } from "@/lib/api/auth-utils";
 
 // OPTIMIZATION: Cache API route responses for 1 hour (3600 seconds)
 // Academic plan data is relatively static and doesn't change frequently
@@ -34,32 +32,6 @@ export async function GET(request: NextRequest) {
     
     // Only students can access academic plan
     requireRole(user, "student");
-
-    // Check if this is a demo token
-    const token = extractAuthToken(request);
-    const isDemo = token?.startsWith("demo:") === true;
-
-    // Handle demo mode
-    if (isDemo === true) {
-      const mockCourses = await getMockCourses();
-      
-      // Map to API response format
-      const courses: Course[] = mockCourses.map((course) => ({
-        code: course.code,
-        name: course.title,
-        credits: course.credits,
-        level: course.level ?? 0, // Use 0 for electives (NULL recommended_level)
-        course_type: course.is_elective ? "elective" : "required",
-        created_at: "2024-01-01T00:00:00Z",
-      }));
-
-      const response = createSuccessResponse(courses, 200);
-      // OPTIMIZATION: Add cache headers for browser/CDN caching
-      response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-      return response;
-    }
-
-    // Handle real Supabase mode
     const supabase = await createClient();
 
     // OPTIMIZATION: Select only required columns instead of select("*")

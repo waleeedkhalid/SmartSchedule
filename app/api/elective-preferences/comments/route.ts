@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       })
       .select(`
         *,
-        course:course!elective_comment_course_code_fkey(code, title, level, credits)
+        course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
       `)
       .single();
 

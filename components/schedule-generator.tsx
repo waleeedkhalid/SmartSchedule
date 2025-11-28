@@ -6,10 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, AlertCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Sparkles, AlertCircle, CheckCircle, XCircle, Loader2, Brain, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getAuthHeader } from "@/lib/utils/client-auth";
+import type { CSPSolverConfig, ExternalScheduleEntry } from "@/lib/scheduling/csp-solver";
 
 interface SchedulingStats {
   total_sections: number;
@@ -48,11 +51,39 @@ interface ScheduleGeneratorProps {
   initialStatus: ScheduleStatus;
 }
 
+interface CSPProgress {
+  assigned: number;
+  total: number;
+  backtracks: number;
+  currentVariable?: string;
+}
+
+interface CSPStats {
+  backtracks?: number;
+  softConstraintCost?: {
+    studentGaps: number;
+    loadImbalance: number;
+    roomProximity: number;
+    instructorPreference: number;
+    total: number;
+  };
+}
+
 export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
   const [status, setStatus] = useState<ScheduleStatus>(initialStatus);
+  const [useCSPSolver, setUseCSPSolver] = useState(false);
+  const [cspProgress, setCspProgress] = useState<CSPProgress | null>(null);
+  const [cspStats, setCspStats] = useState<CSPStats | null>(null);
+  const [isSchedulingExams, setIsSchedulingExams] = useState(false);
+  const [examResult, setExamResult] = useState<{
+    success: boolean;
+    assigned: number;
+    unassigned: number;
+    message: string;
+  } | null>(null);
 
   async function handleGenerate() {
     console.log('handleGenerate called');
@@ -118,7 +149,40 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
         throw new Error('No active academic term found. Please create an academic term first.');
       }
       
-      console.log('Calling schedule generation API with term_id:', activeTerm.id);
+      // Fetch external schedules (released sections from other departments) for CSP constraints
+      let externalSchedules: ExternalScheduleEntry[] = [];
+      if (useCSPSolver) {
+        try {
+          const externalResponse = await fetch('/api/v1/sections?state=released&external=true', {
+            headers: {
+              'Authorization': authHeader,
+            },
+          });
+          
+          if (externalResponse.ok) {
+            const externalData = await externalResponse.json();
+            // Convert sections to external schedule entries
+            externalSchedules = (externalData.data || []).map((section: any) => {
+              const pattern = section.meeting_pattern || {};
+              const days = pattern.days || [];
+              const start = pattern.start || '';
+              
+              return days.map((day: string) => ({
+                course_id: section.course_code,
+                day,
+                time: start,
+                room: section.room_code || '',
+                capacity: section.capacity || 0,
+              }));
+            }).flat().filter((entry: ExternalScheduleEntry) => entry.day && entry.time && entry.room);
+          }
+        } catch (error) {
+          console.warn('Could not fetch external schedules:', error);
+          // Continue without external schedules
+        }
+      }
+
+      console.log('Calling schedule generation API with term_id:', activeTerm.id, 'useCSP:', useCSPSolver);
       // Call schedule generation API
       const response = await fetch('/api/v1/schedules/generate', {
         method: 'POST',
@@ -128,6 +192,13 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
         },
         body: JSON.stringify({
           term_id: activeTerm.id,
+          use_csp_solver: useCSPSolver,
+          csp_config: useCSPSolver ? {
+            externalSchedules,
+            enableForwardChecking: true,
+            enableSoftConstraints: true,
+            maxBacktracks: 10000,
+          } : undefined,
         }),
       });
       
@@ -163,6 +234,16 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
         unassigned: result.data.unassigned || [],
         message: result.data.message,
       };
+
+      // Extract CSP stats if available
+      if (result.data.csp_stats) {
+        setCspStats({
+          backtracks: result.data.csp_stats.backtracks,
+          softConstraintCost: result.data.csp_stats.softConstraintCost,
+        });
+      } else {
+        setCspStats(null);
+      }
 
       setGenerationResult(generationResult);
 
@@ -300,14 +381,67 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>How it works</AlertTitle>
             <AlertDescription>
-              The algorithm will automatically assign rooms and time slots to all draft sections while
-              avoiding conflicts. Sections are prioritized by level, with lectures assigned before labs.
-              The system checks for room, instructor, and student-level conflicts.
+              {useCSPSolver ? (
+                <>
+                  <strong>CSP Solver Mode:</strong> Uses Constraint Satisfaction Problem (CSP) algorithm with backtracking search,
+                  Most Constrained Variable (MCV) and Least Constraining Value (LCV) heuristics, and forward checking.
+                  The solver optimizes for student gaps, load balancing, room proximity, and instructor preferences.
+                  <br /><br />
+                  <strong>Hard Constraints:</strong> No room conflicts, instructor conflicts, student-level conflicts, or external schedule conflicts.
+                  <br /><br />
+                  <strong>Soft Constraints:</strong> Minimizes student gaps, balances daily load per level, optimizes room proximity, and respects instructor preferences.
+                </>
+              ) : (
+                <>
+                  The algorithm will automatically assign rooms and time slots to all draft sections while
+                  avoiding conflicts. Sections are prioritized by level, with lectures assigned before labs.
+                  The system checks for room, instructor, and student-level conflicts.
+                </>
+              )}
               <br /><br />
               <strong>Note:</strong> Schedule generation uses the time grid settings configured in Scheduling Settings.
               Make sure your scheduling settings are properly configured before generating schedules.
             </AlertDescription>
           </Alert>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="csp-solver" className="text-base font-medium flex items-center gap-2">
+                <Brain className="h-4 w-4 text-purple-600" />
+                Use CSP Solver (Advanced)
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Enable constraint satisfaction problem solver with backtracking and optimization
+              </p>
+            </div>
+            <Switch
+              id="csp-solver"
+              checked={useCSPSolver}
+              onCheckedChange={setUseCSPSolver}
+              disabled={isGenerating}
+            />
+          </div>
+
+          {cspProgress && (
+            <div className="space-y-2 rounded-lg border p-4 bg-muted/50">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">CSP Solver Progress</span>
+                <span className="text-muted-foreground">
+                  {cspProgress.assigned} / {cspProgress.total} assigned
+                </span>
+              </div>
+              <Progress 
+                value={(cspProgress.assigned / cspProgress.total) * 100} 
+                className="h-2" 
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Backtracks: {cspProgress.backtracks.toLocaleString()}</span>
+                {cspProgress.currentVariable && (
+                  <span>Processing: {cspProgress.currentVariable}</span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <Button
@@ -446,6 +580,47 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                   </div>
                 </div>
 
+                {cspStats && (
+                  <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-600" />
+                      CSP Solver Statistics
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {cspStats.backtracks !== undefined && (
+                        <div>
+                          <p className="text-muted-foreground">Backtracks</p>
+                          <p className="text-lg font-semibold">{cspStats.backtracks.toLocaleString()}</p>
+                        </div>
+                      )}
+                      {cspStats.softConstraintCost && (
+                        <>
+                          <div>
+                            <p className="text-muted-foreground">Total Cost</p>
+                            <p className="text-lg font-semibold">{cspStats.softConstraintCost.total}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Student Gaps</p>
+                            <p className="text-base">{cspStats.softConstraintCost.studentGaps}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Load Imbalance</p>
+                            <p className="text-base">{cspStats.softConstraintCost.loadImbalance}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Room Proximity</p>
+                            <p className="text-base">{cspStats.softConstraintCost.roomProximity}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Instructor Preference</p>
+                            <p className="text-base">{cspStats.softConstraintCost.instructorPreference}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {generationResult.unassigned.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-2">
@@ -482,6 +657,149 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Exam Scheduling Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-blue-600" />
+            Final Exam Scheduling
+          </CardTitle>
+          <CardDescription>
+            Schedule final exams for SWE courses (Levels 4-8) with student conflict avoidance
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Exam Scheduling CSP</AlertTitle>
+            <AlertDescription>
+              The exam scheduler uses a specialized Constraint Satisfaction Problem solver that prioritizes
+              <strong> student conflict avoidance</strong> above all else. No student can have two exams at the same time.
+              <br /><br />
+              <strong>Hard Constraints:</strong> Student conflicts (ABSOLUTE PRIORITY), room capacity, unique room assignment, instructor conflicts, room type (Lecture Hall/Auditorium only).
+              <br /><br />
+              <strong>Soft Constraints:</strong> Spread student load (minimize multiple exams per day), distribute exams across exam window, theory before lab exams.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex gap-4">
+            <Button
+              onClick={async () => {
+                setIsSchedulingExams(true);
+                setExamResult(null);
+                try {
+                  const authHeader = await getAuthHeader();
+                  
+                  // Get active term
+                  const termsResponse = await fetch('/api/v1/academic-terms?current=true', {
+                    headers: { 'Authorization': authHeader },
+                  });
+                  
+                  if (!termsResponse.ok) {
+                    throw new Error('Failed to fetch academic term');
+                  }
+                  
+                  const termsData = await termsResponse.json();
+                  const activeTerm = Array.isArray(termsData.data) && termsData.data.length > 0
+                    ? termsData.data[0]
+                    : null;
+
+                  if (!activeTerm) {
+                    throw new Error('No active academic term found');
+                  }
+
+                  // Call exam scheduling API
+                  const response = await fetch('/api/v1/exams/schedule', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': authHeader,
+                    },
+                    body: JSON.stringify({
+                      term_id: activeTerm.id,
+                      use_csp_solver: true,
+                    }),
+                  });
+
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || errorData.message || 'Failed to schedule exams');
+                  }
+
+                  const result = await response.json();
+                  setExamResult({
+                    success: result.data.stats.unassigned === 0,
+                    assigned: result.data.stats.assigned || 0,
+                    unassigned: result.data.stats.unassigned || 0,
+                    message: result.data.message || 'Exam scheduling completed',
+                  });
+
+                  if (result.data.stats.unassigned === 0) {
+                    toast.success('All exams scheduled successfully!');
+                  } else {
+                    toast.warning(`Partial exam scheduling: ${result.data.stats.unassigned} exams could not be scheduled.`);
+                  }
+                } catch (error) {
+                  console.error('Error scheduling exams:', error);
+                  const errorMessage = error instanceof Error ? error.message : 'Failed to schedule exams';
+                  toast.error(errorMessage);
+                  setExamResult({
+                    success: false,
+                    assigned: 0,
+                    unassigned: 0,
+                    message: errorMessage,
+                  });
+                } finally {
+                  setIsSchedulingExams(false);
+                }
+              }}
+              disabled={isSchedulingExams || isGenerating}
+              size="lg"
+              className="flex-1"
+              type="button"
+            >
+              {isSchedulingExams ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Scheduling Exams...
+                </>
+              ) : (
+                <>
+                  <GraduationCap className="mr-2 h-4 w-4" />
+                  Schedule Final Exams
+                </>
+              )}
+            </Button>
+          </div>
+
+          {examResult && (
+            <Alert className={examResult.success ? "border-green-500" : "border-orange-500"}>
+              {examResult.success ? (
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+              )}
+              <AlertTitle>{examResult.success ? 'Exam Scheduling Complete' : 'Partial Exam Scheduling'}</AlertTitle>
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p>{examResult.message}</p>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Assigned</p>
+                      <p className="text-xl font-bold text-green-600">{examResult.assigned}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Unassigned</p>
+                      <p className="text-xl font-bold text-orange-600">{examResult.unassigned}</p>
+                    </div>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

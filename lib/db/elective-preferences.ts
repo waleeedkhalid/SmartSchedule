@@ -3,7 +3,7 @@ import { createClient } from "@/supabase/server";
 export interface ElectivePreferenceStat {
   course_code: string;
   course_title: string;
-  level: number;
+  level: number | null; // Maps from recommended_level (nullable for electives)
   total_requests: number;
   first_choice: number;
   second_choice: number;
@@ -27,7 +27,7 @@ export async function getElectivePreferenceStats(): Promise<ElectivePreferenceSt
       course:course!elective_preference_course_code_fkey(
         code,
         title,
-        level
+        recommended_level
       )
     `);
 
@@ -40,7 +40,7 @@ export async function getElectivePreferenceStats(): Promise<ElectivePreferenceSt
 
   preferences?.forEach((pref) => {
     const courseCode = pref.course_code;
-    const course = pref.course as { code: string; title: string; level: number } | null;
+    const course = pref.course as { code: string; title: string; recommended_level: number | null } | null;
 
     if (!course) return;
 
@@ -48,7 +48,7 @@ export async function getElectivePreferenceStats(): Promise<ElectivePreferenceSt
       statsMap.set(courseCode, {
         course_code: courseCode,
         course_title: course.title,
-        level: course.level,
+        level: course.recommended_level, // Map recommended_level to level (nullable for electives)
         total_requests: 0,
         first_choice: 0,
         second_choice: 0,

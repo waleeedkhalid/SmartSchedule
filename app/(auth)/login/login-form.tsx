@@ -21,7 +21,6 @@ import {
 import { PasswordInput } from '@/components/ui/password-input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { DEMO_ACCOUNTS } from '@/lib/demo-data'
 
 const loginSchema = z.object({
   email: z
@@ -140,16 +139,6 @@ export default function LoginForm() {
     [handleLogin]
   );
 
-  const handleDemoLogin = useCallback(
-    async (role: keyof typeof DEMO_ACCOUNTS) => {
-      const account = DEMO_ACCOUNTS[role];
-      form.setValue('email', account.email);
-      form.setValue('password', account.password);
-      await handleLogin(account.email, account.password);
-    },
-    [handleLogin, form]
-  )
-
   return (
     <div className="grid gap-6">
       {confirmationMessage === 'true' && (
@@ -249,65 +238,6 @@ export default function LoginForm() {
           <Icons.arrowRight className="ml-2 h-4 w-4" />
         </Link>
       </Button>
-
-      {/* Demo Account Quick Login - Clickable Buttons */}
-      <div className="mt-6 pt-6 border-t">
-        <p className="text-sm text-muted-foreground mb-3 text-center">
-          Demo Accounts (Password: demo123)
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("student")}
-            disabled={isPending}
-            className="text-xs"
-          >
-            Student
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("faculty")}
-            disabled={isPending}
-            className="text-xs"
-          >
-            Faculty
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("scheduling")}
-            disabled={isPending}
-            className="text-xs"
-          >
-            Scheduling
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("teaching_load")}
-            disabled={isPending}
-            className="text-xs"
-          >
-            Load
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("registrar")}
-            disabled={isPending}
-            className="text-xs col-span-2"
-          >
-            Registrar
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

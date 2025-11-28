@@ -91,7 +91,7 @@ export async function PATCH(
       .eq("id", params.id)
       .select(`
         *,
-        course:course!elective_comment_course_code_fkey(code, title, level, credits)
+        course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
       `)
       .single();
 

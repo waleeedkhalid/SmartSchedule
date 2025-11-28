@@ -20,7 +20,6 @@ import {
   Filler,
 } from 'chart.js';
 import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
-import { getMockDashboardStats, getMockSections, getMockCourses, getMockInstructors } from '@/lib/demo-data';
 
 ChartJS.register(
   CategoryScale,
@@ -50,12 +49,19 @@ export function SchedulingDashboardChartsNew() {
     setLastUpdate(new Date());
     
     async function loadData() {
-      const [dashboardStats, sections, courses, instructors] = await Promise.all([
-        getMockDashboardStats(),
-        getMockSections(),
-        getMockCourses(),
-        getMockInstructors(),
-      ]);
+      // TODO: Replace with real API calls
+      // For now, using empty data structure
+      const dashboardStats = {
+        enrollments: { byLevel: [], total: 0 },
+        rooms: { total: 0, used: 0, utilization: [] },
+        workload: { instructors: [], average: 0 },
+        timeslots: { distribution: [] },
+        electives: { courses: [], totalEnrollments: 0 },
+        progress: { totalSections: 0, assigned: 0, unassigned: 0 },
+      };
+      const sections: any[] = [];
+      const courses: any[] = [];
+      const instructors: any[] = [];
 
       // Enrollment by Level (Bar Chart)
       const enrollmentByLevel = dashboardStats.enrollments?.byLevel || [];
@@ -91,8 +97,8 @@ export function SchedulingDashboardChartsNew() {
         labels: ['Required Courses', 'Elective Courses'],
         datasets: [{
           data: [
-            Math.round((requiredCount / total) * 100),
-            Math.round((electiveCount / total) * 100),
+            total > 0 ? Math.round((requiredCount / total) * 100) : 0,
+            total > 0 ? Math.round((electiveCount / total) * 100) : 0,
           ],
           backgroundColor: [
             'rgba(34, 197, 94, 0.85)',
@@ -432,15 +438,22 @@ export function SchedulingDashboardChartsNew() {
             <div className="h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
               <Bar data={enrollmentData} options={barOptions} />
             </div>
-            <div className="grid grid-cols-5 gap-4 mt-6">
-              {enrollmentData.labels.map((label: string, idx: number) => (
-                <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{label}</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-2">{enrollmentData.datasets[0].data[idx]}</p>
-                  <p className="text-xs text-muted-foreground mt-1">students</p>
-                </div>
-              ))}
-            </div>
+            {enrollmentData.labels.length > 0 && (
+              <div className="grid grid-cols-5 gap-4 mt-6">
+                {enrollmentData.labels.map((label: string, idx: number) => (
+                  <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-semibold text-gray-700">{label}</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-2">{enrollmentData.datasets[0].data[idx]}</p>
+                    <p className="text-xs text-muted-foreground mt-1">students</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {enrollmentData.labels.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No enrollment data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -508,15 +521,21 @@ export function SchedulingDashboardChartsNew() {
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
               {instructorLoadData && <Line data={instructorLoadData} options={lineOptions} />}
             </div>
-            <div className="grid grid-cols-5 gap-4 mt-6">
-              {instructorLoadData?.labels.map((name: string, idx: number) => (
-                <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{name.replace('Dr. ', '')}</p>
-                  <p className="text-2xl font-bold text-purple-600 mt-2">{instructorLoadData.datasets[0].data[idx]}h</p>
-                  <p className="text-xs text-muted-foreground mt-1">per week</p>
-                </div>
-              ))}
-            </div>
+            {instructorLoadData?.labels && instructorLoadData.labels.length > 0 ? (
+              <div className="grid grid-cols-5 gap-4 mt-6">
+                {instructorLoadData.labels.map((name: string, idx: number) => (
+                  <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-semibold text-gray-700">{name.replace('Dr. ', '')}</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-2">{instructorLoadData.datasets[0].data[idx]}h</p>
+                    <p className="text-xs text-muted-foreground mt-1">per week</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No instructor data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -580,14 +599,20 @@ export function SchedulingDashboardChartsNew() {
             <div className="h-96 bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-8 border border-pink-100">
               {radarData && <Radar data={radarData} options={radarOptions} />}
             </div>
-            <div className="grid grid-cols-5 gap-4 mt-8">
-              {radarData?.labels.map((label: string, idx: number) => (
-                <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{label}</p>
-                  <p className="text-2xl font-bold text-pink-600 mt-2">{radarData.datasets[0].data[idx]}%</p>
-                </div>
-              ))}
-            </div>
+            {radarData?.labels && radarData.labels.length > 0 ? (
+              <div className="grid grid-cols-5 gap-4 mt-8">
+                {radarData.labels.map((label: string, idx: number) => (
+                  <div key={idx} className="text-center p-4 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-semibold text-gray-700">{label}</p>
+                    <p className="text-2xl font-bold text-pink-600 mt-2">{radarData.datasets[0].data[idx]}%</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No performance data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>

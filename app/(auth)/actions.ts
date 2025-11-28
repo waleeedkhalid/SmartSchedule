@@ -1,7 +1,7 @@
 /**
  * Server Actions for Authentication
  * 
- * Supports both demo accounts and real Supabase authentication.
+ * Uses Supabase authentication.
  * Uses the production API endpoint for authentication.
  */
 
@@ -9,7 +9,6 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { verifyDemoCredentials } from "@/lib/demo-data";
 import { createClient } from "@/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { linkFacultyProfileToInstructor } from "@/lib/db/faculty-data";
@@ -289,39 +288,9 @@ export async function linkFacultyToInstructor(
   }
 }
 
-// Login with both demo and Supabase support
+// Login with Supabase authentication
 export async function login(formData: { email: string; password: string }) {
-  // First check for demo credentials
-  const { valid: isDemo, user: demoUser } = verifyDemoCredentials(formData.email, formData.password);
-  
-  if (isDemo && demoUser) {
-    // Handle demo login
-    const cookieStore = await cookies();
-    cookieStore.set('demo_user_id', demoUser.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-    
-    // Redirect to role-specific dashboard
-    switch (demoUser.role) {
-      case 'student':
-        redirect('/dashboard/student');
-      case 'faculty':
-        redirect('/dashboard/faculty');
-      case 'scheduling':
-        redirect('/dashboard/scheduling');
-      case 'teaching_load':
-        redirect('/dashboard/teaching-load');
-      case 'registrar':
-        redirect('/dashboard/registrar');
-      default:
-        redirect('/dashboard');
-    }
-  }
-  
-  // Try real Supabase authentication
+  // Authenticate with Supabase
   try {
     const supabase = await createClient();
     

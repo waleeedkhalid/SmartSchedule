@@ -1,7 +1,7 @@
 /**
  * Authentication Middleware
  * 
- * Handles authentication for both demo accounts and Supabase production accounts.
+ * Handles authentication for Supabase production accounts.
  * Uses Supabase SSR pattern to automatically refresh auth sessions on every request.
  * 
  * CRITICAL: This middleware calls `supabase.auth.getUser()` which refreshes the
@@ -14,41 +14,6 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { mockUsers } from "@/lib/demo-data";
-
-/**
- * Gets user role from demo cookie (synchronous, for middleware)
- * Returns role string or null if not a demo user
- */
-function getDemoUserRole(demoUserId: string | undefined): string | null {
-  if (!demoUserId) {
-    return null;
-  }
-  
-  const user = mockUsers.find(u => u.id === demoUserId);
-  return user ? user.role : null;
-}
-
-/**
- * Gets the dashboard path for a given role
- */
-function getDashboardPath(role: string): string {
-  switch (role) {
-    case 'student':
-      return '/dashboard/student';
-    case 'faculty':
-      return '/dashboard/faculty';
-    case 'scheduling':
-      return '/dashboard/scheduling';
-    case 'teaching_load':
-      return '/dashboard/teaching-load';
-    case 'registrar':
-      return '/dashboard/registrar';
-    default:
-      return '/dashboard'; // Let dashboard page handle role detection
-  }
-}
-
 
 /**
  * Clears all authentication cookies to reset corrupted or expired session
@@ -62,7 +27,6 @@ function clearAuthCookies(response: NextResponse): NextResponse {
   // Clear all auth-related cookies (both custom and Supabase)
   const cookiesToClear = [
     'auth_token',
-    'demo_user_id',
     // Supabase SSR cookie patterns (these are the actual cookie names used by @supabase/ssr)
     'sb-access-token',
     'sb-refresh-token',
@@ -208,62 +172,54 @@ export async function updateSession(request: NextRequest) {
     },
   });
   
-  // Check for demo user first (no database call needed)
-  const demoUserId = request.cookies.get('demo_user_id')?.value;
-  const hasDemoUser = !!demoUserId;
-  
-  // Only create Supabase client and check auth if not a demo user
-  // This avoids unnecessary auth requests for demo users
+  // Create Supabase client and check auth
   let supabaseUser = null;
   let authError = null;
   let hasSupabaseSession = false;
   let supabase: ReturnType<typeof createServerClient> | null = null;
   
-  if (!hasDemoUser) {
-    try {
-      // Create Supabase client with request/response for cookie handling
-      supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                // Only set cookies on the response object
-                // Modifying request.cookies is an anti-pattern in Next.js middleware
-                // The response cookies will be sent to the browser, which will include
-                // them in subsequent requests automatically
-                response.cookies.set(name, value, {
-                  ...options,
-                  httpOnly: options?.httpOnly ?? true,
-                  secure: options?.secure ?? process.env.NODE_ENV === 'production',
-                  sameSite: options?.sameSite ?? 'lax',
-                  path: options?.path ?? '/',
-                });
-              });
-            },
+  try {
+    // Create Supabase client with request/response for cookie handling
+    supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
           },
-        }
-      );
-      
-      // CRITICAL: Refresh the auth session by calling getUser()
-      // This automatically refreshes expired tokens and updates cookies
-      // Only call this for non-demo users to reduce auth requests
-      const authResult = await supabase.auth.getUser();
-      supabaseUser = authResult.data?.user || null;
-      authError = authResult.error;
-      hasSupabaseSession = !!supabaseUser && !authError;
-    } catch (error) {
-      // Handle errors creating or using Supabase client
-      // This prevents middleware from crashing if createServerClient fails
-      console.error('Failed to create or use Supabase client:', error);
-      // supabase remains null, which is handled gracefully by the rest of the code
-      authError = error instanceof Error ? error : new Error(String(error));
-      hasSupabaseSession = false;
-    }
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              // Only set cookies on the response object
+              // Modifying request.cookies is an anti-pattern in Next.js middleware
+              // The response cookies will be sent to the browser, which will include
+              // them in subsequent requests automatically
+              response.cookies.set(name, value, {
+                ...options,
+                httpOnly: options?.httpOnly ?? true,
+                secure: options?.secure ?? process.env.NODE_ENV === 'production',
+                sameSite: options?.sameSite ?? 'lax',
+                path: options?.path ?? '/',
+              });
+            });
+          },
+        },
+      }
+    );
+    
+    // CRITICAL: Refresh the auth session by calling getUser()
+    // This automatically refreshes expired tokens and updates cookies
+    const authResult = await supabase.auth.getUser();
+    supabaseUser = authResult.data?.user || null;
+    authError = authResult.error;
+    hasSupabaseSession = !!supabaseUser && !authError;
+  } catch (error) {
+    // Handle errors creating or using Supabase client
+    // This prevents middleware from crashing if createServerClient fails
+    console.error('Failed to create or use Supabase client:', error);
+    // supabase remains null, which is handled gracefully by the rest of the code
+    authError = error instanceof Error ? error : new Error(String(error));
+    hasSupabaseSession = false;
   }
   
   // Public routes that don't require authentication
@@ -275,7 +231,6 @@ export async function updateSession(request: NextRequest) {
     '/auth',
     '/error',
     '/onboarding',
-    '/demo',
     '/api',
     '/mobile/login'
   ];
@@ -287,7 +242,7 @@ export async function updateSession(request: NextRequest) {
   // AUTOMATIC SIGNOUT: If Supabase session expired or invalid, sign out immediately
   // This prevents errors from appearing when user tries to access protected routes
   // Also clear cookies on response to prevent redirect loops
-  if (authError && !hasDemoUser && !isPublicRoute && pathname.startsWith('/dashboard')) {
+  if (authError && !isPublicRoute && pathname.startsWith('/dashboard')) {
     // Session expired or invalid - automatically sign out and clear all cookies
     console.warn('Session expired or invalid, automatically signing out:', {
       error: authError.message,
@@ -299,7 +254,7 @@ export async function updateSession(request: NextRequest) {
   
   // AGGRESSIVE CLEANUP: If we have auth errors on any protected route, clear cookies
   // This prevents infinite redirect loops when session is corrupted
-  if (authError && !hasDemoUser && !isPublicRoute) {
+  if (authError && !isPublicRoute) {
     console.warn('Auth error detected on protected route, clearing session:', {
       error: authError.message,
       pathname
@@ -308,22 +263,12 @@ export async function updateSession(request: NextRequest) {
     return autoSignOut(request, 'auth_error');
   }
   
-  // Check if user is authenticated (either demo or Supabase)
-  const isAuthenticated = hasDemoUser || hasSupabaseSession;
+  // Check if user is authenticated
+  const isAuthenticated = hasSupabaseSession;
   
   // Redirect logged-in users away from auth pages
-  // For demo users, redirect to role-specific dashboard
-  // For Supabase users, redirect to /dashboard which will detect role
+  // Redirect to /dashboard which will detect role
   if (isAuthenticated && (pathname === '/login' || pathname === '/register')) {
-    // Try to get demo user role (synchronous)
-    const demoRole = getDemoUserRole(demoUserId);
-    if (demoRole) {
-      // Demo user - redirect to role-specific dashboard
-      const dashboardPath = getDashboardPath(demoRole);
-      const redirectUrl = new URL(dashboardPath, request.url);
-      return NextResponse.redirect(redirectUrl);
-    }
-    
     // Supabase user - redirect to /dashboard which will detect role
     // Session is already validated by getUser() call above
     // Note: hasSupabaseSession is defined as !!supabaseUser && !authError,
@@ -343,7 +288,7 @@ export async function updateSession(request: NextRequest) {
       cookie => cookie.name.startsWith('sb-') || cookie.name.includes('supabase')
     );
     
-    if (hasSupabaseCookies && !hasDemoUser) {
+    if (hasSupabaseCookies) {
       // Corrupted session - sign out immediately instead of redirecting
       // This happens when cookies exist but session is invalid (expired, corrupted, etc.)
       console.warn('Corrupted session detected (cookies present but no valid auth), signing out immediately:', {
@@ -359,19 +304,6 @@ export async function updateSession(request: NextRequest) {
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
-  
-  // Check onboarding status for authenticated users trying to access dashboard
-  // Skip onboarding check for demo users
-  // UPDATE: Onboarding check removed from middleware to improve performance
-  // and rely on page-level validation (validateOnboardingAndProfile)
-  /*
-  if (isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute && !hasDemoUser) {
-    // Only check for Supabase users (demo users skip onboarding)
-    if (hasSupabaseSession && supabaseUser) {
-      // Onboarding check logic removed - rely on page validation
-    }
-  }
-  */
   
   // Return response with updated cookies from Supabase session refresh
   // This ensures the refreshed session cookies are sent to the client

@@ -19,7 +19,6 @@ import {
   Filler,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { getMockCreditStats, getMockEnrollments, getMockStudentSchedule } from '@/lib/demo-data';
 
 ChartJS.register(
   CategoryScale,
@@ -47,11 +46,17 @@ export function StudentDashboardCharts() {
     setLastUpdate(new Date());
     
     async function loadData() {
-      const [creditStats, enrollments, schedule] = await Promise.all([
-        getMockCreditStats(),
-        getMockEnrollments(),
-        getMockStudentSchedule(),
-      ]);
+      // TODO: Replace with real API calls
+      // For now, using empty data structure
+      const creditStats = {
+        required_credits: 0,
+        elective_credits: 0,
+        total: 0,
+        enrolled_sections: 0,
+        available_credits: 20,
+      };
+      const enrollments: any[] = [];
+      const schedule: any = { schedule: [] };
 
       // Enrollment data (Doughnut)
       const requiredCredits = creditStats.required_credits || 0;
@@ -375,7 +380,7 @@ export function StudentDashboardCharts() {
                   Core curriculum courses completed and in progress
                 </p>
                 <div className="w-full h-3 bg-blue-200 rounded-full mt-4">
-                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(requiredCredits / (requiredCredits + electiveCredits)) * 100}%` }}></div>
+                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(requiredCredits + electiveCredits) > 0 ? (requiredCredits / (requiredCredits + electiveCredits)) * 100 : 0}%` }}></div>
                 </div>
               </div>
               <div className="p-6 bg-purple-50 rounded-lg border border-purple-100">
@@ -388,7 +393,7 @@ export function StudentDashboardCharts() {
                   Selected electives based on career interests and goals
                 </p>
                 <div className="w-full h-3 bg-purple-200 rounded-full mt-4">
-                  <div className="h-full bg-purple-600 rounded-full" style={{ width: `${(electiveCredits / (requiredCredits + electiveCredits)) * 100}%` }}></div>
+                  <div className="h-full bg-purple-600 rounded-full" style={{ width: `${(requiredCredits + electiveCredits) > 0 ? (electiveCredits / (requiredCredits + electiveCredits)) * 100 : 0}%` }}></div>
                 </div>
               </div>
             </div>

@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react'
-import { getMockDashboardStats } from '@/lib/demo-data'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -68,8 +67,16 @@ export function SchedulingDashboardCharts() {
     async function fetchData() {
       try {
         setLoading(true)
-        // DEMO MODE: Use mock data
-        const data = await getMockDashboardStats()
+        // TODO: Replace with real API call to /api/scheduling/dashboard-stats
+        // For now, using empty data structure
+        const data = {
+          enrollments: { byLevel: [], total: 0 },
+          rooms: { total: 0, used: 0, utilization: [] },
+          workload: { instructors: [], average: 0 },
+          timeslots: { distribution: [] },
+          electives: { courses: [], totalEnrollments: 0 },
+          progress: { totalSections: 0, assigned: 0, unassigned: 0 },
+        }
         
         // Transform mock data to match expected format
         const transformedData = {
