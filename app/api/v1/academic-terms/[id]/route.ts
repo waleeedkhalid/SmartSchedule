@@ -11,25 +11,20 @@ import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await authenticateRequest(request);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("academic_term")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) {
@@ -37,7 +32,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Academic term with id '${params.id}' not found`
+          `Academic term with id '${id}' not found`
         );
       }
       throw error;
@@ -51,18 +46,25 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling"]);
 
+    const { id } = await params;
     const body = await request.json();
     const { name, start_date, end_date, status } = body;
 
     const supabase = await createClient();
 
-    const updateData: any = {};
+    interface UpdateData {
+      name?: string;
+      start_date?: string;
+      end_date?: string;
+      status?: string;
+    }
+    const updateData: UpdateData = {};
     if (name !== undefined) updateData.name = name;
     if (start_date !== undefined) updateData.start_date = start_date;
     if (end_date !== undefined) updateData.end_date = end_date;
@@ -71,7 +73,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("academic_term")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -80,7 +82,7 @@ export async function PUT(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Academic term with id '${params.id}' not found`
+          `Academic term with id '${id}' not found`
         );
       }
       throw error;
@@ -94,19 +96,20 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling"]);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     // Check if term has schedules
     const { data: schedules } = await supabase
       .from("schedule")
       .select("id")
-      .eq("term_id", params.id)
+      .eq("term_id", id)
       .limit(1);
 
     if (schedules && schedules.length > 0) {
@@ -120,7 +123,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("academic_term")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) {
       throw error;

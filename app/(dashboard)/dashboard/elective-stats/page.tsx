@@ -35,9 +35,9 @@ export default async function ElectiveStatsPage() {
 
   // Handle errors gracefully
   if (roleError) {
-    // Handle 400 errors specifically - these are query/RLS issues
-    if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
-      console.warn('user_roles query error (400) in elective-stats:', {
+    // Handle PGRST errors specifically - these are query/RLS issues
+    if (roleError.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error (PGRST) in elective-stats:', {
         code: roleError.code,
         message: roleError.message,
       });
@@ -157,7 +157,7 @@ export default async function ElectiveStatsPage() {
             <div className="text-center py-12 text-muted-foreground">
               <Heart className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>No preferences submitted yet</p>
-              <p className="text-sm mt-1">Students haven't submitted elective preferences</p>
+              <p className="text-sm mt-1">Students haven&apos;t submitted elective preferences</p>
             </div>
           ) : (
             <div className="space-y-4">

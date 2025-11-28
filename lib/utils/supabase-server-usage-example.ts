@@ -171,9 +171,9 @@ export async function createSection(formData: {
 
     // Handle errors gracefully
     if (roleError) {
-      // Handle 400 errors specifically - these are query/RLS issues
-      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
-        console.warn('user_roles query error (400) in example:', {
+      // Handle PGRST errors specifically - these are query/RLS issues
+      if (roleError.code?.startsWith('PGRST')) {
+        console.warn('user_roles query error (PGRST) in example:', {
           code: roleError.code,
           message: roleError.message,
         });

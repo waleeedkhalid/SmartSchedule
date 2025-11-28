@@ -193,7 +193,7 @@ export default function ElectiveStatsPage() {
                   <div className="text-center py-12 text-muted-foreground">
                     <Heart className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p>No preferences submitted yet</p>
-                    <p className="text-sm mt-1">Students haven't submitted elective preferences</p>
+                    <p className="text-sm mt-1">Students haven&apos;t submitted elective preferences</p>
                   </div>
                 ) : (
                   <div className="space-y-4">

@@ -138,8 +138,13 @@ export const getStudentCreditStats = cache(async (studentId: string): Promise<Cr
   let requiredCredits = 0;
   let electiveCredits = 0;
 
-  for (const enrollment of enrollments) {
-    const section = enrollment.section as any;
+  interface EnrollmentWithSection {
+    section?: {
+      course?: Course;
+    };
+  }
+  for (const enrollment of enrollments as EnrollmentWithSection[]) {
+    const section = enrollment.section;
     if (section?.course) {
       const course = section.course as Course;
       const credits = course.credits || 0;
@@ -195,8 +200,18 @@ export const getStudentEnrollments = cache(async (studentId: string): Promise<St
     return [];
   }
 
-  return (enrollments || []).map((enrollment: any) => {
-    const section = enrollment.section as any;
+  interface EnrollmentWithSection {
+    section?: {
+      course_code?: string;
+      section_no?: string;
+      course?: {
+        title?: string;
+        credits?: number;
+      };
+    };
+  }
+  return (enrollments || []).map((enrollment: EnrollmentWithSection) => {
+    const section = enrollment.section;
     return {
       id: enrollment.id,
       section_id: enrollment.section_id,
@@ -238,8 +253,13 @@ export const getStudentExams = cache(async (studentId: string): Promise<StudentE
     return [];
   }
 
+  interface EnrollmentWithSection {
+    section?: {
+      course_code?: string;
+    };
+  }
   const courseCodes = enrollments
-    .map((e: any) => e.section?.course_code)
+    .map((e: EnrollmentWithSection) => e.section?.course_code)
     .filter((code: string | undefined): code is string => !!code);
 
   if (courseCodes.length === 0) {
@@ -267,7 +287,11 @@ export const getStudentExams = cache(async (studentId: string): Promise<StudentE
     return [];
   }
 
-  return (exams || []).map((exam: any) => ({
+  interface ExamData {
+    id?: string;
+    course_code?: string;
+  }
+  return (exams || []).map((exam: ExamData) => ({
     id: exam.id,
     course_code: exam.course_code,
     course_title: exam.course?.title || "",
@@ -336,7 +360,14 @@ export const getAvailableElectiveSections = cache(async (): Promise<AvailableEle
   }
 
   // Filter for elective courses only
-  const electiveSections = (sections || []).filter((section: any) => {
+  interface SectionWithCourse {
+    course?: {
+      is_elective?: boolean;
+    } | Array<{
+      is_elective?: boolean;
+    }>;
+  }
+  const electiveSections = (sections || []).filter((section: SectionWithCourse) => {
     const course = Array.isArray(section.course) ? section.course[0] : section.course;
     return course?.is_elective === true;
   });
@@ -346,7 +377,10 @@ export const getAvailableElectiveSections = cache(async (): Promise<AvailableEle
   }
 
   // Get enrollment counts for each section
-  const sectionIds = electiveSections.map((s: any) => s.id);
+  interface SectionWithId {
+    id?: string;
+  }
+  const sectionIds = electiveSections.map((s: SectionWithId) => s.id);
   const { data: enrollments } = await supabase
     .from("student_enrollment")
     .select("section_id")
@@ -355,13 +389,32 @@ export const getAvailableElectiveSections = cache(async (): Promise<AvailableEle
 
   // Count enrollments per section
   const enrollmentCounts = new Map<string, number>();
-  (enrollments || []).forEach((enrollment: any) => {
+  interface EnrollmentWithSectionId {
+    section_id: string;
+  }
+  (enrollments || []).forEach((enrollment: EnrollmentWithSectionId) => {
     const count = enrollmentCounts.get(enrollment.section_id) || 0;
     enrollmentCounts.set(enrollment.section_id, count + 1);
   });
 
   // Map to response format
-  return electiveSections.map((section: any) => {
+  interface SectionWithRelations {
+    id: string;
+    capacity?: number;
+    course?: {
+      code?: string;
+      title?: string;
+    } | Array<{
+      code?: string;
+      title?: string;
+    }>;
+    instructor?: {
+      name?: string;
+    } | Array<{
+      name?: string;
+    }>;
+  }
+  return electiveSections.map((section: SectionWithRelations) => {
     const course = Array.isArray(section.course) ? section.course[0] : section.course;
     const instructor = Array.isArray(section.instructor) ? section.instructor[0] : section.instructor;
     const enrolledCount = enrollmentCounts.get(section.id) || 0;

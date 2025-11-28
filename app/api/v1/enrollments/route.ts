@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         .select("section_id")
         .eq("term_id", termId);
 
-      sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
+      sectionIds = (scheduleSections || []).map((s: { section_id: string }) => s.section_id);
     } else {
       // Default to current active term
       const { data: currentTerm } = await supabase
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
           .select("section_id")
           .eq("term_id", currentTerm.id);
 
-        sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
+        sectionIds = (scheduleSections || []).map((s: { section_id: string }) => s.section_id);
       }
     }
 
@@ -132,7 +132,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Map to API response format
-    const enrollments = (data || []).map((enrollment: any) => ({
+    interface EnrollmentWithSection {
+      id: string;
+      student_id: string;
+      section_id: string;
+      section?: {
+        course?: {
+          code: string;
+        };
+        course_code?: string;
+      };
+    }
+    const enrollments = (data || []).map((enrollment: EnrollmentWithSection) => ({
       id: enrollment.id,
       student_id: enrollment.student_id,
       section_id: enrollment.section_id,
@@ -172,7 +183,7 @@ export async function POST(request: NextRequest) {
     requireRole(user, ["student"]);
 
     const body = await request.json();
-    const { section_id, semester_id } = body;
+    const { section_id } = body;
 
     if (!section_id) {
       return createErrorResponse(
@@ -284,7 +295,16 @@ export async function POST(request: NextRequest) {
 
       // Check for time conflicts
       const conflicts: string[] = [];
-      (currentEnrollments || []).forEach((enrollment: any) => {
+      interface EnrollmentWithSectionPattern {
+        section?: {
+          meeting_pattern?: {
+            days?: string[];
+            start?: string;
+            duration?: number;
+          };
+        };
+      }
+      (currentEnrollments || []).forEach((enrollment: EnrollmentWithSectionPattern) => {
         const enrolledSection = enrollment.section;
         if (!enrolledSection?.meeting_pattern) return;
 
@@ -346,9 +366,14 @@ export async function POST(request: NextRequest) {
           .eq("status", "registered")
           .neq("section_id", section_id);
 
+        interface EnrolledSection {
+          section?: {
+            course_code?: string;
+          };
+        }
         const enrolledCourseCodes = (enrolledSections || [])
-          .map((e: any) => e.section?.course_code)
-          .filter((code: string | undefined): code is string => !!code);
+          .map((e: EnrolledSection) => e.section?.course_code)
+          .filter((code): code is string => !!code);
 
         if (enrolledCourseCodes.length > 0) {
           // Get exams for enrolled courses
@@ -358,9 +383,14 @@ export async function POST(request: NextRequest) {
             .in("course_code", enrolledCourseCodes);
 
           // Check for exam conflicts
+          interface ExamData {
+            date: string;
+            start_time: string;
+            duration_minutes?: number;
+          }
           const examConflicts: string[] = [];
-          (newCourseExams || []).forEach((newExam: any) => {
-            (enrolledExams || []).forEach((enrolledExam: any) => {
+          (newCourseExams || []).forEach((newExam: ExamData) => {
+            (enrolledExams || []).forEach((enrolledExam: ExamData) => {
               // Check if same date
               if (newExam.date === enrolledExam.date) {
                 // Check if times overlap
@@ -405,7 +435,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate total credits
     let totalCredits = 0;
-    (currentEnrollments || []).forEach((enrollment: any) => {
+    (currentEnrollments || []).forEach((enrollment: EnrollmentWithSectionPattern) => {
       const enrolledSection = enrollment.section;
       const enrolledCourse = Array.isArray(enrolledSection?.course) ? enrolledSection.course[0] : enrolledSection?.course;
       if (enrolledCourse?.credits) {

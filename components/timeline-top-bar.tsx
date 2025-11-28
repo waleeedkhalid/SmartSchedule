@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { format, differenceInDays, isPast, isFuture } from 'date-fns'
+import { differenceInDays } from 'date-fns'
 import { Clock, Calendar, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -107,22 +107,12 @@ export function TimelineTopBar({ userRole }: TimelineTopBarProps) {
 	const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 
-	// Ensure userRole is valid
-	if (!userRole || typeof userRole !== 'string') {
-		return (
-			<div className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center px-4">
-				<div className="flex items-center gap-2 text-sm text-muted-foreground">
-					<CheckCircle2 className="h-4 w-4 text-green-600" />
-					<span>No timeline data</span>
-				</div>
-			</div>
-		)
-	}
-
+	// Call hooks before any early returns
 	const { data: events = [], isLoading, error } = useQuery({
 		queryKey: ['timeline', 'topbar', userRole],
-		queryFn: () => fetchTimelineEvents(userRole),
+		queryFn: () => fetchTimelineEvents(userRole || ''),
 		staleTime: 5 * 60 * 1000, // 5 minutes
+		enabled: !!userRole && typeof userRole === 'string',
 		refetchOnWindowFocus: true,
 		refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
 		retry: 1, // Only retry once on error

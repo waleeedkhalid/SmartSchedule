@@ -33,9 +33,9 @@ export default async function SettingsPage() {
 
 	// Handle errors gracefully
 	if (roleError) {
-		// Handle 400 errors specifically - these are query/RLS issues
-		if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
-			console.warn('user_roles query error (400) in settings:', {
+		// Handle PGRST errors specifically - these are query/RLS issues
+		if (roleError.code?.startsWith('PGRST')) {
+			console.warn('user_roles query error (PGRST) in settings:', {
 				code: roleError.code,
 				message: roleError.message,
 			});

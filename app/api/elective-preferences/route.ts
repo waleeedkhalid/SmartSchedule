@@ -13,6 +13,11 @@ import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/au
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
+interface PreferenceInput {
+  course_code: string;
+  rank: number;
+}
+
 // GET - Get preferences and available electives
 export async function GET(request: NextRequest) {
   try {
@@ -109,7 +114,7 @@ export async function POST(request: NextRequest) {
       return createSuccessResponse(
         {
           message: "Preferences saved (demo mode - changes not persisted)",
-          preferences: preferences.map((p: any) => ({
+          preferences: preferences.map((p: PreferenceInput) => ({
             course_code: p.course_code,
             rank: p.rank,
           })),
@@ -133,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     // Insert new preferences
     if (preferences.length > 0) {
-      const preferencesToInsert = preferences.map((p: any) => ({
+      const preferencesToInsert = preferences.map((p: PreferenceInput) => ({
         student_id: user.id,
         course_code: p.course_code,
         rank: p.rank,

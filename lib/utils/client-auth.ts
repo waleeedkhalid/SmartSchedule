@@ -46,7 +46,7 @@ export async function getAuthToken(): Promise<string | null> {
       // Clear cache if session is invalid
       sessionTokenCache = null;
     }
-  } catch (error) {
+  } catch {
     // If Supabase client fails, clear cache
     sessionTokenCache = null;
   }

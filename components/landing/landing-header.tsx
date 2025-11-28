@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";

@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 export default async function EditExamPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const user = await getServerUser();
 

@@ -7,10 +7,13 @@
  * Supports cron job authentication via Bearer token (CRON_SECRET env var)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/supabase/server';
 import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
-import { createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api/error-handler';
+import { createSuccessResponse, handleApiError } from '@/lib/api/error-handler';
+import type { Database } from '@/lib/types/database';
+
+type TimelineEvent = Database['public']['Tables']['semester_timeline']['Row'];
 
 export async function GET(request: NextRequest) {
 	try {
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
 		if (eventsError) throw eventsError;
 
 		// Preview what notifications would be sent
-		const preview = (eventsNeedingNotifications || []).map((event: any) => ({
+		const preview = (eventsNeedingNotifications || []).map((event: TimelineEvent) => ({
 			event_id: event.id,
 			event_title: event.title,
 			target_roles: event.target_roles || [],
@@ -79,7 +82,14 @@ export async function POST(request: NextRequest) {
 
 		if (eventsError) throw eventsError;
 
-		const notificationsSent: any[] = [];
+		interface NotificationSent {
+			event_id: string;
+			event_title: string;
+			role: string;
+			days_before: number;
+			recipient_count: number;
+		}
+		const notificationsSent: NotificationSent[] = [];
 		let totalRecipients = 0;
 
 		// Process each event that needs notifications
@@ -127,14 +137,14 @@ export async function POST(request: NextRequest) {
 						} catch (error) {
 							// Catch any unexpected errors (network issues, etc.)
 							console.warn(`Unexpected error fetching users for role ${role}:`, error);
-							usersError = error as any;
+							usersError = error instanceof Error ? { message: error.message, status: 500 } : { message: 'Unknown error', status: 500 };
 							users = null;
 						}
 
 						if (usersError) {
-							// Handle 400 errors gracefully
-							if (usersError.status === 400 || usersError.code?.startsWith('PGRST')) {
-								console.warn(`user_roles query error (400) for role ${role}:`, {
+							// Handle PGRST errors gracefully
+							if (usersError.code?.startsWith('PGRST')) {
+								console.warn(`user_roles query error (PGRST) for role ${role}:`, {
 									code: usersError.code,
 									message: usersError.message,
 								});
@@ -144,7 +154,7 @@ export async function POST(request: NextRequest) {
 							continue;
 						}
 
-						const userIds = (users || []).map((u: any) => u.user_id);
+						const userIds = (users || []).map((u: { user_id: string }) => u.user_id);
 						const recipientCount = userIds.length;
 
 						if (recipientCount === 0) {

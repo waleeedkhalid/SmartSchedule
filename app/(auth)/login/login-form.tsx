@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Input } from '@/components/ui/input'
@@ -35,7 +35,6 @@ const loginSchema = z.object({
 export default function LoginForm() {
   const [isPending, setIsPending] = useState(false)
   const searchParams = useSearchParams()
-  const router = useRouter()
   const queryClient = useQueryClient()
   const emailInputRef = useRef<HTMLInputElement>(null)
   
@@ -129,7 +128,7 @@ export default function LoginForm() {
         setIsPending(false);
       }
     },
-    [queryClient, redirectTo, router]
+    [queryClient, redirectTo]
   );
 
   const onSubmit = useCallback(

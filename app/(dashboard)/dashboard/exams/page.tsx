@@ -1,10 +1,10 @@
 import { ExamsTable } from "@/components/exams-table";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plus, AlertCircle, Settings } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAllExams, type Exam as ExamType } from "@/lib/data/exams";
+import { getAllExams } from "@/lib/data/exams";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 

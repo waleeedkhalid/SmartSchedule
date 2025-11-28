@@ -9,7 +9,6 @@
 import { NextRequest } from "next/server";
 import { authenticateRequest } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
-import { createClient } from "@/supabase/server";
 import { getScheduleStatus } from "@/lib/db/scheduling-stats";
 
 export async function GET(request: NextRequest) {

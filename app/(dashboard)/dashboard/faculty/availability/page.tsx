@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
 import { FacultyAvailabilityGrid } from '@/components/faculty-availability-grid'
-import { getFacultyProfile } from '@/lib/db/faculty-data'
-import { getServerUser, getDashboardPath } from '@/lib/server-auth'
+import { getFacultyProfile, type DayAvailability } from '@/lib/db/faculty-data'
+import { getServerUser } from '@/lib/server-auth'
 
 export default async function FacultyAvailabilityPage() {
   const user = await getServerUser()
@@ -107,7 +107,7 @@ export default async function FacultyAvailabilityPage() {
                 <p className="text-sm font-medium text-muted-foreground">Preferred Times Set</p>
                 <p className="text-2xl font-bold text-green-600">
                   {Array.isArray(availability?.preferred_times) 
-                    ? availability.preferred_times.reduce((sum: number, d: any) => sum + (d.slots?.length || 0), 0)
+                    ? availability.preferred_times.reduce((sum: number, d: DayAvailability) => sum + (d.slots?.length || 0), 0)
                     : 0} slots
                 </p>
               </div>
@@ -115,7 +115,7 @@ export default async function FacultyAvailabilityPage() {
                 <p className="text-sm font-medium text-muted-foreground">Unavailable Times Set</p>
                 <p className="text-2xl font-bold text-red-600">
                   {Array.isArray(availability?.unavailable_times)
-                    ? availability.unavailable_times.reduce((sum: number, d: any) => sum + (d.slots?.length || 0), 0)
+                    ? availability.unavailable_times.reduce((sum: number, d: DayAvailability) => sum + (d.slots?.length || 0), 0)
                     : 0} slots
                 </p>
               </div>

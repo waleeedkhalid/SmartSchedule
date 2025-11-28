@@ -18,7 +18,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { MoreHorizontal, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { calculateTimelineStatus } from '@/lib/utils/timeline-status'
 
 interface TimelineEvent {
@@ -93,9 +93,6 @@ export function TimelineEventsTable({
 		return format(new Date(dateString), 'MMM dd, yyyy')
 	}
 
-	function formatDateTime(dateString: string) {
-		return format(new Date(dateString), 'MMM dd, yyyy h:mm a')
-	}
 
 	function getDaysUntil(dateString: string) {
 		const date = new Date(dateString)

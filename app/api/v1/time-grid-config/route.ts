@@ -135,7 +135,16 @@ export async function PUT(request: NextRequest) {
     const supabase = await createClient();
 
     // Prepare update data
-    const updateData: any = {
+    interface UpdateData {
+      teaching_days?: string[];
+      daily_start_time?: string;
+      daily_end_time?: string;
+      slot_duration_minutes?: number;
+      exam_days?: string[];
+      exam_start_time?: string;
+      exam_end_time?: string;
+    }
+    const updateData: UpdateData = {
       teaching_days,
       daily_start_time,
       daily_end_time,

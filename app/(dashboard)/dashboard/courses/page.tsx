@@ -1,10 +1,9 @@
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCoursesPaginated } from "@/lib/data/courses";
-import { Plus, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { CoursesTable } from "@/components/courses-table";
 import { CoursesSearch } from "@/components/courses-search";
 import { CoursesPagination } from "@/components/courses-pagination";
@@ -58,7 +57,7 @@ async function CoursesContent({
               <CardDescription>
                 {totalCount} course{totalCount !== 1 ? 's' : ''} in the system
                 {searchTerm && (
-                  <> (filtered by "{searchTerm}")</>
+                  <> (filtered by &quot;{searchTerm}&quot;)</>
                 )}
               </CardDescription>
             </div>
@@ -128,9 +127,10 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
   
   // Validate and set sort parameters
   const validSortFields = ['code', 'title', 'level', 'credits', 'weekly_hours'] as const;
-  const sortBy = (validSortFields.includes(params.sortBy as any) 
+  type ValidSortField = typeof validSortFields[number];
+  const sortBy = (params.sortBy && validSortFields.includes(params.sortBy as ValidSortField)
     ? params.sortBy 
-    : 'code') as 'code' | 'title' | 'level' | 'credits' | 'weekly_hours';
+    : 'code') as ValidSortField;
   const sortOrder = (params.sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
 
   return (

@@ -39,7 +39,6 @@ import {
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { cachedFetch, CacheTTL, apiCache } from "@/lib/utils/api-cache";
-import { useAuth } from "@/lib/auth-context";
 
 interface EnrollmentInfo {
   id: string;

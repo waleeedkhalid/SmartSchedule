@@ -47,6 +47,7 @@ export default function AcademicPlanPage() {
     }
 
     loadAcademicPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, router]);
 
   const loadAcademicPlan = async () => {

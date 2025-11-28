@@ -742,9 +742,15 @@ export async function solveExamCSP(
   }
 
   // Run backtracking search
+  type RequiredConfig = Required<Omit<ExamCSPSolverConfig, 'examDays' | 'examTimeSlots' | 'examRooms' | 'studentEnrollmentMatrix'>> & {
+    examDays: string[];
+    examTimeSlots: string[];
+    examRooms: ExamCSPSolverConfig['examRooms'];
+    studentEnrollmentMatrix: StudentEnrollmentMatrix;
+  };
   const searchResult = backtrackExamSearch(
     state,
-    finalConfig as any,
+    finalConfig as RequiredConfig,
     (currentState, backtracks) => {
       if (onProgress) {
         onProgress({

@@ -39,7 +39,7 @@ export default function LoginPage() {
       // Check onboarding status after login
       // The onboarding page will handle the redirect logic
       router.push("/mobile/onboarding");
-    } catch (err) {
+    } catch {
       // Error is handled by store
       // Silently handle - error state is managed by auth store
     }
@@ -99,7 +99,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex flex-col space-y-3 pt-4 border-t">
           <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/register"
               className="text-primary hover:underline font-medium"

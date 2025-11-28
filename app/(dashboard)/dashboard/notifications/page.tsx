@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,6 +25,7 @@ interface Notification {
   id: string
   user_id: string
   type: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: Record<string, any>
   read_at: string | null
   created_at: string
@@ -70,7 +71,7 @@ export default function NotificationsPage() {
         )
       )
       toast.success('Marked as read')
-    } catch (err) {
+    } catch {
       toast.error('Failed to mark as read')
     }
   }
@@ -88,7 +89,7 @@ export default function NotificationsPage() {
         prev.map(n => ({ ...n, read_at: n.read_at || now }))
       )
       toast.success('All notifications marked as read')
-    } catch (err) {
+    } catch {
       toast.error('Failed to mark all as read')
     }
   }
@@ -103,7 +104,7 @@ export default function NotificationsPage() {
       // Update local state
       setNotifications(prev => prev.filter(n => n.id !== notificationId))
       toast.success('Notification deleted')
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete notification')
     }
   }
@@ -118,7 +119,7 @@ export default function NotificationsPage() {
       // Update local state
       setNotifications(prev => prev.filter(n => !n.read_at))
       toast.success('Read notifications deleted')
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete notifications')
     }
   }

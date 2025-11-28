@@ -7,14 +7,11 @@
  */
 
 import { createClient } from "@/supabase/server";
-import type { Database } from "@/lib/types/database";
 
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 
-type Section = Database["public"]["Tables"]["section"]["Row"];
-type Course = Database["public"]["Tables"]["course"]["Row"];
 
 export interface TimeSlot {
   start: string;
@@ -205,7 +202,7 @@ export async function getFacultySections(userId: string): Promise<FacultySection
 
   // Get enrollment counts for each section
   const sectionIds = (sections || []).map((s: { id: string }) => s.id);
-  let enrollmentCounts: Record<string, number> = {};
+  const enrollmentCounts: Record<string, number> = {};
   
   if (sectionIds.length > 0) {
     const { data: enrollments } = await supabase
@@ -569,7 +566,7 @@ export async function linkFacultyProfileToInstructor(
       const errorCode = findError.code || 'UNKNOWN';
       
       // Check for RLS violations
-      if (findError.code?.startsWith('PGRST') || findError.status === 400) {
+      if (findError.code?.startsWith('PGRST')) {
         throw new Error(
           `Permission denied: Unable to search for faculty profile. ` +
           `This may be due to Row Level Security policies. Error: ${errorMessage} (${errorCode})`
@@ -596,7 +593,7 @@ export async function linkFacultyProfileToInstructor(
         const errorCode = updateError.code || 'UNKNOWN';
         
         // Check for RLS violations
-        if (updateError.code?.startsWith('PGRST') || updateError.status === 400) {
+        if (updateError.code?.startsWith('PGRST')) {
           throw new Error(
             `Permission denied: Unable to update faculty profile. ` +
             `This may be due to Row Level Security policies. ` +
@@ -630,7 +627,7 @@ export async function linkFacultyProfileToInstructor(
         const errorCode = createError.code || 'UNKNOWN';
         
         // Check for RLS violations or constraint violations
-        if (createError.code?.startsWith('PGRST') || createError.status === 400) {
+        if (createError.code?.startsWith('PGRST')) {
           throw new Error(
             `Permission denied: Unable to create faculty profile. ` +
             `This may be due to Row Level Security policies. ` +

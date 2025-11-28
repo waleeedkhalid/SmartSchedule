@@ -11,21 +11,17 @@ import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await authenticateRequest(request);
 
     // Only students can drop enrollments
     requireRole(user, ["student"]);
+
+    const { id } = await params;
 
     // Real Supabase mode only - no demo support
     const supabase = await createClient();
@@ -34,7 +30,7 @@ export async function DELETE(
     const { data: enrollment, error: fetchError } = await supabase
       .from("student_enrollment")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("student_id", user.id)
       .single();
 
@@ -53,7 +49,7 @@ export async function DELETE(
         status: "dropped",
         dropped_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 

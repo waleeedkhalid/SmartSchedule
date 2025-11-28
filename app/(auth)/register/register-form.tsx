@@ -199,7 +199,7 @@ export default function RegisterForm() {
         router.push(isMobileRoute ? '/mobile/login' : '/login')
       })
     },
-    [router]
+    [router, isMobileRoute]
   )
 
   return (

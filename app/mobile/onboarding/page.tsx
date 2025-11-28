@@ -34,6 +34,7 @@ export default function OnboardingPage() {
     }
 
     checkOnboardingStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, router]);
 
   const checkOnboardingStatus = async () => {

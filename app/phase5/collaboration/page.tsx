@@ -32,15 +32,6 @@ import externalData from '@/external_departments_courses_sections.json';
 import swePlan from '@/swe_plan.json';
 import sweSections from '@/swe_departments_sections.json';
 
-// User colors for demo
-const USER_COLORS = [
-  { bg: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500' },
-  { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500' },
-  { bg: 'bg-purple-500', text: 'text-purple-500', border: 'border-purple-500' },
-  { bg: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500' },
-  { bg: 'bg-pink-500', text: 'text-pink-500', border: 'border-pink-500' },
-];
-
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
 // Types for our data structures
@@ -98,9 +89,13 @@ export default function CollaborationPage() {
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [isYjsLoading, setIsYjsLoading] = useState(true);
   // Type refs to handle dynamic Yjs imports
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ydocRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const providerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const undoManagerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const yjsModuleRef = useRef<{ Y: any; IndexeddbPersistence: any } | null>(null);
   const currentUserIdRef = useRef<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,7 +138,11 @@ export default function CollaborationPage() {
         
         // First, try to find section data from SWE sections
         if (course.code.startsWith('SWE')) {
-          const sweCourse = (sweSections as any).courses.find((c: any) => c.code === course.code);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sweCourse = (sweSections as any).courses.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) => c.code === course.code
+          );
           if (sweCourse) {
             courses.push({
               ...course,
@@ -156,8 +155,12 @@ export default function CollaborationPage() {
         
         // If not SWE course or not found in SWE sections, try external departments
         if (!foundCourse) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for (const dept of (externalData as any).external_departments) {
-            const externalCourse = dept.courses.find((c: any) => c.code === course.code);
+            const externalCourse = dept.courses.find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (c: any) => c.code === course.code
+            );
             if (externalCourse) {
               courses.push({
                 ...course,
@@ -225,6 +228,7 @@ export default function CollaborationPage() {
         broadcastChannelRef.current = bc;
 
         // Listen for updates from other tabs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bc.onmessage = (event: any) => {
           if (event.data.type === 'update' && event.data.sender !== currentUserIdRef.current) {
             Y.applyUpdate(ydoc, new Uint8Array(event.data.update));
@@ -292,6 +296,7 @@ export default function CollaborationPage() {
         });
 
         // Listen to changes from other tabs/users
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateHandler = (event: any) => {
           if (!isMounted) return;
           
@@ -306,6 +311,7 @@ export default function CollaborationPage() {
           setScheduleData(newData);
           
           // Add to edit history
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           event.changes.keys.forEach((change: any, key: string) => {
             if (change.action === 'update' || change.action === 'add') {
               const now = new Date();
@@ -433,6 +439,7 @@ export default function CollaborationPage() {
           return {
             ...section,
             [parent]: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ...(section as any)[parent],
               [child]: value
             }
@@ -604,10 +611,6 @@ export default function CollaborationPage() {
     ymap.set(courseCode, JSON.stringify(updatedData));
     autoSave();
   }, [scheduleData, autoSave, allCourses]);
-
-  const handleUndo = () => {
-    undoManagerRef.current?.undo();
-  };
 
   const handleUndo = () => {
     undoManagerRef.current?.undo();

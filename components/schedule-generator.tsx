@@ -12,7 +12,7 @@ import { Sparkles, AlertCircle, CheckCircle, XCircle, Loader2, Brain, Graduation
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getAuthHeader } from "@/lib/utils/client-auth";
-import type { CSPSolverConfig, ExternalScheduleEntry } from "@/lib/scheduling/csp-solver";
+import type { ExternalScheduleEntry } from "@/lib/scheduling/csp-solver";
 
 interface SchedulingStats {
   total_sections: number;
@@ -75,7 +75,7 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
   const [status, setStatus] = useState<ScheduleStatus>(initialStatus);
   const [useCSPSolver, setUseCSPSolver] = useState(false);
-  const [cspProgress, setCspProgress] = useState<CSPProgress | null>(null);
+  const [cspProgress] = useState<CSPProgress | null>(null);
   const [cspStats, setCspStats] = useState<CSPStats | null>(null);
   const [isSchedulingExams, setIsSchedulingExams] = useState(false);
   const [examResult, setExamResult] = useState<{
@@ -162,7 +162,16 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           if (externalResponse.ok) {
             const externalData = await externalResponse.json();
             // Convert sections to external schedule entries
-            externalSchedules = (externalData.data || []).map((section: any) => {
+            interface ExternalSection {
+              meeting_pattern?: {
+                days?: string[];
+                start?: string;
+                duration?: number;
+              };
+              course_code?: string;
+              section_no?: string;
+            }
+            externalSchedules = (externalData.data || []).map((section: ExternalSection) => {
               const pattern = section.meeting_pattern || {};
               const days = pattern.days || [];
               const start = pattern.start || '';

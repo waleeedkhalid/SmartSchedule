@@ -3,7 +3,7 @@ import { getAllCourses, getAllInstructors, getAllRooms } from "@/lib/data/sectio
 import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
-export default async function EditSectionPage({ params }: { params: { id: string } }) {
+export default async function EditSectionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   

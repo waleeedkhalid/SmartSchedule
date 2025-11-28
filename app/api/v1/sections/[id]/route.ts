@@ -16,9 +16,9 @@ import { createClient } from "@/supabase/server";
 import { revalidateSections, revalidateSchedules } from "@/lib/cache/revalidation";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(
@@ -29,6 +29,7 @@ export async function GET(
     // Authenticate user
     await authenticateRequest(request);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     // Fix: Explicitly select 'activity' field to ensure it's available in response
@@ -52,7 +53,7 @@ export async function GET(
           type
         )
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) {
@@ -60,7 +61,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Section with id '${params.id}' not found`
+          `Section with id '${id}' not found`
         );
       }
       throw error;
@@ -110,6 +111,7 @@ export async function PUT(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { id } = await params;
     const body = await request.json();
     const {
       instructor_id,
@@ -129,19 +131,26 @@ export async function PUT(
     const { data: existing, error: checkError } = await supabase
       .from("section")
       .select("id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Section with id '${params.id}' not found`
+        `Section with id '${id}' not found`
       );
     }
 
     // Prepare update data
-    const updateData: any = {};
+    interface UpdateData {
+      instructor_id?: string | null;
+      room_code?: string | null;
+      capacity?: number;
+      group_level?: number;
+      activity?: string;
+    }
+    const updateData: UpdateData = {};
     if (instructor_id !== undefined) updateData.instructor_id = instructor_id || null;
     if (room_code !== undefined) updateData.room_code = room_code || null;
     if (capacity !== undefined) updateData.capacity = parseInt(capacity);
@@ -155,7 +164,7 @@ export async function PUT(
       const { data: current } = await supabase
         .from("section")
         .select("meeting_pattern")
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
       const currentPattern = current?.meeting_pattern || {};
@@ -170,7 +179,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("section")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("id", id)
       .select(`
         *,
         activity,
@@ -243,20 +252,21 @@ export async function DELETE(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     // Check if section exists
     const { data: existing, error: checkError } = await supabase
       .from("section")
       .select("id, course_code, section_no")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Section with id '${params.id}' not found`
+        `Section with id '${id}' not found`
       );
     }
 
@@ -264,7 +274,7 @@ export async function DELETE(
     const { data: enrollments } = await supabase
       .from("student_enrollment")
       .select("id")
-      .eq("section_id", params.id)
+      .eq("section_id", id)
       .limit(1);
 
     if (enrollments && enrollments.length > 0) {
@@ -279,13 +289,13 @@ export async function DELETE(
     await supabase
       .from("schedule")
       .delete()
-      .eq("section_id", params.id);
+      .eq("section_id", id);
 
     // Delete section
     const { error } = await supabase
       .from("section")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) {
       throw error;

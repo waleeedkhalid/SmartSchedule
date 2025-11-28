@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/ui/icons";
 import RegisterForm from "@/app/(auth)/register/register-form";
 import Link from "next/link";
 
 export default function MobileRegisterPage() {
-  const router = useRouter();
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

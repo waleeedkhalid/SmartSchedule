@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Save, RotateCcw, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { DayAvailability, TimeSlot } from "@/lib/db/faculty-data";
+import type { DayAvailability } from "@/lib/db/faculty-data";
 
 interface FacultyAvailabilityGridProps {
   instructorId: string;
@@ -24,7 +24,6 @@ const TIME_SLOTS = [
 ];
 
 export function FacultyAvailabilityGrid({
-  instructorId,
   initialPreferredTimes = [],
   initialUnavailableTimes = [],
   maxLoadPerWeek = 12,

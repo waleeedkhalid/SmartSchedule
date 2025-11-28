@@ -14,9 +14,9 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // PATCH - Update a comment
@@ -28,6 +28,7 @@ export async function PATCH(
     const user = await authenticateRequest(request);
     requireRole(user, ["student"]);
 
+    const { id } = await params;
     const body = await request.json();
     const { comment } = body;
 
@@ -46,7 +47,7 @@ export async function PATCH(
     if (isDemo === true) {
       return createSuccessResponse(
         {
-          id: params.id,
+          id: id,
           student_id: user.id,
           comment: comment.trim(),
           updated_at: new Date().toISOString(),
@@ -62,7 +63,7 @@ export async function PATCH(
     const { data: existingComment, error: fetchError } = await supabase
       .from("elective_comment")
       .select("id, student_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (fetchError || !existingComment) {
@@ -88,7 +89,7 @@ export async function PATCH(
         comment: comment.trim(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select(`
         *,
         course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
@@ -114,6 +115,7 @@ export async function DELETE(
     const user = await authenticateRequest(request);
     requireRole(user, ["student"]);
 
+    const { id } = await params;
     const token = extractAuthToken(request);
     const isDemo = token?.startsWith("demo:") === true;
 
@@ -132,7 +134,7 @@ export async function DELETE(
     const { data: existingComment, error: fetchError } = await supabase
       .from("elective_comment")
       .select("id, student_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (fetchError || !existingComment) {
@@ -155,7 +157,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from("elective_comment")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (deleteError) {
       throw deleteError;

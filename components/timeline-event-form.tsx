@@ -14,10 +14,15 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
 
+import type { Database } from '@/lib/types/database'
+
+type TimelineEvent = Database['public']['Tables']['semester_timeline']['Row']
+type TimelineEventInsert = Database['public']['Tables']['semester_timeline']['Insert']
+
 interface TimelineEventFormProps {
-	event?: any
+	event?: TimelineEvent
 	semester?: string
-	onSubmit: (data: any) => Promise<void>
+	onSubmit: (data: TimelineEventInsert) => Promise<void>
 	onCancel?: () => void
 }
 
@@ -60,9 +65,9 @@ export function TimelineEventForm({
 		notification_days_before: event?.notification_days_before || [7, 3, 1],
 	})
 
-	function handleChange(field: string, value: any) {
+	function handleChange(field: string, value: unknown) {
 		setFormData((prev) => {
-			const updates: any = { [field]: value }
+			const updates: Partial<TimelineEventInsert> = { [field]: value as string | number | null }
 			
 			// Auto-fill title based on event type if title is empty or matches a type label
 			if (field === 'event_type') {

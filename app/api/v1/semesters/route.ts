@@ -14,6 +14,9 @@ import { NextRequest } from "next/server";
 import { authenticateRequest } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import type { Database } from '@/lib/types/database';
+
+type AcademicTerm = Database['public']['Tables']['academic_term']['Row'];
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Map database fields to API response format (backward compatible)
-    const semesters = (data || []).map((term: any) => ({
+    const semesters = (data || []).map((term: AcademicTerm) => ({
       id: term.id,
       name: term.name,
       code: term.code,

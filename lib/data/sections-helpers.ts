@@ -10,8 +10,9 @@
 import { cache } from 'react';
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
+import type { Course } from "@/lib/data/courses";
 
-type Course = Database["public"]["Tables"]["course"]["Row"];
+type CourseRow = Database["public"]["Tables"]["course"]["Row"];
 type FacultyProfile = Database["public"]["Tables"]["faculty_profile"]["Row"];
 type Room = Database["public"]["Tables"]["room"]["Row"];
 
@@ -34,16 +35,17 @@ type SectionListItem = {
 
 /**
  * Fetches all courses from database (for dropdowns)
+ * Returns full Course type with all fields including level property
  * Wrapped with React.cache() for request memoization
  * 
  * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export const getAllCourses = cache(async (): Promise<Array<{ code: string; title: string }>> => {
+export const getAllCourses = cache(async (): Promise<Course[]> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("course")
-    .select("code, title")
+    .select("*")
     .order("code", { ascending: true });
   
   if (error) {
@@ -51,9 +53,19 @@ export const getAllCourses = cache(async (): Promise<Array<{ code: string; title
     throw new Error(`Failed to fetch courses: ${error.message}`);
   }
   
-  return (data || []).map((course: Course) => ({
+  // Map database results to Course type with level property for backward compatibility
+  return (data || []).map((course: CourseRow): Course => ({
     code: course.code,
     title: course.title,
+    credits: course.credits,
+    weekly_hours: course.weekly_hours,
+    is_elective: course.is_elective,
+    recommended_level: course.recommended_level,
+    created_at: course.created_at,
+    updated_at: course.updated_at,
+    created_by: course.created_by,
+    // For backward compatibility, add level property that maps from recommended_level
+    level: course.recommended_level ?? 0, // Map NULL to 0 for electives
   }));
 });
 
@@ -148,8 +160,8 @@ export const getAllInstructorsList = cache(async (): Promise<Array<{
   name: string;
   email: string | null;
   max_load_per_week: number | null;
-  preferred_times: any[] | null;
-  unavailable_times: any[] | null;
+  preferred_times: Array<{ day?: string; start?: string; end?: string }> | null;
+  unavailable_times: Array<{ day?: string; start?: string; end?: string }> | null;
 }>> => {
   const supabase = await createClient();
   

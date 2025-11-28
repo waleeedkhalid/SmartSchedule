@@ -72,7 +72,7 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
       let result;
       try {
         result = await response.json();
-      } catch (parseError) {
+      } catch {
         // If response is not JSON, use status text
         throw new Error(`Failed to delete course: ${response.statusText || `HTTP ${response.status}`}`);
       }

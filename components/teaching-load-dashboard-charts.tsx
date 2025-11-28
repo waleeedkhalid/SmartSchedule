@@ -221,7 +221,7 @@ export function TeachingLoadDashboardCharts() {
         beginAtZero: true,
         max: 120,
         ticks: {
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + '%'
           },
         },

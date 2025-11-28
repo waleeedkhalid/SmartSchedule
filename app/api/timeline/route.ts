@@ -19,6 +19,9 @@ import { createClient } from '@/supabase/server';
 import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
 import { createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api/error-handler';
 import { calculateTimelineStatus } from '@/lib/utils/timeline-status';
+import type { Database } from '@/lib/types/database';
+
+type TimelineEvent = Database['public']['Tables']['semester_timeline']['Row'];
 
 export async function GET(request: NextRequest) {
 	try {
@@ -107,7 +110,7 @@ export async function GET(request: NextRequest) {
 			if (error) throw error;
 
 			// Calculate status dynamically and filter to only show upcoming/in_progress
-			const eventsWithCalculatedStatus = (data || []).map((event: any) => ({
+			const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
 				...event,
 				status: calculateTimelineStatus({
 					status: event.status,
@@ -115,7 +118,7 @@ export async function GET(request: NextRequest) {
 					end_date: event.end_date,
 					is_deadline: event.is_deadline,
 				}),
-			})).filter((event: any) => 
+			})).filter((event) => 
 				event.status === 'upcoming' || event.status === 'in_progress'
 			);
 
@@ -149,7 +152,7 @@ export async function GET(request: NextRequest) {
 		if (error) throw error;
 
 		// Calculate status dynamically based on dates
-		const eventsWithCalculatedStatus = (data || []).map((event: any) => ({
+		const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
 			...event,
 			status: calculateTimelineStatus({
 				status: event.status,

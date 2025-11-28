@@ -162,7 +162,11 @@ export default async function PreferencesPage() {
 
         <TabsContent value="preferences">
           <ElectivePreferenceManager
-            initialPreferences={(preferences as any) || []}
+            initialPreferences={(preferences?.map(p => ({
+              course_code: p.course_code,
+              rank: p.rank,
+              course: Array.isArray(p.course) ? p.course[0] : p.course
+            })) || [])}
             availableElectives={electiveCourses || []}
           />
         </TabsContent>
@@ -181,7 +185,7 @@ export default async function PreferencesPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {preferences && preferences.map((pref: any, index) => (
+              {preferences && preferences.map((pref, index) => (
                 <Card key={pref.course_code}>
                   <CardHeader>
                     <div className="flex items-start justify-between">

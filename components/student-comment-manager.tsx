@@ -414,7 +414,7 @@ export function StudentCommentManager() {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Section-specific comments allow you to provide feedback on individual classes.
-              This feature will be fully functional once you're enrolled in sections.
+              This feature will be fully functional once you&apos;re enrolled in sections.
             </AlertDescription>
           </Alert>
 

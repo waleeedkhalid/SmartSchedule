@@ -57,7 +57,7 @@ function getNotificationColor(type: string) {
 	}
 }
 
-function getNotificationTitle(type: string, payload: Record<string, any>): string {
+function getNotificationTitle(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
 			return payload.event_title || 'Timeline Deadline'
@@ -76,7 +76,7 @@ function getNotificationTitle(type: string, payload: Record<string, any>): strin
 	}
 }
 
-function getNotificationDescription(type: string, payload: Record<string, any>): string {
+function getNotificationDescription(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
 			const daysBefore = payload.days_before || 0
@@ -99,7 +99,7 @@ function getNotificationDescription(type: string, payload: Record<string, any>):
 	}
 }
 
-export function RoleNotificationsWidget({ role, initialData }: RoleNotificationsWidgetProps) {
+export function RoleNotificationsWidget({ initialData }: RoleNotificationsWidgetProps) {
 	// Use initial data if provided, otherwise fetch from hook
 	const { data: fetchedNotifications = [], isLoading, error } = useRecentNotifications()
 	const notifications = initialData || fetchedNotifications

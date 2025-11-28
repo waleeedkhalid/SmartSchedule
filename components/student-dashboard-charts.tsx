@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Calendar, TrendingUp, Clock, GraduationCap } from 'lucide-react';
+import { BookOpen, Calendar, TrendingUp } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,13 +33,21 @@ ChartJS.register(
   Filler
 );
 
+interface ChartData {
+  labels?: string[];
+  datasets?: Array<{
+    label?: string;
+    data?: number[];
+    backgroundColor?: string | string[];
+    borderColor?: string | string[];
+  }>;
+}
 export function StudentDashboardCharts() {
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [enrollmentData, setEnrollmentData] = useState<any>(null);
-  const [weeklyScheduleData, setWeeklyScheduleData] = useState<any>(null);
-  const [gradeTrendsData, setGradeTrendsData] = useState<any>(null);
-  const [electivePreferencesData, setElectivePreferencesData] = useState<any>(null);
+  const [enrollmentData, setEnrollmentData] = useState<ChartData | null>(null);
+  const [weeklyScheduleData, setWeeklyScheduleData] = useState<ChartData | null>(null);
+  const [gradeTrendsData, setGradeTrendsData] = useState<ChartData | null>(null);
+  const [electivePreferencesData, setElectivePreferencesData] = useState<ChartData | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -55,8 +63,11 @@ export function StudentDashboardCharts() {
         enrolled_sections: 0,
         available_credits: 20,
       };
-      const enrollments: any[] = [];
-      const schedule: any = { schedule: [] };
+      // const enrollments: Enrollment[] = []; // Unused variable
+      interface Schedule {
+        schedule: unknown[];
+      }
+      const schedule: Schedule = { schedule: [] };
 
       // Enrollment data (Doughnut)
       const requiredCredits = creditStats.required_credits || 0;
@@ -89,9 +100,18 @@ export function StudentDashboardCharts() {
           : [];
       
       // Iterate through each course and then through its sections
-      scheduleArray.forEach((course: any) => {
+      interface CourseWithSections {
+        sections?: Array<{
+          meeting_pattern?: {
+            days?: string[];
+          };
+          credits?: number;
+        }>;
+        credits?: number;
+      }
+      scheduleArray.forEach((course: CourseWithSections) => {
         if (course.sections && Array.isArray(course.sections)) {
-          course.sections.forEach((section: any) => {
+          course.sections.forEach((section: CourseWithSections['sections'][0]) => {
             const pattern = section.meeting_pattern;
             if (pattern?.days && Array.isArray(pattern.days)) {
               // Use course credits (each section belongs to a course)
@@ -226,8 +246,8 @@ export function StudentDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'Interest: ' + context.parsed.x + '%';
+          label: function(context: { parsed?: { x?: number } }) {
+            return 'Interest: ' + (context.parsed?.x || 0) + '%';
           }
         }
       },
@@ -243,7 +263,7 @@ export function StudentDashboardCharts() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + '%';
           }
         },
@@ -282,8 +302,8 @@ export function StudentDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' credits';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' credits';
           }
         }
       },
@@ -302,8 +322,8 @@ export function StudentDashboardCharts() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'GPA: ' + context.parsed.y.toFixed(2);
+          label: function(context: { parsed?: { y?: number } }) {
+            return 'GPA: ' + (context.parsed?.y || 0).toFixed(2);
           }
         }
       },

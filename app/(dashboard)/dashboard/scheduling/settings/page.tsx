@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { TimeGridConfigForm } from "@/components/time-grid-config-form";
-import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 
 export default async function SchedulingSettingsPage() {

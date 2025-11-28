@@ -9,8 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   TrendingUp,
   Users,
-  Calendar,
-  Clock,
   DoorOpen,
   BookOpen,
   AlertTriangle,
@@ -31,7 +29,7 @@ import {
   ChartOptions,
   Filler
 } from 'chart.js'
-import { Bar, Doughnut, Line, Radar } from 'react-chartjs-2'
+import { Bar, Doughnut, Line } from 'react-chartjs-2'
 
 // Register Chart.js components
 ChartJS.register(
@@ -49,13 +47,13 @@ ChartJS.register(
 )
 
 interface DashboardStats {
-  faculty?: any
-  rooms?: any
-  progress?: any
-  workload?: any
-  enrollments?: any
-  timeslots?: any
-  electives?: any
+  faculty?: unknown
+  rooms?: unknown
+  progress?: unknown
+  workload?: unknown
+  enrollments?: unknown
+  timeslots?: unknown
+  electives?: unknown
 }
 
 export function SchedulingDashboardCharts() {
@@ -89,27 +87,27 @@ export function SchedulingDashboardCharts() {
             totalRooms: data.rooms?.total || 0,
             usedRooms: data.rooms?.used || 0,
             unusedRooms: (data.rooms?.total || 0) - (data.rooms?.used || 0),
-            utilizationRate: data.rooms?.utilization?.reduce((sum: number, r: any) => sum + r.utilization, 0) / (data.rooms?.utilization?.length || 1) || 0,
-            lectureRooms: data.rooms?.utilization?.filter((r: any) => r.room.includes('LEC')).length || 0,
-            labRooms: data.rooms?.utilization?.filter((r: any) => r.room.includes('LAB')).length || 0,
-            roomUsageDetails: data.rooms?.utilization?.slice(0, 10).map((r: any) => ({
-              room: r.room,
-              sections: r.used,
+            utilizationRate: data.rooms?.utilization?.reduce((sum: number, r: { utilization?: number }) => sum + (r.utilization || 0), 0) / (data.rooms?.utilization?.length || 1) || 0,
+            lectureRooms: data.rooms?.utilization?.filter((r: { room?: string }) => r.room?.includes('LEC')).length || 0,
+            labRooms: data.rooms?.utilization?.filter((r: { room?: string }) => r.room?.includes('LAB')).length || 0,
+            roomUsageDetails: data.rooms?.utilization?.slice(0, 10).map((r: { room?: string; used?: number }) => ({
+              room: r.room || '',
+              sections: r.used || 0,
             })) || [],
           },
           workload: {
             avgUtilization: data.workload?.average || 0,
-            overloaded: data.workload?.instructors?.filter((i: any) => i.utilization > 100).length || 0,
-            nearCapacity: data.workload?.instructors?.filter((i: any) => i.utilization > 80 && i.utilization <= 100).length || 0,
-            balanced: data.workload?.instructors?.filter((i: any) => i.utilization > 50 && i.utilization <= 80).length || 0,
-            underutilized: data.workload?.instructors?.filter((i: any) => i.utilization <= 50).length || 0,
-            instructors: data.workload?.instructors?.map((i: any) => ({
-              id: i.id,
-              name: i.name,
-              sections: i.sections,
-              credits: i.sections * 3, // Assume 3 credits per section
-              utilizationRate: i.utilization,
-              status: i.utilization > 100 ? 'overloaded' : i.utilization > 80 ? 'near-capacity' : i.utilization > 50 ? 'balanced' : 'underutilized',
+            overloaded: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 100).length || 0,
+            nearCapacity: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 80 && (i.utilization || 0) <= 100).length || 0,
+            balanced: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 50 && (i.utilization || 0) <= 80).length || 0,
+            underutilized: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) <= 50).length || 0,
+            instructors: data.workload?.instructors?.map((i: { id?: string; name?: string; sections?: number; utilization?: number }) => ({
+              id: i.id || '',
+              name: i.name || '',
+              sections: i.sections || 0,
+              credits: (i.sections || 0) * 3, // Assume 3 credits per section
+              utilizationRate: i.utilization || 0,
+              status: (i.utilization || 0) > 100 ? 'overloaded' : (i.utilization || 0) > 80 ? 'near-capacity' : (i.utilization || 0) > 50 ? 'balanced' : 'underutilized',
             })) || [],
           },
           progress: {
@@ -142,11 +140,11 @@ export function SchedulingDashboardCharts() {
             ],
             totalScheduledSections: data.progress?.assigned || 0,
           },
-          electives: data.electives?.courses?.map((e: any) => ({
-            course_code: e.course_code,
-            course_title: e.course_title,
-            total_requests: e.enrollments,
-            first_choice: Math.floor(e.enrollments * 0.5),
+          electives: data.electives?.courses?.map((e: { course_code?: string; course_title?: string; enrollments?: number }) => ({
+            course_code: e.course_code || '',
+            course_title: e.course_title || '',
+            total_requests: e.enrollments || 0,
+            first_choice: Math.floor((e.enrollments || 0) * 0.5),
             second_choice: Math.floor(e.enrollments * 0.3),
             third_choice: Math.floor(e.enrollments * 0.2),
           })) || [],
@@ -239,25 +237,25 @@ export function SchedulingDashboardCharts() {
 
   // Elective Preferences Chart Data
   const electivePreferencesData = stats.electives ? {
-    labels: stats.electives.slice(0, 10).map((e: any) => e.course_code),
+    labels: stats.electives.slice(0, 10).map((e: { course_code?: string }) => e.course_code || ''),
     datasets: [
       {
         label: '1st Choice',
-        data: stats.electives.slice(0, 10).map((e: any) => e.first_choice),
+        data: stats.electives.slice(0, 10).map((e: { first_choice?: number }) => e.first_choice || 0),
         backgroundColor: 'rgba(59, 130, 246, 0.6)',
         borderColor: 'rgba(59, 130, 246, 1)',
         borderWidth: 1
       },
       {
         label: '2nd Choice',
-        data: stats.electives.slice(0, 10).map((e: any) => e.second_choice),
+        data: stats.electives.slice(0, 10).map((e: { second_choice?: number }) => e.second_choice || 0),
         backgroundColor: 'rgba(139, 92, 246, 0.6)',
         borderColor: 'rgba(139, 92, 246, 1)',
         borderWidth: 1
       },
       {
         label: '3rd Choice',
-        data: stats.electives.slice(0, 10).map((e: any) => e.third_choice),
+        data: stats.electives.slice(0, 10).map((e: { third_choice?: number }) => e.third_choice || 0),
         backgroundColor: 'rgba(236, 72, 153, 0.6)',
         borderColor: 'rgba(236, 72, 153, 1)',
         borderWidth: 1
@@ -341,10 +339,10 @@ export function SchedulingDashboardCharts() {
 
   // Time Slot Distribution
   const timeSlotData = stats.timeslots?.timeDistribution ? {
-    labels: stats.timeslots.timeDistribution.map((t: any) => t.time),
+    labels: stats.timeslots.timeDistribution.map((t: { time?: string }) => t.time || ''),
     datasets: [{
       label: 'Sections',
-      data: stats.timeslots.timeDistribution.map((t: any) => t.sections),
+      data: stats.timeslots.timeDistribution.map((t: { sections?: number }) => t.sections || 0),
       backgroundColor: 'rgba(59, 130, 246, 0.6)',
       borderColor: 'rgba(59, 130, 246, 1)',
       borderWidth: 1
@@ -353,10 +351,10 @@ export function SchedulingDashboardCharts() {
 
   // Day Distribution
   const dayDistributionData = stats.timeslots?.dayDistribution ? {
-    labels: stats.timeslots.dayDistribution.map((d: any) => d.day),
+    labels: stats.timeslots.dayDistribution.map((d: { day?: string }) => d.day || ''),
     datasets: [{
       label: 'Sections',
-      data: stats.timeslots.dayDistribution.map((d: any) => d.sections),
+      data: stats.timeslots.dayDistribution.map((d: { sections?: number }) => d.sections || 0),
       backgroundColor: 'rgba(139, 92, 246, 0.6)',
       borderColor: 'rgba(139, 92, 246, 1)',
       borderWidth: 1
@@ -465,7 +463,7 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.electives?.slice(0, 10).map((elective: any, index: number) => (
+                  {stats.electives?.slice(0, 10).map((elective: { course_code?: string; first_choice?: number; second_choice?: number; third_choice?: number; total_requests?: number }, index: number) => (
                     <div key={elective.course_code} className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -689,7 +687,7 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.rooms?.roomUsageDetails?.map((room: any, index: number) => (
+                  {stats.rooms?.roomUsageDetails?.map((room: { room?: string; sections?: number }, index: number) => (
                     <div key={room.room} className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">#{index + 1}</Badge>
@@ -765,7 +763,7 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.workload?.instructors?.slice(0, 10).map((instructor: any, index: number) => (
+                  {stats.workload?.instructors?.slice(0, 10).map((instructor: { id?: string; name?: string; sections?: number; utilizationRate?: number; status?: string }, index: number) => (
                     <div key={instructor.id} className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">

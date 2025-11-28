@@ -11,7 +11,7 @@
 import { ReactNode, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-interface iPhoneFrameProps {
+interface IPhoneFrameProps {
   children?: ReactNode;
   src?: string; // iframe URL
   scale?: number; // 0.5 to 2.0, default 1.0
@@ -28,14 +28,14 @@ const FRAME_COLORS = {
   'natural': 'from-slate-400 to-slate-600',
 } as const;
 
-export default function iPhoneFrame({ 
+export default function IPhoneFrame({ 
   children, 
   src,
   scale = 1.0,
   variant = 'dynamic-island',
   frameColor = 'space-gray',
   className
-}: iPhoneFrameProps) {
+}: IPhoneFrameProps) {
   // Register service worker for PWA support
   useEffect(() => {
     if (

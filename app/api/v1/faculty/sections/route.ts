@@ -44,7 +44,7 @@ export async function GET() {
       sections,
       total: sections.length,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

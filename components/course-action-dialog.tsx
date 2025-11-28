@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,6 @@ export function CourseActionDialog({
   isLoading = false,
 }: CourseActionDialogProps) {
   const isDelete = action === "delete";
-  const isEdit = action === "edit";
 
   const handleConfirm = async () => {
     try {

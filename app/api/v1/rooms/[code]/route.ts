@@ -16,9 +16,9 @@ import { createClient } from "@/supabase/server";
 import { revalidateRooms } from "@/lib/cache/revalidation";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 export async function GET(
@@ -29,12 +29,13 @@ export async function GET(
     // Authenticate user
     await authenticateRequest(request);
 
+    const { code } = await params;
     const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("room")
       .select("*")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (error) {
@@ -42,7 +43,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Room with code '${params.code}' not found`
+          `Room with code '${code}' not found`
         );
       }
       throw error;
@@ -63,6 +64,7 @@ export async function PUT(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling"]);
 
+    const { code } = await params;
     const body = await request.json();
     const { type, capacity } = body;
 
@@ -72,14 +74,14 @@ export async function PUT(
     const { data: existing, error: checkError } = await supabase
       .from("room")
       .select("code")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Room with code '${params.code}' not found`
+        `Room with code '${code}' not found`
       );
     }
 
@@ -93,7 +95,11 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {};
+    interface UpdateData {
+      type?: string;
+      capacity?: number | null;
+    }
+    const updateData: UpdateData = {};
     if (type !== undefined) updateData.type = type;
     if (capacity !== undefined) updateData.capacity = capacity ? parseInt(capacity) : null;
 
@@ -101,7 +107,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("room")
       .update(updateData)
-      .eq("code", params.code)
+      .eq("code", code)
       .select()
       .single();
 
@@ -127,20 +133,21 @@ export async function DELETE(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling"]);
 
+    const { code } = await params;
     const supabase = await createClient();
 
     // Check if room exists
     const { data: existing, error: checkError } = await supabase
       .from("room")
       .select("code")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Room with code '${params.code}' not found`
+        `Room with code '${code}' not found`
       );
     }
 
@@ -148,14 +155,14 @@ export async function DELETE(
     const { data: sections } = await supabase
       .from("section")
       .select("id")
-      .eq("room_code", params.code)
+      .eq("room_code", code)
       .limit(1);
 
     if (sections && sections.length > 0) {
       return createErrorResponse(
         409,
         ErrorCodes.VALIDATION_ERROR,
-        `Cannot delete room '${params.code}' because it has sections assigned. Remove sections first.`
+        `Cannot delete room '${code}' because it has sections assigned. Remove sections first.`
       );
     }
 
@@ -163,7 +170,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("room")
       .delete()
-      .eq("code", params.code);
+      .eq("code", code);
 
     if (error) {
       throw error;
@@ -172,7 +179,7 @@ export async function DELETE(
     // Revalidate room-related caches after successful deletion
     revalidateRooms();
 
-    return createSuccessResponse({ message: `Room '${params.code}' deleted successfully` }, 200);
+    return createSuccessResponse({ message: `Room '${code}' deleted successfully` }, 200);
   } catch (error) {
     return handleApiError(error);
   }

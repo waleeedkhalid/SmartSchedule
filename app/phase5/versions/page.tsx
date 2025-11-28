@@ -21,7 +21,6 @@ import {
   GitBranch,
   GitCommit,
   History,
-  RotateCcw,
   FileText,
   CheckCircle2,
   Plus,
@@ -37,8 +36,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as jsondiffpatch from 'jsondiffpatch';
 
 // Initialize jsondiffpatch
+interface HashableObject {
+  id?: string;
+  code?: string;
+}
 const differ = jsondiffpatch.create({
-  objectHash: (obj: any) => obj.id || obj.code || JSON.stringify(obj),
+  objectHash: (obj: HashableObject) => obj.id || obj.code || JSON.stringify(obj),
   arrays: {
     detectMove: true,
     includeValueOnMove: false
@@ -46,7 +49,20 @@ const differ = jsondiffpatch.create({
 });
 
 // Sample schedule data for different versions
-const versionData: Record<string, any> = {
+interface VersionData {
+  courses: Array<{
+    code: string;
+    title: string;
+    sections?: Array<{
+      section_no: string;
+      instructor?: string;
+      room?: string;
+    }>;
+  }>;
+  lastUpdated: string;
+  status: string;
+}
+const versionData: Record<string, VersionData> = {
   'v1.0': {
     courses: [
       {
@@ -232,7 +248,7 @@ export default function VersionsPage() {
   const [showComparison, setShowComparison] = useState(false);
 
   // Simulated version history
-  const versions = [
+  const versions = useMemo(() => [
     {
       id: 'final',
       tag: 'Final',
@@ -273,7 +289,7 @@ export default function VersionsPage() {
       published: false,
       description: 'Initial schedule draft',
     },
-  ];
+  ], []);
 
   // Compute diff between selected version and previous
   const diff = useMemo(() => {
@@ -286,7 +302,7 @@ export default function VersionsPage() {
     const rightData = versionData[selectedVersion];
     
     return differ.diff(leftData, rightData);
-  }, [selectedVersion]);
+  }, [selectedVersion, versions]);
 
   // Compute diff for comparison mode
   const comparisonDiff = useMemo(() => {
@@ -299,12 +315,12 @@ export default function VersionsPage() {
   }, [selectedVersion, compareVersion, showComparison]);
 
   // Count changes in diff
-  const countChanges = (diffObj: any) => {
+  const countChanges = (diffObj: unknown) => {
     if (!diffObj) return { added: 0, modified: 0, deleted: 0 };
     
     let added = 0, modified = 0, deleted = 0;
     
-    const traverse = (obj: any) => {
+    const traverse = (obj: unknown) => {
       if (!obj || typeof obj !== 'object') return;
       
       Object.keys(obj).forEach(key => {
@@ -330,7 +346,7 @@ export default function VersionsPage() {
   const changes = countChanges(showComparison ? comparisonDiff : diff);
 
   // Render diff recursively
-  const renderDiff = (diffObj: any, path: string = '', level: number = 0): React.ReactElement[] => {
+  const renderDiff = (diffObj: unknown, path: string = '', level: number = 0): React.ReactElement[] => {
     if (!diffObj || typeof diffObj !== 'object') return [];
     
     const entries: React.ReactElement[] = [];

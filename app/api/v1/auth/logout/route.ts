@@ -8,7 +8,7 @@
  * send the Authorization header with their token.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { authenticateRequest, extractAuthToken } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
     // Try to authenticate (but don't fail if token is invalid - we still want to logout)
     let isDemo = false;
     try {
-      const user = await authenticateRequest(request);
+      await authenticateRequest(request);
       const token = extractAuthToken(request);
       isDemo = token?.startsWith("demo:") === true;
-    } catch (error) {
+    } catch {
       // If authentication fails, we still proceed with logout
       // This handles cases where token is expired or invalid
       const token = extractAuthToken(request);
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
       try {
         const supabase = await createClient();
         await supabase.auth.signOut();
-      } catch (error) {
+      } catch {
         // Even if signOut fails, we consider logout successful
-        console.error("Supabase signOut error:", error);
+        // Error is logged by Supabase client
       }
     }
 

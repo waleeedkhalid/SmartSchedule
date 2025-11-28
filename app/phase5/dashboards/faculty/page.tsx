@@ -154,7 +154,7 @@ export default function FacultyDashboardPage() {
           font: { size: 13, weight: '500' as const },
           padding: 8,
           stepSize: 1,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             if (Number.isInteger(value)) {
               return value;
             }
@@ -196,8 +196,8 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' students';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
           }
         }
       },
@@ -216,8 +216,8 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' hours';
+          label: function(context: { parsed?: { y?: number } }) {
+            return (context.parsed?.y || 0) + ' hours';
           }
         }
       },
@@ -233,7 +233,7 @@ export default function FacultyDashboardPage() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + 'h';
           }
         },
@@ -264,8 +264,8 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'Avg: ' + context.parsed.r + '%';
+          label: function(context: { parsed?: { r?: number } }) {
+            return 'Avg: ' + (context.parsed?.r || 0) + '%';
           }
         }
       },

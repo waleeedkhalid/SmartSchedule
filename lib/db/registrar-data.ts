@@ -17,7 +17,6 @@
 
 import { cache } from 'react';
 import { createClient } from "@/supabase/server";
-import type { Database } from "@/lib/types/database";
 
 
 export interface StudentView {
@@ -187,20 +186,31 @@ export const getStudentAcademicProgress = cache(async (studentId: string): Promi
   }
   
   // Calculate statistics
+  interface EnrollmentWithStatus {
+    status?: string;
+  }
   const activeEnrollments = (enrollments || []).filter(
-    (e: any) => e.status === "registered"
+    (e: EnrollmentWithStatus) => e.status === "registered"
   );
   const droppedEnrollments = (enrollments || []).filter(
-    (e: any) => e.status === "dropped"
+    (e: EnrollmentWithStatus) => e.status === "dropped"
   );
   
   let totalCredits = 0;
   let requiredCredits = 0;
   let electiveCredits = 0;
   
-  const enrolledCourses = activeEnrollments.map((enrollment: any) => {
-    const section = enrollment.section as any;
-    const course = section?.course as any;
+  interface EnrollmentWithSection {
+    section?: {
+      course?: {
+        credits?: number;
+        is_elective?: boolean;
+      };
+    };
+  }
+  const enrolledCourses = activeEnrollments.map((enrollment: EnrollmentWithSection) => {
+    const section = enrollment.section;
+    const course = section?.course;
     
     if (course) {
       const credits = course.credits || 0;
@@ -309,6 +319,15 @@ export const getStudentEnrollments = cache(async (filters: {
     (students || []).map(s => [s.user_id, { name: s.name, email: s.email }])
   );
   
+  interface SectionWithDetails {
+    course_code?: string;
+    section_no?: string;
+    course?: {
+      title?: string;
+      credits?: number;
+    };
+  }
+  
   return enrollments.map(item => ({
     id: item.id,
     student_id: item.student_id,
@@ -321,11 +340,11 @@ export const getStudentEnrollments = cache(async (filters: {
       email: studentMap.get(item.student_id)!.email,
     } : undefined,
     section: item.section ? {
-      course_code: (item.section as any).course_code,
-      section_no: (item.section as any).section_no,
-      course: (item.section as any).course ? {
-        title: (item.section as any).course.title,
-        credits: (item.section as any).course.credits,
+      course_code: (item.section as SectionWithDetails).course_code,
+      section_no: (item.section as SectionWithDetails).section_no,
+      course: (item.section as SectionWithDetails).course ? {
+        title: (item.section as SectionWithDetails).course?.title,
+        credits: (item.section as SectionWithDetails).course?.credits,
       } : undefined,
     } : undefined,
   }));

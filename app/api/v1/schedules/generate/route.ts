@@ -437,7 +437,6 @@ export async function POST(request: NextRequest) {
     if (term.start_date && term.end_date && timeGridConfig.exam_days && timeGridConfig.exam_days.length > 0) {
       const startDate = new Date(term.start_date);
       const endDate = new Date(term.end_date);
-      const currentDate = new Date(startDate);
       
       // Day name to day of week mapping
       const dayMap: { [key: string]: number } = {
@@ -495,7 +494,6 @@ export async function POST(request: NextRequest) {
       const [endHour, endMin] = timeGridConfig.exam_end_time.split(":").map(Number);
       const examStartMinutes = startHour * 60 + startMin;
       const examEndMinutes = endHour * 60 + endMin;
-      const examWindowMinutes = examEndMinutes - examStartMinutes;
 
       // Default exam duration: 2 hours (120 minutes)
       const defaultExamDuration = 120;

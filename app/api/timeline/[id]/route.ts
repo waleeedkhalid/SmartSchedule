@@ -6,10 +6,10 @@
  * DELETE /api/timeline/[id] - Delete timeline event (scheduling only)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/supabase/server';
 import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
-import { createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api/error-handler';
+import { createSuccessResponse, handleApiError } from '@/lib/api/error-handler';
 
 export async function GET(
 	request: NextRequest,
@@ -22,7 +22,7 @@ export async function GET(
 		const { searchParams } = new URL(request.url);
 		const includeLogs = searchParams.get('logs') === 'true';
 
-		let query = supabase
+		const query = supabase
 			.from('semester_timeline')
 			.select('*')
 			.eq('id', id)

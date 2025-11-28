@@ -89,7 +89,10 @@ export function StudentScheduleView() {
     try {
       const authHeader = await getAuthHeader();
       // Cache schedule for 5 minutes - it doesn't change frequently
-      const result = await cachedFetch<{ data: any }>(
+      interface ScheduleData {
+        schedule?: unknown[];
+      }
+      const result = await cachedFetch<{ data: ScheduleData }>(
         '/api/v1/schedules/me',
         {
           headers: authHeader ? { Authorization: authHeader } : {},
@@ -117,9 +120,28 @@ export function StudentScheduleView() {
       // Transform schedule items to sections format
       const sections: ScheduleSection[] = [];
       
-      scheduleData.schedule.forEach((courseEntry: any) => {
+      interface CourseEntry {
+        sections?: Array<{
+          id?: string;
+          section_no?: string;
+          meeting_pattern?: {
+            days?: string[];
+            start?: string;
+            duration?: number;
+          };
+          room?: {
+            code?: string;
+          };
+          instructor?: {
+            name?: string;
+          };
+          credits?: number;
+          enrollment_type?: string;
+        }>;
+      }
+      scheduleData.schedule.forEach((courseEntry: CourseEntry) => {
         if (courseEntry.sections && Array.isArray(courseEntry.sections)) {
-          courseEntry.sections.forEach((section: any) => {
+          courseEntry.sections.forEach((section: CourseEntry['sections'][0]) => {
             sections.push({
               id: section.section_id || section.id,
               course_code: courseEntry.course_code || section.course_code,
@@ -400,9 +422,9 @@ export function StudentScheduleView() {
                       {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
                     </Badge>
                     <Badge variant="outline">{section.credits} cr</Badge>
-                    {(section as any).enrollment_type && (
-                      <Badge variant={(section as any).enrollment_type === 'required' ? 'default' : 'secondary'}>
-                        {(section as any).enrollment_type === 'required' ? 'Required' : 'Elective'}
+                    {section.enrollment_type && (
+                      <Badge variant={section.enrollment_type === 'required' ? 'default' : 'secondary'}>
+                        {section.enrollment_type === 'required' ? 'Required' : 'Elective'}
                       </Badge>
                     )}
                   </div>

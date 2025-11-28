@@ -60,7 +60,6 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [conflicts, setConflicts] = useState<ConflictInfo | null>(null);
-  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,12 +81,11 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
   // Check conflicts when exam is loaded (edit mode)
   useEffect(() => {
     if (exam?.id) {
-      checkConflicts(exam.id);
+      checkConflicts();
     }
   }, [exam?.id]);
 
-  async function checkConflicts(examId: string) {
-    setCheckingConflicts(true);
+  async function checkConflicts() {
     try {
       // DEMO MODE: Simulate conflict check
       await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
@@ -100,12 +98,11 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
       });
     } catch (error) {
       console.error("Error checking conflicts:", error);
-    } finally {
-      setCheckingConflicts(false);
     }
   }
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function onSubmit(_values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
       // DEMO MODE: Simulate API call

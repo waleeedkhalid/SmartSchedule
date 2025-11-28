@@ -22,7 +22,6 @@ interface LoginPageProps {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const sessionExpired = params.session === 'expired';
-  const reason = params.reason;
 
   return (
     <Card className="w-full max-w-md shadow-lg border-2">

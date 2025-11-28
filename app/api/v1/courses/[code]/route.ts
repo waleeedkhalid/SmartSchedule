@@ -15,26 +15,21 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 import { revalidateCourses } from "@/lib/cache/revalidation";
 
-interface RouteParams {
-  params: {
-    code: string;
-  };
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     // Authenticate user
     await authenticateRequest(request);
 
+    const { code } = await params;
     const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("course")
       .select("*")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (error) {
@@ -42,7 +37,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Course with code '${params.code}' not found`
+          `Course with code '${code}' not found`
         );
       }
       throw error;
@@ -66,13 +61,14 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { code } = await params;
     const body = await request.json();
     const { name, credits, level, course_type, weekly_hours } = body;
 
@@ -82,19 +78,34 @@ export async function PUT(
     const { data: existing, error: checkError } = await supabase
       .from("course")
       .select("code")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Course with code '${params.code}' not found`
+        `Course with code '${code}' not found`
       );
     }
 
+    // Get existing course data for reference
+    const { data: existingCourse } = await supabase
+      .from("course")
+      .select("*")
+      .eq("code", code)
+      .single();
+
     // Prepare update data
-    const updateData: any = {};
+    interface UpdateData {
+      title?: string;
+      credits?: number;
+      weekly_hours?: number;
+      level?: number;
+      is_elective?: boolean;
+      prerequisite?: string;
+    }
+    const updateData: UpdateData = {};
     if (name !== undefined) updateData.title = name;
     if (credits !== undefined) {
       const creditsNum = parseInt(credits);
@@ -105,7 +116,7 @@ export async function PUT(
       }
     }
     if (level !== undefined) {
-      const isElective = course_type === "elective" || (course_type === undefined && data.is_elective);
+      const isElective = course_type === "elective" || (course_type === undefined && existingCourse?.is_elective);
       updateData.recommended_level = isElective ? null : parseInt(level);
     }
     if (weekly_hours !== undefined) updateData.weekly_hours = parseInt(weekly_hours);
@@ -121,7 +132,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("course")
       .update(updateData)
-      .eq("code", params.code)
+      .eq("code", code)
       .select()
       .single();
 
@@ -150,27 +161,28 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { code } = await params;
     const supabase = await createClient();
 
     // Check if course exists
     const { data: existing, error: checkError } = await supabase
       .from("course")
       .select("code")
-      .eq("code", params.code)
+      .eq("code", code)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Course with code '${params.code}' not found`
+        `Course with code '${code}' not found`
       );
     }
 
@@ -178,7 +190,7 @@ export async function DELETE(
     const { data: sections, error: sectionsError } = await supabase
       .from("section")
       .select("id")
-      .eq("course_code", params.code);
+      .eq("course_code", code);
 
     if (sectionsError) {
       throw sectionsError;
@@ -200,7 +212,7 @@ export async function DELETE(
         return createErrorResponse(
           409,
           ErrorCodes.VALIDATION_ERROR,
-          `Cannot delete course '${params.code}' because it has sections with student enrollments. Remove enrollments first.`
+          `Cannot delete course '${code}' because it has sections with student enrollments. Remove enrollments first.`
         );
       }
 
@@ -214,7 +226,7 @@ export async function DELETE(
       const { error: deleteSectionsError } = await supabase
         .from("section")
         .delete()
-        .eq("course_code", params.code);
+        .eq("course_code", code);
 
       if (deleteSectionsError) {
         throw deleteSectionsError;
@@ -230,7 +242,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("course")
       .delete()
-      .eq("code", params.code);
+      .eq("code", code);
 
     if (error) {
       throw error;
@@ -241,8 +253,8 @@ export async function DELETE(
 
     const sectionsCount = sections?.length || 0;
     const message = sectionsCount > 0
-      ? `Course '${params.code}' and ${sectionsCount} section${sectionsCount !== 1 ? 's' : ''} deleted successfully`
-      : `Course '${params.code}' deleted successfully`;
+      ? `Course '${code}' and ${sectionsCount} section${sectionsCount !== 1 ? 's' : ''} deleted successfully`
+      : `Course '${code}' deleted successfully`;
 
     return createSuccessResponse({ message, sectionsDeleted: sectionsCount }, 200);
   } catch (error) {

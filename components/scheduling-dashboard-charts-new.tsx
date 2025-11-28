@@ -35,14 +35,23 @@ ChartJS.register(
   Filler
 );
 
+interface ChartData {
+  labels?: string[];
+  datasets?: Array<{
+    label?: string;
+    data?: number[];
+    backgroundColor?: string | string[];
+    borderColor?: string | string[];
+  }>;
+}
+
 export function SchedulingDashboardChartsNew() {
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [enrollmentData, setEnrollmentData] = useState<any>(null);
-  const [courseTypeData, setCourseTypeData] = useState<any>(null);
-  const [instructorLoadData, setInstructorLoadData] = useState<any>(null);
-  const [capacityData, setCapacityData] = useState<any>(null);
-  const [radarData, setRadarData] = useState<any>(null);
+  const [enrollmentData, setEnrollmentData] = useState<ChartData | null>(null);
+  const [courseTypeData, setCourseTypeData] = useState<ChartData | null>(null);
+  const [instructorLoadData, setInstructorLoadData] = useState<ChartData | null>(null);
+  const [capacityData, setCapacityData] = useState<ChartData | null>(null);
+  const [radarData, setRadarData] = useState<ChartData | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -59,17 +68,21 @@ export function SchedulingDashboardChartsNew() {
         electives: { courses: [], totalEnrollments: 0 },
         progress: { totalSections: 0, assigned: 0, unassigned: 0 },
       };
-      const sections: any[] = [];
-      const courses: any[] = [];
-      const instructors: any[] = [];
+      const sections: unknown[] = [];
+      const courses: unknown[] = [];
+      const instructors: unknown[] = [];
 
       // Enrollment by Level (Bar Chart)
-      const enrollmentByLevel = dashboardStats.enrollments?.byLevel || [];
+      interface EnrollmentByLevel {
+        level?: number;
+        count?: number;
+      }
+      const enrollmentByLevel = (dashboardStats.enrollments?.byLevel || []) as EnrollmentByLevel[];
       setEnrollmentData({
-        labels: enrollmentByLevel.map((e: any) => `Level ${e.level}`),
+        labels: enrollmentByLevel.map((e: EnrollmentByLevel) => `Level ${e.level || 0}`),
         datasets: [{
           label: 'Students Enrolled',
-          data: enrollmentByLevel.map((e: any) => e.count),
+          data: enrollmentByLevel.map((e: EnrollmentByLevel) => e.count || 0),
           backgroundColor: [
             'rgba(59, 130, 246, 0.8)',
             'rgba(99, 102, 241, 0.8)',
@@ -198,8 +211,8 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' students enrolled';
+          label: function(context: { parsed?: { y?: number } }) {
+            return (context.parsed?.y || 0) + ' students enrolled';
           }
         }
       },
@@ -256,8 +269,8 @@ export function SchedulingDashboardChartsNew() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + '%';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         }
       },
@@ -280,8 +293,8 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' hours per week';
+          label: function(context: { parsed?: { y?: number } }) {
+            return (context.parsed?.y || 0) + ' hours per week';
           }
         }
       },
@@ -297,7 +310,7 @@ export function SchedulingDashboardChartsNew() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + 'h';
           }
         },
@@ -342,8 +355,8 @@ export function SchedulingDashboardChartsNew() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + '%';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         },
       },
@@ -367,8 +380,8 @@ export function SchedulingDashboardChartsNew() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.r + '% performance';
+          label: function(context: { parsed?: { r?: number } }) {
+            return (context.parsed?.r || 0) + '% performance';
           }
         }
       },

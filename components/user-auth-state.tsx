@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { logOut } from "@/app/(auth)/actions";
 import { Icons } from "@/components/ui/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";

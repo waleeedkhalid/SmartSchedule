@@ -111,17 +111,6 @@ export default function PreferencesPage() {
     toast.info("Course removed from preferences");
   };
 
-  const movePreference = (fromIndex: number, toIndex: number) => {
-    const newPreferences = [...preferences];
-    const [moved] = newPreferences.splice(fromIndex, 1);
-    newPreferences.splice(toIndex, 0, moved);
-    const reordered = newPreferences.map((p, index) => ({
-      ...p,
-      rank: index + 1,
-    }));
-    setPreferences(reordered);
-  };
-
   const resetChanges = () => {
     setPreferences(initialPreferences);
     toast.info("Changes reset");

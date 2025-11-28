@@ -2,7 +2,7 @@ import { RoomForm } from "@/components/room-form";
 import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
-export default async function EditRoomPage({ params }: { params: { code: string } }) {
+export default async function EditRoomPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const supabase = await createClient();
   

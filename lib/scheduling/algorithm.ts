@@ -393,8 +393,6 @@ export async function generateSchedule(input: SchedulingInput): Promise<Scheduli
         assigned = true;
       } else {
         // Existing assignment has conflicts, will try to reassign below
-        // Log the conflict types for better error messages
-        const conflictReasons = conflictCheck.conflictTypes.join(", ");
         // Continue to try reassignment
       }
     }

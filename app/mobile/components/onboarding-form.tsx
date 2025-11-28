@@ -143,7 +143,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     let supabase;
     try {
       supabase = createClient();
-    } catch (clientError) {
+    } catch {
       clearTimeout(timeoutId);
       toast.error("Failed to initialize database connection. Please refresh the page and try again.");
       setIsSubmitting(false);
@@ -333,7 +333,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
               <div>
                 <CardTitle>Welcome to SmartSchedule</CardTitle>
                 <CardDescription>
-                  Let's set up your profile to get started
+                  Let&apos;s set up your profile to get started
                 </CardDescription>
               </div>
             </div>

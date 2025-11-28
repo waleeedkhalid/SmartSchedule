@@ -110,7 +110,10 @@ export function SectionsTable({ sections }: SectionsTableProps) {
           });
           if (termsResponse.ok) {
             const termsData = await termsResponse.json();
-            const activeTerm = termsData.data?.find((t: any) => 
+            interface Term {
+              status?: string;
+            }
+            const activeTerm = termsData.data?.find((t: Term) => 
               t.status === 'draft' || t.status === 'released'
             );
             if (activeTerm) {
@@ -266,7 +269,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell className="font-medium">{section.course_code}</TableCell>
               <TableCell>{section.section_no}</TableCell>
               <TableCell>
-                {(section as any).is_scheduled_by_algorithm ? (
+                {(section as { is_scheduled_by_algorithm?: boolean }).is_scheduled_by_algorithm ? (
                   <Badge className="bg-blue-600">Algorithm</Badge>
                 ) : (
                   <Badge variant="outline">Manual</Badge>

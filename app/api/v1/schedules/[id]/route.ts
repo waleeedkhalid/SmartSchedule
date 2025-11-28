@@ -10,9 +10,9 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function DELETE(
@@ -23,20 +23,21 @@ export async function DELETE(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling"]);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     // Check if schedule exists
     const { data: existing } = await supabase
       .from("schedule")
       .select("id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Schedule with id '${params.id}' not found`
+        `Schedule with id '${id}' not found`
       );
     }
 
@@ -44,7 +45,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("schedule")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) {
       throw error;

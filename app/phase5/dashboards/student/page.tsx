@@ -175,8 +175,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'Interest: ' + context.parsed.x + '%';
+          label: function(context: { parsed?: { x?: number } }) {
+            return 'Interest: ' + (context.parsed?.x || 0) + '%';
           }
         }
       },
@@ -192,7 +192,7 @@ export default function StudentDashboardPage() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + '%';
           }
         },
@@ -231,8 +231,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' credits';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' credits';
           }
         }
       },
@@ -251,8 +251,8 @@ export default function StudentDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'GPA: ' + context.parsed.y.toFixed(2);
+          label: function(context: { parsed?: { y?: number } }) {
+            return 'GPA: ' + (context.parsed?.y || 0).toFixed(2);
           }
         }
       },

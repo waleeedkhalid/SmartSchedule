@@ -9,7 +9,7 @@
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -85,9 +85,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract course codes and section numbers
-    const courseCodes = enrollments
-      .map((e: any) => e.section?.course_code)
-      .filter((code: string | undefined): code is string => !!code);
+    interface EnrollmentWithSection {
+      section?: {
+        course_code?: string;
+        section_no?: string;
+      };
+    }
+    const courseCodes = (enrollments as EnrollmentWithSection[])
+      .map((e) => e.section?.course_code)
+      .filter((code): code is string => !!code);
 
     if (courseCodes.length === 0) {
       return createSuccessResponse(
@@ -140,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     // Build a map of course_code to section numbers for enrolled courses
     const courseSectionMap = new Map<string, string[]>();
-    enrollments.forEach((e: any) => {
+    (enrollments as EnrollmentWithSection[]).forEach((e) => {
       const courseCode = e.section?.course_code;
       const sectionNo = e.section?.section_no;
       if (courseCode && sectionNo) {
@@ -152,12 +158,27 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform exams and detect conflicts
-    const examData = exams.map((exam: any) => {
+    interface ExamWithCourse {
+      id: string;
+      course_code: string;
+      date: string;
+      start_time: string;
+      duration_minutes: number;
+      room_codes: string[] | null;
+      course?: {
+        code: string;
+        title: string;
+      } | Array<{
+        code: string;
+        title: string;
+      }>;
+    }
+    const examData = (exams as ExamWithCourse[]).map((exam) => {
       const courseCode = exam.course_code;
       const sectionNos = courseSectionMap.get(courseCode) || [];
       
       // Calculate end time
-      const [hours, minutes] = exam.start_time.split(':').map(Number);
+      exam.start_time.split(':').map(Number);
       const startDate = new Date(`${exam.date}T${exam.start_time}`);
       const endDate = new Date(startDate.getTime() + exam.duration_minutes * 60000);
       const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}:00`;

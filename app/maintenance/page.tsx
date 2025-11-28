@@ -30,7 +30,7 @@ export default function MaintenancePage() {
 										Database Schema Migration in Progress
 									</p>
 									<p className="text-sm text-yellow-800 dark:text-yellow-200">
-										We're currently updating our database structure to improve performance and add new features.
+										We&apos;re currently updating our database structure to improve performance and add new features.
 									</p>
 								</div>
 							</div>
@@ -39,7 +39,7 @@ export default function MaintenancePage() {
 						<div className="space-y-4">
 							<h3 className="font-semibold text-lg flex items-center gap-2">
 								<Clock className="h-5 w-5 text-blue-500" />
-								What's Being Updated
+								What&apos;s Being Updated
 							</h3>
 							<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300 ml-7">
 								<li className="flex items-start gap-2">

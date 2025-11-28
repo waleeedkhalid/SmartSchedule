@@ -94,8 +94,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' students enrolled';
+          label: function(context: { parsed?: { y?: number } }) {
+            return (context.parsed?.y || 0) + ' students enrolled';
           }
         }
       },
@@ -169,8 +169,8 @@ export default function SchedulingDashboardPage() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + '%';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         }
       },
@@ -216,8 +216,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' hours per week';
+          label: function(context: { parsed?: { y?: number } }) {
+            return (context.parsed?.y || 0) + ' hours per week';
           }
         }
       },
@@ -233,7 +233,7 @@ export default function SchedulingDashboardPage() {
         ticks: {
           font: { size: 13, weight: '500' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function(value: string | number) {
             return value + 'h';
           }
         },
@@ -295,8 +295,8 @@ export default function SchedulingDashboardPage() {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + '%';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + '%';
           }
         },
       },
@@ -341,8 +341,8 @@ export default function SchedulingDashboardPage() {
         borderWidth: 1,
         displayColors: false,
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.r + '% performance';
+          label: function(context: { parsed?: { r?: number } }) {
+            return (context.parsed?.r || 0) + '% performance';
           }
         }
       },

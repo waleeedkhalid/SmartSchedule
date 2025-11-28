@@ -8,9 +8,7 @@
  */
 
 import { createClient } from '@/supabase/server';
-import type { Database } from '@/lib/types/database';
 
-type Course = Database['public']['Tables']['course']['Row'];
 type CoursePrerequisite = {
   course_code: string;
   prerequisite_course_code: string;
@@ -59,7 +57,13 @@ export async function getAvailableCoursesForStudent(
   // For now, we'll consider courses with status 'registered' as potentially passed
   // In a full implementation, you'd have a separate grades/completion table
   const passedCourseCodes = new Set<string>();
-  (enrollments || []).forEach((enrollment: any) => {
+  interface EnrollmentWithCourse {
+    course_code?: {
+      course_code?: string;
+    };
+    status?: string;
+  }
+  (enrollments || []).forEach((enrollment: EnrollmentWithCourse) => {
     const courseCode = enrollment.course_code?.course_code;
     if (courseCode && enrollment.status === 'registered') {
       // Note: In production, you'd check a grade/completion status
@@ -106,7 +110,7 @@ export async function getAvailableCoursesForStudent(
     const missingPrerequisites = coursePrerequisites.filter(
       (prereqCode) => !passedCourseCodes.has(prereqCode)
     );
-    const isLocked = missingPrerequisites.length > 0;
+    // const isLocked = missingPrerequisites.length > 0;
 
     return {
       code: course.code,
@@ -156,7 +160,7 @@ export async function getCourseWithPrerequisites(
     prerequisites?.map((p) => p.prerequisite_course_code) || [];
 
   // If student ID provided, use optimized SQL function to check lock status
-  let isLocked = false;
+  // let isLocked = false; // Unused variable
   let missingPrerequisites: string[] = [];
 
   if (studentId) {
@@ -184,7 +188,13 @@ export async function getCourseWithPrerequisites(
         .eq('student_id', studentId);
 
       const passedCourseCodes = new Set<string>();
-      (enrollments || []).forEach((enrollment: any) => {
+      interface EnrollmentWithCourse {
+    course_code?: {
+      course_code?: string;
+    };
+    status?: string;
+  }
+  (enrollments || []).forEach((enrollment: EnrollmentWithCourse) => {
         const code = enrollment.course_code?.course_code;
         if (code && enrollment.status === 'registered') {
           passedCourseCodes.add(code);
@@ -194,7 +204,7 @@ export async function getCourseWithPrerequisites(
       missingPrerequisites = prerequisiteCodes.filter(
         (code) => !passedCourseCodes.has(code)
       );
-      isLocked = missingPrerequisites.length > 0;
+      // isLocked = missingPrerequisites.length > 0; // Unused variable
     }
   }
 

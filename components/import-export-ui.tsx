@@ -77,7 +77,11 @@ export function ImportExportUI() {
       const result = await response.json();
       
       let successCount = 0;
-      Object.values(result.results || {}).forEach((r: any) => {
+      interface ImportResult {
+        success?: boolean;
+        count?: number;
+      }
+      Object.values(result.results || {}).forEach((r: ImportResult) => {
         if (r.success) successCount += r.count;
       });
 

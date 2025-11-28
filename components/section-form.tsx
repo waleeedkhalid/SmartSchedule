@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { SectionConflictDisplay } from "@/components/section-conflict-display";
 import { parseMeetingPattern } from "@/lib/types/scheduling";
 import type { Database } from "@/lib/types/database";
+import type { Course } from "@/lib/data/courses";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { toast } from "sonner";
 
@@ -41,7 +42,7 @@ const formSchema = z.object({
 
 interface SectionFormProps {
   section?: Section;
-  courses: Array<{ code: string; title: string }>;
+  courses: Course[];
   instructors: Array<{ id: string; name: string }>;
   rooms: Array<{ code: string; type: string }>;
   isEditing?: boolean;
@@ -51,9 +52,14 @@ interface SectionFormProps {
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
+interface Conflict {
+  section_id?: string;
+  conflict_type?: string;
+  message?: string;
+}
 interface ConflictData {
-  room_conflicts: any[];
-  instructor_conflicts: any[];
+  room_conflicts: Conflict[];
+  instructor_conflicts: Conflict[];
   has_conflicts: boolean;
 }
 
@@ -140,7 +146,10 @@ export function SectionForm({
           });
           if (termsResponse.ok) {
             const termsData = await termsResponse.json();
-            const activeTerm = termsData.data?.find((t: any) => 
+            interface Term {
+              status?: string;
+            }
+            const activeTerm = termsData.data?.find((t: Term) => 
               t.status === 'draft' || t.status === 'released'
             );
             if (activeTerm) {
@@ -203,6 +212,7 @@ export function SectionForm({
     // Debounce the conflict check
     const timeoutId = setTimeout(checkConflicts, 500);
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     watchedValues.room_code,
     watchedValues.instructor_id,
@@ -228,7 +238,11 @@ export function SectionForm({
         const termsResponse = await fetch('/api/v1/academic-terms');
         if (termsResponse.ok) {
           const termsData = await termsResponse.json();
-          const activeTerm = termsData.data?.find((t: any) => 
+          interface Term {
+            id: string;
+            status?: string;
+          }
+          const activeTerm = termsData.data?.find((t: Term) => 
             t.status === 'draft' || t.status === 'released'
           );
           if (activeTerm) {

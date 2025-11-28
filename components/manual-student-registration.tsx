@@ -152,14 +152,21 @@ export function ManualStudentRegistration() {
         
         // Calculate enrollment counts per section
         const enrollmentCounts = new Map<string, number>()
-        enrollmentsData.forEach((e: any) => {
+        interface EnrollmentData {
+          section_id?: string;
+        }
+        enrollmentsData.forEach((e: EnrollmentData) => {
           if (e.section_id) {
             enrollmentCounts.set(e.section_id, (enrollmentCounts.get(e.section_id) || 0) + 1)
           }
         })
         
         // Filter sections to only show those that are 15-50% over capacity
-        const eligibleSections = sectionsData.filter((section: any) => {
+        interface SectionData {
+          id: string;
+          capacity?: number;
+        }
+        const eligibleSections = sectionsData.filter((section: SectionData) => {
           const currentEnrollments = enrollmentCounts.get(section.id) || 0
           const capacity = section.capacity || 0
           
@@ -236,7 +243,7 @@ export function ManualStudentRegistration() {
       
       // Reset section selection
       setSelectedSection("")
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error registering student:", error)
       toast.error(error.message || "Failed to register student")
     } finally {
@@ -461,7 +468,7 @@ export function ManualStudentRegistration() {
           <CardHeader>
             <CardTitle>Current Enrollments</CardTitle>
             <CardDescription>
-              {selectedStudentData?.name}'s active enrollments
+              {selectedStudentData?.name}&apos;s active enrollments
             </CardDescription>
           </CardHeader>
           <CardContent>

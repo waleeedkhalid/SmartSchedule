@@ -25,7 +25,6 @@ import {
   Calendar,
   Settings,
   LogOut,
-  GraduationCap,
   BarChart3,
   Users,
   MapPin,
@@ -187,7 +186,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ]
 };
 
-export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {
+export function MobileNav({ userRole, userName }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const navItems = roleNavItems[userRole] || [];

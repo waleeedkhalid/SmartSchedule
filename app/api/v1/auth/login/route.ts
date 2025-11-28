@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/supabase/server";
-import { createSuccessResponse, createErrorResponse, handleApiError } from "@/lib/api/error-handler";
+import { createErrorResponse, handleApiError } from "@/lib/api/error-handler";
 import { cookies } from "next/headers";
 
 interface LoginRequest {
@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
 
     // Handle errors gracefully
     if (roleError) {
-      // Handle 400 errors specifically - these are query/RLS issues
-      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
-        console.warn('user_roles query error (400) in login API:', {
+      // Handle PGRST errors specifically - these are query/RLS issues
+      if (roleError.code?.startsWith('PGRST')) {
+        console.warn('user_roles query error (PGRST) in login API:', {
           code: roleError.code,
           message: roleError.message,
         });

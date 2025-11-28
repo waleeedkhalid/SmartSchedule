@@ -12,17 +12,18 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const user = await authenticateRequest(request);
 		const supabase = await createClient();
+		const { id } = await params;
 
 		// Verify notification belongs to user
 		const { data: notification, error: fetchError } = await supabase
 			.from('notification')
 			.select('id, user_id')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (fetchError) throw fetchError;
@@ -47,7 +48,7 @@ export async function PATCH(
 		const { data, error } = await supabase
 			.from('notification')
 			.update({ read_at: new Date().toISOString() })
-			.eq('id', params.id)
+			.eq('id', id)
 			.eq('user_id', user.id)
 			.select()
 			.single();
@@ -62,17 +63,18 @@ export async function PATCH(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const user = await authenticateRequest(request);
 		const supabase = await createClient();
+		const { id } = await params;
 
 		// Verify notification belongs to user
 		const { data: notification, error: fetchError } = await supabase
 			.from('notification')
 			.select('id, user_id')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (fetchError) throw fetchError;
@@ -97,7 +99,7 @@ export async function DELETE(
 		const { error } = await supabase
 			.from('notification')
 			.delete()
-			.eq('id', params.id)
+			.eq('id', id)
 			.eq('user_id', user.id);
 
 		if (error) throw error;

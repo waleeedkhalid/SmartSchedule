@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         .select("section_id")
         .eq("term_id", finalTermId);
 
-      const sectionIds = (scheduleSections || []).map((s: any) => s.section_id);
+      const sectionIds = (scheduleSections || []).map((s: { section_id: string }) => s.section_id);
 
       if (sectionIds.length === 0) {
         return createSuccessResponse(
@@ -112,9 +112,47 @@ export async function GET(request: NextRequest) {
       }
 
       // Group enrollments by course
-      const scheduleMap = new Map<string, any>();
+      interface ScheduleItem {
+        enrollment_id: string;
+        course_code: string;
+        course_title: string;
+        sections: Array<{
+          section_id: string;
+          section_no: string;
+          instructor?: string;
+          room?: string;
+          meeting_pattern?: {
+            days?: string[];
+            start?: string;
+            duration?: number;
+          };
+        }>;
+      }
+      const scheduleMap = new Map<string, ScheduleItem>();
 
-      (enrollments || []).forEach((enrollment: any) => {
+      interface EnrollmentWithSection {
+        enrollment_id: string;
+        section?: {
+          id: string;
+          section_no: string;
+          course?: {
+            code: string;
+            title: string;
+          };
+          instructor?: {
+            name?: string;
+          };
+          room?: {
+            code?: string;
+          };
+          meeting_pattern?: {
+            days?: string[];
+            start?: string;
+            duration?: number;
+          };
+        };
+      }
+      (enrollments || []).forEach((enrollment: EnrollmentWithSection) => {
         // Fix: course_code doesn't exist on enrollment, it comes from section.course.code
         const courseCode = enrollment.section?.course?.code;
         if (!courseCode || !enrollment.section) return;
@@ -216,7 +254,10 @@ export async function GET(request: NextRequest) {
 
       // Get sections in schedule for this term to filter by term
       // Uses idx_schedule_term_id and idx_schedule_section_id indexes
-      const sectionIds = (sections || []).map((s: any) => s.id);
+      interface SectionWithId {
+        id: string;
+      }
+      const sectionIds = (sections || []).map((s: SectionWithId) => s.id);
       const { data: scheduleSections } = await supabase
         .from("schedule")
         .select("section_id")
@@ -224,11 +265,11 @@ export async function GET(request: NextRequest) {
         .in("section_id", sectionIds);
 
       const scheduledSectionIds = new Set(
-        (scheduleSections || []).map((s: any) => s.section_id)
+        (scheduleSections || []).map((s: { section_id: string }) => s.section_id)
       );
 
       // Filter sections to only include those in the schedule for this term
-      const filteredSections = sections.filter((section: any) => 
+      const filteredSections = sections.filter((section: SectionWithId) => 
         scheduledSectionIds.has(section.id)
       );
 
@@ -237,8 +278,12 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate current enrollment for each section
+      interface SectionForSchedule extends SectionWithId {
+        course_code?: string;
+        section_no?: string;
+      }
       const schedule = await Promise.all(
-        (filteredSections || []).map(async (section: any) => {
+        (filteredSections || []).map(async (section: SectionForSchedule) => {
           // Count registered enrollments for this section
           const { count } = await supabase
             .from("student_enrollment")

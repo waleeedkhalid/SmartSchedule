@@ -165,7 +165,7 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     <strong>Note:</strong> Time preferences and unavailable times can be managed
-                    in the instructor's detailed view after creation.
+                    in the instructor&apos;s detailed view after creation.
                   </p>
                 </div>
               )}

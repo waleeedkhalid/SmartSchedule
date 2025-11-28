@@ -2,7 +2,7 @@ import { InstructorForm } from "@/components/instructor-form";
 import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
-export default async function EditInstructorPage({ params }: { params: { id: string } }) {
+export default async function EditInstructorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   

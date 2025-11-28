@@ -194,8 +194,8 @@ export default function TeachingLoadDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' instructors';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' instructors';
           }
         }
       },
@@ -213,8 +213,8 @@ export default function TeachingLoadDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.r + '% of total credits';
+          label: function(context: { parsed?: { r?: number } }) {
+            return (context.parsed?.r || 0) + '% of total credits';
           }
         }
       },

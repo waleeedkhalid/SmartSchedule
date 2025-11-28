@@ -399,7 +399,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
               if (profileError.code === '23505') {
                 // Profile was created by another request - try to update it
                 console.log('Profile was created between check and insert, updating instead...');
-                const { data: updateData, error: updateError } = await supabase
+                const { error: updateError } = await supabase
                   .from('faculty_profile')
                   .update({
                     name: userName,
@@ -471,7 +471,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             if (profileError.code === '23505') {
               // Profile was created by another request - try to read it
               console.log('Profile was created between check and insert, verifying...');
-              const { data: verifyData, error: verifyError } = await supabase
+              const { error: verifyError } = await supabase
                 .from('committee_profile')
                 .select('user_id')
                 .eq('user_id', userId)
@@ -604,7 +604,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             </div>
             <div>
               <CardTitle className="text-2xl">Welcome to SmartSchedule!</CardTitle>
-              <CardDescription>Let's set up your profile, {userName.split(' ')[0]}</CardDescription>
+              <CardDescription>Let&apos;s set up your profile, {userName.split(' ')[0]}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -687,7 +687,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Your level determines which required courses you'll be automatically enrolled in. 
+                  <strong>Note:</strong> Your level determines which required courses you&apos;ll be automatically enrolled in. 
                   You can register for elective courses separately.
                 </p>
               </div>
@@ -735,7 +735,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                   {userRole === 'teaching_load' && (
                     <div className="mt-3 pt-3 border-t">
                       <p className="text-xs text-muted-foreground">
-                        As a Teaching Load Committee member, you'll be able to review and balance instructor teaching loads.
+                        As a Teaching Load Committee member, you&apos;ll be able to review and balance instructor teaching loads.
                       </p>
                     </div>
                   )}

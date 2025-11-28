@@ -31,7 +31,7 @@ interface AuthState {
  * Why: Centralized auth state that any UI component can access.
  * The same pattern works for PWA, React Native, and can be adapted for native apps.
  */
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
   isAuthenticated: false,
@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-    } catch (error) {
+    } catch {
       // Even if logout fails, clear local state
       set({
         user: null,
@@ -111,7 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-    } catch (error) {
+    } catch {
       // Token is invalid, clear auth state
       set({
         user: null,

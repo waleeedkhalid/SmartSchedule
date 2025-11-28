@@ -24,7 +24,7 @@ interface CacheConfig {
 }
 
 class APICache {
-  private memoryCache: Map<string, CacheEntry<any>> = new Map();
+  private memoryCache: Map<string, CacheEntry<unknown>> = new Map();
   private defaultTTL: number;
   private keyPrefix: string;
 
@@ -45,7 +45,7 @@ class APICache {
   /**
    * Check if cache entry is still valid
    */
-  private isValid(entry: CacheEntry<any>): boolean {
+  private isValid(entry: CacheEntry<unknown>): boolean {
     const now = Date.now();
     return (now - entry.timestamp) < entry.ttl;
   }
@@ -138,8 +138,6 @@ class APICache {
    * Clear all cache entries for a user
    */
   clearUserCache(userId: string): void {
-    const prefix = this.getCacheKey('', userId);
-    
     // Clear memory cache
     for (const [key] of this.memoryCache) {
       if (key.includes(userId)) {
@@ -184,7 +182,6 @@ class APICache {
    * Clear expired entries to free up space
    */
   private clearOldEntries(): void {
-    const now = Date.now();
     const keysToRemove: string[] = [];
 
     try {
@@ -194,12 +191,12 @@ class APICache {
           try {
             const stored = localStorage.getItem(key);
             if (stored) {
-              const entry: CacheEntry<any> = JSON.parse(stored);
+              const entry: CacheEntry<unknown> = JSON.parse(stored);
               if (!this.isValid(entry)) {
                 keysToRemove.push(key);
               }
             }
-          } catch (error) {
+          } catch {
             // Invalid entry, remove it
             keysToRemove.push(key);
           }

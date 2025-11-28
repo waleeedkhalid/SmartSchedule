@@ -39,6 +39,7 @@ export default function SchedulePage() {
 
     // Check onboarding status first
     checkOnboarding();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, router]);
 
   const checkOnboarding = async () => {

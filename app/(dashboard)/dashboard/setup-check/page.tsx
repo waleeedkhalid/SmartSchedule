@@ -1,6 +1,6 @@
 import { createClient } from "@/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, XCircle } from "lucide-react";
 
 export default async function SetupCheckPage() {
   const supabase = await createClient();
@@ -18,7 +18,7 @@ export default async function SetupCheckPage() {
     if (!error) {
       checks.connection = true;
     }
-  } catch (e) {
+  } catch {
     checks.connection = false;
   }
 
@@ -38,7 +38,7 @@ export default async function SetupCheckPage() {
       } else {
         checks.missingTables.push(table);
       }
-    } catch (e) {
+    } catch {
       checks.missingTables.push(table);
     }
   }

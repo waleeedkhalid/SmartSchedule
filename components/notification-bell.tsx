@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Check, CheckCheck, Trash2, AlertTriangle, Info, Calendar, BookOpen, Clock } from 'lucide-react'
+import { Bell, CheckCheck, AlertTriangle, Info, Calendar, BookOpen, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -21,7 +21,7 @@ interface Notification {
 	id: string
 	user_id: string
 	type: string
-	payload: Record<string, any>
+	payload: Record<string, unknown>
 	read_at: string | null
 	created_at: string
 }
@@ -60,10 +60,10 @@ function getNotificationColor(type: string) {
 	}
 }
 
-function getNotificationTitle(type: string, payload: Record<string, any>): string {
+function getNotificationTitle(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
-			return payload.event_title || 'Timeline Deadline'
+			return (typeof payload.event_title === 'string' ? payload.event_title : null) || 'Timeline Deadline'
 		case 'section_updated':
 			return 'Section Updated'
 		case 'section_deleted':
@@ -79,14 +79,14 @@ function getNotificationTitle(type: string, payload: Record<string, any>): strin
 	}
 }
 
-function getNotificationDescription(type: string, payload: Record<string, any>): string {
+function getNotificationDescription(type: string, payload: Record<string, unknown>): string {
 	switch (type) {
 		case 'timeline_deadline':
-			const daysBefore = payload.days_before || 0
+			const daysBefore = (typeof payload.days_before === 'number' ? payload.days_before : 0) || 0
 			if (daysBefore > 0) {
 				return `${daysBefore} day${daysBefore !== 1 ? 's' : ''} until deadline`
 			}
-			return payload.description || 'Deadline approaching'
+			return (typeof payload.description === 'string' ? payload.description : null) || 'Deadline approaching'
 		case 'section_updated':
 			return payload.section_code || 'A section has been updated'
 		case 'section_deleted':
@@ -102,7 +102,7 @@ function getNotificationDescription(type: string, payload: Record<string, any>):
 	}
 }
 
-function getNotificationLink(type: string, payload: Record<string, any>): string | null {
+function getNotificationLink(type: string): string | null {
 	switch (type) {
 		case 'timeline_deadline':
 			return '/dashboard/timeline'
@@ -135,7 +135,7 @@ export function NotificationBell() {
 			markAsRead.mutate(notification.id)
 		}
 
-		const link = getNotificationLink(notification.type, notification.payload)
+		const link = getNotificationLink(notification.type)
 		if (link) {
 			router.push(link)
 		}

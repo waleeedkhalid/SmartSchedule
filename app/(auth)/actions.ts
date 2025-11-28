@@ -125,7 +125,7 @@ export async function signup(formData: {
             continue;
           }
           // 400 errors - log but don't break retry loop
-          if (roleCheckError.status === 400 || roleCheckError.code?.startsWith('PGRST')) {
+          if (roleCheckError.code?.startsWith('PGRST')) {
             console.warn(`user_roles query error (400) in signup retry attempt ${attempt + 1}:`, {
               code: roleCheckError.code,
               message: roleCheckError.message,
@@ -168,7 +168,7 @@ export async function signup(formData: {
             userVerified = true;
             break;
           }
-        } catch (error) {
+        } catch {
           console.log(`Verification attempt ${verifyAttempt + 1} failed, retrying...`);
         }
       }
@@ -197,7 +197,7 @@ export async function signup(formData: {
 
         if (roleError) {
           // Handle 400 errors gracefully
-          if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+          if (roleError.code?.startsWith('PGRST')) {
             console.warn("user_roles insert error (400):", {
               code: roleError.code,
               message: roleError.message,
@@ -333,7 +333,7 @@ export async function login(formData: { email: string; password: string }) {
     // Handle errors gracefully
     if (roleError) {
       // Handle 400 errors specifically - these are query/RLS issues
-      if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
+      if (roleError.code?.startsWith('PGRST')) {
         console.warn('user_roles query error (400) in login:', {
           code: roleError.code,
           message: roleError.message,

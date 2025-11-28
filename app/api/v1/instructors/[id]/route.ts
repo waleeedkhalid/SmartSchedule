@@ -15,9 +15,9 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(
@@ -28,12 +28,13 @@ export async function GET(
     // Authenticate user
     await authenticateRequest(request);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("faculty_profile")
       .select("*")
-      .eq("user_id", params.id)
+      .eq("user_id", id)
       .single();
 
     if (error) {
@@ -41,7 +42,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Faculty profile with id '${params.id}' not found`
+          `Faculty profile with id '${id}' not found`
         );
       }
       throw error;
@@ -62,6 +63,7 @@ export async function PUT(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { id } = await params;
     const body = await request.json();
     const { name, email, max_load_per_week, preferred_times, unavailable_times } = body;
 
@@ -71,14 +73,14 @@ export async function PUT(
     const { data: existing, error: checkError } = await supabase
       .from("faculty_profile")
       .select("user_id, email")
-      .eq("user_id", params.id)
+      .eq("user_id", id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Faculty profile with id '${params.id}' not found`
+        `Faculty profile with id '${id}' not found`
       );
     }
 
@@ -118,7 +120,12 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {};
+    interface UpdateData {
+      name?: string;
+      email?: string | null;
+      max_load_per_week?: number;
+    }
+    const updateData: UpdateData = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email || null;
     if (max_load_per_week !== undefined) updateData.max_load_per_week = parseInt(max_load_per_week);
@@ -129,7 +136,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("faculty_profile")
       .update(updateData)
-      .eq("user_id", params.id)
+      .eq("user_id", id)
       .select()
       .single();
 
@@ -152,20 +159,21 @@ export async function DELETE(
     const user = await authenticateRequest(request);
     requireRole(user, ["scheduling", "teaching_load"]);
 
+    const { id } = await params;
     const supabase = await createClient();
 
     // Check if faculty profile exists
     const { data: existing, error: checkError } = await supabase
       .from("faculty_profile")
       .select("user_id")
-      .eq("user_id", params.id)
+      .eq("user_id", id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Faculty profile with id '${params.id}' not found`
+        `Faculty profile with id '${id}' not found`
       );
     }
 
@@ -173,7 +181,7 @@ export async function DELETE(
     const { data: sections } = await supabase
       .from("section")
       .select("id")
-      .eq("instructor_id", params.id)
+      .eq("instructor_id", id)
       .limit(1);
 
     if (sections && sections.length > 0) {
@@ -188,7 +196,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("faculty_profile")
       .delete()
-      .eq("user_id", params.id);
+      .eq("user_id", id);
 
     if (error) {
       throw error;

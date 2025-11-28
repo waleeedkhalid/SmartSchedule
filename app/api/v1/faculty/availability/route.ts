@@ -76,7 +76,7 @@ export async function GET() {
       unavailable_times: profile.unavailable_times || [],
       max_load_per_week: profile.max_load_per_week || 12,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -146,7 +146,7 @@ export async function PATCH(request: NextRequest) {
       preferred_times,
       unavailable_times,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

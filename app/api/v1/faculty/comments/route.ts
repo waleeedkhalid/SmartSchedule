@@ -57,7 +57,7 @@ export async function GET() {
       comments,
       total: comments.length,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       { message: "Comment submitted successfully", id: result.id },
       { status: 201 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

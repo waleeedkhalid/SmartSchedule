@@ -196,8 +196,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'Enrolled: ' + context.parsed.x + ' students';
+          label: function(context: { parsed?: { x?: number } }) {
+            return 'Enrolled: ' + (context.parsed?.x || 0) + ' students';
           }
         }
       },
@@ -248,8 +248,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' students';
+          label: function(context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
           }
         }
       },
@@ -275,8 +275,8 @@ export default function RegistrarDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.dataset.label + ': ' + context.parsed.y + ' students';
+          label: function(context: { dataset?: { label?: string }; parsed?: { y?: number } }) {
+            return (context.dataset?.label || '') + ': ' + (context.parsed?.y || 0) + ' students';
           }
         }
       },

@@ -2,7 +2,7 @@ import { CourseForm } from "@/components/course-form";
 import { createClient } from "@/supabase/server";
 import { notFound } from "next/navigation";
 
-export default async function EditCoursePage({ params }: { params: { code: string } }) {
+export default async function EditCoursePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const supabase = await createClient();
   

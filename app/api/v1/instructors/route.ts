@@ -12,9 +12,6 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import type { Database } from "@/lib/types/database";
-
-type FacultyProfileRow = Database["public"]["Tables"]["faculty_profile"]["Row"];
 
 export async function GET(request: NextRequest) {
   try {

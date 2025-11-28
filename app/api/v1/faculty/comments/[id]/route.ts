@@ -88,7 +88,7 @@ export async function PATCH(
     return NextResponse.json({
       message: "Comment updated successfully",
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -143,7 +143,7 @@ export async function DELETE(
     return NextResponse.json({
       message: "Comment deleted successfully",
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
