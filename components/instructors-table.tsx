@@ -74,45 +74,50 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {instructors.map((instructor) => (
-            <TableRow key={instructor.id}>
-              <TableCell className="font-medium">{instructor.name}</TableCell>
-              <TableCell>{instructor.email || "—"}</TableCell>
-              <TableCell>{instructor.max_load_per_week ?? 12}h</TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  {instructor.preferred_times && Array.isArray(instructor.preferred_times) && instructor.preferred_times.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      {instructor.preferred_times.length} preferred
-                    </span>
-                  )}
-                  {instructor.unavailable_times && Array.isArray(instructor.unavailable_times) && instructor.unavailable_times.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                      {instructor.unavailable_times.length} unavailable
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="text-right space-x-2">
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                >
-                  <Link href={`/dashboard/instructors/${instructor.id}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(instructor.id, instructor.name)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {instructors.map((instructor) => {
+            // Map user_id to id for backward compatibility
+            const instructorId = 'id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : '');
+            const instructorName = instructor.name || '';
+            return (
+              <TableRow key={instructorId}>
+                <TableCell className="font-medium">{instructorName}</TableCell>
+                <TableCell>{instructor.email || "—"}</TableCell>
+                <TableCell>{instructor.max_load_per_week ?? 12}h</TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    {instructor.preferred_times && Array.isArray(instructor.preferred_times) && instructor.preferred_times.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        {instructor.preferred_times.length} preferred
+                      </span>
+                    )}
+                    {instructor.unavailable_times && Array.isArray(instructor.unavailable_times) && instructor.unavailable_times.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        {instructor.unavailable_times.length} unavailable
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <Link href={`/dashboard/instructors/${instructorId}/edit`}>
+                      <Edit className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(instructorId, instructorName)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

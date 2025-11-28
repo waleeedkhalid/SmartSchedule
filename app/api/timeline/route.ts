@@ -18,6 +18,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/supabase/server';
 import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
 import { createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api/error-handler';
+import { calculateTimelineStatus } from '@/lib/utils/timeline-status';
 
 export async function GET(request: NextRequest) {
 	try {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
 		if (stats) {
 			let query = supabase
 				.from('semester_timeline')
-				.select('status, priority', { count: 'exact', head: false });
+				.select('status, priority, start_date, end_date, is_deadline', { count: 'exact', head: false });
 
 			if (semester) {
 				query = query.eq('term_code', semester);
@@ -47,16 +48,34 @@ export async function GET(request: NextRequest) {
 
 			if (error) throw error;
 
-			// Calculate statistics
-			type TimelineEvent = { status: string; priority: string };
+			// Calculate statistics with dynamically calculated statuses
+			type TimelineEvent = { 
+				status: string; 
+				priority: string;
+				start_date: string;
+				end_date: string;
+				is_deadline?: boolean;
+			};
 			const events = (data || []) as TimelineEvent[];
+			
+			// Calculate status for each event
+			const eventsWithCalculatedStatus = events.map((e) => ({
+				...e,
+				status: calculateTimelineStatus({
+					status: e.status,
+					start_date: e.start_date,
+					end_date: e.end_date,
+					is_deadline: e.is_deadline,
+				}),
+			}));
+
 			const statistics = {
 				total: count || 0,
-				upcoming: events.filter((e) => e.status === 'upcoming').length,
-				in_progress: events.filter((e) => e.status === 'in_progress').length,
-				overdue: events.filter((e) => e.status === 'overdue').length,
-				completed: events.filter((e) => e.status === 'completed').length,
-				cancelled: events.filter((e) => e.status === 'cancelled').length,
+				upcoming: eventsWithCalculatedStatus.filter((e) => e.status === 'upcoming').length,
+				in_progress: eventsWithCalculatedStatus.filter((e) => e.status === 'in_progress').length,
+				overdue: eventsWithCalculatedStatus.filter((e) => e.status === 'overdue').length,
+				completed: eventsWithCalculatedStatus.filter((e) => e.status === 'completed').length,
+				cancelled: eventsWithCalculatedStatus.filter((e) => e.status === 'cancelled').length,
 				by_priority: {
 					low: events.filter((e) => e.priority === 'low').length,
 					medium: events.filter((e) => e.priority === 'medium').length,
@@ -86,7 +105,21 @@ export async function GET(request: NextRequest) {
 			});
 
 			if (error) throw error;
-			return createSuccessResponse(data || [], 200);
+
+			// Calculate status dynamically and filter to only show upcoming/in_progress
+			const eventsWithCalculatedStatus = (data || []).map((event: any) => ({
+				...event,
+				status: calculateTimelineStatus({
+					status: event.status,
+					start_date: event.start_date,
+					end_date: event.end_date,
+					is_deadline: event.is_deadline,
+				}),
+			})).filter((event: any) => 
+				event.status === 'upcoming' || event.status === 'in_progress'
+			);
+
+			return createSuccessResponse(eventsWithCalculatedStatus, 200);
 		}
 
 		// Get all events with filters
@@ -115,7 +148,18 @@ export async function GET(request: NextRequest) {
 
 		if (error) throw error;
 
-		return createSuccessResponse(data || [], 200);
+		// Calculate status dynamically based on dates
+		const eventsWithCalculatedStatus = (data || []).map((event: any) => ({
+			...event,
+			status: calculateTimelineStatus({
+				status: event.status,
+				start_date: event.start_date,
+				end_date: event.end_date,
+				is_deadline: event.is_deadline,
+			}),
+		}));
+
+		return createSuccessResponse(eventsWithCalculatedStatus, 200);
 	} catch (error) {
 		return handleApiError(error);
 	}

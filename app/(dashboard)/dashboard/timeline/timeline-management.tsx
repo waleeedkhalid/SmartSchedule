@@ -36,7 +36,6 @@ import { getAuthHeader } from '@/lib/utils/client-auth'
 interface Semester {
 	code: string
 	name: string
-	type: string
 }
 
 interface TimelineEvent {

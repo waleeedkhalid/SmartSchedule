@@ -16,7 +16,7 @@ import { redirect } from "next/navigation";
 import { ScheduleGenerator } from "@/components/schedule-generator";
 import { SchedulingDashboardChartsWrapper } from "@/components/scheduling-dashboard-charts-wrapper";
 import { getSchedulingStats, getScheduleStatus } from "@/lib/db/scheduling-stats";
-import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { getServerUser, getDashboardPath, validateOnboardingAndProfile } from "@/lib/server-auth";
 import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
 import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
 import { ClientOnly } from "@/components/client-only";
@@ -41,6 +41,13 @@ export default async function SchedulingDashboardPage() {
     // Otherwise redirect to their correct dashboard
     const correctDashboard = getDashboardPath(user.role);
     redirect(correctDashboard);
+  }
+
+  // Validate onboarding and profile status
+  const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role)
+  
+  if (needsOnboarding || !profileExists) {
+    redirect('/onboarding')
   }
 
   // Get statistics from database

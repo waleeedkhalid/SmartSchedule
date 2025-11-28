@@ -1,19 +1,44 @@
 /**
  * Helper functions for fetching data needed for section forms
  * Fetches all courses, instructors, and rooms (not paginated) for dropdowns
+ * 
+ * Wrapped with React.cache() for request memoization - ensures the same
+ * data is only fetched once per request, even if called multiple times
+ * in the same render tree.
  */
 
+import { cache } from 'react';
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
 
 type Course = Database["public"]["Tables"]["course"]["Row"];
-type Instructor = Database["public"]["Tables"]["instructor"]["Row"];
+type FacultyProfile = Database["public"]["Tables"]["faculty_profile"]["Row"];
 type Room = Database["public"]["Tables"]["room"]["Row"];
+
+type SectionListItem = {
+  id: string;
+  course_code: string;
+  section_no: string;
+  instructor_id: string | null;
+  room_code: string | null;
+  capacity: number;
+  meeting_pattern: {
+    days: string[];
+    start: string;
+    duration: number;
+  };
+  group_level: number;
+  state: 'draft' | 'released';
+  activity?: string | null;
+};
 
 /**
  * Fetches all courses from database (for dropdowns)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllCourses(): Promise<Array<{ code: string; title: string }>> {
+export const getAllCourses = cache(async (): Promise<Array<{ code: string; title: string }>> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -30,34 +55,40 @@ export async function getAllCourses(): Promise<Array<{ code: string; title: stri
     code: course.code,
     title: course.title,
   }));
-}
+});
 
 /**
- * Fetches all instructors from database (for dropdowns)
+ * Fetches all faculty profiles from database (for dropdowns)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllInstructors(): Promise<Array<{ id: string; name: string }>> {
+export const getAllInstructors = cache(async (): Promise<Array<{ id: string; name: string }>> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
-    .from("instructor")
-    .select("id, name")
+    .from("faculty_profile")
+    .select("user_id, name")
     .order("name", { ascending: true });
   
   if (error) {
-    console.error("Error fetching instructors:", error);
-    throw new Error(`Failed to fetch instructors: ${error.message}`);
+    console.error("Error fetching faculty profiles:", error);
+    throw new Error(`Failed to fetch faculty profiles: ${error.message}`);
   }
   
-  return (data || []).map((instructor: Instructor) => ({
-    id: instructor.id,
-    name: instructor.name,
+  return (data || []).map((faculty: FacultyProfile) => ({
+    id: faculty.user_id,
+    name: faculty.name || "",
   }));
-}
+});
 
 /**
  * Fetches all rooms from database (for dropdowns)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllRooms(): Promise<Array<{ code: string; type: string }>> {
+export const getAllRooms = cache(async (): Promise<Array<{ code: string; type: string }>> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -74,16 +105,19 @@ export async function getAllRooms(): Promise<Array<{ code: string; type: string 
     code: room.code,
     type: room.type,
   }));
-}
+});
 
 /**
  * Fetches all rooms from database (for list pages - includes capacity)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllRoomsList(): Promise<Array<{
+export const getAllRoomsList = cache(async (): Promise<Array<{
   code: string;
   type: string;
   capacity: number | null;
-}>> {
+}>> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -101,60 +135,51 @@ export async function getAllRoomsList(): Promise<Array<{
     type: room.type,
     capacity: room.capacity,
   }));
-}
+});
 
 /**
- * Fetches all instructors from database (for list pages - includes email, preferences, and max load)
+ * Fetches all faculty profiles from database (for list pages - includes email, preferences, and max load)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllInstructorsList(): Promise<Array<{
+export const getAllInstructorsList = cache(async (): Promise<Array<{
   id: string;
   name: string;
   email: string | null;
   max_load_per_week: number | null;
   preferred_times: any[] | null;
   unavailable_times: any[] | null;
-}>> {
+}>> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
-    .from("instructor")
-    .select("id, name, email, max_load_per_week, preferred_times, unavailable_times")
+    .from("faculty_profile")
+    .select("user_id, name, email, max_load_per_week, preferred_times, unavailable_times")
     .order("name", { ascending: true });
   
   if (error) {
-    console.error("Error fetching instructors:", error);
-    throw new Error(`Failed to fetch instructors: ${error.message}`);
+    console.error("Error fetching faculty profiles:", error);
+    throw new Error(`Failed to fetch faculty profiles: ${error.message}`);
   }
   
-  return (data || []).map((instructor: Instructor) => ({
-    id: instructor.id,
-    name: instructor.name,
-    email: instructor.email,
-    max_load_per_week: instructor.max_load_per_week,
-    preferred_times: Array.isArray(instructor.preferred_times) ? instructor.preferred_times : null,
-    unavailable_times: Array.isArray(instructor.unavailable_times) ? instructor.unavailable_times : null,
+  return (data || []).map((faculty: FacultyProfile) => ({
+    id: faculty.user_id,
+    name: faculty.name || "",
+    email: faculty.email,
+    max_load_per_week: faculty.max_load_per_week,
+    preferred_times: Array.isArray(faculty.preferred_times) ? faculty.preferred_times : null,
+    unavailable_times: Array.isArray(faculty.unavailable_times) ? faculty.unavailable_times : null,
   }));
-}
+});
 
 /**
  * Fetches all sections from database
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllSections(): Promise<Array<{
-  id: string;
-  course_code: string;
-  section_no: string;
-  instructor_id: string | null;
-  room_code: string | null;
-  capacity: number;
-  meeting_pattern: {
-    days: string[];
-    start: string;
-    duration: number;
-  };
-  group_level: number;
-  state: 'draft' | 'released';
-  activity?: string | null;
-}>> {
+export const getAllSections = cache(async (): Promise<SectionListItem[]> => {
   const supabase = await createClient();
   
   // Get current active term (status = 'draft' or 'released')
@@ -212,5 +237,5 @@ export async function getAllSections(): Promise<Array<{
     state: section.state as 'draft' | 'released',
     activity: section.activity || null,
   }));
-}
+});
 

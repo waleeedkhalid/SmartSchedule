@@ -5,14 +5,16 @@
  * - Current student level
  * - All courses organized by level in a grid layout
  * - Required vs Elective courses clearly marked
+ * 
+ * OPTIMIZATION: Fetches data server-side to avoid client-side auth issues
+ * and improve performance with proper caching.
  */
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { GraduationCap, BookOpen, CheckCircle2 } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { getServerUser } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { createClient } from "@/supabase/server";
+import { getStudentLevel } from "@/lib/db/student-data";
+import { getAcademicPlanCourses, getStudentCompletedCourses } from "@/lib/db/academic-plan";
 import { AcademicPlanView } from "@/components/academic-plan-view";
 
 export default async function AcademicPlanPage() {
@@ -22,15 +24,15 @@ export default async function AcademicPlanPage() {
     redirect('/dashboard');
   }
 
-  // Get student profile to get level
-  const supabase = await createClient();
-  const { data: studentProfile } = await supabase
-    .from("student_profile")
-    .select("level")
-    .eq("user_id", user.id)
-    .single();
-
-  const studentLevel = studentProfile?.level || user.level || 1;
+  // Fetch all data in parallel for better performance
+  const [studentLevel, completedCourseCodes, courses] = await Promise.all([
+    getStudentLevel(user.id).then(level => level ?? 1),
+    getStudentCompletedCourses(user.id),
+    getAcademicPlanCourses().catch((error) => {
+      console.error("Error fetching academic plan courses:", error);
+      return [];
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -45,38 +47,12 @@ export default async function AcademicPlanPage() {
         </p>
       </div>
 
-      {/* Current Level Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            Current Academic Level
-          </CardTitle>
-          <CardDescription>
-            Your current progress in the Software Engineering program
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/30">
-              <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {studentLevel}
-              </span>
-            </div>
-            <div>
-              <p className="text-lg font-semibold">Level {studentLevel}</p>
-              <p className="text-sm text-muted-foreground">
-                {studentLevel === 8 
-                  ? "Final level - Capstone project" 
-                  : `Progressing to Level ${studentLevel + 1}`}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Academic Plan Grid */}
-      <AcademicPlanView studentLevel={studentLevel} />
+      <AcademicPlanView 
+        studentLevel={studentLevel} 
+        completedCourseCodes={completedCourseCodes}
+        initialCourses={courses}
+      />
     </div>
   );
 }

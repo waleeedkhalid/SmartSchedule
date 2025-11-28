@@ -2,15 +2,21 @@
  * Student Dashboard Data
  * 
  * Provides real-time data for student dashboard including enrollments, exams, and credit stats
+ * 
+ * Wrapped with React.cache() for request memoization - ensures the same
+ * data is only fetched once per request, even if called multiple times
+ * in the same render tree.
+ * 
+ * Note: These functions use createClient() which accesses cookies(), so they cannot
+ * be wrapped with unstable_cache() for persistent caching. React.cache() provides
+ * request-level memoization which is sufficient for preventing duplicate queries.
  */
 
+import { cache } from 'react';
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
 
-type Enrollment = Database["public"]["Tables"]["student_enrollment"]["Row"];
-type Section = Database["public"]["Tables"]["section"]["Row"];
 type Course = Database["public"]["Tables"]["course"]["Row"];
-type Exam = Database["public"]["Tables"]["exam"]["Row"];
 
 export interface CreditStats {
   total: number;
@@ -47,19 +53,65 @@ export interface StudentExam {
 }
 
 /**
- * Get credit statistics for a student
+ * Get student level from student_profile table
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getStudentCreditStats(studentId: string): Promise<CreditStats> {
+export const getStudentLevel = cache(async (studentId: string): Promise<number | null> => {
   const supabase = await createClient();
-
-  // Get student profile to determine level
-  const { data: profile } = await supabase
+  
+  const { data: profile, error } = await supabase
     .from("student_profile")
     .select("level")
     .eq("user_id", studentId)
     .single();
+  
+  if (error) {
+    // PGRST116 is "not found" - expected for students without profile yet
+    if (error.code !== 'PGRST116') {
+      console.warn("Error fetching student level:", error);
+    }
+    return null;
+  }
+  
+  return profile?.level ?? null;
+});
 
-  const level = profile?.level || 1;
+/**
+ * Get student number from student_profile table
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
+ */
+export const getStudentNumber = cache(async (studentId: string): Promise<string | null> => {
+  const supabase = await createClient();
+  
+  const { data: profile, error } = await supabase
+    .from("student_profile")
+    .select("student_number")
+    .eq("user_id", studentId)
+    .single();
+  
+  if (error) {
+    // PGRST116 is "not found" - expected for students without profile yet
+    if (error.code !== 'PGRST116') {
+      console.warn("Error fetching student number:", error);
+    }
+    return null;
+  }
+  
+  return profile?.student_number ?? null;
+});
+
+/**
+ * Get credit statistics for a student
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
+ */
+export const getStudentCreditStats = cache(async (studentId: string): Promise<CreditStats> => {
+  const supabase = await createClient();
 
   // Get all enrollments for this student
   const { data: enrollments } = await supabase
@@ -75,10 +127,10 @@ export async function getStudentCreditStats(studentId: string): Promise<CreditSt
 
   if (!enrollments) {
     return {
-      totalCredits: 0,
-      requiredCredits: 0,
-      electiveCredits: 0,
-      completedCredits: 0,
+      total: 0,
+      required_credits: 0,
+      elective_credits: 0,
+      completed_credits: 0,
     };
   }
 
@@ -107,12 +159,15 @@ export async function getStudentCreditStats(studentId: string): Promise<CreditSt
     elective_credits: electiveCredits,
     completed_credits: totalCredits, // Assuming enrolled = completed for now
   };
-}
+});
 
 /**
  * Get all enrollments for a student with course and section details
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getStudentEnrollments(studentId: string): Promise<StudentEnrollment[]> {
+export const getStudentEnrollments = cache(async (studentId: string): Promise<StudentEnrollment[]> => {
   const supabase = await createClient();
 
   const { data: enrollments, error } = await supabase
@@ -128,7 +183,7 @@ export async function getStudentEnrollments(studentId: string): Promise<StudentE
         room_code,
         meeting_pattern,
         course:course!section_course_code_fkey(title),
-        instructor:instructor!section_instructor_id_fkey(name)
+        instructor:faculty_profile!section_instructor_id_fkey(name)
       )
     `)
     .eq("student_id", studentId)
@@ -159,12 +214,15 @@ export async function getStudentEnrollments(studentId: string): Promise<StudentE
       enrolled_at: enrollment.enrolled_at,
     };
   });
-}
+});
 
 /**
  * Get all exams for courses a student is enrolled in
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getStudentExams(studentId: string): Promise<StudentExam[]> {
+export const getStudentExams = cache(async (studentId: string): Promise<StudentExam[]> => {
   const supabase = await createClient();
 
   // First, get all course codes the student is enrolled in
@@ -218,7 +276,7 @@ export async function getStudentExams(studentId: string): Promise<StudentExam[]>
     duration: exam.duration_minutes,
     room_codes: exam.room_codes || [],
   }));
-}
+});
 
 /**
  * Get available elective sections with enrollment counts
@@ -246,7 +304,7 @@ export interface AvailableElectiveSection {
   } | null;
 }
 
-export async function getAvailableElectiveSections(): Promise<AvailableElectiveSection[]> {
+export const getAvailableElectiveSections = cache(async (): Promise<AvailableElectiveSection[]> => {
   const supabase = await createClient();
 
   // Get all released sections for elective courses
@@ -266,7 +324,7 @@ export async function getAvailableElectiveSections(): Promise<AvailableElectiveS
         credits,
         is_elective
       ),
-      instructor:instructor_id (
+      instructor:faculty_profile!section_instructor_id_fkey (
         name
       )
     `)
@@ -329,5 +387,47 @@ export async function getAvailableElectiveSections(): Promise<AvailableElectiveS
       } | null,
     };
   });
-}
+});
+
+/**
+ * Get upcoming deadlines for a specific role
+ * Wrapped with React.cache() for request memoization
+ */
+export const getUpcomingDeadlines = cache(async (role: string, daysAhead: number = 30) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_upcoming_deadlines_for_role', {
+    role_name: role,
+    days_ahead: daysAhead,
+  });
+
+  if (error) {
+    console.error("Error fetching upcoming deadlines:", error);
+    return [];
+  }
+
+  return data || [];
+});
+
+/**
+ * Get recent notifications for a user
+ * Wrapped with React.cache() for request memoization
+ */
+export const getUserNotifications = cache(async (userId: string, limit: number = 10) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('notification')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching notifications:", error);
+    return [];
+  }
+
+  return data || [];
+});
 

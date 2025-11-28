@@ -361,119 +361,17 @@ export async function updateSession(request: NextRequest) {
   }
   
   // Check onboarding status for authenticated users trying to access dashboard
-  // OPTIMIZATION: Skip onboarding check for demo users and cache the result
-  // Only check onboarding once per session using a cookie flag
+  // Skip onboarding check for demo users
+  // UPDATE: Onboarding check removed from middleware to improve performance
+  // and rely on page-level validation (validateOnboardingAndProfile)
+  /*
   if (isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute && !hasDemoUser) {
     // Only check for Supabase users (demo users skip onboarding)
     if (hasSupabaseSession && supabaseUser) {
-      // OPTIMIZATION: Check if onboarding was already verified in this session
-      const onboardingVerified = request.cookies.get('onboarding_verified')?.value === 'true';
-      
-      if (!onboardingVerified) {
-        try {
-          // Defensive check: Ensure supabase client exists
-          if (!supabase) {
-            console.warn('Supabase client not available in onboarding check, skipping');
-            return response;
-          }
-          
-          // Check onboarding status and fetch role
-          // onboarding_completed column exists in user_roles table
-          let userRole;
-          let roleError;
-          
-          try {
-            const result = await supabase
-              .from('user_roles')
-              .select('onboarding_completed, role')
-              .eq('user_id', supabaseUser.id)
-              .single();
-            
-            userRole = result.data;
-            roleError = result.error;
-          } catch (error) {
-            // Catch any unexpected errors (network issues, etc.)
-            console.warn('Unexpected error fetching user role in middleware:', error);
-            roleError = {
-              message: error instanceof Error ? error.message : 'Unexpected error',
-              code: 'UNEXPECTED_ERROR',
-              status: 500,
-            };
-            userRole = null;
-          }
-          
-          // Handle all error cases: explicit error OR missing userRole OR both falsy
-          if (roleError || !userRole) {
-            // Handle 400 errors specifically - these are query/RLS issues, not auth issues
-            if (roleError) {
-              const errorStatus = 'status' in roleError ? roleError.status : undefined;
-              const errorCode = roleError.code;
-              if (errorStatus === 400 || errorCode?.startsWith('PGRST')) {
-                console.warn('user_roles query error (400) in middleware - skipping onboarding check:', {
-                  userId: supabaseUser.id,
-                  error: roleError.message,
-                  code: errorCode,
-                  pathname,
-                });
-                // Skip onboarding check and continue - don't sign out
-                return response;
-              }
-            }
-            
-            // For other errors (not found, auth issues, etc.), sign out
-            console.warn('User role not found - session invalid, automatically signing out:', {
-              userId: supabaseUser.id,
-              email: supabaseUser.email ?? 'N/A',
-              error: roleError?.message,
-              code: roleError?.code,
-              pathname,
-            });
-            return autoSignOut(request, 'user_role_not_found');
-          }
-          
-          // At this point, we know userRole exists and there's no error
-          const userRoleData = userRole as { onboarding_completed: boolean; role: string };
-          
-          // Check if onboarding is needed
-          const needsOnboarding = !userRoleData.onboarding_completed;
-          
-          // Store role in response header for dashboard page to avoid redundant query
-          if (!needsOnboarding && userRoleData.role) {
-            response.headers.set('x-user-role', userRoleData.role);
-          }
-            
-          // Set cookie to cache onboarding verification (valid for 1 hour)
-          if (!needsOnboarding) {
-            response.cookies.set('onboarding_verified', 'true', {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              maxAge: 60 * 60, // 1 hour
-              path: '/',
-            });
-          }
-            
-          // Redirect to onboarding if needed
-          if (needsOnboarding) {
-            const onboardingUrl = new URL("/onboarding", request.url);
-            const onboardingResponse = NextResponse.redirect(onboardingUrl);
-            return copyCookiesToResponse(response, onboardingResponse);
-          }
-        } catch (error) {
-          // AUTOMATIC SIGNOUT: If error checking onboarding/auth, session is corrupted - sign out immediately
-          console.error("Error checking authentication/onboarding status, automatically signing out:", error);
-          return autoSignOut(request, 'auth_check_error');
-        }
-      }
-    } else if (!hasSupabaseSession && !hasDemoUser) {
-      // AUTOMATIC SIGNOUT: Session refresh failed - sign out immediately
-      console.warn('Session refresh failed, automatically signing out:', {
-        error: authError instanceof Error ? authError.message : String(authError),
-        pathname
-      });
-      return autoSignOut(request, 'session_refresh_failed');
+      // Onboarding check logic removed - rely on page validation
     }
   }
+  */
   
   // Return response with updated cookies from Supabase session refresh
   // This ensures the refreshed session cookies are sent to the client

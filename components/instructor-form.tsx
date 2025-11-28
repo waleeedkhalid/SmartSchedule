@@ -56,8 +56,10 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
     try {
       const authHeader = await getAuthHeader();
       
+      // Get id from instructor (could be id or user_id)
+      const instructorId = instructor && ('id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : undefined));
       const url = isEditing 
-        ? `/api/v1/instructors/${instructor?.id}`
+        ? `/api/v1/instructors/${instructorId}`
         : '/api/v1/instructors';
       
       const method = isEditing ? 'PUT' : 'POST';

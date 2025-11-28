@@ -155,15 +155,14 @@ export async function GET(request: NextRequest) {
         200
       );
     } else if (user.role === "faculty") {
-      // Get faculty's assigned sections
-      // Uses idx_instructor_user_id index
-      const { data: instructor, error: instructorError } = await supabase
-        .from("instructor")
-        .select("id")
+      // Get faculty's profile
+      const { data: facultyProfile, error: facultyError } = await supabase
+        .from("faculty_profile")
+        .select("user_id, name")
         .eq("user_id", user.id)
         .single();
 
-      if (instructorError || !instructor) {
+      if (facultyError || !facultyProfile) {
         return createSuccessResponse(
           {
             instructor_id: null,
@@ -196,7 +195,7 @@ export async function GET(request: NextRequest) {
           meeting_pattern,
           capacity
         `)
-        .eq("instructor_id", instructor.id);
+        .eq("instructor_id", facultyProfile.user_id);
 
       if (sectionsError) {
         throw sectionsError;

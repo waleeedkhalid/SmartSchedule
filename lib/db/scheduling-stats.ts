@@ -44,7 +44,7 @@ export async function getSchedulingStats(): Promise<SchedulingStats> {
     supabase.from("course").select("*", { count: "exact", head: true }),
     supabase.from("section").select("*", { count: "exact", head: true }),
     supabase.from("room").select("*", { count: "exact", head: true }),
-    supabase.from("instructor").select("*", { count: "exact", head: true }),
+    supabase.from("faculty_profile").select("*", { count: "exact", head: true }),
   ]);
 
   const coursesCount = coursesResult.count || 0;

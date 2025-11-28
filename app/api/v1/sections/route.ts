@@ -13,6 +13,7 @@ import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/au
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
+import { revalidateSections, revalidateSchedules } from "@/lib/cache/revalidation";
 
 // Type for section query result with relations
 type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
@@ -88,8 +89,8 @@ export async function GET(request: NextRequest) {
           credits,
           is_elective
         ),
-        instructor:instructor_id (
-          id,
+        instructor:faculty_profile!section_instructor_id_fkey (
+          user_id,
           name,
           email
         ),
@@ -149,9 +150,9 @@ export async function GET(request: NextRequest) {
       instructor_id: section.instructor_id,
       instructor: section.instructor
         ? {
-            id: section.instructor.id,
-            name: section.instructor.name,
-            email: section.instructor.email,
+            id: section.instructor.user_id,
+            name: section.instructor.name || "",
+            email: section.instructor.email || "",
           }
         : null,
       room_code: section.room_code,
@@ -293,8 +294,8 @@ export async function POST(request: NextRequest) {
           credits,
           is_elective
         ),
-        instructor:instructor_id (
-          id,
+        instructor:faculty_profile!section_instructor_id_fkey (
+          user_id,
           name,
           email
         ),
@@ -354,6 +355,12 @@ export async function POST(request: NextRequest) {
       state: data.state,
       created_at: data.created_at,
     };
+
+    // Revalidate section and schedule-related caches after successful creation
+    revalidateSections();
+    if (term_id) {
+      revalidateSchedules();
+    }
 
     return createSuccessResponse(section, 201);
   } catch (error) {

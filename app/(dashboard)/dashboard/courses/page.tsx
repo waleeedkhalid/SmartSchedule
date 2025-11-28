@@ -36,9 +36,10 @@ async function CoursesContent({
   sortOrder: 'asc' | 'desc'
 }) {
   // Fetch courses from Supabase with optimized query:
-  // - Only selects required columns (code, title, level, credits, weekly_hours, is_elective)
+  // - Only selects required columns (code, title, recommended_level, credits, weekly_hours, is_elective)
   // - Uses pagination (.range()) to limit data transfer
   // - Server-side search and sorting for performance
+  // - Note: 'level' sort maps to 'recommended_level' in database (NULL for electives)
   const { courses, totalCount, totalPages, pageSize } = await getCoursesPaginated(
     currentPage,
     20,

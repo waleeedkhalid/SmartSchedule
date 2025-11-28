@@ -24,14 +24,12 @@ interface TimelineEventFormProps {
 const USER_ROLES = ['scheduling', 'registrar', 'teaching_load', 'faculty', 'student']
 
 const EVENT_TYPES = [
+	{ value: 'faculty_availability', label: 'Faculty Availability Submission' },
+	{ value: 'elective_survey', label: 'Elective Survey' },
 	{ value: 'registration', label: 'Registration Period' },
-	{ value: 'add_drop', label: 'Add/Drop Period' },
 	{ value: 'midterm_exams', label: 'Midterm Exams' },
 	{ value: 'final_exams', label: 'Final Exams' },
-	{ value: 'grades_due', label: 'Grade Submission Deadline' },
-	{ value: 'holiday', label: 'Holiday/Break' },
-	{ value: 'faculty_availability', label: 'Faculty Availability Submission' },
-	{ value: 'schedule_publication', label: 'Schedule Publication' },
+	{ value: 'schedule_released', label: 'Schedule Release' },
 ]
 
 export function TimelineEventForm({

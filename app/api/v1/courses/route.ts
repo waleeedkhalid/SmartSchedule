@@ -14,9 +14,11 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 import { getMockCourses } from "@/lib/demo-data";
 import { extractAuthToken } from "@/lib/api/auth-utils";
-import type { Database } from "@/lib/types/database";
+import { revalidateCourses } from "@/lib/cache/revalidation";
 
-type CourseRow = Database["public"]["Tables"]["course"]["Row"];
+// OPTIMIZATION: Cache API route responses for 1 hour (3600 seconds)
+// Courses data is relatively static and doesn't change frequently
+export const revalidate = 3600; // 1 hour
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,24 +34,30 @@ export async function GET(request: NextRequest) {
       const mockCourses = await getMockCourses();
       
       // Map to API response format
+      // For electives, recommended_level is NULL, so we use 0 for grouping
       const courses = mockCourses.map((course) => ({
         code: course.code,
         name: course.title,
         credits: course.credits,
-        level: course.level,
+        level: course.level ?? 0, // Use 0 for electives (NULL recommended_level)
         course_type: course.is_elective ? "elective" : "required",
         created_at: "2024-01-01T00:00:00Z",
       }));
 
-      return createSuccessResponse(courses, 200);
+      const response = createSuccessResponse(courses, 200);
+      // OPTIMIZATION: Add cache headers for browser/CDN caching
+      response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+      return response;
     }
 
     // Handle real Supabase mode
     const supabase = await createClient();
 
+    // OPTIMIZATION: Select only required columns instead of select("*")
+    // This reduces data transfer and improves query performance
     const { data, error } = await supabase
       .from("course")
-      .select("*")
+      .select("code, title, credits, recommended_level, is_elective, created_at")
       .order("code", { ascending: true });
 
     if (error) {
@@ -57,16 +65,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Map database fields to API response format
-    const courses = (data || []).map((course: CourseRow) => ({
+    // For electives, recommended_level is NULL, so we use 0 for grouping
+    const courses = (data || []).map((course) => ({
       code: course.code,
       name: course.title,
       credits: course.credits,
-      level: course.level,
+      level: (course.recommended_level ?? 0) as number, // Use 0 for electives (NULL recommended_level)
       course_type: course.is_elective ? "elective" : "required",
       created_at: course.created_at,
     }));
 
-    return createSuccessResponse(courses, 200);
+    const response = createSuccessResponse(courses, 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 1 hour on CDN
+    // stale-while-revalidate: Serve stale content for up to 24 hours while revalidating
+    response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -94,11 +108,22 @@ export async function POST(request: NextRequest) {
     const { code, name, credits, level, course_type, weekly_hours } = body;
 
     // Validate required fields
-    if (!code || !name || credits === undefined || level === undefined) {
+    // Note: level is optional for elective courses (will be NULL)
+    if (!code || !name || credits === undefined) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
-        "Missing required fields: code, name, credits, level"
+        "Missing required fields: code, name, credits"
+      );
+    }
+
+    // Validate level: required for core courses, optional (NULL) for electives
+    const isElective = course_type === "elective";
+    if (!isElective && (level === undefined || level === null)) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "Missing required field: level (required for core courses)"
       );
     }
 
@@ -125,15 +150,16 @@ export async function POST(request: NextRequest) {
     const finalWeeklyHours = weekly_hours ? parseInt(weekly_hours) : calculatedWeeklyHours;
 
     // Insert new course
+    // recommended_level: NULL for electives, set value for core courses
     const { data, error } = await supabase
       .from("course")
       .insert({
         code,
         title: name,
         credits: creditsNum,
-        level: parseInt(level),
+        recommended_level: isElective ? null : parseInt(level),
         weekly_hours: finalWeeklyHours,
-        is_elective: course_type === "elective",
+        is_elective: isElective,
         created_by: user.id,
       })
       .select()
@@ -144,14 +170,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Map to API response format
+    // Use 0 for electives (NULL recommended_level) for backward compatibility
     const course = {
       code: data.code,
       name: data.title,
       credits: data.credits,
-      level: data.level,
+      level: data.recommended_level ?? 0, // Use 0 for electives (NULL recommended_level)
       course_type: data.is_elective ? "elective" : "required",
       created_at: data.created_at,
     };
+
+    // Revalidate course-related caches after successful creation
+    revalidateCourses();
 
     return createSuccessResponse(course, 201);
   } catch (error) {

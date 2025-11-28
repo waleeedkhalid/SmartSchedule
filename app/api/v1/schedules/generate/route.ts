@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       // Get all courses (for creating sections)
       supabase
         .from("course")
-        .select("code, title, level, credits, weekly_hours, is_elective"),
+        .select("code, title, recommended_level, credits, weekly_hours, is_elective"),
       // Get all sections (to check which courses already have sections)
       supabase
         .from("section")
@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Create draft sections for courses that don't have any sections
     // Only create sections for SWE courses in levels 4-8 (per PRD scheduling scope)
-    const sweCourses = courses.filter((c: { code: string; level: number; is_elective: boolean }) => 
-      c.code.startsWith('SWE') && c.level >= 4 && c.level <= 8 && !c.is_elective
+    const sweCourses = courses.filter((c: { code: string; recommended_level: number | null; is_elective: boolean }) => 
+      c.code.startsWith('SWE') && c.recommended_level !== null && c.recommended_level >= 4 && c.recommended_level <= 8 && !c.is_elective
     );
 
     // Check which courses already have sections (any state)
@@ -145,13 +145,13 @@ export async function POST(request: NextRequest) {
     // Create draft sections for courses that need them
     const createdSections: SectionForScheduling[] = [];
     if (coursesNeedingSections.length > 0) {
-      const sectionsToCreate = coursesNeedingSections.map((course: { code: string; level: number; credits: number }) => ({
+      const sectionsToCreate = coursesNeedingSections.map((course: { code: string; recommended_level: number | null; credits: number }) => ({
         course_code: course.code,
         section_no: "01", // Default to section 01
         instructor_id: null,
         room_code: null,
         capacity: 30, // Default capacity
-        group_level: course.level,
+        group_level: course.recommended_level ?? 1, // Use recommended_level, default to 1 if null
         activity: "lecture" as const,
         meeting_pattern: {},
         state: "draft",
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
       const { data: newSections, error: createError } = await supabase
         .from("section")
         .insert(sectionsToCreate)
-        .select("id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern");
+        .select("id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern, state");
 
       if (createError) {
         throw createError;
@@ -178,30 +178,74 @@ export async function POST(request: NextRequest) {
       ...createdSections,
     ] as SectionForScheduling[];
 
-    // Use default time grid config if none exists
+    // Use time grid config from database - MUST follow scheduling settings
     let timeGridConfig;
     if (timeGridResult.error && timeGridResult.error.code === "PGRST116") {
-      // No config exists, use defaults
-      timeGridConfig = {
-        teaching_days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-        daily_start_time: '08:00:00',
-        daily_end_time: '17:00:00',
-        slot_duration_minutes: 60,
-        break_start_time: '12:00:00',
-        break_end_time: '13:00:00',
-        typical_lab_duration_minutes: 120,
-      };
+      // No config exists, use defaults (should not happen in production)
+      // This means scheduling settings haven't been configured yet
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "Scheduling settings not configured. Please configure time grid settings in Scheduling Settings before generating schedules."
+      );
     } else if (timeGridResult.error) {
       throw timeGridResult.error;
     } else {
+      // Use the actual configured settings from database - MUST follow scheduling settings
+      const config = timeGridResult.data;
+      
+      // Validate that all required settings are present
+      if (!config.teaching_days || !Array.isArray(config.teaching_days) || config.teaching_days.length === 0) {
+        return createErrorResponse(
+          400,
+          ErrorCodes.VALIDATION_ERROR,
+          "Invalid scheduling settings: teaching_days must be a non-empty array. Please update Scheduling Settings."
+        );
+      }
+      
+      if (!config.daily_start_time || !config.daily_end_time) {
+        return createErrorResponse(
+          400,
+          ErrorCodes.VALIDATION_ERROR,
+          "Invalid scheduling settings: daily_start_time and daily_end_time are required. Please update Scheduling Settings."
+        );
+      }
+      
+      if (!config.slot_duration_minutes || config.slot_duration_minutes < 15 || config.slot_duration_minutes > 180) {
+        return createErrorResponse(
+          400,
+          ErrorCodes.VALIDATION_ERROR,
+          "Invalid scheduling settings: slot_duration_minutes must be between 15 and 180. Please update Scheduling Settings."
+        );
+      }
+      
+      if (!config.break_start_time || !config.break_end_time) {
+        return createErrorResponse(
+          400,
+          ErrorCodes.VALIDATION_ERROR,
+          "Invalid scheduling settings: break_start_time and break_end_time are required. Please update Scheduling Settings."
+        );
+      }
+      
+      if (!config.typical_lab_duration_minutes || config.typical_lab_duration_minutes < 60 || config.typical_lab_duration_minutes > 300) {
+        return createErrorResponse(
+          400,
+          ErrorCodes.VALIDATION_ERROR,
+          "Invalid scheduling settings: typical_lab_duration_minutes must be between 60 and 300. Please update Scheduling Settings."
+        );
+      }
+      
+      // Use the configured settings exactly as stored in database
       timeGridConfig = {
-        teaching_days: timeGridResult.data.teaching_days,
-        daily_start_time: timeGridResult.data.daily_start_time,
-        daily_end_time: timeGridResult.data.daily_end_time,
-        slot_duration_minutes: timeGridResult.data.slot_duration_minutes,
-        break_start_time: timeGridResult.data.break_start_time,
-        break_end_time: timeGridResult.data.break_end_time,
-        typical_lab_duration_minutes: timeGridResult.data.typical_lab_duration_minutes,
+        teaching_days: config.teaching_days,
+        daily_start_time: config.daily_start_time,
+        daily_end_time: config.daily_end_time,
+        slot_duration_minutes: config.slot_duration_minutes,
+        break_start_time: config.break_start_time,
+        break_end_time: config.break_end_time,
+        typical_lab_duration_minutes: config.typical_lab_duration_minutes,
+        // Note: exam_days, exam_start_time, exam_end_time are stored but not used in schedule generation
+        // They are used for exam scheduling (separate feature)
       };
     }
 
@@ -305,11 +349,17 @@ export async function POST(request: NextRequest) {
       capacity: r.capacity || 0,
     }));
 
-    // Run scheduling algorithm
+    // Run scheduling algorithm with configured settings
+    // The algorithm will use:
+    // - teaching_days: Days when classes can be scheduled
+    // - daily_start_time / daily_end_time: Time window for scheduling
+    // - slot_duration_minutes: Base duration for time slots
+    // - break_start_time / break_end_time: Break period (no classes scheduled)
+    // - typical_lab_duration_minutes: Duration for lab sessions
     const schedulingInput: SchedulingInput = {
       sections: sectionsForAlgorithm,
       rooms: roomsForAlgorithm,
-      timeGridConfig,
+      timeGridConfig, // Uses configured settings from Scheduling Settings page
     };
 
     const result = await generateSchedule(schedulingInput);
@@ -356,6 +406,153 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         throw insertError;
+      }
+    }
+
+    // Schedule exams for all courses with scheduled sections
+    // Get unique courses from scheduled sections
+    const scheduledCourses = new Set(
+      result.assignments.map((a) => a.course_code)
+    );
+
+    // Get existing exams for this term's courses to avoid duplicates
+    const { data: existingExams } = await supabase
+      .from("exam")
+      .select("course_code, date")
+      .in("course_code", Array.from(scheduledCourses));
+
+    const existingExamKeys = new Set(
+      (existingExams || []).map((e) => `${e.course_code}-${e.date}`)
+    );
+
+    // Get exam rooms (use lecture rooms for exams)
+    const examRooms = rooms.filter((r) => r.type === "Lecture");
+    
+    if (examRooms.length === 0) {
+      console.warn("No lecture rooms available for exam scheduling");
+    }
+
+    // Calculate exam dates based on term dates and exam_days
+    const examDates: string[] = [];
+    if (term.start_date && term.end_date && timeGridConfig.exam_days && timeGridConfig.exam_days.length > 0) {
+      const startDate = new Date(term.start_date);
+      const endDate = new Date(term.end_date);
+      const currentDate = new Date(startDate);
+      
+      // Day name to day of week mapping
+      const dayMap: { [key: string]: number } = {
+        Sunday: 0,
+        Monday: 1,
+        Tuesday: 2,
+        Wednesday: 3,
+        Thursday: 4,
+        Friday: 5,
+        Saturday: 6,
+      };
+      
+      const examDayNumbers = timeGridConfig.exam_days.map((day) => dayMap[day] ?? -1).filter((d) => d >= 0);
+      
+      // Find exam dates within term (typically midterm and final)
+      // Midterm: around 1/3 of term
+      // Final: near end of term
+      const termDuration = endDate.getTime() - startDate.getTime();
+      const midtermDate = new Date(startDate.getTime() + termDuration / 3);
+      const finalDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 1 week before end
+      
+      // Find closest exam day to midterm and final dates
+      for (const targetDate of [midtermDate, finalDate]) {
+        for (let i = 0; i < 7; i++) {
+          const checkDate = new Date(targetDate);
+          checkDate.setDate(targetDate.getDate() + i - 3);
+          
+          if (checkDate >= startDate && checkDate <= endDate) {
+            const dayOfWeek = checkDate.getDay();
+            if (examDayNumbers.includes(dayOfWeek)) {
+              const dateStr = checkDate.toISOString().split("T")[0];
+              if (!examDates.includes(dateStr)) {
+                examDates.push(dateStr);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Create exams for each course
+    const examEntries: Array<{
+      course_code: string;
+      date: string;
+      start_time: string;
+      duration_minutes: number;
+      room_codes: string[];
+      created_by: string | null;
+    }> = [];
+
+    if (examDates.length > 0 && examRooms.length > 0 && timeGridConfig.exam_start_time && timeGridConfig.exam_end_time) {
+      // Parse exam time window
+      const [startHour, startMin] = timeGridConfig.exam_start_time.split(":").map(Number);
+      const [endHour, endMin] = timeGridConfig.exam_end_time.split(":").map(Number);
+      const examStartMinutes = startHour * 60 + startMin;
+      const examEndMinutes = endHour * 60 + endMin;
+      const examWindowMinutes = examEndMinutes - examStartMinutes;
+
+      // Default exam duration: 2 hours (120 minutes)
+      const defaultExamDuration = 120;
+      
+      let roomIndex = 0;
+      let currentTime = examStartMinutes;
+
+      for (const courseCode of scheduledCourses) {
+        for (const examDate of examDates) {
+          const examKey = `${courseCode}-${examDate}`;
+          
+          // Skip if exam already exists
+          if (existingExamKeys.has(examKey)) {
+            continue;
+          }
+
+          // Calculate start time
+          if (currentTime + defaultExamDuration > examEndMinutes) {
+            // Move to next day or next room group
+            currentTime = examStartMinutes;
+            roomIndex = (roomIndex + 1) % Math.max(1, Math.floor(examRooms.length / 2));
+          }
+
+          // Format start time
+          const hours = Math.floor(currentTime / 60);
+          const minutes = currentTime % 60;
+          const startTime = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+
+          // Assign rooms (use 1-2 rooms per exam depending on capacity needs)
+          const assignedRooms = examRooms
+            .slice(roomIndex, roomIndex + 2)
+            .map((r) => r.code);
+
+          examEntries.push({
+            course_code: courseCode,
+            date: examDate,
+            start_time: startTime,
+            duration_minutes: defaultExamDuration,
+            room_codes: assignedRooms,
+            created_by: user.id,
+          });
+
+          // Move time forward for next exam
+          currentTime += defaultExamDuration + 30; // 30 min buffer between exams
+        }
+      }
+
+      // Insert exams
+      if (examEntries.length > 0) {
+        const { error: examInsertError } = await supabase
+          .from("exam")
+          .insert(examEntries);
+
+        if (examInsertError) {
+          console.error("Error creating exams:", examInsertError);
+          // Don't fail the entire request if exam creation fails
+        }
       }
     }
 

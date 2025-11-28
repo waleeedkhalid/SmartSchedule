@@ -31,9 +31,9 @@ export async function GET(
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from("instructor")
+      .from("faculty_profile")
       .select("*")
-      .eq("id", params.id)
+      .eq("user_id", params.id)
       .single();
 
     if (error) {
@@ -41,7 +41,7 @@ export async function GET(
         return createErrorResponse(
           404,
           ErrorCodes.NOT_FOUND,
-          `Instructor with id '${params.id}' not found`
+          `Faculty profile with id '${params.id}' not found`
         );
       }
       throw error;
@@ -67,18 +67,18 @@ export async function PUT(
 
     const supabase = await createClient();
 
-    // Check if instructor exists
+    // Check if faculty profile exists
     const { data: existing, error: checkError } = await supabase
-      .from("instructor")
-      .select("id")
-      .eq("id", params.id)
+      .from("faculty_profile")
+      .select("user_id, email")
+      .eq("user_id", params.id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Instructor with id '${params.id}' not found`
+        `Faculty profile with id '${params.id}' not found`
       );
     }
 
@@ -103,8 +103,8 @@ export async function PUT(
     // Check if email already exists (if changed)
     if (email && email !== existing.email) {
       const { data: emailExists } = await supabase
-        .from("instructor")
-        .select("id")
+        .from("faculty_profile")
+        .select("user_id")
         .eq("email", email)
         .single();
 
@@ -112,7 +112,7 @@ export async function PUT(
         return createErrorResponse(
           409,
           ErrorCodes.VALIDATION_ERROR,
-          `Instructor with email '${email}' already exists`
+          `Faculty profile with email '${email}' already exists`
         );
       }
     }
@@ -125,11 +125,11 @@ export async function PUT(
     if (preferred_times !== undefined) updateData.preferred_times = preferred_times;
     if (unavailable_times !== undefined) updateData.unavailable_times = unavailable_times;
 
-    // Update instructor
+    // Update faculty profile
     const { data, error } = await supabase
-      .from("instructor")
+      .from("faculty_profile")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("user_id", params.id)
       .select()
       .single();
 
@@ -154,22 +154,22 @@ export async function DELETE(
 
     const supabase = await createClient();
 
-    // Check if instructor exists
+    // Check if faculty profile exists
     const { data: existing, error: checkError } = await supabase
-      .from("instructor")
-      .select("id")
-      .eq("id", params.id)
+      .from("faculty_profile")
+      .select("user_id")
+      .eq("user_id", params.id)
       .single();
 
     if (checkError || !existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
-        `Instructor with id '${params.id}' not found`
+        `Faculty profile with id '${params.id}' not found`
       );
     }
 
-    // Check if instructor has sections
+    // Check if faculty has sections
     const { data: sections } = await supabase
       .from("section")
       .select("id")
@@ -180,21 +180,21 @@ export async function DELETE(
       return createErrorResponse(
         409,
         ErrorCodes.VALIDATION_ERROR,
-        `Cannot delete instructor because they have sections assigned. Remove sections first.`
+        `Cannot delete faculty profile because they have sections assigned. Remove sections first.`
       );
     }
 
-    // Delete instructor
+    // Delete faculty profile
     const { error } = await supabase
-      .from("instructor")
+      .from("faculty_profile")
       .delete()
-      .eq("id", params.id);
+      .eq("user_id", params.id);
 
     if (error) {
       throw error;
     }
 
-    return createSuccessResponse({ message: `Instructor deleted successfully` }, 200);
+    return createSuccessResponse({ message: `Faculty profile deleted successfully` }, 200);
   } catch (error) {
     return handleApiError(error);
   }

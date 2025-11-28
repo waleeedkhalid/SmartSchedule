@@ -81,7 +81,7 @@ export type Database = {
           created_by: string | null
           credits: number
           is_elective: boolean
-          level: number
+          recommended_level: number | null
           title: string
           updated_at: string | null
           weekly_hours: number
@@ -92,7 +92,7 @@ export type Database = {
           created_by?: string | null
           credits: number
           is_elective?: boolean
-          level: number
+          recommended_level?: number | null
           title: string
           updated_at?: string | null
           weekly_hours: number
@@ -103,12 +103,51 @@ export type Database = {
           created_by?: string | null
           credits?: number
           is_elective?: boolean
-          level?: number
+          recommended_level?: number | null
           title?: string
           updated_at?: string | null
           weekly_hours?: number
         }
         Relationships: []
+      }
+      course_prerequisite: {
+        Row: {
+          course_code: string
+          created_at: string | null
+          id: string
+          prerequisite_course_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          course_code: string
+          created_at?: string | null
+          id?: string
+          prerequisite_course_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          course_code?: string
+          created_at?: string | null
+          id?: string
+          prerequisite_course_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_prerequisite_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "course_prerequisite_prerequisite_course_code_fkey"
+            columns: ["prerequisite_course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       elective_comment: {
         Row: {
@@ -189,74 +228,83 @@ export type Database = {
           },
         ]
       }
+      exam: {
+        Row: {
+          course_code: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          duration_minutes: number
+          id: string
+          room_codes: string[]
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          course_code: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          duration_minutes: number
+          id?: string
+          room_codes?: string[]
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          course_code?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          duration_minutes?: number
+          id?: string
+          room_codes?: string[]
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_course_code_fkey"
+            columns: ["course_code"]
+            isOneToOne: false
+            referencedRelation: "course"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       faculty_profile: {
         Row: {
           created_at: string | null
           department: string
-          instructor_id: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          department?: string
-          instructor_id?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          department?: string
-          instructor_id?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "faculty_profile_instructor_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "instructor"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      instructor: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
           email: string | null
-          id: string
           max_load_per_week: number | null
-          name: string
+          name: string | null
           preferred_times: Json | null
           unavailable_times: Json | null
           updated_at: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
-          created_by?: string | null
+          department?: string
           email?: string | null
-          id?: string
           max_load_per_week?: number | null
-          name: string
+          name?: string | null
           preferred_times?: Json | null
           unavailable_times?: Json | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
-          created_by?: string | null
+          department?: string
           email?: string | null
-          id?: string
           max_load_per_week?: number | null
-          name?: string
+          name?: string | null
           preferred_times?: Json | null
           unavailable_times?: Json | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -468,8 +516,8 @@ export type Database = {
             foreignKeyName: "section_instructor_id_fkey"
             columns: ["instructor_id"]
             isOneToOne: false
-            referencedRelation: "instructor"
-            referencedColumns: ["id"]
+            referencedRelation: "faculty_profile"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "section_room_code_fkey"
@@ -590,21 +638,27 @@ export type Database = {
         Row: {
           created_at: string | null
           department: string
+          enrollment_year: number | null
           level: number
+          student_number: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           department?: string
+          enrollment_year?: number | null
           level: number
+          student_number?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           department?: string
+          enrollment_year?: number | null
           level?: number
+          student_number?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -700,6 +754,13 @@ export type Database = {
         Args: { p_level: number; p_student_id: string }
         Returns: string
       }
+      check_course_prerequisites: {
+        Args: { p_course_code: string; p_student_id: string }
+        Returns: {
+          is_locked: boolean
+          missing_prerequisites: string[]
+        }[]
+      }
       check_instructor_conflicts: {
         Args: {
           p_days: string[]
@@ -750,6 +811,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      generate_student_number: {
+        Args: { p_enrollment_year?: number; p_level: number; p_user_id: string }
+        Returns: string
+      }
+      get_current_term_hijri_year: { Args: never; Returns: number }
+      get_enrollment_year_from_first_term: {
+        Args: { p_student_id: string }
+        Returns: number
       }
       get_level_statistics: { Args: { p_level: number }; Returns: Json }
       get_overdue_events: {
@@ -818,10 +888,12 @@ export type Database = {
         Args: { check_roles: Database["public"]["Enums"]["user_role"][] }
         Returns: boolean
       }
+      has_registrar_role: { Args: never; Returns: boolean }
       has_role: {
         Args: { check_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      has_scheduling_role: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_registrar_or_admin: { Args: never; Returns: boolean }
       show_limit: { Args: never; Returns: number }
@@ -835,6 +907,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_needs_onboarding: { Args: { p_user_id?: string }; Returns: boolean }
     }
     Enums: {
       enrollment_status: "registered" | "dropped"
@@ -999,7 +1072,3 @@ export const Constants = {
     },
   },
 } as const
-
-// Type aliases for convenience
-export type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"]
-export type UserRole = Database["public"]["Enums"]["user_role"]

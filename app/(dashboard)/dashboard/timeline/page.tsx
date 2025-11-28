@@ -61,7 +61,6 @@ export default async function TimelinePage() {
 	const mappedSemesters = (semesters || []).map((term: AcademicTerm) => ({
 		code: term.code,
 		name: term.name,
-		type: 'FALL', // academic_term doesn't have type column, defaulting to FALL
 	}))
 
 	return (

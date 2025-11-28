@@ -564,6 +564,37 @@ ENABLE_DEMO_MODE=false
 
 ### Data Fetching Standards
 
+#### Next.js 15 Caching Strategy
+
+This project implements comprehensive Next.js 15 caching strategies to optimize performance and ensure data freshness:
+
+**1. Request Memoization (React.cache())**
+- All data fetching functions in `lib/data/*.ts` are wrapped with `React.cache()`
+- Ensures the same data is only fetched once per request, even if called multiple times in the same render tree
+- Prevents duplicate database queries during server-side rendering
+
+**2. Persistent Caching with Tags (unstable_cache)**
+- Data fetching functions use `unstable_cache` with cache tags for fine-grained invalidation
+- Cache tags defined in `lib/cache/tags.ts` (e.g., `CACHE_TAGS.COURSES`, `CACHE_TAGS.SECTIONS`)
+- Time-based revalidation: Most caches revalidate every hour (3600 seconds)
+- Sections cache revalidates every 30 minutes (1800 seconds) due to higher change frequency
+
+**3. On-Demand Revalidation**
+- After mutations (POST, PUT, DELETE), caches are invalidated using `revalidatePath` and `revalidateTag`
+- Revalidation helpers in `lib/cache/revalidation.ts` provide centralized cache invalidation
+- API routes automatically call revalidation after successful mutations
+
+**4. Route Segment Config**
+- User-specific routes use `dynamic = 'force-dynamic'` to opt out of Full Route Cache
+- Static routes benefit from automatic caching with time-based revalidation
+- See route configs in dashboard pages for examples
+
+**Cache Layers:**
+- **Request Memoization**: Per-request lifecycle (React.cache)
+- **Data Cache**: Persistent across requests with tags (unstable_cache)
+- **Full Route Cache**: Automatic for static routes
+- **Router Cache**: Client-side navigation cache (handled by Next.js)
+
 #### Server-Side Data Fetching (Preferred)
 
 **When to Use:**
@@ -576,7 +607,7 @@ ENABLE_DEMO_MODE=false
 **Pattern: Server Components**
 ```typescript
 // app/(dashboard)/dashboard/courses/page.tsx
-import { getCoursesPaginated } from '@/lib/db/courses'
+import { getCoursesPaginated } from '@/lib/data/courses'
 
 export default async function CoursesPage() {
   const { courses, totalCount } = await getCoursesPaginated(1, 20)
@@ -586,20 +617,29 @@ export default async function CoursesPage() {
 ```
 
 **Database Access Layer:**
-**ALWAYS** create functions in `lib/db/` instead of inline queries:
+**ALWAYS** create functions in `lib/data/` instead of inline queries:
 
 **✅ Correct:**
 ```typescript
-// lib/db/courses.ts
-export async function getCourses() {
-  const supabase = await createClient()
-  const { data, error } = await supabase.from('course').select('*')
-  if (error) throw error
-  return data as Course[]
-}
+// lib/data/courses.ts
+export const getCourses = cache(
+  unstable_cache(
+    async () => {
+      const supabase = await createClient()
+      const { data, error } = await supabase.from('course').select('*')
+      if (error) throw error
+      return data as Course[]
+    },
+    ['courses-all'],
+    {
+      tags: [CACHE_TAGS.COURSES, CACHE_TAGS.COURSE_LIST],
+      revalidate: 3600, // 1 hour
+    }
+  )
+)
 
 // app/page.tsx
-import { getCourses } from '@/lib/db/courses'
+import { getCourses } from '@/lib/data/courses'
 const courses = await getCourses()
 ```
 
@@ -638,6 +678,11 @@ function CoursesClient() {
   return <CoursesTable courses={courses} />
 }
 ```
+
+**Cache Invalidation After Mutations:**
+- Client-side mutations use React Query's `invalidateQueries` for automatic cache invalidation
+- Server-side mutations (API routes) use `revalidatePath` and `revalidateTag` from `lib/cache/revalidation.ts`
+- Both approaches ensure fresh data is served after mutations
 
 ### Seed Data Guide
 

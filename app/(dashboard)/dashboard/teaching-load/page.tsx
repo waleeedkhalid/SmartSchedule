@@ -4,7 +4,7 @@ import { createClient } from "@/supabase/server";
 import { Users, Calendar, BookOpen, BarChart3, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { getServerUser, getDashboardPath, validateOnboardingAndProfile } from "@/lib/server-auth";
 import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
 import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
 import { ClientOnly } from "@/components/client-only";
@@ -31,16 +31,23 @@ export default async function TeachingLoadDashboardPage() {
     redirect(correctDashboard);
   }
 
+  // Validate onboarding and profile status
+  const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role)
+  
+  if (needsOnboarding || !profileExists) {
+    redirect('/onboarding')
+  }
+
   const supabase = await createClient();
 
-  // Get instructors with their section counts
+  // Get faculty profiles with their section counts
   const { data: instructors } = await supabase
-    .from('instructor')
+    .from('faculty_profile')
     .select(`
-      id,
+      user_id,
       name,
       max_load_per_week,
-      section:section(count)
+      section:section!section_instructor_id_fkey(count)
     `);
 
   // Get total sections and courses
@@ -179,9 +186,9 @@ export default async function TeachingLoadDashboardPage() {
                       const isOverloaded = sectionCount > maxLoad;
 
                       return (
-                        <div key={instructor.id || `instructor-${index}`} className="space-y-2">
+                        <div key={instructor.user_id || `instructor-${index}`} className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">{instructor.name}</span>
+                            <span className="font-medium">{instructor.name || "Unknown"}</span>
                             <span className={isOverloaded ? "text-red-600" : "text-gray-600"}>
                               {sectionCount} / {maxLoad} sections
                             </span>

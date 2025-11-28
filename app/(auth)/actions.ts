@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { verifyDemoCredentials } from "@/lib/demo-data";
 import { createClient } from "@/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { linkFacultyProfileToInstructor } from "@/lib/db/faculty-data";
 
 // Signup with Supabase
 export async function signup(formData: {
@@ -193,7 +194,6 @@ export async function signup(formData: {
             email: formData.email,
             name: formData.name,
             role: formData.role,
-            onboarding_completed: false,
           });
 
         if (roleError) {
@@ -242,6 +242,49 @@ export async function signup(formData: {
     console.error("Signup error:", error);
     return { 
       error: error instanceof Error ? error.message : "An unexpected error occurred" 
+    };
+  }
+}
+
+/**
+ * Update faculty profile with instructor information
+ * 
+ * This server action updates faculty_profile with name, email, and other instructor data.
+ * After consolidation, all instructor data is stored directly in faculty_profile.
+ * 
+ * @param userId - The user ID from auth.users
+ * @param userName - The user's name from user_roles
+ * @param userEmail - The user's email from auth.users
+ * @returns Success status and user_id if successful
+ */
+export async function linkFacultyToInstructor(
+  userId: string,
+  userName: string,
+  userEmail: string
+): Promise<{ success: boolean; instructorId?: string; error?: string }> {
+  try {
+    const result = await linkFacultyProfileToInstructor(
+      userId,
+      userName,
+      userEmail
+    );
+
+    if (!result) {
+      return {
+        success: false,
+        error: "Failed to update faculty profile",
+      };
+    }
+
+    return {
+      success: true,
+      instructorId: result, // Returns user_id now
+    };
+  } catch (error) {
+    console.error("Error updating faculty profile:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An unexpected error occurred",
     };
   }
 }

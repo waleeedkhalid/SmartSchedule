@@ -22,7 +22,6 @@ export interface ServerUser {
   email: string;
   name: string;
   role: string;
-  level?: number;
 }
 
 /**
@@ -50,7 +49,6 @@ export const getServerUser = cache(async (): Promise<ServerUser | null> => {
         email: user.email,
         name: user.name,
         role: user.role,
-        level: user.level ?? undefined,
       };
     }
   }
@@ -128,6 +126,76 @@ export const getServerUser = cache(async (): Promise<ServerUser | null> => {
 /**
  * Gets the dashboard path for a given role
  */
+/**
+ * Check if user has completed onboarding and has a valid profile
+ * Redirects to onboarding if either check fails
+ * 
+ * @param userId - The user ID
+ * @param role - The user's role
+ * @returns Object with onboarding status and profile existence
+ */
+export async function validateOnboardingAndProfile(
+  userId: string,
+  role: string
+): Promise<{ needsOnboarding: boolean; profileExists: boolean }> {
+  const supabase = await createClient();
+  
+  // First check onboarding_completed flag in user_roles table
+  // This is the primary source of truth for onboarding status
+  const { data: userRole, error: userRoleError } = await supabase
+    .from('user_roles')
+    .select('onboarding_completed')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (userRoleError && userRoleError.code !== 'PGRST116') {
+    console.warn('Error checking user_roles onboarding status:', userRoleError);
+  }
+  
+  // If onboarding is already marked as completed, trust that
+  if (userRole?.onboarding_completed === true) {
+    return { needsOnboarding: false, profileExists: true };
+  }
+  
+  // Otherwise, check profile existence based on role as a fallback
+  // This handles cases where profile exists but flag wasn't set
+  let profileExists = false;
+  
+  if (role === 'student') {
+    const { data: studentProfile, error: studentError } = await supabase
+      .from('student_profile')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    profileExists = !!studentProfile;
+    if (studentError && studentError.code !== 'PGRST116') {
+      console.warn('Error checking student profile:', studentError);
+    }
+  } else if (role === 'faculty') {
+    const { data: facultyProfile, error: facultyError } = await supabase
+      .from('faculty_profile')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    profileExists = !!facultyProfile;
+    if (facultyError && facultyError.code !== 'PGRST116') {
+      console.warn('Error checking faculty profile:', facultyError);
+    }
+  } else if (['scheduling', 'teaching_load', 'registrar'].includes(role)) {
+    const { data: committeeProfile, error: committeeError } = await supabase
+      .from('committee_profile')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    profileExists = !!committeeProfile;
+    if (committeeError && committeeError.code !== 'PGRST116') {
+      console.warn('Error checking committee profile:', committeeError);
+    }
+  }
+  
+  return { needsOnboarding: !profileExists, profileExists };
+}
+
 export function getDashboardPath(role: string): string {
   switch (role) {
     case 'student':

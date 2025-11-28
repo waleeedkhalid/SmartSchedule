@@ -4,10 +4,15 @@
  * Provides server-side functions for fetching exams from Supabase
  * with pagination, search, and sorting support.
  * Uses selective column projection and proper indexing for performance.
+ * 
+ * Wrapped with React.cache() for request memoization - ensures the same
+ * data is only fetched once per request, even if called multiple times
+ * in the same render tree.
  */
 
+import { cache } from 'react';
 import { createClient } from "@/supabase/server";
-import { Database } from "@/lib/types/database-production";
+import { Database } from "@/lib/types/database";
 
 export type Exam = Database["public"]["Tables"]["exam"]["Row"];
 
@@ -26,14 +31,17 @@ export interface ExamsPaginatedResult {
  * - Uses pagination with .range() to limit data transfer
  * - Uses count: 'exact' for accurate pagination
  * - Supports server-side search and sorting
+ * - Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getExamsPaginated(
+export const getExamsPaginated = cache(async (
   page: number = 1,
   pageSize: number = 20,
   searchTerm: string = '',
   sortBy: 'course_code' | 'date' | 'start_time' | 'duration_minutes' = 'date',
   sortOrder: 'asc' | 'desc' = 'asc'
-): Promise<ExamsPaginatedResult> {
+): Promise<ExamsPaginatedResult> => {
   const supabase = await createClient();
   
   // Calculate pagination range
@@ -83,12 +91,15 @@ export async function getExamsPaginated(
     totalPages,
     pageSize,
   };
-}
+});
 
 /**
  * Fetches all exams from database (for list pages)
+ * Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getAllExams(): Promise<Exam[]> {
+export const getAllExams = cache(async (): Promise<Exam[]> => {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -102,5 +113,5 @@ export async function getAllExams(): Promise<Exam[]> {
   }
   
   return (data as Exam[]) || [];
-}
+});
 

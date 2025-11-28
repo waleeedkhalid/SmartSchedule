@@ -6,15 +6,21 @@ export default async function EditInstructorPage({ params }: { params: { id: str
   const { id } = await params;
   const supabase = await createClient();
   
-  const { data: instructor, error } = await supabase
-    .from("instructor")
+  const { data: facultyProfile, error } = await supabase
+    .from("faculty_profile")
     .select("*")
-    .eq("id", id)
+    .eq("user_id", id)
     .single();
   
-  if (error || !instructor) {
+  if (error || !facultyProfile) {
     notFound();
   }
+  
+  // Map faculty_profile to Instructor type for backward compatibility
+  const instructor = {
+    ...facultyProfile,
+    id: facultyProfile.user_id, // Map user_id to id
+  };
   
   return (
     <div className="p-8">

@@ -13,6 +13,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateSections, revalidateSchedules } from "@/lib/cache/revalidation";
 
 interface RouteParams {
   params: {
@@ -41,8 +42,8 @@ export async function GET(
           title,
           credits
         ),
-        instructor:instructor_id (
-          id,
+        instructor:faculty_profile!section_instructor_id_fkey (
+          user_id,
           name,
           email
         ),
@@ -74,9 +75,9 @@ export async function GET(
       instructor_id: data.instructor_id,
       instructor: data.instructor
         ? {
-            id: data.instructor.id,
-            name: data.instructor.name,
-            email: data.instructor.email,
+            id: data.instructor.user_id,
+            name: data.instructor.name || "",
+            email: data.instructor.email || "",
           }
         : null,
       room_code: data.room_code,
@@ -178,8 +179,8 @@ export async function PUT(
           title,
           credits
         ),
-        instructor:instructor_id (
-          id,
+        instructor:faculty_profile!section_instructor_id_fkey (
+          user_id,
           name,
           email
         ),
@@ -203,9 +204,9 @@ export async function PUT(
       instructor_id: data.instructor_id,
       instructor: data.instructor
         ? {
-            id: data.instructor.id,
-            name: data.instructor.name,
-            email: data.instructor.email,
+            id: data.instructor.user_id,
+            name: data.instructor.name || "",
+            email: data.instructor.email || "",
           }
         : null,
       room_code: data.room_code,
@@ -222,6 +223,10 @@ export async function PUT(
       state: data.state,
       created_at: data.created_at,
     };
+
+    // Revalidate section and schedule-related caches after successful update
+    revalidateSections();
+    revalidateSchedules();
 
     return createSuccessResponse(section, 200);
   } catch (error) {
@@ -285,6 +290,10 @@ export async function DELETE(
     if (error) {
       throw error;
     }
+
+    // Revalidate section and schedule-related caches after successful deletion
+    revalidateSections();
+    revalidateSchedules();
 
     return createSuccessResponse(
       { message: `Section ${existing.course_code}-${existing.section_no} deleted successfully` },

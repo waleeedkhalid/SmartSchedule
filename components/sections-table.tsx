@@ -45,11 +45,25 @@ interface SectionsTableProps {
   sections: Section[];
 }
 
+interface ConflictSection {
+  section_id: string;
+  course_code: string;
+  section_no: string;
+  room_code: string | null;
+  instructor_id: string | null;
+  group_level: number;
+  meeting_pattern: {
+    days: string[];
+    start: string;
+    duration: number;
+  };
+}
+
 interface ConflictMap {
   [sectionId: string]: {
     has_conflicts: boolean;
-    room_conflicts: any[];
-    instructor_conflicts: any[];
+    room_conflicts: ConflictSection[];
+    instructor_conflicts: ConflictSection[];
   };
 }
 
@@ -313,22 +327,48 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                       </Button>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80" align="end">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <h4 className="text-sm font-semibold">Scheduling Conflicts</h4>
                         {conflictMap[section.id].room_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Room:</span>{" "}
-                            {conflictMap[section.id].room_conflicts.length} conflict(s)
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium text-red-600">
+                              Room Conflicts ({conflictMap[section.id].room_conflicts.length}):
+                            </div>
+                            <ul className="text-xs space-y-1 ml-2">
+                              {conflictMap[section.id].room_conflicts.map((conflict, idx) => (
+                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
+                                  <span className="font-mono font-medium">
+                                    {conflict.course_code}-{conflict.section_no}
+                                  </span>
+                                  <span className="text-muted-foreground font-mono text-[10px]">
+                                    ID: {conflict.section_id}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                         {conflictMap[section.id].instructor_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Instructor:</span>{" "}
-                            {conflictMap[section.id].instructor_conflicts.length} conflict(s)
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium text-red-600">
+                              Instructor Conflicts ({conflictMap[section.id].instructor_conflicts.length}):
+                            </div>
+                            <ul className="text-xs space-y-1 ml-2">
+                              {conflictMap[section.id].instructor_conflicts.map((conflict, idx) => (
+                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
+                                  <span className="font-mono font-medium">
+                                    {conflict.course_code}-{conflict.section_no}
+                                  </span>
+                                  <span className="text-muted-foreground font-mono text-[10px]">
+                                    ID: {conflict.section_id}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Click edit to see details
+                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t">
+                          Click edit to resolve conflicts
                         </p>
                       </div>
                     </HoverCardContent>

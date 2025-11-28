@@ -14,7 +14,7 @@ import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes 
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
 
-type InstructorRow = Database["public"]["Tables"]["instructor"]["Row"];
+type FacultyProfileRow = Database["public"]["Tables"]["faculty_profile"]["Row"];
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from("instructor")
+      .from("faculty_profile")
       .select("*")
       .order("name", { ascending: true });
 
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
     // Check if email already exists (if provided)
     if (email) {
       const { data: existing } = await supabase
-        .from("instructor")
-        .select("id")
+        .from("faculty_profile")
+        .select("user_id")
         .eq("email", email)
         .single();
 
@@ -88,19 +88,21 @@ export async function POST(request: NextRequest) {
         return createErrorResponse(
           409,
           ErrorCodes.VALIDATION_ERROR,
-          `Instructor with email '${email}' already exists`
+          `Faculty profile with email '${email}' already exists`
         );
       }
     }
 
-    // Insert new instructor
+    // Insert new faculty profile
+    // Note: faculty_profile requires user_id, so we need to create it for the current user
+    // or use a provided user_id. For now, we'll use the current user's ID.
     const { data, error } = await supabase
-      .from("instructor")
+      .from("faculty_profile")
       .insert({
+        user_id: user.id,
         name,
         email: email || null,
         max_load_per_week: max_load_per_week ? parseInt(max_load_per_week) : 12,
-        created_by: user.id,
       })
       .select()
       .single();

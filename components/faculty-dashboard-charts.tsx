@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Users, TrendingUp, Clock, Calendar } from 'lucide-react';
+import { BookOpen, Users, TrendingUp, Clock, Calendar, AlertCircle } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,7 +20,6 @@ import {
   Filler,
 } from 'chart.js';
 import { Bar, Doughnut, Line, Radar } from 'react-chartjs-2';
-import { getMockFacultySections, getMockUserRole } from '@/lib/demo-data';
 
 ChartJS.register(
   CategoryScale,
@@ -36,109 +35,220 @@ ChartJS.register(
   Filler
 );
 
+interface FacultyStatsResponse {
+  stats: {
+    totalSections: number;
+    totalCourses: number;
+    totalStudents: number;
+    weeklyHours: number;
+    draftSections: number;
+    releasedSections: number;
+    averageClassSize: number;
+  };
+  weeklySchedule: {
+    day: string;
+    hours: number;
+    sections: number;
+  }[];
+  teachingLoad: {
+    course_code: string;
+    course_title: string;
+    sections: number;
+    total_capacity: number;
+    enrolled: number;
+  }[];
+  enrollment: {
+    enrolled: number;
+    capacity: number;
+    available: number;
+    utilizationPercent: number;
+  };
+  sections: {
+    id: string;
+    course_code: string;
+    course_title: string;
+    section_no: string;
+    capacity: number;
+    enrolled: number;
+    state: string;
+  }[];
+}
+
 export function FacultyDashboardCharts() {
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [teachingLoadData, setTeachingLoadData] = useState<any>(null);
-  const [enrollmentData, setEnrollmentData] = useState<any>(null);
-  const [weeklyScheduleData, setWeeklyScheduleData] = useState<any>(null);
-  const [studentPerformanceData, setStudentPerformanceData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [teachingLoadData, setTeachingLoadData] = useState<{
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor: string[];
+      borderColor: string[];
+      borderWidth: number;
+      borderRadius: number;
+    }[];
+  } | null>(null);
+  const [enrollmentData, setEnrollmentData] = useState<{
+    labels: string[];
+    datasets: {
+      data: number[];
+      backgroundColor: string[];
+      borderColor: string;
+      borderWidth: number;
+      hoverOffset: number;
+    }[];
+  } | null>(null);
+  const [weeklyScheduleData, setWeeklyScheduleData] = useState<{
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      borderColor: string;
+      backgroundColor: string;
+      borderWidth: number;
+      fill: boolean;
+      tension: number;
+      pointBackgroundColor: string;
+      pointBorderColor: string;
+      pointBorderWidth: number;
+      pointRadius: number;
+      pointHoverRadius: number;
+    }[];
+  } | null>(null);
+  const [studentPerformanceData, setStudentPerformanceData] = useState<{
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor: string;
+      borderColor: string;
+      borderWidth: number;
+      pointBackgroundColor: string;
+      pointBorderColor: string;
+      pointBorderWidth: number;
+      pointRadius: number;
+      pointHoverRadius: number;
+    }[];
+  } | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
-    setLastUpdate(new Date());
     
     async function loadData() {
-      const userRole = await getMockUserRole();
-      if (!userRole || userRole.role !== 'faculty') return;
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/v1/faculty/stats');
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError('Please log in to view your dashboard');
+            return;
+          }
+          if (response.status === 403) {
+            setError('Access denied. This page is for faculty members only.');
+            return;
+          }
+          throw new Error('Failed to load faculty statistics');
+        }
+        
+        const data: FacultyStatsResponse = await response.json();
+        
+        // Teaching load by course (Bar)
+        const courseCodes = data.teachingLoad.map(t => t.course_code);
+        const colors = [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(139, 92, 246, 0.8)',
+          'rgba(236, 72, 153, 0.8)',
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(251, 146, 60, 0.8)',
+          'rgba(20, 184, 166, 0.8)',
+        ];
+        const borderColors = [
+          'rgb(59, 130, 246)',
+          'rgb(139, 92, 246)',
+          'rgb(236, 72, 153)',
+          'rgb(34, 197, 94)',
+          'rgb(251, 146, 60)',
+          'rgb(20, 184, 166)',
+        ];
+        
+        setTeachingLoadData({
+          labels: courseCodes,
+          datasets: [{
+            label: 'Sections',
+            data: data.teachingLoad.map(t => t.sections),
+            backgroundColor: colors.slice(0, courseCodes.length),
+            borderColor: borderColors.slice(0, courseCodes.length),
+            borderWidth: 2,
+            borderRadius: 8,
+          }],
+        });
 
-      const sections = await getMockFacultySections(userRole.id);
-      
-      // Teaching load by course (Bar)
-      const courseCounts: Record<string, number> = {};
-      sections.forEach(section => {
-        courseCounts[section.course_code] = (courseCounts[section.course_code] || 0) + 1;
-      });
+        // Enrollment status (Doughnut)
+        setEnrollmentData({
+          labels: ['Enrolled', 'Available'],
+          datasets: [{
+            data: [data.enrollment.enrolled, data.enrollment.available],
+            backgroundColor: [
+              'rgba(34, 197, 94, 0.85)',
+              'rgba(226, 232, 240, 0.85)',
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 3,
+            hoverOffset: 8,
+          }],
+        });
 
-      const courseCodes = Object.keys(courseCounts);
-      setTeachingLoadData({
-        labels: courseCodes,
-        datasets: [{
-          label: 'Sections',
-          data: courseCodes.map(code => courseCounts[code]),
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(139, 92, 246, 0.8)',
-            'rgba(236, 72, 153, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-          ].slice(0, courseCodes.length),
-          borderColor: [
-            'rgb(59, 130, 246)',
-            'rgb(139, 92, 246)',
-            'rgb(236, 72, 153)',
-            'rgb(34, 197, 94)',
-          ].slice(0, courseCodes.length),
-          borderWidth: 2,
-          borderRadius: 8,
-        }],
-      });
+        // Weekly schedule (Line)
+        setWeeklyScheduleData({
+          labels: data.weeklySchedule.map(w => w.day),
+          datasets: [{
+            label: 'Teaching Hours',
+            data: data.weeklySchedule.map(w => w.hours),
+            borderColor: 'rgb(147, 51, 234)',
+            backgroundColor: 'rgba(147, 51, 234, 0.15)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgb(147, 51, 234)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 3,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+          }],
+        });
 
-      // Enrollment status (Doughnut) - Mock data
-      const totalEnrolled = sections.reduce((sum, s) => sum + (s.current_enrollment || 0), 0);
-      const totalCapacity = sections.reduce((sum, s) => sum + (s.capacity || 0), 0);
-      const available = totalCapacity - totalEnrolled;
-      
-      setEnrollmentData({
-        labels: ['Enrolled', 'Available'],
-        datasets: [{
-          data: [totalEnrolled, available],
-          backgroundColor: [
-            'rgba(34, 197, 94, 0.85)',
-            'rgba(226, 232, 240, 0.85)',
-          ],
-          borderColor: '#ffffff',
-          borderWidth: 3,
-          hoverOffset: 8,
-        }],
-      });
-
-      // Weekly schedule (Line) - Mock data
-      setWeeklyScheduleData({
-        labels: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-        datasets: [{
-          label: 'Teaching Hours',
-          data: [4.5, 3, 4.5, 3, 4.5],
-          borderColor: 'rgb(147, 51, 234)',
-          backgroundColor: 'rgba(147, 51, 234, 0.15)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: 'rgb(147, 51, 234)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 3,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-        }],
-      });
-
-      // Student performance (Radar) - Mock data
-      setStudentPerformanceData({
-        labels: courseCodes.length > 0 ? [...courseCodes, 'Overall'] : ['SWE 211', 'SWE 314', 'SWE 417', 'SWE 499', 'Overall'],
-        datasets: [{
-          label: 'Average Performance',
-          data: courseCodes.length > 0 
-            ? [...courseCodes.map(() => 82 + Math.floor(Math.random() * 10)), 83]
-            : [82, 78, 85, 88, 83],
-          backgroundColor: 'rgba(59, 130, 246, 0.25)',
-          borderColor: 'rgb(59, 130, 246)',
-          borderWidth: 3,
-          pointBackgroundColor: 'rgb(59, 130, 246)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 3,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-        }],
-      });
+        // Student performance (Radar) - simulated based on sections
+        const performanceLabels = courseCodes.length > 0 
+          ? [...courseCodes, 'Overall'] 
+          : ['No Sections'];
+        const performanceData = courseCodes.length > 0
+          ? [...courseCodes.map(() => 75 + Math.floor(Math.random() * 20)), 80]
+          : [0];
+          
+        setStudentPerformanceData({
+          labels: performanceLabels,
+          datasets: [{
+            label: 'Average Performance',
+            data: performanceData,
+            backgroundColor: 'rgba(59, 130, 246, 0.25)',
+            borderColor: 'rgb(59, 130, 246)',
+            borderWidth: 3,
+            pointBackgroundColor: 'rgb(59, 130, 246)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 3,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+          }],
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     loadData();
@@ -310,8 +420,47 @@ export function FacultyDashboardCharts() {
     },
   };
 
-  if (!isMounted || !teachingLoadData) {
-    return <div>Loading charts...</div>;
+  if (!isMounted) {
+    return <div className="text-center py-8 text-muted-foreground">Loading charts...</div>;
+  }
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="text-sm text-muted-foreground">Loading faculty analytics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Card className="border-yellow-200 dark:border-yellow-800">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center justify-center gap-4 text-center">
+            <AlertCircle className="h-8 w-8 text-yellow-500" />
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!teachingLoadData) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center justify-center gap-4 text-center">
+            <BookOpen className="h-8 w-8 text-gray-400" />
+            <p className="text-sm text-muted-foreground">No sections assigned yet</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const totalSections = teachingLoadData.datasets[0].data.reduce((sum: number, val: number) => sum + val, 0);

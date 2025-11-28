@@ -19,6 +19,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { calculateTimelineStatus } from '@/lib/utils/timeline-status'
 
 interface TimelineEvent {
 	id: string
@@ -131,6 +132,14 @@ export function TimelineEventsTable({
 						events.map((event) => {
 							const daysUntilStart = getDaysUntil(event.start_date)
 							const daysUntilEnd = getDaysUntil(event.end_date)
+							
+							// Calculate status dynamically based on dates
+							const calculatedStatus = calculateTimelineStatus({
+								status: event.status,
+								start_date: event.start_date,
+								end_date: event.end_date,
+								is_deadline: event.is_deadline,
+							})
 
 							return (
 								<TableRow key={event.id}>
@@ -173,9 +182,9 @@ export function TimelineEventsTable({
 									<TableCell>
 										<Badge
 											variant="outline"
-											className={statusColors[event.status as keyof typeof statusColors]}
+											className={statusColors[calculatedStatus as keyof typeof statusColors]}
 										>
-											{event.status.replace(/_/g, ' ')}
+											{calculatedStatus.replace(/_/g, ' ')}
 										</Badge>
 									</TableCell>
 									<TableCell>
@@ -193,21 +202,25 @@ export function TimelineEventsTable({
 										{formatDate(event.end_date)}
 									</TableCell>
 									<TableCell>
-										{event.status === 'completed' || event.status === 'cancelled' ? (
+										{calculatedStatus === 'completed' || calculatedStatus === 'cancelled' ? (
 											<span className="text-sm text-muted-foreground">-</span>
 										) : (
 											<div className="flex items-center gap-1 text-sm">
 												<Clock className="h-3 w-3" />
-												{daysUntilStart > 0 ? (
+												{calculatedStatus === 'upcoming' && daysUntilStart > 0 ? (
 													<span>
 														{daysUntilStart} day{daysUntilStart !== 1 ? 's' : ''}
 													</span>
-												) : daysUntilEnd >= 0 ? (
-													<span className="text-yellow-600 font-medium">In Progress</span>
-												) : (
+												) : calculatedStatus === 'in_progress' ? (
+													<span className="text-yellow-600 font-medium">
+														{daysUntilEnd >= 0 ? `${daysUntilEnd} day${daysUntilEnd !== 1 ? 's' : ''} left` : 'In Progress'}
+													</span>
+												) : calculatedStatus === 'overdue' ? (
 													<span className="text-red-600 font-medium">
 														{Math.abs(daysUntilEnd)} day{Math.abs(daysUntilEnd) !== 1 ? 's' : ''} overdue
 													</span>
+												) : (
+													<span className="text-muted-foreground">-</span>
 												)}
 											</div>
 										)}

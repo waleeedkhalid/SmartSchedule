@@ -8,8 +8,8 @@
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/supabase/server";
-import { createErrorResponse, ErrorCodes, ApiException } from "./error-handler";
-import { verifyDemoCredentials, getMockUserByEmail, mockUsers } from "@/lib/demo-data";
+import { ErrorCodes, ApiException } from "./error-handler";
+import { mockUsers } from "@/lib/demo-data";
 
 export interface AuthenticatedUser {
   id: string;
@@ -23,11 +23,14 @@ export interface AuthenticatedUser {
  * Extracts JWT token from Authorization header or cookies
  * 
  * Priority:
- * 1. Authorization header (Bearer token)
+ * 1. Authorization header (Bearer token) - for client-side API calls
  * 2. demo_user_id cookie (for demo users where client can't access HttpOnly cookie)
+ * 
+ * Note: For Supabase SSR, we don't need to extract tokens from cookies.
+ * The createClient() function automatically reads session cookies.
  */
 export function extractAuthToken(request: NextRequest): string | null {
-  // 1. Check Authorization header
+  // 1. Check Authorization header (for client-side API calls)
   const authHeader = request.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.substring(7); // Remove "Bearer " prefix
@@ -52,29 +55,24 @@ function isDemoToken(token: string): boolean {
 }
 
 /**
- * Validates JWT token and returns authenticated user
+ * Validates authentication and returns authenticated user
  * 
  * Why: Centralized auth validation ensures consistent security
  * across all API endpoints, regardless of which client calls them.
- * Supports both real Supabase tokens and demo tokens.
+ * Supports both real Supabase sessions (via cookies) and demo tokens.
+ * 
+ * Authentication methods (in priority order):
+ * 1. Authorization header with Bearer token (for client-side API calls)
+ * 2. Demo user cookie (demo_user_id)
+ * 3. Supabase session cookies (automatically read by createClient())
  */
 export async function getAuthenticatedUser(
   request: NextRequest
 ): Promise<AuthenticatedUser> {
-  const token = extractAuthToken(request);
-
-  if (!token) {
-    throw new ApiException(
-      401,
-      ErrorCodes.AUTH_REQUIRED,
-      "Authentication required. Please provide a valid token."
-    );
-  }
-
-  // Handle demo tokens
-  if (isDemoToken(token)) {
-    const userId = token.substring(5); // Remove "demo:" prefix
-    const user = mockUsers.find(u => u.id === userId);
+  // Check for demo user first (via cookie)
+  const demoCookie = request.cookies.get("demo_user_id");
+  if (demoCookie) {
+    const user = mockUsers.find(u => u.id === demoCookie.value);
     
     if (!user) {
       throw new ApiException(
@@ -93,20 +91,33 @@ export async function getAuthenticatedUser(
     };
   }
 
-  // Handle real Supabase tokens
+  // Check for Authorization header token (for client-side API calls)
+  const token = extractAuthToken(request);
+  
+  // Handle Supabase authentication
   const supabase = await createClient();
 
-  // Verify token and get user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(token);
+  let user;
+  let authError;
+
+  if (token && !isDemoToken(token)) {
+    // If token is provided in Authorization header, use it
+    const result = await supabase.auth.getUser(token);
+    user = result.data?.user || null;
+    authError = result.error;
+  } else {
+    // Standard Supabase SSR pattern: getUser() without arguments
+    // The client automatically reads session cookies from the request
+    const result = await supabase.auth.getUser();
+    user = result.data?.user || null;
+    authError = result.error;
+  }
 
   if (authError || !user) {
     throw new ApiException(
       401,
-      ErrorCodes.AUTH_INVALID,
-      "Invalid or expired authentication token."
+      ErrorCodes.AUTH_REQUIRED,
+      "Authentication required. Please provide a valid token."
     );
   }
 
@@ -135,9 +146,9 @@ export async function getAuthenticatedUser(
 
   // Handle errors gracefully
   if (roleError) {
-    // Handle 400 errors specifically - these are query/RLS issues
-    if (roleError.status === 400 || roleError.code?.startsWith('PGRST')) {
-      console.warn('user_roles query error (400) in getAuthenticatedUser:', {
+    // Handle PGRST errors specifically - these are query/RLS issues
+    if (roleError.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error in getAuthenticatedUser:', {
         code: roleError.code,
         message: roleError.message,
         userId: user.id,

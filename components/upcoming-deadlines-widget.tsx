@@ -9,6 +9,7 @@ import { Calendar, Clock, AlertCircle, CheckCircle2, ExternalLink } from 'lucide
 import { format, differenceInDays, isPast, isFuture } from 'date-fns'
 import Link from 'next/link'
 import { getAuthHeader } from '@/lib/utils/client-auth'
+import { calculateTimelineStatus } from '@/lib/utils/timeline-status'
 
 interface UpcomingDeadline {
 	id: string
@@ -28,6 +29,7 @@ interface UpcomingDeadlinesWidgetProps {
 	userRole: string
 	compact?: boolean
 	showAll?: boolean
+	initialData?: UpcomingDeadline[]
 }
 
 const priorityColors = {
@@ -41,13 +43,10 @@ export function UpcomingDeadlinesWidget({
 	userRole,
 	compact = false,
 	showAll = false,
+	initialData,
 }: UpcomingDeadlinesWidgetProps) {
-	const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([])
-	const [isLoading, setIsLoading] = useState(true)
-
-	useEffect(() => {
-		loadDeadlines()
-	}, [userRole])
+	const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>(initialData || [])
+	const [isLoading, setIsLoading] = useState(!initialData)
 
 	async function loadDeadlines() {
 		setIsLoading(true)
@@ -69,6 +68,14 @@ export function UpcomingDeadlinesWidget({
 			setIsLoading(false)
 		}
 	}
+
+	useEffect(() => {
+		// Only fetch if initial data was not provided
+		if (!initialData) {
+			loadDeadlines()
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [userRole, initialData])
 
 	function calculateDaysUntilStart(startDate: string): number {
 		try {
@@ -101,36 +108,67 @@ export function UpcomingDeadlinesWidget({
 	}
 
 	function getDaysText(deadline: UpcomingDeadline) {
-		if (deadline.status === 'completed') return 'Completed'
+		// Calculate status dynamically
+		const calculatedStatus = calculateTimelineStatus({
+			status: deadline.status,
+			start_date: deadline.start_date,
+			end_date: deadline.end_date,
+		})
+
+		if (calculatedStatus === 'completed') return 'Completed'
 
 		// Calculate days if not provided by API
 		const daysUntilStart = deadline.days_until_start ?? calculateDaysUntilStart(deadline.start_date)
 		const daysUntilEnd = deadline.days_until_end ?? calculateDaysUntilEnd(deadline.end_date)
 
-		// Check if event hasn't started yet
-		if (daysUntilStart > 0) {
+		// Check if event hasn't started yet (upcoming)
+		if (calculatedStatus === 'upcoming' && daysUntilStart > 0) {
 			return `${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''} away`
 		}
 
 		// Check if event is in progress (started but not ended)
-		if (daysUntilEnd >= 0) {
+		if (calculatedStatus === 'in_progress') {
+			if (daysUntilEnd >= 0) {
+				return `${daysUntilEnd} day${daysUntilEnd !== 1 ? 's' : ''} left`
+			}
 			return 'In progress'
 		}
 
-		// Event is overdue
-		const days = Math.abs(daysUntilEnd)
-		if (isNaN(days) || days === 0) {
-			return 'Overdue'
+		// Event is overdue/ended
+		if (calculatedStatus === 'overdue') {
+			const days = Math.abs(daysUntilEnd)
+			if (isNaN(days) || days === 0) {
+				return 'Ended'
+			}
+			return `${days} day${days !== 1 ? 's' : ''} overdue`
 		}
-		return `${days} day${days !== 1 ? 's' : ''} overdue`
+
+		// Fallback
+		return 'In progress'
 	}
 
 	function getUrgencyColor(deadline: UpcomingDeadline) {
+		// Calculate status dynamically
+		const calculatedStatus = calculateTimelineStatus({
+			status: deadline.status,
+			start_date: deadline.start_date,
+			end_date: deadline.end_date,
+		})
+
 		// Calculate days if not provided by API
 		const daysUntilStart = deadline.days_until_start ?? calculateDaysUntilStart(deadline.start_date)
 		const daysUntilEnd = deadline.days_until_end ?? calculateDaysUntilEnd(deadline.end_date)
 
-		if (isNaN(daysUntilEnd) || daysUntilEnd < 0) return 'text-red-600'
+		// If event has ended, show red
+		if (calculatedStatus === 'overdue') return 'text-red-600'
+		
+		// If event is in progress, show yellow/orange
+		if (calculatedStatus === 'in_progress') {
+			if (daysUntilEnd <= 3) return 'text-orange-600'
+			return 'text-yellow-600'
+		}
+
+		// If upcoming, show based on days until start
 		if (isNaN(daysUntilStart) || daysUntilStart <= 3) return 'text-orange-600'
 		if (daysUntilStart <= 7) return 'text-yellow-600'
 		return 'text-muted-foreground'

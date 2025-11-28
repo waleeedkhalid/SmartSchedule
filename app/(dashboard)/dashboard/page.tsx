@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getServerUser, getDashboardPath } from "@/lib/server-auth";
+import { getServerUser, getDashboardPath, validateOnboardingAndProfile } from "@/lib/server-auth";
 
-// Force dynamic rendering - never cache this page
+// Force dynamic rendering - this page redirects based on user role
+// force-dynamic opts out of Full Route Cache, which is appropriate for user-specific redirects
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default async function DashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
@@ -14,6 +14,14 @@ export default async function DashboardPage() {
   // If layout allows unauthenticated users through, this will catch it
   if (!user) {
     redirect('/login');
+  }
+
+  // CRITICAL: Check onboarding status before allowing access to any dashboard
+  // Users must complete onboarding before accessing their dashboard
+  const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role);
+  
+  if (needsOnboarding || !profileExists) {
+    redirect('/onboarding');
   }
 
   // Redirect to role-specific dashboard

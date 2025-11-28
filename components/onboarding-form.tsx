@@ -5,21 +5,22 @@
  * 
  * Trigger Conditions:
  * - User logs in for the first time
- * - onboarding_completed flag is FALSE in database
- * - Required profile fields are missing (level for students)
+ * - onboarding_completed flag is FALSE in user_roles table
+ * - OR role-specific profile doesn't exist
  * 
  * Flow Logic:
- * 1. Detect incomplete profile via middleware
+ * 1. Detect incomplete onboarding via server-auth.ts validateOnboardingAndProfile()
  * 2. Redirect to /onboarding page
  * 3. Display simple form (this component)
  * 4. Collect: Academic Level (for students), Program (prefilled)
  * 5. Submit via Supabase client-side mutation
- * 6. Mark onboarding_completed = TRUE
- * 7. Redirect to appropriate dashboard
+ * 6. Create role-specific profile (student_profile, faculty_profile, or committee_profile)
+ * 7. Set onboarding_completed = TRUE in user_roles table
+ * 8. Redirect to appropriate dashboard
  * 
  * Validation:
  * - All required fields validated client-side
- * - Academic level: 1-8 (level determines which courses student takes)
+ * - Academic level: 4-8 (level determines which courses student takes)
  * - Confirmation checkbox must be checked
  * 
  * User Experience:
@@ -30,7 +31,7 @@
  * 
  * Security:
  * - Direct Supabase mutations (no server round trips)
- * - RLS policies enforce user can only update own profile
+ * - RLS policies enforce user can only create/update own profile
  * - Client-side and database-level validation
  */
 
@@ -38,7 +39,6 @@
 
 import { useState } from "react";
 import { createClient } from "@/supabase/client";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -51,6 +51,9 @@ import {
 } from "@/components/ui/select";
 import { GraduationCap, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import type { Database } from "@/lib/types/database";
+
+type StudentProfileInsert = Database["public"]["Tables"]["student_profile"]["Insert"];
 
 interface OnboardingFormProps {
   userId: string;
@@ -59,21 +62,58 @@ interface OnboardingFormProps {
 }
 
 export function OnboardingForm({ userId, userName, userRole }: OnboardingFormProps) {
+  // Calculate current Hijri year using Intl.DateTimeFormat API
+  // This provides accurate conversion from Gregorian to Hijri calendar
+  function getCurrentHijriYear(): number {
+    const currentDate = new Date();
+    
+    // Use 'en' locale to get Western numerals instead of Arabic numerals
+    const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+      year: 'numeric',
+    });
+    const parts = hijriFormatter.formatToParts(currentDate);
+    const yearPart = parts.find(part => part.type === 'year');
+    
+    if (yearPart) {
+      const yearValue = parseInt(yearPart.value, 10);
+      // Validate the parsed year is reasonable (between 1400 and 1500)
+      if (!isNaN(yearValue) && yearValue >= 1400 && yearValue <= 1500) {
+        return yearValue;
+      }
+    }
+    
+    // Fallback to approximation if parsing fails
+    return new Date().getFullYear() - 621;
+  }
+  
+  const currentHijriYear = getCurrentHijriYear();
+  // Ensure we have a valid Hijri year, fallback to approximation if needed
+  const validHijriYear = isNaN(currentHijriYear) || currentHijriYear <= 0 
+    ? new Date().getFullYear() - 621 
+    : currentHijriYear;
+  
   // Form state
   const [academicLevel, setAcademicLevel] = useState<string>("4");
+  const [enrollmentYear, setEnrollmentYear] = useState<string>(validHijriYear.toString());
   const [confirmed, setConfirmed] = useState(false);
   
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const router = useRouter();
-  const supabase = createClient();
+  // Create Supabase client - will be created fresh for each operation
+  // This ensures we have a valid client instance
   
   // Academic level options (1-8 for full system support)
   // DO NOT CHANGE THIS ARRAY. IT IS USED TO GENERATE THE LEVEL OPTIONS FOR THE SELECT DROP DOWN.
   // Our scope is only for levels 4-8.
   const levelOptions = [4, 5, 6, 7, 8];
+  
+  // Generate enrollment year options (current year - 10 to current year)
+  // Filter out any invalid values (NaN, undefined, null) and ensure they're valid numbers
+  const enrollmentYearOptions = Array.from({ length: 11 }, (_, i) => validHijriYear - 10 + i)
+    .filter(year => !isNaN(year) && year > 0 && Number.isInteger(year))
+    .reverse(); // Reverse to show current year first (highest to lowest)
   
   /**
    * Validate form before submission
@@ -82,16 +122,41 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
   function validateForm(): boolean {
     const newErrors: { [key: string]: string } = {};
     
-    if (userRole === 'student' && !academicLevel) {
-      newErrors.academicLevel = "Please select your academic level";
+    // Check academic level for students
+    if (userRole === 'student') {
+      if (!academicLevel || academicLevel.trim() === '') {
+        newErrors.academicLevel = "Please select your academic level";
+      }
+      
+      // Check enrollment year for students
+      if (!enrollmentYear || enrollmentYear.trim() === '') {
+        newErrors.enrollmentYear = "Please select your enrollment year";
+      } else {
+        const year = parseInt(enrollmentYear, 10);
+        if (isNaN(year) || year < 1400 || year > 1500) {
+          newErrors.enrollmentYear = "Please enter a valid Hijri year (1400-1500)";
+        }
+      }
     }
     
+    // Check confirmation checkbox
     if (!confirmed) {
       newErrors.confirmed = "Please confirm that your information is accurate";
     }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    
+    console.log('Validation check:', {
+      userRole,
+      academicLevel,
+      enrollmentYear,
+      confirmed,
+      isValid,
+      errors: newErrors
+    });
+    
+    return isValid;
   }
   
   /**
@@ -104,14 +169,83 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
    * 4. Trigger auto-sync of student groups (happens automatically via DB trigger)
    * 5. Redirect to appropriate dashboard based on role
    */
-  async function handleSubmit() {
-    if (!validateForm()) {
+  async function handleSubmit(e?: React.MouseEvent<HTMLButtonElement>) {
+    // Prevent default form submission if called from button click
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Early return if already submitting
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring duplicate click');
       return;
     }
     
+    console.log('Onboarding form submit started', { userRole, userId, userName, confirmed, academicLevel });
+    
+    // Validate form BEFORE setting isSubmitting to prevent stuck loading state
+    // Double-check values directly instead of relying on state
+    const hasValidLevel = userRole !== 'student' || (academicLevel && academicLevel.trim() !== '');
+    const hasValidEnrollmentYear = userRole !== 'student' || (enrollmentYear && enrollmentYear.trim() !== '');
+    const hasConfirmed = confirmed === true;
+    
+    console.log('Pre-validation check:', {
+      userRole,
+      academicLevel,
+      enrollmentYear,
+      confirmed,
+      hasValidLevel,
+      hasValidEnrollmentYear,
+      hasConfirmed
+    });
+    
+    if (!hasValidLevel || !hasValidEnrollmentYear || !hasConfirmed) {
+      // Run validation to set error messages
+      validateForm();
+      
+      // Show error toast with specific messages
+      if (!hasConfirmed) {
+        toast.error('Please confirm that your information is accurate');
+      }
+      if (!hasValidLevel) {
+        toast.error('Please select your academic level');
+      }
+      if (!hasValidEnrollmentYear) {
+        toast.error('Please select your enrollment year');
+      }
+      // Don't set isSubmitting - validation failed, button should remain clickable
+      return;
+    }
+    
+    // Validation passed - now run validateForm to clear any previous errors
+    validateForm();
+    
+    console.log('Form validated, starting submission...');
     setIsSubmitting(true);
     
+    // Add timeout safeguard - if submission takes more than 30 seconds, reset button
+    const timeoutId: NodeJS.Timeout = setTimeout(() => {
+      console.warn('Onboarding submission taking too long, resetting button state');
+      setIsSubmitting(false);
+      toast.error('Submission is taking longer than expected. Please try again.');
+    }, 30000);
+    
+    // Create Supabase client for this operation
+    let supabase;
     try {
+      supabase = createClient();
+      console.log('Supabase client created');
+    } catch (clientError) {
+      clearTimeout(timeoutId);
+      console.error('Failed to create Supabase client:', clientError);
+      toast.error('Failed to initialize database connection. Please refresh the page and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    try {
+      console.log('Starting profile creation for role:', userRole);
       // CRITICAL FIX: Create profile FIRST, then set onboarding_completed flag
       // This prevents inconsistent state if profile creation fails
       
@@ -120,13 +254,21 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       
       if (userRole === 'student') {
         // Create student_profile for students
-        const { error: profileError } = await supabase
+        console.log('Creating student profile...');
+        const enrollmentYearInt = parseInt(enrollmentYear, 10);
+        const profileData: StudentProfileInsert = {
+          user_id: userId,
+          level: parseInt(academicLevel),
+          department: 'Software Engineering',
+          enrollment_year: enrollmentYearInt,
+        };
+        const { data: studentData, error: profileError } = await supabase
           .from('student_profile')
-          .insert({
-            user_id: userId,
-            level: parseInt(academicLevel),
-            department: 'Software Engineering',
-          });
+          .insert(profileData)
+          .select()
+          .single();
+        
+        console.log('Student profile insert result:', { data: studentData, error: profileError });
         
         if (profileError) {
           console.error('Error creating student_profile:', {
@@ -136,43 +278,181 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             hint: profileError.hint,
             code: profileError.code
           });
-          toast.error(`Failed to create student profile: ${profileError.message || 'Unknown error'}`);
+          
+          // Check for RLS violations
+          // PostgrestError doesn't have status, but code indicates the error type
+          if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
+            // PGRST errors or permission denied (42501)
+            toast.error(
+              `Permission denied: Unable to create student profile. ` +
+              `This may be due to Row Level Security policies. ` +
+              `Please ensure you are logged in as a student. ` +
+              `Error: ${profileError.message || 'Unknown error'}`
+            );
+          } else if (profileError.code === '23505') {
+            // Unique constraint violation - profile already exists
+            toast.error('Student profile already exists. Please contact support if you need assistance.');
+          } else if (profileError.code === '23503') {
+            // Foreign key violation
+            toast.error('Invalid user ID. Please log out and log back in.');
+          } else if (profileError.code === '23514') {
+            // Check constraint violation (e.g., level out of range)
+            toast.error(`Invalid data: ${profileError.message || 'Please check your input values.'}`);
+          } else {
+            toast.error(`Failed to create student profile: ${profileError.message || 'Unknown error'}`);
+          }
+          
           setIsSubmitting(false);
           return;
         }
+        console.log('Student profile created successfully');
         profileCreated = true;
       } else if (userRole === 'faculty') {
-        // Create faculty_profile for faculty
-        const { error: profileError } = await supabase
-          .from('faculty_profile')
-          .insert({
-            user_id: userId,
-            department: 'Software Engineering',
-            // instructor_id can be linked later via email matching
-          });
+        // Create faculty_profile for faculty with all instructor data directly
+        // Get user email from auth
+        console.log('Getting user email for faculty profile creation...');
         
-        if (profileError) {
-          console.error('Error creating faculty_profile:', {
-            error: profileError,
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-            code: profileError.code
-          });
-          toast.error(`Failed to create faculty profile: ${profileError.message || 'Unknown error'}`);
+        try {
+          const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError) {
+            console.error('Error getting auth user:', authError);
+            toast.error(`Failed to get user information: ${authError.message}. Please try again.`);
+            setIsSubmitting(false);
+            return;
+          }
+          
+          if (!authUser?.email) {
+            console.error('Error: Could not get user email for faculty profile creation');
+            toast.error('Failed to get user email. Please try again or contact support.');
+            setIsSubmitting(false);
+            return;
+          }
+          
+          console.log('Creating faculty profile with email:', authUser.email);
+          
+          // First, check if profile already exists
+          console.log('Checking if faculty profile already exists...');
+          const { data: existingProfile, error: checkError } = await supabase
+            .from('faculty_profile')
+            .select('user_id, name, email')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          console.log('Profile check result:', { existing: existingProfile, error: checkError });
+          
+          if (existingProfile) {
+            // Profile already exists - update it
+            console.log('Faculty profile already exists, updating instead...');
+            const { data: updateData, error: updateError } = await supabase
+              .from('faculty_profile')
+              .update({
+                name: userName,
+                email: authUser.email,
+                max_load_per_week: existingProfile.max_load_per_week || 12,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('user_id', userId)
+              .select()
+              .single();
+            
+            console.log('Update result:', { data: updateData, error: updateError });
+            
+            if (updateError) {
+              console.error('Error updating faculty profile:', updateError);
+              toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
+              setIsSubmitting(false);
+              return;
+            }
+            // Update succeeded
+            console.log('Faculty profile updated successfully');
+            profileCreated = true;
+          } else {
+            // Profile doesn't exist - create it
+            console.log('Faculty profile does not exist, creating new one...');
+            const { data: insertData, error: profileError } = await supabase
+              .from('faculty_profile')
+              .insert({
+                user_id: userId,
+                department: 'Software Engineering',
+                name: userName,
+                email: authUser.email,
+                max_load_per_week: 12, // Default value
+                preferred_times: [], // Empty array for JSONB
+                unavailable_times: [], // Empty array for JSONB
+              })
+              .select()
+              .single();
+            
+            console.log('Insert result:', { data: insertData, error: profileError });
+            
+            if (profileError) {
+              console.error('Error creating faculty_profile:', {
+                error: profileError,
+                message: profileError.message,
+                details: profileError.details,
+                hint: profileError.hint,
+                code: profileError.code
+              });
+              
+              // Check if it's a duplicate key error (race condition - profile was created between check and insert)
+              if (profileError.code === '23505') {
+                // Profile was created by another request - try to update it
+                console.log('Profile was created between check and insert, updating instead...');
+                const { data: updateData, error: updateError } = await supabase
+                  .from('faculty_profile')
+                  .update({
+                    name: userName,
+                    email: authUser.email,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('user_id', userId)
+                  .select()
+                  .single();
+                
+                if (updateError) {
+                  console.error('Error updating faculty profile after race condition:', updateError);
+                  toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
+                  setIsSubmitting(false);
+                  return;
+                }
+                console.log('Faculty profile updated successfully after race condition');
+                profileCreated = true;
+              } else {
+                // Other error - show message
+                const errorMsg = profileError.message || 'Unknown error';
+                console.error('Failed to create faculty profile:', errorMsg);
+                toast.error(`Failed to create faculty profile: ${errorMsg}`);
+                setIsSubmitting(false);
+                return;
+              }
+            } else {
+              // Insert succeeded
+              console.log('Faculty profile created successfully:', insertData);
+              profileCreated = true;
+            }
+          }
+        } catch (authErr) {
+          // Catch any unexpected errors from auth.getUser()
+          console.error('Unexpected error getting auth user:', authErr);
+          toast.error(`Unexpected error: ${authErr instanceof Error ? authErr.message : 'Unknown error'}`);
           setIsSubmitting(false);
           return;
         }
-        profileCreated = true;
       } else if (['scheduling', 'teaching_load', 'registrar'].includes(userRole)) {
         // Create committee_profile for committee roles
-        const { error: profileError } = await supabase
+        console.log('Creating committee profile for role:', userRole);
+        const { data: committeeData, error: profileError } = await supabase
           .from('committee_profile')
           .insert({
             user_id: userId,
             committee_role: userRole,
             department: 'Software Engineering',
-          });
+          })
+          .select()
+          .single();
+        
+        console.log('Committee profile insert result:', { data: committeeData, error: profileError });
         
         if (profileError) {
           console.error('Error creating committee_profile:', {
@@ -186,85 +466,82 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           setIsSubmitting(false);
           return;
         }
+        console.log('Committee profile created successfully');
         profileCreated = true;
       }
       
-      // Only set onboarding_completed = true AFTER profile is successfully created
-      // This ensures atomicity: either both succeed or both fail
+      // Only proceed if profile is successfully created
       if (profileCreated) {
-        try {
-          const { error: updateError } = await supabase
-            .from('user_roles')
-            .update({
-              onboarding_completed: true,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', userId);
-          
-          if (updateError) {
-            // Handle 400 errors gracefully
-            if (updateError.status === 400 || updateError.code?.startsWith('PGRST')) {
-              console.warn('user_roles update error (400) in onboarding form:', {
-                code: updateError.code,
-                message: updateError.message,
-              });
-            } else {
-              console.error('Error updating user_roles:', {
-                error: updateError,
-                message: updateError.message,
-                details: updateError.details,
-                hint: updateError.hint,
-                code: updateError.code
-              });
-            }
-            toast.error(`Failed to complete onboarding: ${updateError.message || 'Unknown error'}`);
-            // Profile was created but flag update failed - user can retry
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (error) {
-          // Catch any unexpected errors
-          console.warn('Unexpected error updating user_roles in onboarding form:', error);
-          toast.error(`Failed to complete onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          setIsSubmitting(false);
-          return;
+        console.log('Profile created successfully, updating onboarding_completed flag...');
+        
+        // Update onboarding_completed flag in user_roles table
+        const { error: updateError } = await supabase
+          .from('user_roles')
+          .update({ 
+            onboarding_completed: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+        
+        if (updateError) {
+          // Log the error but don't fail - profile was created successfully
+          console.warn('Failed to update onboarding_completed flag:', updateError);
+          // Continue anyway - the profile exists, so onboarding is effectively complete
+        } else {
+          console.log('onboarding_completed flag updated successfully');
         }
+        
+        // Clear timeout on success
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Success! Show success message
+        toast.success('Welcome to SmartSchedule! Your profile is all set up.');
+        
+        // Small delay to show success message, then redirect
+        setTimeout(() => {
+          // Redirect based on role to appropriate dashboard
+          const dashboardRoute = userRole === 'student' 
+            ? '/dashboard/student'
+            : userRole === 'faculty'
+            ? '/dashboard/faculty'
+            : userRole === 'scheduling'
+            ? '/dashboard/scheduling'
+            : userRole === 'teaching_load'
+            ? '/dashboard/teaching-load'
+            : userRole === 'registrar'
+            ? '/dashboard/registrar'
+            : '/dashboard';
+          
+          // Use hard navigation to bypass Next.js Router Cache
+          // This ensures middleware re-checks onboarding status with fresh data
+          window.location.href = dashboardRoute;
+        }, 1000);
+      } else {
+        console.error('Profile was not created, cannot complete onboarding');
+        toast.error('Failed to create profile. Please try again.');
+        setIsSubmitting(false);
+        return;
       }
       
-      console.log('Profile setup completed successfully');
-      
-      // Note: Student group assignment happens during schedule generation
-      // by the scheduling committee, not during registration
-      
-      // Success! Show success message
-      toast.success('Welcome to SmartSchedule! Your profile is all set up.');
-      
-      // Small delay to show success message, then redirect
-      setTimeout(() => {
-        // Redirect based on role to appropriate dashboard
-        const dashboardRoute = userRole === 'student' 
-          ? '/dashboard/student'
-          : userRole === 'faculty'
-          ? '/dashboard/faculty'
-          : userRole === 'scheduling'
-          ? '/dashboard/scheduling'
-          : userRole === 'teaching_load'
-          ? '/dashboard/teaching-load'
-          : userRole === 'registrar'
-          ? '/dashboard/registrar'
-          : '/dashboard';
-        
-        // Use hard navigation to bypass Next.js Router Cache
-        // This ensures middleware re-checks onboarding status with fresh data
-        window.location.href = dashboardRoute;
-      }, 1000);
-      
     } catch (error) {
+      // Clear timeout on error
+      if (timeoutId) clearTimeout(timeoutId);
+      
       console.error('Unexpected error during onboarding:', error);
-      toast.error('An unexpected error occurred. Please try again.');
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Full error details:', {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        error: error
+      });
+      toast.error(`An unexpected error occurred: ${errorMessage}. Please try again.`);
       setIsSubmitting(false);
     }
+    
+    // Note: We don't use finally here because:
+    // 1. Success case redirects (doesn't need to reset)
+    // 2. All error cases explicitly reset isSubmitting
+    // 3. Using finally would reset isSubmitting even on success, causing flicker
   }
   
   return (
@@ -317,6 +594,31 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 </p>
               </div>
               
+              {/* Enrollment Year */}
+              <div className="space-y-2">
+                <Label htmlFor="enrollmentYear">
+                  Enrollment Year (Hijri) <span className="text-red-500">*</span>
+                </Label>
+                <Select value={enrollmentYear} onValueChange={setEnrollmentYear}>
+                  <SelectTrigger id="enrollmentYear" className={errors.enrollmentYear ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select enrollment year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enrollmentYearOptions.map((year, index) => (
+                      <SelectItem key={`year-${index}-${year}`} value={year.toString()}>
+                        {year}H
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.enrollmentYear && (
+                  <p className="text-sm text-red-500">{errors.enrollmentYear}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  The Hijri year when you first enrolled. This is used to generate your student number.
+                </p>
+              </div>
+              
               {/* Program (Prefilled) */}
               <div className="space-y-2">
                 <Label htmlFor="program">Program</Label>
@@ -360,6 +662,10 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                     <span className="text-sm">Level {academicLevel || '(Not selected)'}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-sm font-medium">Enrollment Year:</span>
+                    <span className="text-sm">{enrollmentYear ? `${enrollmentYear}H` : '(Not selected)'}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-sm font-medium">Program:</span>
                     <span className="text-sm">Software Engineering</span>
                   </div>
@@ -393,9 +699,28 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
           {/* Submit Button */}
           <div className="flex justify-end pt-6 border-t">
             <Button 
-              onClick={handleSubmit}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Prevent double-clicks
+                if (isSubmitting) {
+                  console.log('Button already submitting, ignoring click');
+                  return;
+                }
+                
+                try {
+                  await handleSubmit(e);
+                } catch (error) {
+                  // Fallback error handler in case handleSubmit's try-catch misses something
+                  console.error('Unhandled error in handleSubmit:', error);
+                  toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  setIsSubmitting(false);
+                }
+              }}
               disabled={isSubmitting}
               className="min-w-[160px]"
+              type="button"
             >
               {isSubmitting ? (
                 <>

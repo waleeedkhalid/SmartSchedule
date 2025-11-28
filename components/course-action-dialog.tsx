@@ -41,8 +41,22 @@ export function CourseActionDialog({
   const isEdit = action === "edit";
 
   const handleConfirm = async () => {
-    await onConfirm();
-    onOpenChange(false);
+    try {
+      await onConfirm();
+      // Close dialog only on success
+      // For delete actions, the parent component (courses-table) will close it explicitly on success
+      // For edit actions, we always close to proceed to edit form
+      if (!isDelete) {
+        onOpenChange(false);
+      }
+      // Note: For delete, the parent will call setDialogOpen(false) on success
+      // If there's an error, the parent will keep the dialog open
+    } catch (error) {
+      // Error is already handled in the parent component (courses-table)
+      // Don't close dialog on error - let user see the error message and try again
+      // The error is caught here to prevent unhandled promise rejection
+      console.error('Action confirmation error:', error);
+    }
   };
 
   return (
@@ -81,10 +95,12 @@ export function CourseActionDialog({
           <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-yellow-800 dark:text-yellow-200">
-              <p className="font-medium mb-1">Warning</p>
-              <p>
-                Deleting this course will permanently remove it from the system.
-                Make sure there are no sections associated with this course before proceeding.
+              <p className="font-medium mb-1">Warning: This will delete the course and all its sections</p>
+              <p className="mb-2">
+                Deleting this course will permanently remove it from the system along with all associated sections, schedules, and related data.
+              </p>
+              <p className="text-xs opacity-90">
+                <strong>Note:</strong> This action cannot be undone. If any sections have student enrollments, the deletion will be blocked.
               </p>
             </div>
           </div>
@@ -102,6 +118,7 @@ export function CourseActionDialog({
             variant={isDelete ? "destructive" : "default"}
             onClick={handleConfirm}
             disabled={isLoading}
+            type="button"
           >
             {isLoading ? (
               "Processing..."

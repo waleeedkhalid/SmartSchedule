@@ -190,8 +190,8 @@ export async function POST(request: NextRequest) {
       .rpc("is_registration_open");
 
     if (regError) {
-      console.error("Error checking registration status:", regError);
       // Continue if function doesn't exist (backward compatibility)
+      // Registration status check is optional - if RPC doesn't exist, allow registration
     } else if (!registrationStatus) {
       return createErrorResponse(
         403,
@@ -389,7 +389,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // STEP 5: Check capacity
+    // STEP 5: Check 20 credit limit
+    // Get all current enrollments with their course credits
+    const { data: currentEnrollments } = await supabase
+      .from("student_enrollment")
+      .select(`
+        section:section_id (
+          course:course_code (
+            credits
+          )
+        )
+      `)
+      .eq("student_id", user.id)
+      .eq("status", "registered");
+
+    // Calculate total credits
+    let totalCredits = 0;
+    (currentEnrollments || []).forEach((enrollment: any) => {
+      const enrolledSection = enrollment.section;
+      const enrolledCourse = Array.isArray(enrolledSection?.course) ? enrolledSection.course[0] : enrolledSection?.course;
+      if (enrolledCourse?.credits) {
+        totalCredits += enrolledCourse.credits;
+      }
+    });
+
+    // Get credits for the course being enrolled (course already declared in STEP 4)
+    const newCourseCredits = course?.credits || 0;
+    const newTotalCredits = totalCredits + newCourseCredits;
+
+    // Check 20 credit limit
+    if (newTotalCredits > 20) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        `Credit limit exceeded. You currently have ${totalCredits} credits enrolled. Adding this ${newCourseCredits}-credit course would exceed the 20-credit limit. Please drop a course first or choose a course with fewer credits.`
+      );
+    }
+
+    // STEP 6: Check capacity
     const { data: enrollmentCount } = await supabase
       .from("student_enrollment")
       .select("id", { count: "exact", head: true })

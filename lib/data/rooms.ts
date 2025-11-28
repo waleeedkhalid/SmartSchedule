@@ -4,8 +4,13 @@
  * Provides server-side functions for fetching rooms from Supabase
  * with pagination, search, and sorting support.
  * Uses selective column projection and proper indexing for performance.
+ * 
+ * Wrapped with React.cache() for request memoization - ensures the same
+ * data is only fetched once per request, even if called multiple times
+ * in the same render tree.
  */
 
+import { cache } from 'react';
 import { createClient } from "@/supabase/server";
 import { Database } from "@/lib/types/database";
 
@@ -26,14 +31,17 @@ export interface RoomsPaginatedResult {
  * - Uses pagination with .range() to limit data transfer
  * - Uses count: 'exact' for accurate pagination
  * - Supports server-side search and sorting
+ * - Wrapped with React.cache() for request memoization
+ * 
+ * Note: Cannot use unstable_cache() because createClient() accesses cookies()
  */
-export async function getRoomsPaginated(
+export const getRoomsPaginated = cache(async (
   page: number = 1,
   pageSize: number = 20,
   searchTerm: string = '',
   sortBy: 'code' | 'type' | 'capacity' = 'code',
   sortOrder: 'asc' | 'desc' = 'asc'
-): Promise<RoomsPaginatedResult> {
+): Promise<RoomsPaginatedResult> => {
   const supabase = await createClient();
   
   // Calculate pagination range
@@ -83,5 +91,5 @@ export async function getRoomsPaginated(
     totalPages,
     pageSize,
   };
-}
+});
 

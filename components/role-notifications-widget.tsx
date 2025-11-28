@@ -9,8 +9,18 @@ import Link from 'next/link'
 import { useRecentNotifications } from '@/hooks/use-notifications'
 import { cn } from '@/lib/utils'
 
+interface Notification {
+	id: string;
+	user_id: string;
+	type: string;
+	payload: Record<string, unknown>;
+	read_at: string | null;
+	created_at: string;
+}
+
 interface RoleNotificationsWidgetProps {
 	role: string
+	initialData?: Notification[]
 }
 
 function getNotificationIcon(type: string) {
@@ -89,15 +99,18 @@ function getNotificationDescription(type: string, payload: Record<string, any>):
 	}
 }
 
-export function RoleNotificationsWidget({ role }: RoleNotificationsWidgetProps) {
-	const { data: notifications = [], isLoading, error } = useRecentNotifications()
+export function RoleNotificationsWidget({ role, initialData }: RoleNotificationsWidgetProps) {
+	// Use initial data if provided, otherwise fetch from hook
+	const { data: fetchedNotifications = [], isLoading, error } = useRecentNotifications()
+	const notifications = initialData || fetchedNotifications
 
 	// Safely handle notifications array
 	const safeNotifications = Array.isArray(notifications) ? notifications : []
 	const unreadNotifications = safeNotifications.filter((n) => n && !n.read_at)
 	const recentNotifications = safeNotifications.slice(0, 5) // Show only 5 most recent
 
-	if (isLoading) {
+	// Only show loading if we don't have initial data and are still loading
+	if (isLoading && !initialData) {
 		return (
 			<Card>
 				<CardHeader>

@@ -13,6 +13,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateRooms } from "@/lib/cache/revalidation";
 
 interface RouteParams {
   params: {
@@ -108,6 +109,9 @@ export async function PUT(
       throw error;
     }
 
+    // Revalidate room-related caches after successful update
+    revalidateRooms();
+
     return createSuccessResponse(data, 200);
   } catch (error) {
     return handleApiError(error);
@@ -164,6 +168,9 @@ export async function DELETE(
     if (error) {
       throw error;
     }
+
+    // Revalidate room-related caches after successful deletion
+    revalidateRooms();
 
     return createSuccessResponse({ message: `Room '${params.code}' deleted successfully` }, 200);
   } catch (error) {

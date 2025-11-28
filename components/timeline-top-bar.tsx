@@ -10,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { getAuthHeader } from '@/lib/utils/client-auth'
 import { TimelineEventDialog } from '@/components/timeline-event-dialog'
+import { calculateTimelineStatus } from '@/lib/utils/timeline-status'
+import Link from 'next/link'
 
 interface TimelineEvent {
 	id: string
@@ -62,26 +64,15 @@ async function fetchTimelineEvents(role: string): Promise<TimelineEvent[]> {
 }
 
 function getEventStatus(event: TimelineEvent): 'upcoming' | 'in_progress' | 'completed' | 'overdue' {
-	if (event.status === 'completed') return 'completed'
-	if (event.status === 'overdue') return 'overdue'
-	if (event.status === 'in_progress') return 'in_progress'
-
-	// Safely handle date parsing
-	try {
-		const now = new Date()
-		const startDate = event.start_date ? new Date(event.start_date) : null
-		const endDate = event.end_date ? new Date(event.end_date) : null
-
-		if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-			return 'upcoming' // Default to upcoming if dates are invalid
-		}
-
-		if (isPast(endDate)) return 'overdue'
-		if (isFuture(startDate)) return 'upcoming'
-		return 'in_progress'
-	} catch {
-		return 'upcoming' // Default to upcoming on any error
-	}
+	// Use the utility function to calculate status dynamically
+	const calculatedStatus = calculateTimelineStatus({
+		status: event.status,
+		start_date: event.start_date,
+		end_date: event.end_date,
+		is_deadline: event.is_deadline,
+	}) as 'upcoming' | 'in_progress' | 'completed' | 'overdue'
+	
+	return calculatedStatus
 }
 
 function getDaysUntil(event: TimelineEvent): number {
@@ -151,6 +142,7 @@ export function TimelineTopBar({ userRole }: TimelineTopBarProps) {
 			if (!event || typeof event !== 'object' || !event.end_date) return false
 			try {
 				const status = getEventStatus(event)
+				// Show upcoming, in_progress, and overdue (ended) events
 				return ['upcoming', 'in_progress', 'overdue'].includes(status)
 			} catch {
 				return false // Skip invalid events

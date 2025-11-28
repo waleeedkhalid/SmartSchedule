@@ -54,24 +54,74 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
     try {
       const authHeader = await getAuthHeader();
       
-      const response = await fetch(`/api/v1/courses/${selectedCourse.code}`, {
+      if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
+      // URL encode the course code to handle special characters
+      const encodedCourseCode = encodeURIComponent(selectedCourse.code);
+      const response = await fetch(`/api/v1/courses/${encodedCourseCode}`, {
         method: 'DELETE',
         headers: {
           'Authorization': authHeader,
+          'Content-Type': 'application/json',
         },
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete course');
+      // Parse response - handle both JSON and non-JSON responses
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        // If response is not JSON, use status text
+        throw new Error(`Failed to delete course: ${response.statusText || `HTTP ${response.status}`}`);
       }
 
-      toast.success(`Course ${selectedCourse.code} deleted successfully`);
-      router.refresh();
+      if (!response.ok) {
+        // Extract error message from API response
+        const errorMessage = result.error || result.message || `Failed to delete course (${response.status})`;
+        
+        // Handle 404 (course not found) - might have been deleted already
+        if (response.status === 404) {
+          // Close dialog and refresh page to sync with server state
+          setDialogOpen(false);
+          setSelectedCourse(null);
+          toast.warning(`Course ${selectedCourse.code} was not found. The page will refresh to sync with the server.`);
+          setTimeout(() => {
+            router.refresh();
+          }, 1000);
+          return;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Success - close dialog first, then show toast and refresh
+      setDialogOpen(false);
+      const deletedCode = selectedCourse.code;
+      const sectionsDeleted = result.data?.sectionsDeleted || 0;
+      setSelectedCourse(null);
+      
+      // Show success message with section count if applicable
+      if (sectionsDeleted > 0) {
+        toast.success(`Course ${deletedCode} and ${sectionsDeleted} section${sectionsDeleted !== 1 ? 's' : ''} deleted successfully`);
+      } else {
+        toast.success(`Course ${deletedCode} deleted successfully`);
+      }
+      
+      // Small delay to ensure dialog closes before refresh
+      setTimeout(() => {
+        // Refresh the page to show updated course list
+        router.refresh();
+      }, 100);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete course");
-      console.error(error);
+      // Error - show message but keep dialog open so user can try again
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to delete course. Please try again.";
+      toast.error(errorMessage);
+      console.error('Delete course error:', error);
+      // Don't close dialog on error - let user see the error and try again
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +162,11 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
             <TableRow key={course.code}>
               <TableCell className="font-medium">{course.code}</TableCell>
               <TableCell>{course.title}</TableCell>
-              <TableCell>Level {course.level}</TableCell>
+              <TableCell>
+                {course.recommended_level !== null 
+                  ? `Level ${course.recommended_level}` 
+                  : 'Elective'}
+              </TableCell>
               <TableCell>{course.credits}</TableCell>
               <TableCell>{course.weekly_hours}h</TableCell>
               <TableCell>

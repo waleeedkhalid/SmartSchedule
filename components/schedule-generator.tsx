@@ -55,19 +55,47 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
   const [status, setStatus] = useState<ScheduleStatus>(initialStatus);
 
   async function handleGenerate() {
+    console.log('handleGenerate called');
     setIsGenerating(true);
     setGenerationResult(null);
 
     try {
-      // Get auth header first
-      const authHeader = await getAuthHeader();
+      console.log('Getting auth header...');
+      // Get auth header first with timeout to prevent hanging
+      let authHeader: string;
+      try {
+        const authHeaderPromise = getAuthHeader();
+        const authTimeoutPromise = new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error('Authentication timeout')), 5000)
+        );
+        
+        authHeader = await Promise.race([authHeaderPromise, authTimeoutPromise]);
+        console.log('Auth header obtained:', authHeader ? 'Bearer ***' : 'empty');
+      } catch (authError) {
+        console.error('Auth header error:', authError);
+        const errorMessage = authError instanceof Error 
+          ? authError.message 
+          : 'Authentication failed';
+        
+        if (errorMessage.includes('timeout')) {
+          throw new Error('Authentication timeout: Please refresh the page and try again');
+        }
+        throw new Error(`Authentication failed: ${errorMessage}`);
+      }
       
+      if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
+        throw new Error('Authentication required: No auth token available. Please log in again.');
+      }
+      
+      console.log('Fetching academic terms...');
       // Get current active term
-      const termsResponse = await fetch('/api/v1/academic-terms', {
+      const termsResponse = await fetch('/api/v1/academic-terms?current=true', {
         headers: {
           'Authorization': authHeader,
         },
       });
+      
+      console.log('Terms response status:', termsResponse.status);
       
       if (!termsResponse.ok) {
         let errorMessage = 'Failed to fetch academic terms';
@@ -81,14 +109,16 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
       }
 
       const termsData = await termsResponse.json();
-      const activeTerm = termsData.data?.find((t: { status: string; id: string }) => 
-        t.status === 'draft' || t.status === 'released'
-      );
+      // When current=true, API returns array with single term or empty array
+      const activeTerm = Array.isArray(termsData.data) && termsData.data.length > 0
+        ? termsData.data[0]
+        : null;
 
       if (!activeTerm) {
         throw new Error('No active academic term found. Please create an academic term first.');
       }
       
+      console.log('Calling schedule generation API with term_id:', activeTerm.id);
       // Call schedule generation API
       const response = await fetch('/api/v1/schedules/generate', {
         method: 'POST',
@@ -100,6 +130,8 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
           term_id: activeTerm.id,
         }),
       });
+      
+      console.log('Schedule generation response status:', response.status);
 
       // Check response status before parsing JSON
       if (!response.ok) {
@@ -151,7 +183,32 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
       router.refresh();
     } catch (error) {
       console.error("Error generating schedule:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate schedule");
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate schedule";
+      
+      // Log detailed error for debugging
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
+      }
+      
+      toast.error(errorMessage);
+      
+      // Set error state for UI feedback
+      setGenerationResult({
+        success: false,
+        stats: {
+          total_sections: 0,
+          assigned: 0,
+          unassigned: 0,
+          conflicts_resolved: 0,
+          created: 0,
+        },
+        unassigned: [],
+        message: errorMessage,
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -246,15 +303,28 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               The algorithm will automatically assign rooms and time slots to all draft sections while
               avoiding conflicts. Sections are prioritized by level, with lectures assigned before labs.
               The system checks for room, instructor, and student-level conflicts.
+              <br /><br />
+              <strong>Note:</strong> Schedule generation uses the time grid settings configured in Scheduling Settings.
+              Make sure your scheduling settings are properly configured before generating schedules.
             </AlertDescription>
           </Alert>
 
           <div className="flex gap-4">
             <Button
-              onClick={handleGenerate}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Generate button clicked');
+                try {
+                  await handleGenerate();
+                } catch (error) {
+                  console.error('Error in button click handler:', error);
+                }
+              }}
               disabled={isGenerating}
               size="lg"
               className="flex-1"
+              type="button"
             >
               {isGenerating ? (
                 <>

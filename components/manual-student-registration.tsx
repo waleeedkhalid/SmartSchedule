@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UserPlus, Trash2, AlertCircle } from "lucide-react"
-import { Checkbox } from "@/components/ui/checkbox"
+import { getAuthHeader } from "@/lib/utils/client-auth"
 import {
   Table,
   TableBody,
@@ -36,6 +36,7 @@ interface Student {
   name: string
   email: string
   level: number | null
+  student_number: string | null
 }
 
 interface Section {
@@ -86,8 +87,8 @@ export function ManualStudentRegistration() {
   
   const [selectedStudent, setSelectedStudent] = useState("")
   const [selectedSection, setSelectedSection] = useState("")
-  const [bypassValidation, setBypassValidation] = useState(false)
   const [sectionSearch, setSectionSearch] = useState("")
+  const [studentSearch, setStudentSearch] = useState("")
   
   const [isLoading, setIsLoading] = useState(false)
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
@@ -107,22 +108,69 @@ export function ManualStudentRegistration() {
 
   async function fetchStudents() {
     try {
-      const response = await fetch("/api/registrar/students")
-      if (response.ok) {
-        const data = await response.json()
-        setStudents(data)
+      const authHeader = await getAuthHeader()
+      const response = await fetch("/api/registrar/students", {
+        headers: authHeader ? { Authorization: authHeader } : {},
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }))
+        console.error("Error fetching students:", error)
+        toast.error(error.error || "Failed to load students")
+        return
+      }
+      
+      const result = await response.json()
+      // API returns { data: [...] } format
+      const studentsData = result.data || result || []
+      setStudents(studentsData)
+      
+      if (studentsData.length === 0) {
+        console.warn("No students found in database")
       }
     } catch (error) {
       console.error("Error fetching students:", error)
+      toast.error("Failed to load students")
     }
   }
 
   async function fetchSections() {
     try {
-      const response = await fetch("/api/sections")
-      if (response.ok) {
-        const data = await response.json()
-        setSections(data)
+      const authHeader = await getAuthHeader()
+      // Fetch sections and enrollments to calculate over-capacity status
+      const [sectionsRes, enrollmentsRes] = await Promise.all([
+        fetch("/api/v1/sections", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        }),
+        fetch("/api/registrar/student-enrollments?status=registered", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        }),
+      ])
+      
+      if (sectionsRes.ok && enrollmentsRes.ok) {
+        const sectionsData = await sectionsRes.json()
+        const enrollmentsData = await enrollmentsRes.json()
+        
+        // Calculate enrollment counts per section
+        const enrollmentCounts = new Map<string, number>()
+        enrollmentsData.forEach((e: any) => {
+          if (e.section_id) {
+            enrollmentCounts.set(e.section_id, (enrollmentCounts.get(e.section_id) || 0) + 1)
+          }
+        })
+        
+        // Filter sections to only show those that are 15-50% over capacity
+        const eligibleSections = sectionsData.filter((section: any) => {
+          const currentEnrollments = enrollmentCounts.get(section.id) || 0
+          const capacity = section.capacity || 0
+          
+          if (capacity === 0) return false
+          if (currentEnrollments <= capacity) return false
+          
+          const overCapacityPercent = ((currentEnrollments - capacity) / capacity) * 100
+          return overCapacityPercent >= 15 && overCapacityPercent <= 50
+        })
+        
+        setSections(eligibleSections)
       }
     } catch (error) {
       console.error("Error fetching sections:", error)
@@ -132,8 +180,12 @@ export function ManualStudentRegistration() {
   async function fetchStudentEnrollments(studentId: string) {
     setEnrollmentsLoading(true)
     try {
+      const authHeader = await getAuthHeader()
       const response = await fetch(
-        `/api/registrar/student-enrollments?student_id=${studentId}&status=registered`
+        `/api/registrar/student-enrollments?student_id=${studentId}&status=registered`,
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        }
       )
       if (response.ok) {
         const data = await response.json()
@@ -155,13 +207,16 @@ export function ManualStudentRegistration() {
     setIsLoading(true)
 
     try {
+      const authHeader = await getAuthHeader()
       const response = await fetch("/api/registrar/student-enrollments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
         body: JSON.stringify({
           student_id: selectedStudent,
           section_id: selectedSection,
-          bypass_validation: bypassValidation,
         }),
       })
 
@@ -175,12 +230,12 @@ export function ManualStudentRegistration() {
         data.message || "Student registered successfully"
       )
 
-      // Refresh enrollments
+      // Refresh enrollments and sections (sections may change eligibility)
       fetchStudentEnrollments(selectedStudent)
+      fetchSections()
       
       // Reset section selection
       setSelectedSection("")
-      setBypassValidation(false)
     } catch (error: any) {
       console.error("Error registering student:", error)
       toast.error(error.message || "Failed to register student")
@@ -191,10 +246,12 @@ export function ManualStudentRegistration() {
 
   async function handleDropEnrollment(enrollmentId: string) {
     try {
+      const authHeader = await getAuthHeader()
       const response = await fetch(
         `/api/registrar/student-enrollments?enrollment_id=${enrollmentId}`,
         {
           method: "DELETE",
+          headers: authHeader ? { Authorization: authHeader } : {},
         }
       )
 
@@ -216,6 +273,29 @@ export function ManualStudentRegistration() {
 
   const selectedStudentData = students.find((s) => s.user_id === selectedStudent)
   const selectedSectionData = sections.find((s) => s.id === selectedSection)
+
+  // Filter students by search term (name, email, student number)
+  const filteredStudents = students.filter(
+    (student) =>
+      studentSearch === "" ||
+      student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      student.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      (student.student_number && student.student_number.includes(studentSearch)) ||
+      student.user_id.toLowerCase().includes(studentSearch.toLowerCase())
+  )
+
+  // Handle student number search - if exact match found, auto-select
+  useEffect(() => {
+    if (studentSearch.length === 10 && /^\d{10}$/.test(studentSearch)) {
+      const matchedStudent = students.find(
+        (s) => s.student_number === studentSearch
+      )
+      if (matchedStudent) {
+        setSelectedStudent(matchedStudent.user_id)
+        setStudentSearch("") // Clear search after selection
+      }
+    }
+  }, [studentSearch, students])
 
   const filteredSections = sections.filter(
     (section) =>
@@ -239,50 +319,91 @@ export function ManualStudentRegistration() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Student Selection */}
+          {/* Student Selection with Search */}
           <div className="space-y-2">
-            <Label>Student</Label>
-            <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+            <Label>Student (Search by name, email, or student number)</Label>
+            <Input
+              placeholder="Type student number (10 digits) or search by name/email..."
+              value={studentSearch}
+              onChange={(e) => {
+                setStudentSearch(e.target.value)
+                // If typing student number, don't change selected student yet
+                if (e.target.value.length !== 10 || !/^\d{10}$/.test(e.target.value)) {
+                  setSelectedStudent("")
+                }
+              }}
+              className="mb-2"
+            />
+            <Select 
+              value={selectedStudent} 
+              onValueChange={(value) => {
+                setSelectedStudent(value)
+                setStudentSearch("") // Clear search when selecting from dropdown
+              }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select a student" />
+                <SelectValue placeholder="Select a student from list" />
               </SelectTrigger>
               <SelectContent>
-                {students.map((student) => (
-                  <SelectItem key={student.user_id} value={student.user_id}>
-                    {student.name} ({student.email}) - Level {student.level || "N/A"}
-                  </SelectItem>
-                ))}
+                {filteredStudents.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    {studentSearch ? "No students found" : "No students available"}
+                  </div>
+                ) : (
+                  filteredStudents.slice(0, 50).map((student) => (
+                    <SelectItem key={student.user_id} value={student.user_id}>
+                      {student.student_number ? `[${student.student_number}] ` : ""}
+                      {student.name} ({student.email}) - Level {student.level || "N/A"}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            {selectedStudentData && (
+              <div className="text-sm text-muted-foreground p-2 bg-muted rounded">
+                Selected: {selectedStudentData.student_number ? `Student #${selectedStudentData.student_number} - ` : ""}
+                {selectedStudentData.name} ({selectedStudentData.email})
+              </div>
+            )}
           </div>
 
           {/* Section Selection */}
           <div className="space-y-2">
-            <Label>Section</Label>
+            <Label>Section (15-50% over capacity only)</Label>
             <Input
               placeholder="Search sections..."
               value={sectionSearch}
               onChange={(e) => setSectionSearch(e.target.value)}
               className="mb-2"
             />
-            <Select
-              value={selectedSection}
-              onValueChange={setSelectedSection}
-              disabled={!selectedStudent}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a section" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredSections.slice(0, 50).map((section) => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.course_code} - {section.section_no} |{" "}
-                    {section.course?.title} | {section.instructor?.name || "No instructor"} |
-                    Capacity: {section.capacity}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {sections.length === 0 ? (
+              <div className="p-4 border rounded-lg bg-muted text-center text-sm text-muted-foreground">
+                No sections available for registration. Only sections that are 15-50% over capacity can be registered.
+              </div>
+            ) : (
+              <Select
+                value={selectedSection}
+                onValueChange={setSelectedSection}
+                disabled={!selectedStudent}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSections.slice(0, 50).map((section) => {
+                    // Fetch enrollment count for this section
+                    // Note: We'll need to fetch this separately or include in section data
+                    return (
+                      <SelectItem key={section.id} value={section.id}>
+                        {section.course_code} - {section.section_no} |{" "}
+                        {section.course?.title} | {section.instructor?.name || "No instructor"} |
+                        Capacity: {section.capacity}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Selected Section Info */}
@@ -307,24 +428,19 @@ export function ManualStudentRegistration() {
             </div>
           )}
 
-          {/* Bypass Validation */}
-          <div className="flex items-center space-x-2 p-4 border rounded-lg bg-amber-50 dark:bg-amber-950/20">
-            <Checkbox
-              id="bypass"
-              checked={bypassValidation}
-              onCheckedChange={(checked) => setBypassValidation(checked as boolean)}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <label
-                htmlFor="bypass"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-              >
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                Bypass validation (capacity, credit limits)
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Use for special cases like overrides and exceptions
-              </p>
+          {/* Info Box */}
+          <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  Over-Capacity Registration
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  You can only register students in sections that are 15-50% over capacity. 
+                  Sections at or below capacity cannot be manually registered.
+                </p>
+              </div>
             </div>
           </div>
 

@@ -13,6 +13,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateCourses } from "@/lib/cache/revalidation";
 
 interface RouteParams {
   params: {
@@ -52,7 +53,7 @@ export async function GET(
       code: data.code,
       name: data.title,
       credits: data.credits,
-      level: data.level,
+      level: data.recommended_level ?? 0, // Use 0 for electives (NULL recommended_level)
       course_type: data.is_elective ? "elective" : "required",
       created_at: data.created_at,
     };
@@ -103,9 +104,18 @@ export async function PUT(
         updateData.weekly_hours = creditsNum === 2 ? 2 : creditsNum + 1;
       }
     }
-    if (level !== undefined) updateData.level = parseInt(level);
+    if (level !== undefined) {
+      const isElective = course_type === "elective" || (course_type === undefined && data.is_elective);
+      updateData.recommended_level = isElective ? null : parseInt(level);
+    }
     if (weekly_hours !== undefined) updateData.weekly_hours = parseInt(weekly_hours);
-    if (course_type !== undefined) updateData.is_elective = course_type === "elective";
+    if (course_type !== undefined) {
+      updateData.is_elective = course_type === "elective";
+      // If changing to elective, set recommended_level to NULL
+      if (course_type === "elective" && level === undefined) {
+        updateData.recommended_level = null;
+      }
+    }
 
     // Update course
     const { data, error } = await supabase
@@ -124,10 +134,13 @@ export async function PUT(
       code: data.code,
       name: data.title,
       credits: data.credits,
-      level: data.level,
+      level: data.recommended_level ?? 0, // Use 0 for electives (NULL recommended_level)
       course_type: data.is_elective ? "elective" : "required",
       created_at: data.created_at,
     };
+
+    // Revalidate course-related caches after successful update
+    revalidateCourses();
 
     return createSuccessResponse(course, 200);
   } catch (error) {
@@ -161,19 +174,56 @@ export async function DELETE(
       );
     }
 
-    // Check if course has sections
-    const { data: sections } = await supabase
+    // Get all sections for this course
+    const { data: sections, error: sectionsError } = await supabase
       .from("section")
       .select("id")
-      .eq("course_code", params.code)
-      .limit(1);
+      .eq("course_code", params.code);
 
+    if (sectionsError) {
+      throw sectionsError;
+    }
+
+    // If course has sections, delete them first (cascade delete)
     if (sections && sections.length > 0) {
-      return createErrorResponse(
-        409,
-        ErrorCodes.VALIDATION_ERROR,
-        `Cannot delete course '${params.code}' because it has sections. Delete sections first.`
-      );
+      const sectionIds = sections.map(s => s.id);
+
+      // Check if any sections have enrollments
+      const { data: enrollments } = await supabase
+        .from("student_enrollment")
+        .select("id, section_id")
+        .in("section_id", sectionIds)
+        .eq("status", "registered")
+        .limit(1);
+
+      if (enrollments && enrollments.length > 0) {
+        return createErrorResponse(
+          409,
+          ErrorCodes.VALIDATION_ERROR,
+          `Cannot delete course '${params.code}' because it has sections with student enrollments. Remove enrollments first.`
+        );
+      }
+
+      // Delete schedules for these sections
+      await supabase
+        .from("schedule")
+        .delete()
+        .in("section_id", sectionIds);
+
+      // Delete all sections for this course
+      const { error: deleteSectionsError } = await supabase
+        .from("section")
+        .delete()
+        .eq("course_code", params.code);
+
+      if (deleteSectionsError) {
+        throw deleteSectionsError;
+      }
+
+      // Revalidate section and schedule caches
+      const { revalidateSections, revalidateSchedules } = await import("@/lib/cache/revalidation");
+      revalidateSections();
+      revalidateSchedules();
     }
 
     // Delete course
@@ -186,7 +236,15 @@ export async function DELETE(
       throw error;
     }
 
-    return createSuccessResponse({ message: `Course '${params.code}' deleted successfully` }, 200);
+    // Revalidate course-related caches after successful deletion
+    revalidateCourses();
+
+    const sectionsCount = sections?.length || 0;
+    const message = sectionsCount > 0
+      ? `Course '${params.code}' and ${sectionsCount} section${sectionsCount !== 1 ? 's' : ''} deleted successfully`
+      : `Course '${params.code}' deleted successfully`;
+
+    return createSuccessResponse({ message, sectionsDeleted: sectionsCount }, 200);
   } catch (error) {
     return handleApiError(error);
   }
