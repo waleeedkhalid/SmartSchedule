@@ -1,159 +1,174 @@
-import { NextResponse } from "next/server";
+/**
+ * Elective Comment API Route (Individual Comment)
+ * 
+ * PATCH /api/elective-preferences/comments/[id] - Update a comment
+ * DELETE /api/elective-preferences/comments/[id] - Delete a comment
+ * 
+ * Handles individual comment operations.
+ * Students can only manage their own comments.
+ */
+
+import { NextRequest } from "next/server";
+import { authenticateRequest, requireRole, extractAuthToken } from "@/lib/api/auth-utils";
+import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { 
-  getElectiveCommentById,
-  updateElectiveComment,
-  deleteElectiveComment,
-  resolveElectiveComment,
-  unresolveElectiveComment
-} from "@/lib/db/elective-comments";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    const comment = await getElectiveCommentById(params.id);
-    
-    // Verify ownership or scheduling role
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    const isOwner = comment.student_id === user.id;
-    const isScheduling = userRole?.role === 'scheduling' || userRole?.role === 'teaching_load';
-    
-    if (!isOwner && !isScheduling) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
-    return NextResponse.json(comment);
-  } catch (error) {
-    console.error("Error fetching elective comment:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch elective comment" },
-      { status: 500 }
-    );
-  }
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
 }
 
+// PATCH - Update a comment
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: RouteParams
 ) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    const body = await request.json();
-    const { comment, resolve } = body;
-    
-    // Get user role
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    // Handle resolve/unresolve (scheduling only)
-    if (resolve !== undefined) {
-      if (!userRole || (userRole.role !== 'scheduling' && userRole.role !== 'teaching_load')) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      
-      const updatedComment = resolve 
-        ? await resolveElectiveComment(params.id, user.id)
-        : await unresolveElectiveComment(params.id);
-      
-      return NextResponse.json(updatedComment);
-    }
-    
-    // Handle comment text update (student only, own comment only)
-    if (comment !== undefined) {
-      const existingComment = await getElectiveCommentById(params.id);
-      
-      if (existingComment.student_id !== user.id) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      
-      if (existingComment.is_resolved) {
-        return NextResponse.json(
-          { error: "Cannot edit resolved comment" },
-          { status: 400 }
-        );
-      }
-      
-      if (comment.trim().length < 10) {
-        return NextResponse.json(
-          { error: "Comment must be at least 10 characters" },
-          { status: 400 }
-        );
-      }
-      
-      const updatedComment = await updateElectiveComment(params.id, comment.trim());
-      return NextResponse.json(updatedComment);
-    }
-    
-    return NextResponse.json(
-      { error: "No valid update fields provided" },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error("Error updating elective comment:", error);
-    return NextResponse.json(
-      { error: "Failed to update elective comment" },
-      { status: 500 }
-    );
-  }
-}
+    const user = await authenticateRequest(request);
+    requireRole(user, ["student"]);
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    const comment = await getElectiveCommentById(params.id);
-    
-    // Only allow deletion by owner and only if not resolved
-    if (comment.student_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
-    if (comment.is_resolved) {
-      return NextResponse.json(
-        { error: "Cannot delete resolved comment" },
-        { status: 400 }
+    const { id } = await params;
+    const body = await request.json();
+    const { comment } = body;
+
+    if (!comment || typeof comment !== 'string' || comment.trim().length < 10) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "comment must be at least 10 characters"
       );
     }
-    
-    await deleteElectiveComment(params.id);
-    return NextResponse.json({ success: true });
+
+    const token = extractAuthToken(request);
+    const isDemo = token?.startsWith("demo:") === true;
+
+    // Handle demo mode
+    if (isDemo === true) {
+      return createSuccessResponse(
+        {
+          id: id,
+          student_id: user.id,
+          comment: comment.trim(),
+          updated_at: new Date().toISOString(),
+        },
+        200
+      );
+    }
+
+    // Handle real Supabase mode
+    const supabase = await createClient();
+
+    // Verify comment belongs to user
+    const { data: existingComment, error: fetchError } = await supabase
+      .from("elective_comment")
+      .select("id, student_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existingComment) {
+      return createErrorResponse(
+        404,
+        ErrorCodes.NOT_FOUND,
+        "Comment not found"
+      );
+    }
+
+    if (existingComment.student_id !== user.id) {
+      return createErrorResponse(
+        403,
+        ErrorCodes.FORBIDDEN,
+        "You can only update your own comments"
+      );
+    }
+
+    // Update comment
+    const { data: updatedComment, error: updateError } = await supabase
+      .from("elective_comment")
+      .update({
+        comment: comment.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select(`
+        *,
+        course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
+      `)
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return createSuccessResponse(updatedComment, 200);
   } catch (error) {
-    console.error("Error deleting elective comment:", error);
-    return NextResponse.json(
-      { error: "Failed to delete elective comment" },
-      { status: 500 }
+    return handleApiError(error);
+  }
+}
+
+// DELETE - Delete a comment
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const user = await authenticateRequest(request);
+    requireRole(user, ["student"]);
+
+    const { id } = await params;
+    const token = extractAuthToken(request);
+    const isDemo = token?.startsWith("demo:") === true;
+
+    // Handle demo mode
+    if (isDemo === true) {
+      return createSuccessResponse(
+        { message: "Comment deleted (demo mode)" },
+        200
+      );
+    }
+
+    // Handle real Supabase mode
+    const supabase = await createClient();
+
+    // Verify comment belongs to user
+    const { data: existingComment, error: fetchError } = await supabase
+      .from("elective_comment")
+      .select("id, student_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existingComment) {
+      return createErrorResponse(
+        404,
+        ErrorCodes.NOT_FOUND,
+        "Comment not found"
+      );
+    }
+
+    if (existingComment.student_id !== user.id) {
+      return createErrorResponse(
+        403,
+        ErrorCodes.FORBIDDEN,
+        "You can only delete your own comments"
+      );
+    }
+
+    // Delete comment
+    const { error: deleteError } = await supabase
+      .from("elective_comment")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    return createSuccessResponse(
+      { message: "Comment deleted successfully" },
+      200
     );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

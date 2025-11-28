@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Exam } from "@/lib/types/database";
+import { Exam } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,18 +36,13 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
 
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/exams/${id}`, {
-        method: "DELETE",
-      });
+      // DEMO MODE: Simulate delete action
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
 
-      if (!response.ok) {
-        throw new Error("Failed to delete exam");
-      }
-
-      toast.success("Exam deleted successfully");
+      toast.success(`Exam for ${courseCode} deleted successfully (Demo Mode: Not saved)`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete exam");
+      toast.error("Failed to delete exam (Demo Mode)");
       console.error(error);
     } finally {
       setDeletingId(null);
@@ -55,17 +50,31 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
   }
 
   const filteredExams = exams.filter((exam) => {
-    const matchesSearch = 
-      exam.course_code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      exam.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false;
     const matchesDate = !dateFilter || exam.date === dateFilter;
     return matchesSearch && matchesDate;
   });
 
   const sortedExams = [...filteredExams].sort((a, b) => {
     // Sort by date first, then by start time
+    // Handle undefined date values
+    if (!a.date && !b.date) {
+      // Both dates are undefined, sort by start_time
+      if (!a.start_time && !b.start_time) return 0;
+      if (!a.start_time) return 1;
+      if (!b.start_time) return -1;
+      return a.start_time.localeCompare(b.start_time);
+    }
+    if (!a.date) return 1;
+    if (!b.date) return -1;
     if (a.date !== b.date) {
       return a.date.localeCompare(b.date);
     }
+    // Handle undefined start_time values
+    if (!a.start_time && !b.start_time) return 0;
+    if (!a.start_time) return 1;
+    if (!b.start_time) return -1;
     return a.start_time.localeCompare(b.start_time);
   });
 
@@ -125,25 +134,29 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                       {exam.course_code}
                     </TableCell>
                     <TableCell>
-                      {new Date(exam.date).toLocaleDateString('en-US', {
+                      {exam.date ? new Date(exam.date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
-                      })}
+                      }) : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {exam.start_time.substring(0, 5)}
+                      {exam.start_time ? exam.start_time.substring(0, 5) : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {exam.duration_minutes} min
+                      {exam.duration_minutes ?? 'N/A'} {exam.duration_minutes ? 'min' : ''}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {exam.room_codes.map((code) => (
-                          <Badge key={code} variant="outline" className="text-xs">
-                            {code}
-                          </Badge>
-                        ))}
+                        {exam.room_codes && exam.room_codes.length > 0 ? (
+                          exam.room_codes.map((code) => (
+                            <Badge key={code} variant="outline" className="text-xs">
+                              {code}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-xs">No rooms</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

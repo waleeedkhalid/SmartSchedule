@@ -1,6 +1,36 @@
 // Conflict Store - Track scheduling conflicts
 import { create } from 'zustand';
-import { SectionConflicts } from '@/lib/types/database';
+
+interface SectionConflicts {
+  section_id: string;
+  has_conflicts: boolean;
+  room_conflicts: Array<{
+    section_id: string;
+    course_code: string;
+    section_no: string;
+    room_code: string | null;
+    instructor_id: string | null;
+    group_level: number;
+    meeting_pattern: {
+      days: string[];
+      start: string;
+      duration: number;
+    };
+  }>;
+  instructor_conflicts: Array<{
+    section_id: string;
+    course_code: string;
+    section_no: string;
+    room_code: string | null;
+    instructor_id: string | null;
+    group_level: number;
+    meeting_pattern: {
+      days: string[];
+      start: string;
+      duration: number;
+    };
+  }>;
+}
 
 interface ConflictState {
   conflicts: SectionConflicts[];
@@ -56,8 +86,7 @@ export const useConflictStore = create<ConflictState>((set, get) => ({
     return conflicts.reduce((total, c) => {
       return total +
         c.room_conflicts.length +
-        c.instructor_conflicts.length +
-        c.student_conflicts.length;
+        c.instructor_conflicts.length;
     }, 0);
   },
   

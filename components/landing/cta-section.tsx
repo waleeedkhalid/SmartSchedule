@@ -1,12 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, LayoutDashboard } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export function CTASection() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
     <section className="w-full py-20 md:py-28 relative overflow-hidden">
@@ -18,18 +18,35 @@ export function CTASection() {
         <div className="flex flex-col items-center space-y-8 text-center">
           <div className="space-y-4 max-w-3xl">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
-              {user ? "Welcome Back!" : "Ready to Transform Your Scheduling?"}
+              {loading 
+                ? "Loading..." 
+                : user 
+                  ? "Welcome Back!" 
+                  : "Ready to Transform Your Scheduling?"
+              }
             </h2>
             <p className="mx-auto max-w-2xl text-lg text-white/95 md:text-xl leading-relaxed">
-              {user 
-                ? "Continue managing your schedules and collaborating with your team."
-                : "Join institutions already using SmartSchedule to save time, reduce conflicts, and improve collaboration across departments."
+              {loading
+                ? "Checking your account..."
+                : user 
+                  ? "Continue managing your schedules and collaborating with your team."
+                  : "Join institutions already using SmartSchedule to save time, reduce conflicts, and improve collaboration across departments."
               }
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            {user ? (
+            {loading ? (
+              // Show loading state while checking authentication
+              <Button 
+                size="lg" 
+                disabled
+                className="bg-white/80 text-brand-blue-600 font-semibold shadow-lg"
+              >
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Loading...
+              </Button>
+            ) : user ? (
               <Button 
                 size="lg" 
                 asChild 
@@ -66,7 +83,7 @@ export function CTASection() {
             )}
           </div>
 
-          {!user && (
+          {!loading && !user && (
             <p className="text-sm text-white/90">
               No credit card required • Free to get started • Full feature access
             </p>

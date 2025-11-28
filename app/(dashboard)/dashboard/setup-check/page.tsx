@@ -1,6 +1,6 @@
 import { createClient } from "@/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, XCircle } from "lucide-react";
 
 export default async function SetupCheckPage() {
   const supabase = await createClient();
@@ -18,13 +18,13 @@ export default async function SetupCheckPage() {
     if (!error) {
       checks.connection = true;
     }
-  } catch (e) {
+  } catch {
     checks.connection = false;
   }
 
   // Check all required tables
   const requiredTables = [
-    'course', 'room', 'instructor', 'student_group', 'section',
+    'course', 'room', 'instructor', 'section',
     'exam', 'rule', 'schedule_doc', 'comment', 'notification',
     'user_roles', 'time_grid_config', 'elective_preference',
     'student_enrollment', 'schedule_comment', 'irregular_student'
@@ -38,7 +38,7 @@ export default async function SetupCheckPage() {
       } else {
         checks.missingTables.push(table);
       }
-    } catch (e) {
+    } catch {
       checks.missingTables.push(table);
     }
   }

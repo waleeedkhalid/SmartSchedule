@@ -1,12 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, CheckCircle, ArrowRight, LayoutDashboard } from "lucide-react";
+import { Calendar, Users, CheckCircle, ArrowRight, LayoutDashboard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export function HeroSection() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
     <section className="relative w-full py-20 md:py-28 lg:py-36 overflow-hidden">
@@ -31,7 +31,17 @@ export function HeroSection() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
-            {user ? (
+            {loading ? (
+              // Show loading state while checking authentication
+              <Button 
+                size="lg" 
+                disabled
+                className="bg-brand-blue-600 text-white shadow-lg"
+              >
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Loading...
+              </Button>
+            ) : user ? (
               <Button 
                 size="lg" 
                 asChild

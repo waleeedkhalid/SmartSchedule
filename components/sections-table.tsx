@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Section } from "@/lib/types/database";
+import type { Database } from "@/lib/types/database";
 import {
   Table,
   TableBody,
@@ -18,25 +18,48 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Edit, Trash2, AlertTriangle } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useSectionDialog } from "@/components/sections-client";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+
+type Section = Database["public"]["Tables"]["section"]["Row"] & {
+  meeting_pattern: {
+    days: string[];
+    start: string;
+    duration: number;
+  };
+};
 
 interface SectionsTableProps {
   sections: Section[];
 }
 
+interface ConflictSection {
+  section_id: string;
+  course_code: string;
+  section_no: string;
+  room_code: string | null;
+  instructor_id: string | null;
+  group_level: number;
+  meeting_pattern: {
+    days: string[];
+    start: string;
+    duration: number;
+  };
+}
+
 interface ConflictMap {
   [sectionId: string]: {
     has_conflicts: boolean;
-    room_conflicts: any[];
-    instructor_conflicts: any[];
-    student_conflicts: any[];
+    room_conflicts: ConflictSection[];
+    instructor_conflicts: ConflictSection[];
   };
 }
 
 export function SectionsTable({ sections }: SectionsTableProps) {
   const router = useRouter();
+  const { openEditDialog } = useSectionDialog();
   const [conflictMap, setConflictMap] = useState<ConflictMap>({});
   const [isLoadingConflicts, setIsLoadingConflicts] = useState(false);
 
@@ -45,39 +68,113 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     async function checkAllConflicts() {
       if (sections.length === 0) return;
 
+      // Limit the number of sections to check to prevent spam
+      // Only check conflicts for sections with meeting patterns
+      const sectionsToCheck = sections.filter(
+        (s) => s.meeting_pattern?.days && s.meeting_pattern.days.length > 0
+      );
+
+      if (sectionsToCheck.length === 0) return;
+
       setIsLoadingConflicts(true);
       const conflicts: ConflictMap = {};
+      let hasAuthError = false;
 
       try {
-        // Check conflicts for each section
+        // Get auth header once for all requests
+        const authHeader = await getAuthHeader();
+
+        // If no auth header, skip conflict checking to prevent spam
+        if (!authHeader) {
+          console.warn("No auth token available, skipping conflict checks");
+          return;
+        }
+
+        // Get current term_id once (optional - API will use active term if not provided)
+        let termId: string | null = null;
+        try {
+          const termsResponse = await fetch('/api/v1/academic-terms', {
+            headers: {
+              'Authorization': authHeader,
+            },
+          });
+          if (termsResponse.ok) {
+            const termsData = await termsResponse.json();
+            interface Term {
+              status?: string;
+            }
+            const activeTerm = termsData.data?.find((t: Term) =>
+              t.status === 'draft' || t.status === 'released'
+            );
+            if (activeTerm) {
+              termId = activeTerm.id;
+            }
+          }
+        } catch (e) {
+          // If term fetch fails, continue without term_id (API will use active term)
+          console.warn('Could not fetch active term for conflict check:', e);
+        }
+
+        // Check conflicts for each section (with auth header)
         await Promise.all(
-          sections.map(async (section) => {
+          sectionsToCheck.map(async (section) => {
+            // Skip if we already encountered an auth error
+            if (hasAuthError) return;
+
             try {
-              const response = await fetch("/api/sections/check-conflicts", {
+              const response = await fetch("/api/v1/sections/check-conflicts", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": authHeader,
+                },
                 body: JSON.stringify({
                   room_code: section.room_code || null,
                   instructor_id: section.instructor_id || null,
-                  group_level: section.group_level,
                   meeting_days: section.meeting_pattern.days,
                   meeting_start: section.meeting_pattern.start,
                   meeting_duration: section.meeting_pattern.duration,
+                  term_id: termId, // Optional - API will use active term if not provided
                   exclude_section_id: section.id,
                 }),
               });
 
+              // Handle 401 errors - stop making more requests
+              if (response.status === 401) {
+                hasAuthError = true;
+                // Silently handle auth errors to prevent spam
+                return;
+              }
+
               if (response.ok) {
-                const data = await response.json();
-                conflicts[section.id] = data;
+                try {
+                  const responseData = await response.json();
+                  // Extract the actual conflict data from the API response wrapper
+                  // API returns { data: { has_conflicts: ..., ... } }
+                  conflicts[section.id] = responseData.data || responseData;
+                } catch (parseError) {
+                  // Silently handle JSON parse errors
+                  if (process.env.NODE_ENV === 'development') {
+                    console.error(`Error parsing conflict response for section ${section.id}:`, parseError);
+                  }
+                }
               }
             } catch (error) {
-              console.error(`Error checking conflicts for section ${section.id}:`, error);
+              // Silently handle network errors to prevent spam
+              // Only log in development
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`Error checking conflicts for section ${section.id}:`, error);
+              }
             }
           })
         );
 
         setConflictMap(conflicts);
+      } catch (error) {
+        // Silently handle errors to prevent spam
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error in checkAllConflicts:", error);
+        }
       } finally {
         setIsLoadingConflicts(false);
       }
@@ -87,23 +184,30 @@ export function SectionsTable({ sections }: SectionsTableProps) {
   }, [sections]);
 
   async function handleDelete(id: string, courseCode: string, sectionNo: string) {
-    if (!confirm(`Are you sure you want to delete section ${courseCode}-${sectionNo}?`)) {
+    if (!confirm(`Are you sure you want to delete section ${courseCode}-${sectionNo}? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/sections/${id}`, {
-        method: "DELETE",
+      const authHeader = await getAuthHeader();
+
+      const response = await fetch(`/api/v1/sections/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+        },
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to delete section");
+        throw new Error(result.error || result.message || 'Failed to delete section');
       }
 
-      toast.success("Section deleted successfully");
+      toast.success(`Section ${courseCode}-${sectionNo} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete section");
+      toast.error(error instanceof Error ? error.message : "Failed to delete section");
       console.error(error);
     }
   }
@@ -155,7 +259,7 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell className="font-medium">{section.course_code}</TableCell>
               <TableCell>{section.section_no}</TableCell>
               <TableCell>
-                {(section as any).is_scheduled_by_algorithm ? (
+                {(section as { is_scheduled_by_algorithm?: boolean }).is_scheduled_by_algorithm ? (
                   <Badge className="bg-blue-600">Algorithm</Badge>
                 ) : (
                   <Badge variant="outline">Manual</Badge>
@@ -165,11 +269,11 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               <TableCell>
                 {section.room_code || "—"}
                 {section.activity && (
-                  <Badge 
+                  <Badge
                     variant={
-                      section.activity === 'lab' ? 'default' : 
-                      section.activity === 'tutorial' ? 'secondary' : 
-                      'outline'
+                      section.activity === 'lab' ? 'default' :
+                        section.activity === 'tutorial' ? 'secondary' :
+                          'outline'
                     }
                     className="ml-2"
                   >
@@ -193,11 +297,10 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               </TableCell>
               <TableCell>
                 <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    section.state === 'released'
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${section.state === 'released'
                       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                       : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                  }`}
+                    }`}
                 >
                   {section.state}
                 </span>
@@ -216,28 +319,48 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                       </Button>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80" align="end">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <h4 className="text-sm font-semibold">Scheduling Conflicts</h4>
                         {conflictMap[section.id].room_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Room:</span>{" "}
-                            {conflictMap[section.id].room_conflicts.length} conflict(s)
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium text-red-600">
+                              Room Conflicts ({conflictMap[section.id].room_conflicts.length}):
+                            </div>
+                            <ul className="text-xs space-y-1 ml-2">
+                              {conflictMap[section.id].room_conflicts.map((conflict, idx) => (
+                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
+                                  <span className="font-mono font-medium">
+                                    {conflict.course_code}-{conflict.section_no}
+                                  </span>
+                                  <span className="text-muted-foreground font-mono text-[10px]">
+                                    ID: {conflict.section_id}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                         {conflictMap[section.id].instructor_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Instructor:</span>{" "}
-                            {conflictMap[section.id].instructor_conflicts.length} conflict(s)
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium text-red-600">
+                              Instructor Conflicts ({conflictMap[section.id].instructor_conflicts.length}):
+                            </div>
+                            <ul className="text-xs space-y-1 ml-2">
+                              {conflictMap[section.id].instructor_conflicts.map((conflict, idx) => (
+                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
+                                  <span className="font-mono font-medium">
+                                    {conflict.course_code}-{conflict.section_no}
+                                  </span>
+                                  <span className="text-muted-foreground font-mono text-[10px]">
+                                    ID: {conflict.section_id}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
-                        {conflictMap[section.id].student_conflicts.length > 0 && (
-                          <div className="text-xs">
-                            <span className="font-medium text-red-600">Student Level:</span>{" "}
-                            {conflictMap[section.id].student_conflicts.length} conflict(s)
-                          </div>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Click edit to see details
+                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t">
+                          Click edit to resolve conflicts
                         </p>
                       </div>
                     </HoverCardContent>
@@ -250,13 +373,11 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button
-                  asChild
                   variant="ghost"
                   size="sm"
+                  onClick={() => openEditDialog(section)}
                 >
-                  <Link href={`/dashboard/sections/${section.id}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
+                  <Edit className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"

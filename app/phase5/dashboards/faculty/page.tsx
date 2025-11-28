@@ -130,7 +130,7 @@ export default function FacultyDashboardPage() {
         position: 'top' as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           usePointStyle: true,
         },
       },
@@ -151,10 +151,10 @@ export default function FacultyDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
           stepSize: 1,
-          callback: function(value: any) {
+          callback: function (value: string | number) {
             if (Number.isInteger(value)) {
               return value;
             }
@@ -169,7 +169,7 @@ export default function FacultyDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -185,7 +185,7 @@ export default function FacultyDashboardPage() {
         position: 'bottom' as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: 'bold' as const },
           usePointStyle: true,
           pointStyle: 'circle',
         },
@@ -196,8 +196,8 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.label + ': ' + context.parsed + ' students';
+          label: function (context: { label?: string; parsed?: number }) {
+            return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
           }
         }
       },
@@ -216,8 +216,9 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return context.parsed.y + ' hours';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function (context: any) {
+            return (context.parsed?.y || 0) + ' hours';
           }
         }
       },
@@ -231,9 +232,9 @@ export default function FacultyDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: 'normal' as const },
           padding: 8,
-          callback: function(value: any) {
+          callback: function (value: string | number) {
             return value + 'h';
           }
         },
@@ -245,7 +246,7 @@ export default function FacultyDashboardPage() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
           padding: 8,
         },
         border: { display: false },
@@ -264,8 +265,8 @@ export default function FacultyDashboardPage() {
         titleFont: { size: 15, weight: 'bold' as const },
         bodyFont: { size: 14 },
         callbacks: {
-          label: function(context: any) {
-            return 'Avg: ' + context.parsed.r + '%';
+          label: function (context: { parsed?: { r?: number } }) {
+            return 'Avg: ' + (context.parsed?.r || 0) + '%';
           }
         }
       },
@@ -280,7 +281,7 @@ export default function FacultyDashboardPage() {
           backdropColor: 'transparent',
         },
         pointLabels: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: 'bold' as const },
         },
         grid: { color: 'rgba(0, 0, 0, 0.08)' },
         angleLines: { color: 'rgba(0, 0, 0, 0.08)' },

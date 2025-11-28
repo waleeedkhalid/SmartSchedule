@@ -25,7 +25,6 @@ import {
   Calendar,
   Settings,
   LogOut,
-  GraduationCap,
   BarChart3,
   Users,
   MapPin,
@@ -57,7 +56,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: LayoutDashboard,
     },
     {
-      title: "My Preferences",
+      title: "Electives Preferences",
       href: "/dashboard/preferences",
       icon: Heart,
     },
@@ -102,11 +101,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Exams",
       href: "/dashboard/exams",
       icon: Calendar,
-    },
-    {
-      title: "Student Groups",
-      href: "/dashboard/student-groups",
-      icon: GraduationCap,
     },
     {
       title: "Elective Stats",
@@ -192,7 +186,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ]
 };
 
-export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {
+export function MobileNav({ userRole, userName }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const navItems = roleNavItems[userRole] || [];
@@ -284,15 +278,41 @@ export function MobileNav({ userRole, userName, userEmail }: MobileNavProps) {
                 <Settings className="h-5 w-5" />
                 <span>Profile</span>
               </Link>
-              <form action="/api/auth/signout" method="post">
-                <button
-                  type="submit"
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"
-                >
-                  <LogOut className="h-5 w-5" />
-                  <span>Sign Out</span>
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const token = document.cookie
+                      .split('; ')
+                      .find(row => row.startsWith('auth_token='))
+                      ?.split('=')[1] || 
+                      (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+                    
+                    await fetch('/api/v1/auth/logout', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                      },
+                    });
+                    
+                    // Clear all cookies and localStorage using utility
+                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    performClientLogoutCleanup();
+                    
+                    window.location.href = '/login';
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                    // Clear all cookies and localStorage even on error
+                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    performClientLogoutCleanup();
+                    window.location.href = '/login';
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Sign Out</span>
+              </button>
             </div>
           </SheetContent>
         </Sheet>

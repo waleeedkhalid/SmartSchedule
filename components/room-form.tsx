@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Room } from "@/lib/types/database";
+import { Room } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 const formSchema = z.object({
   code: z.string().min(1).max(20),
@@ -50,24 +51,35 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/rooms/${room?.code}` : "/api/rooms";
-      const method = isEditing ? "PATCH" : "POST";
+      const authHeader = await getAuthHeader();
+
+      const url = isEditing
+        ? `/api/v1/rooms/${room?.code}`
+        : '/api/v1/rooms';
+
+      const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
         body: JSON.stringify(values),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} room`);
+        throw new Error(data.error || `Failed to ${isEditing ? 'update' : 'create'} room`);
       }
 
       toast.success(`Room ${isEditing ? 'updated' : 'created'} successfully`);
       router.push("/dashboard/rooms");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} room`);
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} room`;
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);

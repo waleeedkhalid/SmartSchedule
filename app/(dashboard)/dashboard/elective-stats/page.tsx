@@ -14,12 +14,42 @@ export default async function ElectiveStatsPage() {
     redirect("/login");
   }
 
-  // Verify user has scheduling role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Verify user has scheduling role with error handling
+  let userRole;
+  let roleError;
+  
+  try {
+    const result = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    userRole = result.data;
+    roleError = result.error;
+  } catch (error) {
+    // Catch any unexpected errors (network issues, etc.)
+    console.warn('Unexpected error fetching user role in elective-stats:', error);
+    redirect("/dashboard");
+  }
+
+  // Handle errors gracefully
+  if (roleError) {
+    // Handle PGRST errors specifically - these are query/RLS issues
+    if (roleError.code?.startsWith('PGRST')) {
+      console.warn('user_roles query error (PGRST) in elective-stats:', {
+        code: roleError.code,
+        message: roleError.message,
+      });
+    } else if (roleError.code !== 'PGRST116') {
+      // PGRST116 is "not found" - expected, don't log
+      console.warn('Error fetching user role in elective-stats:', {
+        code: roleError.code,
+        message: roleError.message,
+      });
+    }
+    redirect("/dashboard");
+  }
 
   if (!userRole || userRole.role !== 'scheduling') {
     redirect("/dashboard");
@@ -127,7 +157,7 @@ export default async function ElectiveStatsPage() {
             <div className="text-center py-12 text-muted-foreground">
               <Heart className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>No preferences submitted yet</p>
-              <p className="text-sm mt-1">Students haven't submitted elective preferences</p>
+              <p className="text-sm mt-1">Students haven&apos;t submitted elective preferences</p>
             </div>
           ) : (
             <div className="space-y-4">

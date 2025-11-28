@@ -1,140 +1,118 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/supabase/server'
-import {
-	getTimelineEventById,
-	updateTimelineEvent,
-	deleteTimelineEvent,
-	getNotificationLogsForEvent,
-} from '@/lib/db/timeline'
-
 /**
- * GET /api/timeline/[id]
- * Get a single timeline event
+ * Timeline Event API Route
  * 
- * Query params:
- * - logs: 'true' to include notification logs
+ * GET /api/timeline/[id] - Get specific timeline event
+ * PATCH /api/timeline/[id] - Update timeline event (scheduling/registrar only)
+ * DELETE /api/timeline/[id] - Delete timeline event (scheduling only)
  */
+
+import { NextRequest } from 'next/server';
+import { createClient } from '@/supabase/server';
+import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
+import { createSuccessResponse, handleApiError } from '@/lib/api/error-handler';
+
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const supabase = await createClient()
+		await authenticateRequest(request);
+		const supabase = await createClient();
+		const { id } = await params;
+		const { searchParams } = new URL(request.url);
+		const includeLogs = searchParams.get('logs') === 'true';
 
-		// Check authentication
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		if (authError || !user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-		}
+		const query = supabase
+			.from('semester_timeline')
+			.select('*')
+			.eq('id', id)
+			.single();
 
-		const id = params.id
-		const searchParams = request.nextUrl.searchParams
-		const includeLogs = searchParams.get('logs') === 'true'
+		const { data: event, error: eventError } = await query;
 
-		const event = await getTimelineEventById(id)
+		if (eventError) throw eventError;
 
 		if (includeLogs) {
-			const logs = await getNotificationLogsForEvent(id)
-			return NextResponse.json({ ...event, notification_logs: logs })
+			const { data: logs, error: logsError } = await supabase
+				.from('timeline_notification_log')
+				.select('*')
+				.eq('timeline_event_id', id)
+				.order('sent_at', { ascending: false });
+
+			if (logsError) throw logsError;
+
+			return createSuccessResponse({ ...event, notification_logs: logs || [] }, 200);
 		}
 
-		return NextResponse.json(event)
+		return createSuccessResponse(event, 200);
 	} catch (error) {
-		console.error('Error fetching timeline event:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch timeline event' },
-			{ status: 500 }
-		)
+		return handleApiError(error);
 	}
 }
 
-/**
- * PATCH /api/timeline/[id]
- * Update a timeline event (scheduling or registrar role only)
- */
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const supabase = await createClient()
+		const user = await authenticateRequest(request);
+		requireRole(user, ['scheduling', 'registrar']);
 
-		// Check authentication
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		if (authError || !user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-		}
+		const supabase = await createClient();
+		const { id } = await params;
+		const body = await request.json();
 
-		// Check authorization
-		const { data: userRole } = await supabase
-			.from('user_roles')
-			.select('role')
-			.eq('user_id', user.id)
-			.maybeSingle()
+		// Update timeline event
+		const { data, error } = await supabase
+			.from('semester_timeline')
+			.update({
+				...(body.title && { title: body.title }),
+				...(body.description !== undefined && { description: body.description }),
+				...(body.event_type && { event_type: body.event_type }),
+				...(body.category && { category: body.category }),
+				...(body.start_date && { start_date: body.start_date }),
+				...(body.end_date && { end_date: body.end_date }),
+				...(body.requires_action !== undefined && { requires_action: body.requires_action }),
+				...(body.target_roles && { target_roles: body.target_roles }),
+				...(body.notification_days_before && { notification_days_before: body.notification_days_before }),
+				...(body.is_deadline !== undefined && { is_deadline: body.is_deadline }),
+				...(body.priority && { priority: body.priority }),
+				...(body.status && { status: body.status }),
+				...(body.metadata && { metadata: body.metadata }),
+			})
+			.eq('id', id)
+			.select()
+			.single();
 
-		if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
-			return NextResponse.json(
-				{ error: 'Only scheduling and registrar roles can update timeline events' },
-				{ status: 403 }
-			)
-		}
+		if (error) throw error;
 
-		const id = params.id
-		const body = await request.json()
-
-		const data = await updateTimelineEvent(id, body)
-
-		return NextResponse.json(data)
+		return createSuccessResponse(data, 200);
 	} catch (error) {
-		console.error('Error updating timeline event:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update timeline event' },
-			{ status: 500 }
-		)
+		return handleApiError(error);
 	}
 }
 
-/**
- * DELETE /api/timeline/[id]
- * Delete a timeline event (scheduling role only)
- */
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const supabase = await createClient()
+		const user = await authenticateRequest(request);
+		requireRole(user, ['scheduling']); // Only scheduling can delete
 
-		// Check authentication
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		if (authError || !user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-		}
+		const supabase = await createClient();
+		const { id } = await params;
 
-		// Check authorization
-		const { data: userRole } = await supabase
-			.from('user_roles')
-			.select('role')
-			.eq('user_id', user.id)
-			.maybeSingle()
+		const { error } = await supabase
+			.from('semester_timeline')
+			.delete()
+			.eq('id', id);
 
-		if (!userRole || userRole.role !== 'scheduling') {
-			return NextResponse.json(
-				{ error: 'Only scheduling role can delete timeline events' },
-				{ status: 403 }
-			)
-		}
+		if (error) throw error;
 
-		const id = params.id
-		await deleteTimelineEvent(id)
-
-		return NextResponse.json({ message: 'Timeline event deleted successfully' })
+		return createSuccessResponse({ message: 'Timeline event deleted successfully' }, 200);
 	} catch (error) {
-		console.error('Error deleting timeline event:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete timeline event' },
-			{ status: 500 }
-		)
+		return handleApiError(error);
 	}
 }
 

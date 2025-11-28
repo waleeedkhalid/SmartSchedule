@@ -1,51 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/supabase/server'
+/**
+ * Registrar Students API
+ * 
+ * GET /api/registrar/students - List all students (for selection)
+ * Query params:
+ * - search: Optional search term to filter students
+ */
+
+import { NextRequest } from "next/server";
+import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
+import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
+import { getAllStudents } from "@/lib/db/registrar-data";
 
 /**
- * GET /api/registrar/students
- * Get all students (for manual registration)
- * Auth: Registrar only
+ * GET - List all students
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
-    // Authentication check
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await authenticateRequest(request);
+    requireRole(user, "registrar");
+
+    const students = await getAllStudents();
+
+    // Optional search filtering on server side
+    const { searchParams } = new URL(request.url);
+    const searchTerm = searchParams.get("search");
+
+    let filteredStudents = students;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filteredStudents = students.filter(
+        (s) =>
+          s.name.toLowerCase().includes(term) ||
+          s.email.toLowerCase().includes(term) ||
+          s.user_id.toLowerCase().includes(term) ||
+          (s.level !== null && s.level.toString().includes(term))
+      );
     }
-    
-    // Authorization check - must be registrar
-    const { data: userRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    
-    if (roleError || userRole?.role !== 'registrar') {
-      return NextResponse.json(
-        { error: 'Forbidden - Registrar access required' },
-        { status: 403 }
-      )
-    }
-    
-    // Get all students
-    const { data: students, error: studentsError } = await supabase
-      .from('user_roles')
-      .select('user_id, name, email, level')
-      .eq('role', 'student')
-      .order('name', { ascending: true })
-    
-    if (studentsError) throw studentsError
-    
-    return NextResponse.json(students || [])
+
+    return createSuccessResponse(filteredStudents, 200);
   } catch (error) {
-    console.error('Error fetching students:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch students' },
-      { status: 500 }
-    )
+    return handleApiError(error);
   }
 }
 

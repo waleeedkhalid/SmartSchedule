@@ -12,15 +12,41 @@ export default async function SettingsPage() {
 		redirect('/login');
 	}
 
-	// Get user profile data
-	const { data: userRole, error: roleError } = await supabase
-		.from('user_roles')
-		.select('name, email')
-		.eq('user_id', user.id)
-		.maybeSingle();
+	// Get user profile data with error handling
+	let userRole;
+	let roleError;
+	
+	try {
+		const result = await supabase
+			.from('user_roles')
+			.select('name, email')
+			.eq('user_id', user.id)
+			.maybeSingle();
+		
+		userRole = result.data;
+		roleError = result.error;
+	} catch (error) {
+		// Catch any unexpected errors (network issues, etc.)
+		console.warn('Unexpected error fetching user profile in settings:', error);
+		redirect('/dashboard');
+	}
 
-	if (roleError || !userRole) {
-		console.error('Error fetching user profile:', roleError);
+	// Handle errors gracefully
+	if (roleError) {
+		// Handle PGRST errors specifically - these are query/RLS issues
+		if (roleError.code?.startsWith('PGRST')) {
+			console.warn('user_roles query error (PGRST) in settings:', {
+				code: roleError.code,
+				message: roleError.message,
+			});
+		} else if (roleError.code !== 'PGRST116') {
+			// PGRST116 is "not found" - expected, don't log
+			console.error('Error fetching user profile:', roleError);
+		}
+		redirect('/dashboard');
+	}
+
+	if (!userRole) {
 		redirect('/dashboard');
 	}
 

@@ -15,7 +15,6 @@ export function ImportExportUI() {
     { id: "courses", label: "Courses" },
     { id: "rooms", label: "Rooms" },
     { id: "instructors", label: "Instructors" },
-    { id: "student_groups", label: "Student Groups" },
     { id: "sections", label: "Sections" },
     { id: "exams", label: "Exams" },
     { id: "rules", label: "Rules" },
@@ -31,7 +30,7 @@ export function ImportExportUI() {
       }
 
       const response = await fetch(`/api/data/export?${params.toString()}`);
-      
+
       if (!response.ok) {
         throw new Error("Export failed");
       }
@@ -76,14 +75,18 @@ export function ImportExportUI() {
       }
 
       const result = await response.json();
-      
+
       let successCount = 0;
-      Object.values(result.results || {}).forEach((r: any) => {
-        if (r.success) successCount += r.count;
+      interface ImportResult {
+        success?: boolean;
+        count?: number;
+      }
+      (Object.values(result.results || {}) as ImportResult[]).forEach((r) => {
+        if (r.success) successCount += r.count || 0;
       });
 
       toast.success(`Successfully imported ${successCount} records`);
-      
+
       // Reset file input
       event.target.value = "";
     } catch (error) {
@@ -211,7 +214,7 @@ export function ImportExportUI() {
         </CardHeader>
         <CardContent>
           <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs">
-{`{
+            {`{
   "version": "1.0",
   "exported_at": "2025-10-27T12:00:00Z",
   "data": {
@@ -232,7 +235,6 @@ export function ImportExportUI() {
       }
     ],
     "instructors": [...],
-    "student_groups": [...],
     "sections": [...],
     "exams": [...]
   }

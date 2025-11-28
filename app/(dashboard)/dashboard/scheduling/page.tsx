@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createClient } from "@/supabase/server";
 import { 
   BookOpen, 
   Calendar, 
@@ -15,67 +14,49 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ScheduleGenerator } from "@/components/schedule-generator";
-import { SchedulingDashboardCharts } from "@/components/scheduling-dashboard-charts";
+import { SchedulingDashboardChartsWrapper } from "@/components/scheduling-dashboard-charts-wrapper";
+import { getSchedulingStats, getScheduleStatus } from "@/lib/db/scheduling-stats";
+import { getServerUser, getDashboardPath, validateOnboardingAndProfile } from "@/lib/server-auth";
+import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
+import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
+import { ClientOnly } from "@/components/client-only";
 
 export default async function SchedulingDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
+  // If not authenticated, redirect to login (prevents infinite redirect loop)
   if (!user) {
     redirect("/login");
   }
 
-  // Verify user has scheduling role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userRole?.role !== 'scheduling') {
-    redirect("/dashboard");
+  // FIX: Use getDashboardPath instead of hardcoding /dashboard
+  // This ensures we redirect to the correct role-specific dashboard
+  // Also handle undefined/null role by redirecting to onboarding
+  if (!user.role || user.role !== 'scheduling') {
+    // If role is missing, user needs onboarding
+    if (!user.role) {
+      redirect("/onboarding");
+    }
+    // Otherwise redirect to their correct dashboard
+    const correctDashboard = getDashboardPath(user.role);
+    redirect(correctDashboard);
   }
 
-  // Get counts for each entity
-  const [coursesCount, sectionsCount, roomsCount, instructorsCount, groupsCount] = await Promise.all([
-    supabase.from('course').select('*', { count: 'exact', head: true }),
-    supabase.from('section').select('*', { count: 'exact', head: true }),
-    supabase.from('room').select('*', { count: 'exact', head: true }),
-    supabase.from('instructor').select('*', { count: 'exact', head: true }),
-    supabase.from('student_group').select('*', { count: 'exact', head: true }),
-  ]);
+  // Validate onboarding and profile status
+  const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role)
+  
+  if (needsOnboarding || !profileExists) {
+    redirect('/onboarding')
+  }
 
-  // Get draft and released section counts
-  const [draftSections, releasedSections] = await Promise.all([
-    supabase.from('section').select('*', { count: 'exact', head: true }).eq('state', 'draft'),
-    supabase.from('section').select('*', { count: 'exact', head: true }).eq('state', 'released'),
-  ]);
+  // Get statistics from database
+  const stats = await getSchedulingStats();
+  const scheduleStatus = await getScheduleStatus();
 
-  // Get detailed section assignment info
-  const { data: allDraftSections } = await supabase
-    .from('section')
-    .select('*')
-    .eq('state', 'draft');
-
-  const assignedCount = allDraftSections?.filter(
-    (s) => s.room_code && s.meeting_pattern?.start
-  ).length || 0;
-
-  const scheduleStatus = {
-    draft: {
-      total: draftSections.count || 0,
-      assigned: assignedCount,
-      unassigned: (draftSections.count || 0) - assignedCount,
-    },
-    released: {
-      total: releasedSections.count || 0,
-    },
-  };
-
-  const isSystemReady = (coursesCount.count ?? 0) > 0 && 
-                        (roomsCount.count ?? 0) > 0 && 
-                        (instructorsCount.count ?? 0) > 0 &&
-                        (groupsCount.count ?? 0) > 0;
+  const isSystemReady = stats.coursesCount > 0 && 
+                        stats.roomsCount > 0 && 
+                        stats.instructorsCount > 0;
 
   return (
     <div className="p-8">
@@ -100,6 +81,42 @@ export default async function SchedulingDashboardPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Timeline and Notifications Section - Wrapped in ClientOnly to prevent hydration errors from date-fns */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upcoming Deadlines</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <UpcomingDeadlinesWidget userRole="scheduling" />
+              </ClientOnly>
+              <ClientOnly
+                fallback={
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Notifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">Loading...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }
+              >
+                <RoleNotificationsWidget role="scheduling" />
+              </ClientOnly>
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card>
@@ -108,7 +125,7 @@ export default async function SchedulingDashboardPage() {
               <BookOpen className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{coursesCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.coursesCount}</div>
             </CardContent>
           </Card>
 
@@ -118,9 +135,9 @@ export default async function SchedulingDashboardPage() {
               <Calendar className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{sectionsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.sectionsCount}</div>
               <p className="text-xs text-gray-500 mt-1">
-                {draftSections.count || 0} draft, {releasedSections.count || 0} released
+                {stats.draftSectionsCount} draft, {stats.releasedSectionsCount} released
               </p>
             </CardContent>
           </Card>
@@ -131,7 +148,7 @@ export default async function SchedulingDashboardPage() {
               <DoorOpen className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{roomsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.roomsCount}</div>
             </CardContent>
           </Card>
 
@@ -141,25 +158,32 @@ export default async function SchedulingDashboardPage() {
               <Users className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{instructorsCount.count || 0}</div>
+              <div className="text-2xl font-bold">{stats.instructorsCount}</div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Student Groups</CardTitle>
-              <Users className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{groupsCount.count || 0}</div>
-            </CardContent>
-          </Card>
         </div>
 
-            {/* Schedule Generation Section */}
+            {/* Schedule Generation Section - Wrapped in ClientOnly to prevent hydration errors from state logic and progress bars */}
             {isSystemReady ? (
               <div className="mb-6">
-                <ScheduleGenerator initialStatus={scheduleStatus} />
+                <ClientOnly
+                  fallback={
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Schedule Generator</CardTitle>
+                        <CardDescription>Preparing schedule generation...</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-32 flex items-center justify-center">
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  }
+                >
+                  <ScheduleGenerator initialStatus={scheduleStatus} />
+                </ClientOnly>
               </div>
             ) : (
               <Card className="mb-6 border-yellow-200 dark:border-yellow-800">
@@ -170,7 +194,7 @@ export default async function SchedulingDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-gray-600 dark:text-gray-400">
-                  You need to set up courses, rooms, instructors, and student groups before generating schedules.
+                  You need to set up courses, rooms, and instructors before generating schedules.
                   Use the quick actions tab to get started.
                 </CardContent>
               </Card>
@@ -185,7 +209,7 @@ export default async function SchedulingDashboardPage() {
               <CardContent>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center gap-2">
-                    {(coursesCount.count ?? 0) > 0 ? (
+                    {stats.coursesCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -193,7 +217,7 @@ export default async function SchedulingDashboardPage() {
                     <span>Add courses</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {(roomsCount.count ?? 0) > 0 ? (
+                    {stats.roomsCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -201,20 +225,12 @@ export default async function SchedulingDashboardPage() {
                     <span>Add rooms</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    {(instructorsCount.count ?? 0) > 0 ? (
+                    {stats.instructorsCount > 0 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
                     )}
                     <span>Add instructors</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {(groupsCount.count ?? 0) > 0 ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    )}
-                    <span>Add student groups</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-gray-400" />
@@ -225,9 +241,24 @@ export default async function SchedulingDashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Analytics & Insights Tab */}
+          {/* Analytics & Insights Tab - Wrapped in ClientOnly to prevent hydration errors from Chart.js */}
           <TabsContent value="analytics">
-            <SchedulingDashboardCharts />
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Analytics & Insights</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">Loading charts...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <SchedulingDashboardChartsWrapper />
+            </ClientOnly>
           </TabsContent>
 
           {/* Quick Actions Tab */}

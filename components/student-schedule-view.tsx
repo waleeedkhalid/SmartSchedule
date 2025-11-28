@@ -29,6 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, User, Download, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { cachedFetch, CacheTTL } from "@/lib/utils/api-cache";
 
 interface ScheduleSection {
   id: string;
@@ -48,6 +50,8 @@ interface ScheduleSection {
     is_lab: boolean;
   };
   state: string;
+  activity?: string;
+  enrollment_type?: string;
 }
 
 interface ScheduleData {
@@ -79,23 +83,153 @@ export function StudentScheduleView() {
   }, []);
 
   /**
-   * Fetch student schedule from API
-   * Falls back to mock data if no real schedule exists
+   * Fetch student schedule
+   * Uses real API endpoint for schedule data
    */
   async function fetchSchedule() {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/schedule');
-      
-      if (res.ok) {
-        const data = await res.json();
-        setSchedule(data);
-      } else {
-        toast.error('Failed to load schedule');
+      const authHeader = await getAuthHeader();
+      // Cache schedule for 5 minutes - it doesn't change frequently
+      interface ApiScheduleData {
+        student_id?: string;
+        level?: number;
+        schedule?: unknown[];
+        is_empty?: boolean;
+        message?: string;
       }
-    } catch (error) {
+      const result = await cachedFetch<{ data: ApiScheduleData }>(
+        '/api/v1/schedules/me',
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        },
+        undefined,
+        CacheTTL.MEDIUM
+      );
+      const scheduleData = result.data;
+
+      // Transform API response to component format
+      if (scheduleData.is_empty || !scheduleData.schedule || scheduleData.schedule.length === 0) {
+        setSchedule({
+          student_id: scheduleData.student_id || '',
+          level: scheduleData.level || 1,
+          total_credits: 0,
+          required_credits: 0,
+          elective_credits: 0,
+          sections: [],
+          is_empty: true,
+          message: scheduleData.message || 'No schedule available',
+        });
+        return;
+      }
+
+      // Transform schedule items to sections format
+      const sections: ScheduleSection[] = [];
+
+      interface CourseEntry {
+        sections?: Array<{
+          id?: string;
+          section_id?: string;
+          section_no?: string;
+          meeting_pattern?: {
+            days?: string[];
+            start?: string;
+            duration?: number;
+          };
+          room?: {
+            code?: string;
+          };
+          room_code?: string;
+          instructor?: {
+            name?: string;
+          };
+          course?: {
+            title?: string;
+            credits?: number;
+            is_elective?: boolean;
+          };
+          course_code?: string;
+          state?: string;
+          activity?: string;
+          enrollment_type?: string;
+          is_swe_scheduled?: boolean;
+        }>;
+        course_code?: string;
+        course_name?: string;
+        credits?: number;
+        is_elective?: boolean;
+        enrollment_type?: string;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const scheduleArray = (scheduleData.schedule || []) as any[];
+
+      scheduleArray.forEach((courseEntry: CourseEntry) => {
+        if (courseEntry.sections && Array.isArray(courseEntry.sections)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          courseEntry.sections.forEach((section: any) => {
+            sections.push({
+              id: section.section_id || section.id,
+              course_code: courseEntry.course_code || section.course_code,
+              course_title: courseEntry.course_name || section.course?.title || '',
+              section_no: section.section_no || '',
+              credits: courseEntry.credits || section.course?.credits || 0,
+              is_elective: courseEntry.is_elective || section.course?.is_elective || false,
+              is_enrolled: true,
+              is_swe_scheduled: section.is_swe_scheduled || false,
+              instructor_name: section.instructor?.name || null,
+              room_code: section.room?.code || section.room_code || null,
+              meeting_pattern: section.meeting_pattern || {
+                days: [],
+                start: '',
+                duration: 0,
+                is_lab: false,
+              },
+              state: section.state || 'released',
+              activity: section.activity,
+              enrollment_type: courseEntry.enrollment_type || section.enrollment_type,
+            });
+          });
+        }
+      });
+
+      // Calculate credit totals
+      let totalCredits = 0;
+      let requiredCredits = 0;
+      let electiveCredits = 0;
+
+      sections.forEach((section) => {
+        totalCredits += section.credits;
+        if (section.is_elective) {
+          electiveCredits += section.credits;
+        } else {
+          requiredCredits += section.credits;
+        }
+      });
+
+      setSchedule({
+        student_id: scheduleData.student_id || '',
+        level: scheduleData.level || 1,
+        total_credits: totalCredits,
+        required_credits: requiredCredits,
+        elective_credits: electiveCredits,
+        sections,
+        is_empty: sections.length === 0,
+      });
+    } catch (error: unknown) {
       console.error('Error fetching schedule:', error);
-      toast.error('Failed to load schedule');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load schedule';
+      toast.error(errorMessage);
+      setSchedule({
+        student_id: '',
+        level: 1,
+        total_credits: 0,
+        required_credits: 0,
+        elective_credits: 0,
+        sections: [],
+        is_empty: true,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -111,16 +245,16 @@ export function StudentScheduleView() {
    */
   function sectionOccupiesSlot(section: ScheduleSection, day: string, timeSlot: string): boolean {
     const { days, start, duration } = section.meeting_pattern;
-    
+
     // Check if section meets on this day
     if (!days.includes(day)) return false;
-    
+
     // Parse times
     const slotTime = parseTime(timeSlot);
     const startTime = parseTime(start);
     const endTime = startTime + duration;
     const slotEnd = slotTime + 60; // Each slot is 1 hour
-    
+
     // Check if times overlap
     return slotTime < endTime && startTime < slotEnd;
   }
@@ -185,7 +319,7 @@ export function StudentScheduleView() {
                 My Weekly Schedule
               </CardTitle>
               <CardDescription>
-                Level {schedule.level} | {schedule.total_credits} Credits 
+                Level {schedule.level} | {schedule.total_credits} Credits
                 ({schedule.required_credits} required + {schedule.elective_credits} elective)
               </CardDescription>
             </div>
@@ -238,7 +372,11 @@ export function StudentScheduleView() {
                     </td>
                     {DAYS.map(day => {
                       // Find sections that occupy this slot
-                      const sectionsInSlot = schedule.sections.filter(
+                      // Ensure schedule.sections is an array
+                      const sections = (schedule?.sections && Array.isArray(schedule.sections))
+                        ? schedule.sections
+                        : [];
+                      const sectionsInSlot = sections.filter(
                         section => sectionOccupiesSlot(section, day, timeSlot)
                       );
 
@@ -246,14 +384,13 @@ export function StudentScheduleView() {
                         <td key={`${day}-${timeSlot}`} className="border p-1">
                           {sectionsInSlot.map(section => (
                             <div
-                              key={section.id}
-                              className={`p-2 rounded text-xs ${
-                                section.is_swe_scheduled
-                                  ? 'bg-blue-100 border border-blue-300'
-                                  : section.is_elective
+                              key={`${section.id}-${day}-${timeSlot}`}
+                              className={`p-2 rounded text-xs ${section.is_swe_scheduled
+                                ? 'bg-blue-100 border border-blue-300'
+                                : section.is_elective
                                   ? 'bg-green-100 border border-green-300'
                                   : 'bg-purple-100 border border-purple-300'
-                              } mb-1 last:mb-0`}
+                                } mb-1 last:mb-0`}
                             >
                               <div className="font-semibold">
                                 {section.course_code}
@@ -292,59 +429,65 @@ export function StudentScheduleView() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
-            {schedule.sections.map(section => (
-              <div
-                key={section.id}
-                className="flex items-start justify-between p-3 border rounded-lg"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold">{section.course_code}</span>
-                    <Badge variant="secondary">{section.section_no}</Badge>
-                    <Badge className={
-                      section.is_swe_scheduled
-                        ? 'bg-blue-600'
-                        : section.is_elective
-                        ? 'bg-green-600'
-                        : 'bg-purple-600'
-                    }>
-                      {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
-                    </Badge>
-                    <Badge variant="outline">{section.credits} cr</Badge>
-                    {(section as any).enrollment_type && (
-                      <Badge variant={(section as any).enrollment_type === 'required' ? 'default' : 'secondary'}>
-                        {(section as any).enrollment_type === 'required' ? 'Required' : 'Elective'}
+            {schedule && schedule.sections && Array.isArray(schedule.sections)
+              ? schedule.sections.map(section => (
+                <div
+                  key={section.id}
+                  className="flex items-start justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">{section.course_code}</span>
+                      <Badge variant="secondary">{section.section_no}</Badge>
+                      <Badge className={
+                        section.is_swe_scheduled
+                          ? 'bg-blue-600'
+                          : section.is_elective
+                            ? 'bg-green-600'
+                            : 'bg-purple-600'
+                      }>
+                        {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
                       </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {section.course_title}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    {section.instructor_name && (
+                      <Badge variant="outline">{section.credits} cr</Badge>
+                      {section.enrollment_type && (
+                        <Badge variant={section.enrollment_type === 'required' ? 'default' : 'secondary'}>
+                          {section.enrollment_type === 'required' ? 'Required' : 'Elective'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {section.course_title}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {section.instructor_name && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {section.instructor_name}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {section.instructor_name}
+                        <Calendar className="h-3 w-3" />
+                        {section.meeting_pattern.days.join(', ')}
                       </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {section.meeting_pattern.days.join(', ')}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {section.meeting_pattern.start} ({section.meeting_pattern.duration}min)
-                    </span>
-                    {section.room_code && (
                       <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {section.room_code}
+                        <Clock className="h-3 w-3" />
+                        {section.meeting_pattern.start} ({section.meeting_pattern.duration}min)
                       </span>
-                    )}
+                      {section.room_code && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {section.room_code}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+              : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No sections found in schedule
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>

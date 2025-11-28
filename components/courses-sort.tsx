@@ -10,7 +10,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 
 function CoursesSortComponent() {
 	const router = useRouter()

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
-import { BookOpen, Users, BarChart, AlertTriangle, Search, TrendingUp } from 'lucide-react'
+import { BookOpen, BarChart, AlertTriangle, Search, TrendingUp } from 'lucide-react'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -231,7 +231,7 @@ export default function CourseOverviewPage() {
         label: 'Completion Rate (%)',
         data: Array.from(levelCompletionMap.entries())
           .sort(([a], [b]) => a - b)
-          .map(([_, data]) => data.total > 0 ? (data.assigned / data.total) * 100 : 0),
+          .map(([, data]) => data.total > 0 ? (data.assigned / data.total) * 100 : 0),
         borderColor: 'rgba(16, 185, 129, 1)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         tension: 0.4,

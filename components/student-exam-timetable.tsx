@@ -23,9 +23,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, Clock, MapPin, AlertTriangle, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { cachedFetch, CacheTTL } from "@/lib/utils/api-cache";
 
 interface ExamData {
   id: string;
@@ -63,31 +65,56 @@ export function StudentExamTimetable() {
 
   /**
    * Fetch exam timetable from API
+   * Only fetches if schedule is released
    */
   async function fetchExams() {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/exams');
+      const authHeader = await getAuthHeader();
+      // Cache exams for 15 minutes - exam schedules don't change frequently
+      const result = await cachedFetch<{ data: ExamsResponse }>(
+        '/api/v1/exams/me',
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        },
+        undefined,
+        CacheTTL.LONG
+      );
+      const data: ExamsResponse = result.data || {
+        exams: [],
+        total_exams: 0,
+        has_conflicts: false,
+        is_empty: true,
+        message: 'No exams available',
+      };
       
-      if (res.ok) {
-        const data = await res.json();
-        setExamsData(data);
-        
-        // Find next upcoming exam
-        if (data.exams && data.exams.length > 0) {
-          const now = new Date();
-          const upcoming = data.exams.find((exam: ExamData) => {
-            const examDate = new Date(`${exam.date}T${exam.start_time}`);
-            return examDate > now;
-          });
-          setNextExam(upcoming || null);
-        }
-      } else {
-        toast.error('Failed to load exam timetable');
+      // Preserve message if it exists in the response
+      if (result.data?.message) {
+        data.message = result.data.message;
       }
-    } catch (error) {
+
+      setExamsData(data);
+
+      // Find next upcoming exam
+      if (data.exams && data.exams.length > 0) {
+        const now = new Date();
+        const upcoming = data.exams.find((exam: ExamData) => {
+          const examDate = new Date(`${exam.date}T${exam.start_time}`);
+          return examDate > now;
+        });
+        setNextExam(upcoming || null);
+      }
+    } catch (error: unknown) {
       console.error('Error fetching exams:', error);
-      toast.error('Failed to load exam timetable');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load exam timetable';
+      toast.error(errorMessage);
+      setExamsData({
+        exams: [],
+        total_exams: 0,
+        has_conflicts: false,
+        is_empty: true,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -140,6 +167,27 @@ export function StudentExamTimetable() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading exam timetable...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If schedule is not released, show only warning message
+  if (examsData?.message && examsData.message.includes("schedule must be released")) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="max-w-2xl w-full">
+          <Alert className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 border-2">
+            <div className="flex flex-col items-center text-center space-y-4 p-6">
+              <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-500" />
+              <AlertDescription className="text-yellow-900 dark:text-yellow-100 text-lg font-semibold">
+                <strong className="text-2xl block mb-3">Exams Not Available Yet</strong>
+                <p className="text-base font-normal mt-2">
+                  {examsData.message}
+                </p>
+              </AlertDescription>
+            </div>
+          </Alert>
         </div>
       </div>
     );

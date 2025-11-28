@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useCallback } from "react";
-import { Course } from "@/lib/types/database";
+import { memo, useCallback, useState } from "react";
+import { Course } from "@/lib/data/courses";
 import {
   Table,
   TableBody,
@@ -13,10 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { isSWESchedulableCourse } from "@/lib/utils/course-utils";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { CourseActionDialog, ActionType } from "@/components/course-action-dialog";
+import { useCourseDialog } from "@/components/courses-client";
 
 interface CoursesTableProps {
   courses: Course[];
@@ -24,29 +26,113 @@ interface CoursesTableProps {
 
 function CoursesTableComponent({ courses }: CoursesTableProps) {
   const router = useRouter();
+  const { openEditDialog } = useCourseDialog();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState<ActionType>("delete");
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Memoize delete handler to prevent recreation on every render
-  const handleDelete = useCallback(async (code: string) => {
-    if (!confirm(`Are you sure you want to delete course ${code}?`)) {
-      return;
-    }
+  // Handle delete action
+  const handleDelete = useCallback(async (course: Course) => {
+    setDialogAction("delete");
+    setSelectedCourse(course);
+    setDialogOpen(true);
+  }, []);
 
+  // Handle edit action
+  const handleEdit = useCallback((course: Course) => {
+    setDialogAction("edit");
+    setSelectedCourse(course);
+    setDialogOpen(true);
+  }, []);
+
+  // Confirm delete action
+  const confirmDelete = useCallback(async () => {
+    if (!selectedCourse) return;
+
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/courses/${code}`, {
-        method: "DELETE",
+      const authHeader = await getAuthHeader();
+      
+      if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
+      // URL encode the course code to handle special characters
+      const encodedCourseCode = encodeURIComponent(selectedCourse.code);
+      const response = await fetch(`/api/v1/courses/${encodedCourseCode}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete course");
+      // Parse response - handle both JSON and non-JSON responses
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        // If response is not JSON, use status text
+        throw new Error(`Failed to delete course: ${response.statusText || `HTTP ${response.status}`}`);
       }
 
-      toast.success("Course deleted successfully");
-      router.refresh();
+      if (!response.ok) {
+        // Extract error message from API response
+        const errorMessage = result.error || result.message || `Failed to delete course (${response.status})`;
+        
+        // Handle 404 (course not found) - might have been deleted already
+        if (response.status === 404) {
+          // Close dialog and refresh page to sync with server state
+          setDialogOpen(false);
+          setSelectedCourse(null);
+          toast.warning(`Course ${selectedCourse.code} was not found. The page will refresh to sync with the server.`);
+          setTimeout(() => {
+            router.refresh();
+          }, 1000);
+          return;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Success - close dialog first, then show toast and refresh
+      setDialogOpen(false);
+      const deletedCode = selectedCourse.code;
+      const sectionsDeleted = result.data?.sectionsDeleted || 0;
+      setSelectedCourse(null);
+      
+      // Show success message with section count if applicable
+      if (sectionsDeleted > 0) {
+        toast.success(`Course ${deletedCode} and ${sectionsDeleted} section${sectionsDeleted !== 1 ? 's' : ''} deleted successfully`);
+      } else {
+        toast.success(`Course ${deletedCode} deleted successfully`);
+      }
+      
+      // Small delay to ensure dialog closes before refresh
+      setTimeout(() => {
+        // Refresh the page to show updated course list
+        router.refresh();
+      }, 100);
     } catch (error) {
-      toast.error("Failed to delete course");
-      console.error(error);
+      // Error - show message but keep dialog open so user can try again
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to delete course. Please try again.";
+      toast.error(errorMessage);
+      console.error('Delete course error:', error);
+      // Don't close dialog on error - let user see the error and try again
+    } finally {
+      setIsLoading(false);
     }
-  }, [router])
+  }, [selectedCourse, router]);
+
+  // Confirm edit action - opens the course form dialog
+  const confirmEdit = useCallback(() => {
+    if (!selectedCourse) return;
+    setDialogOpen(false);
+    openEditDialog(selectedCourse);
+  }, [selectedCourse, openEditDialog]);
 
   if (courses.length === 0) {
     return (
@@ -59,7 +145,7 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
             <TableHead>Code</TableHead>
             <TableHead>Title</TableHead>
@@ -76,7 +162,11 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
             <TableRow key={course.code}>
               <TableCell className="font-medium">{course.code}</TableCell>
               <TableCell>{course.title}</TableCell>
-              <TableCell>Level {course.level}</TableCell>
+              <TableCell>
+                {course.recommended_level !== null 
+                  ? `Level ${course.recommended_level}` 
+                  : 'Elective'}
+              </TableCell>
               <TableCell>{course.credits}</TableCell>
               <TableCell>{course.weekly_hours}h</TableCell>
               <TableCell>
@@ -99,18 +189,16 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button
-                  asChild
                   variant="ghost"
                   size="sm"
+                  onClick={() => handleEdit(course)}
                 >
-                  <Link href={`/dashboard/courses/${course.code}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
+                  <Edit className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(course.code)}
+                  onClick={() => handleDelete(course)}
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
@@ -119,6 +207,19 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
           ))}
         </TableBody>
       </Table>
+
+      {/* Action Confirmation Dialog */}
+      {selectedCourse && (
+        <CourseActionDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          action={dialogAction}
+          courseCode={selectedCourse.code}
+          courseName={selectedCourse.title}
+          onConfirm={dialogAction === "delete" ? confirmDelete : confirmEdit}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

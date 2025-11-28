@@ -1,6 +1,6 @@
 "use client";
 
-import { Instructor } from "@/lib/types/database";
+import { Instructor } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import { Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 interface InstructorsTableProps {
   instructors: Instructor[];
@@ -28,18 +29,26 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
     }
 
     try {
-      const response = await fetch(`/api/instructors/${id}`, {
-        method: "DELETE",
+      const authHeader = await getAuthHeader();
+
+      const response = await fetch(`/api/v1/instructors/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authHeader,
+        },
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to delete instructor");
+        throw new Error(data.error || 'Failed to delete instructor');
       }
 
-      toast.success("Instructor deleted successfully");
+      toast.success(`Instructor ${name} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete instructor");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete instructor';
+      toast.error(errorMessage);
       console.error(error);
     }
   }
@@ -65,45 +74,51 @@ export function InstructorsTable({ instructors }: InstructorsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {instructors.map((instructor) => (
-            <TableRow key={instructor.id}>
-              <TableCell className="font-medium">{instructor.name}</TableCell>
-              <TableCell>{instructor.email || "—"}</TableCell>
-              <TableCell>{instructor.max_load_per_week}h</TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  {instructor.preferred_times.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      {instructor.preferred_times.length} preferred
-                    </span>
-                  )}
-                  {instructor.unavailable_times.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                      {instructor.unavailable_times.length} unavailable
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="text-right space-x-2">
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                >
-                  <Link href={`/dashboard/instructors/${instructor.id}/edit`}>
-                    <Edit className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(instructor.id, instructor.name)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {instructors.map((instructor) => {
+            // Map user_id to id for backward compatibility
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const instructorId = ((instructor as any).id || instructor.user_id) as string;
+            const instructorName = instructor.name || '';
+            return (
+              <TableRow key={instructorId}>
+                <TableCell className="font-medium">{instructorName}</TableCell>
+                <TableCell>{instructor.email || "—"}</TableCell>
+                <TableCell>{instructor.max_load_per_week ?? 12}h</TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    {instructor.preferred_times && Array.isArray(instructor.preferred_times) && instructor.preferred_times.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        {instructor.preferred_times.length} preferred
+                      </span>
+                    )}
+                    {instructor.unavailable_times && Array.isArray(instructor.unavailable_times) && instructor.unavailable_times.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        {instructor.unavailable_times.length} unavailable
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <Link href={`/dashboard/instructors/${instructorId}/edit`}>
+                      <Edit className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(instructorId, instructorName)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

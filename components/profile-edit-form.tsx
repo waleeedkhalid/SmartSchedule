@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { User, Mail, Lock } from 'lucide-react'
+import { User, Lock } from 'lucide-react'
 
 const profileSchema = z.object({
 	name: z.string().min(2, 'Name must be at least 2 characters'),

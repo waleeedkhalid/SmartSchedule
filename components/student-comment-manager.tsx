@@ -37,6 +37,8 @@ import {
   X
 } from "lucide-react";
 import { toast } from "sonner";
+import { getAuthHeader } from "@/lib/utils/client-auth";
+import { cachedFetch, CacheTTL, apiCache } from "@/lib/utils/api-cache";
 
 interface Comment {
   id: string;
@@ -71,18 +73,23 @@ export function StudentCommentManager() {
 
   /**
    * Fetch all comments for the student
+   * Uses caching to avoid duplicate requests
    */
   async function fetchComments() {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/comments');
+      const authHeader = await getAuthHeader();
+      // Cache comments for 5 minutes
+      const data = await cachedFetch<{ comments: Comment[] }>(
+        '/api/student/comments',
+        {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        },
+        undefined,
+        CacheTTL.MEDIUM
+      );
       
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.comments || []);
-      } else {
-        toast.error('Failed to load comments');
-      }
+      setComments(data.comments || []);
     } catch (error) {
       console.error('Error fetching comments:', error);
       toast.error('Failed to load comments');
@@ -119,6 +126,8 @@ export function StudentCommentManager() {
       if (res.ok) {
         toast.success('Comment submitted');
         setNewCommentText('');
+        // Invalidate cache after creating comment
+        apiCache.invalidatePattern('/api/student/comments');
         fetchComments(); // Refresh list
       } else {
         const data = await res.json();
@@ -156,6 +165,8 @@ export function StudentCommentManager() {
         toast.success('Comment updated');
         setEditingId(null);
         setEditText('');
+        // Invalidate cache after updating comment
+        apiCache.invalidatePattern('/api/student/comments');
         fetchComments();
       } else {
         const data = await res.json();
@@ -185,6 +196,8 @@ export function StudentCommentManager() {
 
       if (res.ok) {
         toast.success('Comment deleted');
+        // Invalidate cache after deleting comment
+        apiCache.invalidatePattern('/api/student/comments');
         fetchComments();
       } else {
         const data = await res.json();
@@ -401,7 +414,7 @@ export function StudentCommentManager() {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Section-specific comments allow you to provide feedback on individual classes.
-              This feature will be fully functional once you're enrolled in sections.
+              This feature will be fully functional once you&apos;re enrolled in sections.
             </AlertDescription>
           </Alert>
 

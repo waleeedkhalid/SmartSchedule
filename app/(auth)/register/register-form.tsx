@@ -29,7 +29,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const signupSchema = z
@@ -119,7 +119,9 @@ export default function RegisterForm() {
   const [isPending, startTransition] = useTransition()
   const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const isMobileRoute = pathname?.startsWith('/mobile') ?? false
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -193,10 +195,11 @@ export default function RegisterForm() {
         toast.success(
           'Account created! Please check your email to confirm your address.'
         )
-        router.push('/login')
+        // Redirect to mobile login if on mobile route, otherwise desktop login
+        router.push(isMobileRoute ? '/mobile/login' : '/login')
       })
     },
-    [router]
+    [router, isMobileRoute]
   )
 
   return (
@@ -413,7 +416,7 @@ export default function RegisterForm() {
           Already have an account?
         </p>
         <Button variant="outline" asChild className="w-full">
-          <Link href="/login">
+          <Link href={isMobileRoute ? '/mobile/login' : '/login'}>
             <Icons.login className="mr-2 h-4 w-4" />
             Sign In
           </Link>

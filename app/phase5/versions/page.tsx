@@ -21,7 +21,6 @@ import {
   GitBranch,
   GitCommit,
   History,
-  RotateCcw,
   FileText,
   CheckCircle2,
   Plus,
@@ -37,8 +36,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as jsondiffpatch from 'jsondiffpatch';
 
 // Initialize jsondiffpatch
+interface HashableObject {
+  id?: string;
+  code?: string;
+}
 const differ = jsondiffpatch.create({
-  objectHash: (obj: any) => obj.id || obj.code || JSON.stringify(obj),
+  objectHash: (obj: HashableObject) => obj.id || obj.code || JSON.stringify(obj),
   arrays: {
     detectMove: true,
     includeValueOnMove: false
@@ -46,7 +49,27 @@ const differ = jsondiffpatch.create({
 });
 
 // Sample schedule data for different versions
-const versionData: Record<string, any> = {
+interface VersionData {
+  courses: Array<{
+    code: string;
+    title: string;
+    sections?: Array<{
+      id: string;
+      instructor?: string;
+      room?: string;
+      time?: string;
+      capacity?: number;
+    }>;
+  }>;
+  lastUpdated?: string;
+  status?: string;
+  metadata?: {
+    conflicts?: number;
+    lastModified?: string;
+    published?: boolean;
+  };
+}
+const versionData: Record<string, VersionData> = {
   'v1.0': {
     courses: [
       {
@@ -232,7 +255,7 @@ export default function VersionsPage() {
   const [showComparison, setShowComparison] = useState(false);
 
   // Simulated version history
-  const versions = [
+  const versions = useMemo(() => [
     {
       id: 'final',
       tag: 'Final',
@@ -273,42 +296,43 @@ export default function VersionsPage() {
       published: false,
       description: 'Initial schedule draft',
     },
-  ];
+  ], []);
 
   // Compute diff between selected version and previous
   const diff = useMemo(() => {
     const currentIndex = versions.findIndex(v => v.id === selectedVersion);
     const previousVersion = versions[currentIndex + 1];
-    
+
     if (!previousVersion) return null;
-    
+
     const leftData = versionData[previousVersion.id];
     const rightData = versionData[selectedVersion];
-    
+
     return differ.diff(leftData, rightData);
-  }, [selectedVersion]);
+  }, [selectedVersion, versions]);
 
   // Compute diff for comparison mode
   const comparisonDiff = useMemo(() => {
     if (!showComparison || !compareVersion) return null;
-    
+
     const leftData = versionData[compareVersion];
     const rightData = versionData[selectedVersion];
-    
+
     return differ.diff(leftData, rightData);
   }, [selectedVersion, compareVersion, showComparison]);
 
   // Count changes in diff
-  const countChanges = (diffObj: any) => {
+  const countChanges = (diffObj: unknown) => {
     if (!diffObj) return { added: 0, modified: 0, deleted: 0 };
-    
+
     let added = 0, modified = 0, deleted = 0;
-    
-    const traverse = (obj: any) => {
+
+    const traverse = (obj: unknown) => {
       if (!obj || typeof obj !== 'object') return;
-      
+
       Object.keys(obj).forEach(key => {
-        const value = obj[key];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const value = (obj as any)[key];
         if (Array.isArray(value)) {
           if (value.length === 1) {
             added++;
@@ -322,7 +346,7 @@ export default function VersionsPage() {
         }
       });
     };
-    
+
     traverse(diffObj);
     return { added, modified, deleted };
   };
@@ -330,18 +354,19 @@ export default function VersionsPage() {
   const changes = countChanges(showComparison ? comparisonDiff : diff);
 
   // Render diff recursively
-  const renderDiff = (diffObj: any, path: string = '', level: number = 0): React.ReactElement[] => {
+  const renderDiff = (diffObj: unknown, path: string = '', level: number = 0): React.ReactElement[] => {
     if (!diffObj || typeof diffObj !== 'object') return [];
-    
+
     const entries: React.ReactElement[] = [];
-    
+
     Object.keys(diffObj).forEach((key, idx) => {
-      const value = diffObj[key];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = (diffObj as any)[key];
       const currentPath = path ? `${path}.${key}` : key;
-      
+
       // Skip internal jsondiffpatch keys
       if (key === '_t') return;
-      
+
       // Array with one element = addition
       if (Array.isArray(value) && value.length === 1) {
         entries.push(
@@ -449,7 +474,7 @@ export default function VersionsPage() {
         entries.push(...renderDiff(value, currentPath, level + 1));
       }
     });
-    
+
     return entries;
   };
 
@@ -458,7 +483,7 @@ export default function VersionsPage() {
   return (
     <div className="container mx-auto p-8 space-y-6">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -589,7 +614,7 @@ export default function VersionsPage() {
                 <div className="relative space-y-3">
                   {/* Timeline line */}
                   <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-200 via-pink-200 to-purple-200" />
-                  
+
                   <AnimatePresence mode="popLayout">
                     {versions.map((version, idx) => (
                       <motion.div
@@ -598,11 +623,10 @@ export default function VersionsPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ duration: 0.3, delay: idx * 0.1 }}
-                        className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedVersion === version.id
-                            ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 shadow-lg scale-[1.02]'
-                            : 'border-gray-200 hover:border-purple-300 hover:bg-muted/50 hover:shadow-md'
-                        }`}
+                        className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedVersion === version.id
+                          ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 shadow-lg scale-[1.02]'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-muted/50 hover:shadow-md'
+                          }`}
                         onClick={() => setSelectedVersion(version.id)}
                         whileHover={{ x: 4 }}
                         role="button"
@@ -613,29 +637,26 @@ export default function VersionsPage() {
                         }}
                       >
                         {/* Timeline dot */}
-                        <motion.div 
-                          className={`absolute left-[-38px] top-6 w-4 h-4 rounded-full border-2 ${
-                            version.published 
-                              ? 'bg-green-500 border-green-600' 
-                              : selectedVersion === version.id
-                                ? 'bg-purple-500 border-purple-600'
-                                : 'bg-white border-purple-300'
-                          }`}
+                        <motion.div
+                          className={`absolute left-[-38px] top-6 w-4 h-4 rounded-full border-2 ${version.published
+                            ? 'bg-green-500 border-green-600'
+                            : selectedVersion === version.id
+                              ? 'bg-purple-500 border-purple-600'
+                              : 'bg-white border-purple-300'
+                            }`}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ delay: 0.3 + idx * 0.1, type: 'spring' }}
                         />
-                        
+
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <GitCommit className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                              selectedVersion === version.id ? 'text-purple-600' : 'text-muted-foreground'
-                            }`} />
+                            <GitCommit className={`h-5 w-5 mt-0.5 flex-shrink-0 ${selectedVersion === version.id ? 'text-purple-600' : 'text-muted-foreground'
+                              }`} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className={`font-semibold text-sm ${
-                                  selectedVersion === version.id ? 'text-purple-900' : ''
-                                }`}>
+                                <span className={`font-semibold text-sm ${selectedVersion === version.id ? 'text-purple-900' : ''
+                                  }`}>
                                   {version.tag}
                                 </span>
                                 {version.published && (
@@ -679,7 +700,7 @@ export default function VersionsPage() {
                       {showComparison ? 'Version Comparison' : 'Change Details'}
                     </CardTitle>
                     <CardDescription>
-                      {showComparison 
+                      {showComparison
                         ? `Comparing ${versions.find(v => v.id === compareVersion)?.tag} → ${versions.find(v => v.id === selectedVersion)?.tag}`
                         : `Changes in ${versions.find(v => v.id === selectedVersion)?.tag} vs previous`
                       }
@@ -769,7 +790,7 @@ export default function VersionsPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid md:grid-cols-3 gap-6">
-              <motion.div 
+              <motion.div
                 className="space-y-3 hover:scale-105 transition-transform"
                 whileHover={{ scale: 1.02 }}
               >
@@ -798,7 +819,7 @@ export default function VersionsPage() {
                   </li>
                 </ul>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="space-y-3 hover:scale-105 transition-transform"
                 whileHover={{ scale: 1.02 }}
               >
@@ -827,7 +848,7 @@ export default function VersionsPage() {
                   </li>
                 </ul>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="space-y-3 hover:scale-105 transition-transform"
                 whileHover={{ scale: 1.02 }}
               >

@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import QueryProvider from "@/components/query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ClientProviders } from "@/components/client-providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,6 +20,20 @@ export const metadata: Metadata = {
   title: "SmartSchedule - Intelligent Academic Scheduling",
   description:
     "SmartSchedule is a collaborative scheduling platform for academic institutions. Generate conflict-free schedules, manage teaching loads, and coordinate across multiple roles with real-time collaboration.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SmartSchedule",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#6366f1",
 };
 
 export default function RootLayout({
@@ -31,10 +45,10 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
-        <QueryProvider>
+        <ClientProviders>
           {children}
           <Toaster position="top-center" duration={3000} />
-        </QueryProvider>
+        </ClientProviders>
       </body>
     </html>
   );

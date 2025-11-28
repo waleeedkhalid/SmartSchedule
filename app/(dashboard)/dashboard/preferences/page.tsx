@@ -10,44 +10,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { getServerUser } from "@/lib/server-auth";
+import { extractJoinedRelation } from "@/lib/utils";
 
 export default async function PreferencesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
 
   if (!user) {
     redirect("/login");
   }
 
   // Verify user has student role
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!userRole || userRole.role !== 'student') {
+  if (user.role !== 'student') {
     redirect("/dashboard");
   }
 
+  const supabase = await createClient();
+
   // Get student's current preferences
+  // Uses idx_elective_preference_student index
+  // Note: For demo users, this will return empty (demo users don't have DB records)
   const { data: preferences } = await supabase
     .from('elective_preference')
     .select(`
       id,
       course_code,
       rank,
-      course:course!elective_preference_course_code_fkey(code, title, level, credits, is_elective)
+      course:course!elective_preference_course_code_fkey(code, title, recommended_level, credits, is_elective, weekly_hours)
     `)
     .eq('student_id', user.id)
     .order('rank', { ascending: true });
 
   // Get all available elective courses
+  // Uses indexes: idx_course_is_elective, idx_course_level_elective (composite)
   const { data: electiveCourses } = await supabase
     .from('course')
     .select('*')
     .eq('is_elective', true)
-    .order('level', { ascending: true })
+    .order('recommended_level', { ascending: true, nullsFirst: false })
     .order('code', { ascending: true });
 
   // Get student's comments
@@ -55,7 +56,7 @@ export default async function PreferencesPage() {
     .from('elective_comment')
     .select(`
       *,
-      course:course!elective_comment_course_code_fkey(code, title, level, credits)
+      course:course!elective_comment_course_code_fkey(code, title, recommended_level, credits)
     `)
     .eq('student_id', user.id)
     .order('created_at', { ascending: false });
@@ -111,7 +112,7 @@ export default async function PreferencesPage() {
             Add More Preferences
           </AlertTitle>
           <AlertDescription className="text-amber-800 dark:text-amber-200">
-            You have {preferenceCount} of {recommendedMinPrefs} recommended preferences. 
+            You have {preferenceCount} of {recommendedMinPrefs} recommended preferences.
             Adding more increases your chances of enrollment!
           </AlertDescription>
         </Alert>
@@ -162,7 +163,12 @@ export default async function PreferencesPage() {
 
         <TabsContent value="preferences">
           <ElectivePreferenceManager
-            initialPreferences={(preferences as any) || []}
+            initialPreferences={(preferences?.map(p => ({
+              course_code: p.course_code,
+              rank: p.rank,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              course: (extractJoinedRelation(p.course) || undefined) as any
+            })) || [])}
             availableElectives={electiveCourses || []}
           />
         </TabsContent>
@@ -181,34 +187,39 @@ export default async function PreferencesPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {preferences && preferences.map((pref: any, index) => (
-                <Card key={pref.course_code}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold">
-                          #{index + 1}
+              {preferences && preferences.map((pref, index) => {
+                const course = extractJoinedRelation(pref.course);
+                return (
+                  <Card key={pref.course_code}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold">
+                            #{index + 1}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{course?.code}</CardTitle>
+                            <CardDescription>{course?.title}</CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle className="text-lg">{pref.course?.code}</CardTitle>
-                          <CardDescription>{pref.course?.title}</CardDescription>
+                        <div className="flex gap-2">
+                          {course?.recommended_level && (
+                            <Badge variant="secondary">Level {course.recommended_level}</Badge>
+                          )}
+                          <Badge variant="secondary">{course?.credits} cr</Badge>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="secondary">Level {pref.course?.level}</Badge>
-                        <Badge variant="secondary">{pref.course?.credits} cr</Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ElectiveCommentSection
-                      courseCode={pref.course_code}
-                      courseTitle={pref.course?.title || pref.course_code}
-                      initialComments={commentsByCourse[pref.course_code] || []}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent>
+                      <ElectiveCommentSection
+                        courseCode={pref.course_code}
+                        courseTitle={course?.title || pref.course_code}
+                        initialComments={commentsByCourse[pref.course_code] || []}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

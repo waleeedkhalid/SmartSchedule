@@ -37,7 +37,6 @@ interface NavItem {
 interface SidebarProps {
   userRole: string;
   userName: string;
-  userEmail: string;
 }
 
 const roleNavItems: Record<string, NavItem[]> = {
@@ -49,16 +48,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       description: "Overview",
     },
     {
-      title: "My Preferences",
+      title: "Electives Preferences",
       href: "/dashboard/preferences",
       icon: Heart,
       description: "Elective choices",
     },
     {
-      title: "Notifications",
-      href: "/dashboard/notifications",
-      icon: Bell,
-      description: "Updates",
+      title: "Academic Plan",
+      href: "/dashboard/academic-plan",
+      icon: GraduationCap,
+      description: "Course roadmap",
     },
   ],
   scheduling: [
@@ -98,11 +97,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: Calendar,
     },
     {
-      title: "Student Groups",
-      href: "/dashboard/student-groups",
-      icon: GraduationCap,
-    },
-    {
       title: "Elective Stats",
       href: "/dashboard/elective-stats",
       icon: BarChart3,
@@ -127,11 +121,6 @@ const roleNavItems: Record<string, NavItem[]> = {
     {
       title: "Dashboard",
       href: "/dashboard/teaching-load",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Teaching Load",
-      href: "/dashboard/teaching-load",
       icon: Clock,
     },
     {
@@ -139,6 +128,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/instructors",
       icon: Users,
     },
+    {
+      title: "Sections",
+      href: "/dashboard/sections",
+      icon: FileText,
+    },
+    {
+      title: "Rooms",
+      href: "/dashboard/rooms",
+      icon: MapPin,
+    }
   ],
   faculty: [
     {
@@ -186,7 +185,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ]
 };
 
-export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
+export function Sidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname();
   const navItems = roleNavItems[userRole] || [];
 
@@ -276,15 +275,41 @@ export function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
           <Settings className="h-5 w-5" />
           <span>Profile</span>
         </Link>
-        <form action="/api/auth/signout" method="post">
-          <button
-            type="submit"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Sign Out</span>
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('auth_token='))
+                ?.split('=')[1] || 
+                (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+              
+              await fetch('/api/v1/auth/logout', {
+                method: 'POST',
+                headers: {
+                  'Authorization': token ? `Bearer ${token}` : '',
+                },
+              });
+              
+              // Clear all cookies and localStorage using utility
+              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              performClientLogoutCleanup();
+              
+              window.location.href = '/login';
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Clear all cookies and localStorage even on error
+              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              performClientLogoutCleanup();
+              window.location.href = '/login';
+            }
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-200"
+        >
+          <LogOut className="h-5 w-5" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </div>
   );

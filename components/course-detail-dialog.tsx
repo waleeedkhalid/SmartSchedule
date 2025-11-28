@@ -10,11 +10,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Course } from "@/lib/types/database";
-import { 
-  BookOpen, 
-  Clock, 
-  GraduationCap, 
+import { Course } from "@/lib/types";
+import {
+  BookOpen,
+  Clock,
+  GraduationCap,
   Award,
   Plus,
   Info
@@ -48,7 +48,7 @@ export function CourseDetailDialog({
                 {course.title}
               </DialogDescription>
             </div>
-            <Badge 
+            <Badge
               variant={course.is_elective ? "default" : "secondary"}
               className="flex-shrink-0"
             >
@@ -64,7 +64,7 @@ export function CourseDetailDialog({
               <GraduationCap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="text-xs text-muted-foreground">Level</p>
-                <p className="font-semibold">{course.level}</p>
+                <p className="font-semibold">{course.recommended_level}</p>
               </div>
             </div>
 
@@ -94,8 +94,8 @@ export function CourseDetailDialog({
               Course Information
             </div>
             <p className="text-sm text-muted-foreground">
-              This is a Level {course.level} {course.is_elective ? 'elective' : 'core'} course 
-              worth {course.credits} credit{course.credits !== 1 ? 's' : ''}, 
+              This is a Level {course.recommended_level} {course.is_elective ? 'elective' : 'core'} course
+              worth {course.credits} credit{course.credits !== 1 ? 's' : ''},
               requiring {course.weekly_hours} hours per week of class time.
             </p>
           </div>
@@ -103,7 +103,7 @@ export function CourseDetailDialog({
           {course.is_elective && (
             <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                💡 <strong>Tip:</strong> Add this course to your preferences list to increase 
+                💡 <strong>Tip:</strong> Add this course to your preferences list to increase
                 your chances of being enrolled. Higher ranked preferences get priority!
               </p>
             </div>
@@ -119,8 +119,8 @@ export function CourseDetailDialog({
                 Already Added
               </Button>
             ) : (
-              <Button 
-                className="flex-1" 
+              <Button
+                className="flex-1"
                 onClick={() => {
                   onAdd(course);
                   onOpenChange(false);

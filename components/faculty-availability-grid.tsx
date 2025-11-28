@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Save, RotateCcw, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { DayAvailability, TimeSlot } from "@/lib/db/faculty";
+import type { DayAvailability } from "@/lib/db/faculty-data";
 
 interface FacultyAvailabilityGridProps {
   instructorId: string;
@@ -25,7 +24,6 @@ const TIME_SLOTS = [
 ];
 
 export function FacultyAvailabilityGrid({
-  instructorId,
   initialPreferredTimes = [],
   initialUnavailableTimes = [],
   maxLoadPerWeek = 12,
@@ -165,12 +163,12 @@ export function FacultyAvailabilityGrid({
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, []);
 
-  // Save availability
+  // Save availability to database
   const handleSave = async () => {
     setIsSaving(true);
     
     try {
-      const response = await fetch('/api/faculty/availability', {
+      const response = await fetch('/api/v1/faculty/availability', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,7 +185,6 @@ export function FacultyAvailabilityGrid({
       toast.success('Availability preferences saved successfully');
       setHasChanges(false);
     } catch (error) {
-      console.error('Error saving availability:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save preferences');
     } finally {
       setIsSaving(false);

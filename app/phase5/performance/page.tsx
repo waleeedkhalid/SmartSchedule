@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter, TrendingUp, Database, ArrowLeft, Zap, X } from 'lucide-react';
+import { Search, TrendingUp, Database, ArrowLeft, Zap, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Expanded mock course data

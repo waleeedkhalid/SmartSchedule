@@ -7,7 +7,7 @@
  * 
  * Access Control:
  * - Requires authentication (redirects to /login if not logged in)
- * - Only accessible if onboarding_completed = FALSE
+ * - Only accessible if user profile doesn't exist (needs onboarding)
  * - Bypasses main dashboard redirect from middleware
  * 
  * Flow:
@@ -23,120 +23,50 @@
  * - Other roles: minimal setup (department already defaulted)
  */
 
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { getServerUser, validateOnboardingAndProfile, getDashboardPath } from "@/lib/server-auth";
+import { OnboardingForm } from "@/components/onboarding-form";
+import { OnboardingSkeleton } from "@/components/skeletons/OnboardingSkeleton";
 
-// Force dynamic rendering - never cache this page
+// Force dynamic rendering - this page checks user onboarding status and redirects
+// force-dynamic opts out of Full Route Cache, which is appropriate for user-specific flows
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
-export default async function OnboardingPage() {
-  // Server-side authentication check
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+async function OnboardingContent() {
+  // Get authenticated user (supports both demo and Supabase)
+  const user = await getServerUser();
   
   // Not authenticated - redirect to login
-  if (authError || !user) {
+  if (!user) {
     redirect("/login");
   }
   
-  // Get user's role (profile presence)
-  const { data: userRole, error: roleError } = await supabase
-    .from('user_roles')
-    .select('role, name')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Check if onboarding is already completed using profile existence
+  // Onboarding is complete if the user has a profile for their role
+  const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role);
   
-  // User not found in user_roles table
-  // This can happen if registration didn't complete properly (RLS policy blocked INSERT)
-  if (roleError || !userRole) {
-    // Show error instead of redirecting to prevent infinite loop
-    return (
-      <div className="container flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Profile Not Found</CardTitle>
-            <CardDescription>
-              Your account exists but your profile could not be found.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This usually happens if registration didn't complete properly. Please sign out and try registering again.
-            </p>
-            {roleError && (
-              <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
-                Error: {roleError.message}
-              </div>
-            )}
-            <form action={async () => {
-              "use server";
-              const supabase = await createClient();
-              await supabase.auth.signOut();
-              redirect("/register");
-            }}>
-              <Button type="submit" className="w-full">
-                Sign Out and Register Again
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
-  // Profile exists: redirect straight to appropriate dashboard
-  // (Onboarding is not required with current minimal schema)
-  if (userRole) {
-    const dashboardRoute = userRole.role === 'student' 
-      ? '/dashboard/student'
-      : userRole.role === 'faculty'
-      ? '/dashboard/faculty'
-      : userRole.role === 'scheduling'
-      ? '/dashboard/scheduling'
-      : userRole.role === 'teaching_load'
-      ? '/dashboard/teaching-load'
-      : userRole.role === 'registrar'
-      ? '/dashboard/registrar'
-      : '/dashboard';
-    
+  // If onboarding is complete (profile exists), redirect to dashboard
+  if (!needsOnboarding && profileExists) {
+    const dashboardRoute = getDashboardPath(user.role);
     redirect(dashboardRoute);
   }
   
-  // If we reached here, profile is missing - show helpful message
+  // Render onboarding form for users who need to complete onboarding
   return (
-    <div className="container flex items-center justify-center min-h-screen">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Profile Not Found</CardTitle>
-          <CardDescription>
-            Your account exists but your profile could not be found.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This usually happens if registration didn't complete properly. Please sign out and try registering again.
-          </p>
-          {roleError && (
-            <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
-              Error: {roleError.message}
-            </div>
-          )}
-          <form action={async () => {
-            "use server";
-            const supabase = await createClient();
-            await supabase.auth.signOut();
-            redirect("/register");
-          }}>
-            <Button type="submit" className="w-full">
-              Sign Out and Register Again
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <OnboardingForm 
+      userId={user.id}
+      userName={user.name}
+      userRole={user.role as 'student' | 'faculty' | 'scheduling' | 'teaching_load' | 'registrar'}
+    />
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingSkeleton />}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
 

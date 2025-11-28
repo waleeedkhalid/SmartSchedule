@@ -5,12 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import type { Database } from '@/lib/types/database';
+
+type AcademicTerm = Database['public']['Tables']['academic_term']['Row'];
+
+interface SemesterInfo {
+  needsInitialization: boolean;
+  currentSemester?: AcademicTerm;
+}
 
 export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [semesterInfo, setSemesterInfo] = useState<any>(null);
+  const [semesterInfo, setSemesterInfo] = useState<SemesterInfo | null>(null);
 
   const checkCurrentSemester = async () => {
     setLoading(true);
@@ -102,8 +110,8 @@ export default function SetupPage() {
                   <p><strong>Name:</strong> {semesterInfo.currentSemester.name}</p>
                   <p><strong>Code:</strong> {semesterInfo.currentSemester.code}</p>
                   <p><strong>Status:</strong> {semesterInfo.currentSemester.status}</p>
-                  <p><strong>Start Date:</strong> {new Date(semesterInfo.currentSemester.start_date).toLocaleDateString()}</p>
-                  <p><strong>End Date:</strong> {new Date(semesterInfo.currentSemester.end_date).toLocaleDateString()}</p>
+                  <p><strong>Start Date:</strong> {semesterInfo.currentSemester.start_date ? new Date(semesterInfo.currentSemester.start_date).toLocaleDateString() : 'N/A'}</p>
+                  <p><strong>End Date:</strong> {semesterInfo.currentSemester.end_date ? new Date(semesterInfo.currentSemester.end_date).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </div>
             )}

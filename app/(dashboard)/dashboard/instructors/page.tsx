@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getInstructors } from "@/lib/db/instructors";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { InstructorsTable } from "@/components/instructors-table";
+import { getAllInstructorsList } from "@/lib/data/sections-helpers";
 
 export default async function InstructorsPage() {
-  const instructors = await getInstructors();
+  const instructors = await getAllInstructorsList();
 
   return (
     <div className="p-8">

@@ -1,31 +1,19 @@
 import { ExamForm } from "@/components/exam-form";
-import { getCourses } from "@/lib/db/courses";
-import { getRooms } from "@/lib/db/rooms";
-import { createClient } from "@/supabase/server";
+import { getAllCourses, getAllRooms } from "@/lib/data/sections-helpers";
+import { getServerUser } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 
 export default async function NewExamPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch user role
-  const { data: userRole } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  // Only scheduling and registrar roles can access this page
-  if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
+  if (!user || !['scheduling', 'registrar'].includes(user.role)) {
     redirect("/dashboard");
   }
 
-  const courses = await getCourses();
-  const rooms = await getRooms();
+  const [courses, rooms] = await Promise.all([
+    getAllCourses(),
+    getAllRooms(),
+  ]);
 
   return (
     <div className="space-y-6">

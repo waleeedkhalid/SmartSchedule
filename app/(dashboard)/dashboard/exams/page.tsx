@@ -1,95 +1,49 @@
 import { ExamsTable } from "@/components/exams-table";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plus, AlertCircle, Settings } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { getExams, getAllExamConflicts } from "@/lib/db/exams";
-import { getCurrentSemester } from "@/lib/db/semesters";
-import { createClient } from "@/supabase/server";
 import { redirect } from "next/navigation";
+import { getAllExams } from "@/lib/data/exams";
+import { getServerUser } from "@/lib/server-auth";
+import { createClient } from "@/supabase/server";
 
 export default async function ExamsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Check authentication and role
+  const user = await getServerUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch user role
-  const { data: userRole } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  // Only scheduling and registrar roles can access this page
-  if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
+  if (!user || !['scheduling', 'registrar'].includes(user.role)) {
     redirect("/dashboard");
   }
 
-  // Check if current semester exists
-  const currentSemester = await getCurrentSemester();
+  // Fetch exams from database
+  const exams = await getAllExams();
   
-  if (!currentSemester) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Exams</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage exam schedules and check for conflicts
-            </p>
-          </div>
-        </div>
-
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Semester Required</AlertTitle>
-          <AlertDescription className="mt-2">
-            <p className="mb-4">
-              Exams require a current semester to be set. Please initialize a semester first.
-            </p>
-            <Button asChild size="sm">
-              <Link href="/dashboard/setup">
-                <Settings className="mr-2 h-4 w-4" />
-                Go to Setup
-              </Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  // Fetch exams for current semester
-  let exams = [];
-  let error = null;
+  // Get current term info
+  const supabase = await createClient();
+  const { data: currentTerm } = await supabase
+    .from("academic_term")
+    .select("name, code")
+    .in("status", ["draft", "released"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
   
-  try {
-    exams = await getExams(currentSemester.id);
-  } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load exams';
-  }
+  const currentSemester = currentTerm ? {
+    name: currentTerm.name || "Current Term",
+    code: currentTerm.code || "",
+  } : {
+    name: "No Active Term",
+    code: "",
+  };
   
-  // Get conflicts for all exams
+  const error = null;
+  
+  // Mock conflicts for demo (TODO: implement real conflict checking)
   const conflicts: Record<string, { has_conflicts: boolean }> = {};
-  if (!error) {
-    try {
-      const conflictsData = await getAllExamConflicts(currentSemester.id);
-      if (conflictsData) {
-        for (const item of conflictsData) {
-          if (item.exam_id && item.conflicts) {
-            conflicts[item.exam_id] = {
-              has_conflicts: item.conflicts.has_conflicts || false
-            };
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load exam conflicts:', err);
-    }
-  }
+  exams.forEach(exam => {
+    conflicts[exam.id] = { has_conflicts: false };
+  });
 
   return (
     <div className="space-y-6">

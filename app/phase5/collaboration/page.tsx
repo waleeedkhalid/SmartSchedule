@@ -26,20 +26,11 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Users, Wifi, GitMerge, Activity, RotateCcw, Redo, Save, Check, Clock, Edit, Lock, Calendar, MapPin, User, BookOpen, Trash2, Plus, Copy, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
+// Yjs libraries are dynamically imported to prevent compilation on every page load
+// This fixes the 65ms bubble_compiled.js compilation delay
 import externalData from '@/external_departments_courses_sections.json';
 import swePlan from '@/swe_plan.json';
 import sweSections from '@/swe_departments_sections.json';
-
-// User colors for demo
-const USER_COLORS = [
-  { bg: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500' },
-  { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500' },
-  { bg: 'bg-purple-500', text: 'text-purple-500', border: 'border-purple-500' },
-  { bg: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500' },
-  { bg: 'bg-pink-500', text: 'text-pink-500', border: 'border-pink-500' },
-];
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
@@ -89,16 +80,23 @@ export default function CollaborationPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState<number>(1);
   const [scheduleData, setScheduleData] = useState<ScheduleData>({});
-  const [editHistory, setEditHistory] = useState<Array<{user: string, action: string, time: string, course: string}>>([]);
+  const [editHistory, setEditHistory] = useState<Array<{ user: string, action: string, time: string, course: string }>>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<number>(4);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [showReadOnly, setShowReadOnly] = useState<boolean>(true);
-  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<IndexeddbPersistence | null>(null);
-  const undoManagerRef = useRef<Y.UndoManager | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const [isYjsLoading, setIsYjsLoading] = useState(true);
+  // Type refs to handle dynamic Yjs imports
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ydocRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const providerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const undoManagerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const yjsModuleRef = useRef<{ Y: any; IndexeddbPersistence: any } | null>(null);
   const currentUserIdRef = useRef<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -131,16 +129,20 @@ export default function CollaborationPage() {
   // Get all courses for a level from both sources
   const getCoursesForLevel = useCallback((level: number): Course[] => {
     const courses: Course[] = [];
-    
+
     // Get SWE plan courses for this level
     const sweLevelData = swePlan.study_plan.find(l => l.level === level);
     if (sweLevelData) {
       sweLevelData.courses.forEach(course => {
         let foundCourse = false;
-        
+
         // First, try to find section data from SWE sections
         if (course.code.startsWith('SWE')) {
-          const sweCourse = (sweSections as any).courses.find((c: any) => c.code === course.code);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sweCourse = (sweSections as any).courses.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) => c.code === course.code
+          );
           if (sweCourse) {
             courses.push({
               ...course,
@@ -150,11 +152,15 @@ export default function CollaborationPage() {
             return;
           }
         }
-        
+
         // If not SWE course or not found in SWE sections, try external departments
         if (!foundCourse) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for (const dept of (externalData as any).external_departments) {
-            const externalCourse = dept.courses.find((c: any) => c.code === course.code);
+            const externalCourse = dept.courses.find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (c: any) => c.code === course.code
+            );
             if (externalCourse) {
               courses.push({
                 ...course,
@@ -165,144 +171,201 @@ export default function CollaborationPage() {
             }
           }
         }
-        
+
         // If not found in any source, add without section groups
         if (!foundCourse) {
           courses.push(course as Course);
         }
       });
     }
-    
+
     return courses;
   }, []);
 
   useEffect(() => {
-    // Generate unique user ID for this tab/session
-    currentUserIdRef.current = `user-${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Load courses for selected level
-    const courses = getCoursesForLevel(selectedLevel);
-    setAllCourses(courses);
-    
-    // Create Yjs document
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
+    let isMounted = true;
 
-    // Create shared Map type for schedule data
-    const ymap = ydoc.getMap('scheduleData');
+    // Dynamically import Yjs libraries to prevent compilation on every page load
+    // This fixes the 65ms bubble_compiled.js compilation delay
+    async function initializeYjs() {
+      try {
+        setIsYjsLoading(true);
 
-    // Set up IndexedDB persistence (persists data to disk)
-    const provider = new IndexeddbPersistence('phase5-schedule-collab', ydoc);
-    providerRef.current = provider;
+        // Dynamic imports - only loaded when this page is accessed
+        const [yjsModule, indexeddbModule] = await Promise.all([
+          import('yjs'),
+          import('y-indexeddb')
+        ]);
 
-    // Set up BroadcastChannel for cross-tab real-time sync
-    const bc = new BroadcastChannel('phase5-schedule-sync');
-    broadcastChannelRef.current = bc;
+        if (!isMounted) return;
 
-    // Listen for updates from other tabs
-    bc.onmessage = (event) => {
-      if (event.data.type === 'update' && event.data.sender !== currentUserIdRef.current) {
-        Y.applyUpdate(ydoc, new Uint8Array(event.data.update));
-      } else if (event.data.type === 'presence') {
-        // Track active tabs
-        activeTabsRef.current.add(event.data.sender);
-        setActiveUsers(activeTabsRef.current.size + 1); // +1 for current tab
-        
-        // Remove inactive tabs after 3 seconds
-        setTimeout(() => {
-          activeTabsRef.current.delete(event.data.sender);
-          setActiveUsers(activeTabsRef.current.size + 1);
-        }, 3000);
-      } else if (event.data.type === 'ping') {
-        // Respond to presence check
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Y = (yjsModule as any).default || yjsModule;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const IndexeddbPersistence = (indexeddbModule as any).IndexeddbPersistence || (indexeddbModule as any).default;
+
+        // Store modules in ref for later use
+        yjsModuleRef.current = { Y, IndexeddbPersistence };
+
+        // Generate unique user ID for this tab/session
+        currentUserIdRef.current = `user-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Load courses for selected level
+        const courses = getCoursesForLevel(selectedLevel);
+        setAllCourses(courses);
+
+        // Create Yjs document
+        const ydoc = new Y.Doc();
+        ydocRef.current = ydoc;
+
+        // Create shared Map type for schedule data
+        const ymap = ydoc.getMap('scheduleData');
+
+        // Set up IndexedDB persistence (persists data to disk)
+        const provider = new IndexeddbPersistence('phase5-schedule-collab', ydoc);
+        providerRef.current = provider;
+
+        // Set up BroadcastChannel for cross-tab real-time sync
+        const bc = new BroadcastChannel('phase5-schedule-sync');
+        broadcastChannelRef.current = bc;
+
+        // Listen for updates from other tabs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bc.onmessage = (event: any) => {
+          if (event.data.type === 'update' && event.data.sender !== currentUserIdRef.current) {
+            Y.applyUpdate(ydoc, new Uint8Array(event.data.update));
+          } else if (event.data.type === 'presence') {
+            // Track active tabs
+            activeTabsRef.current.add(event.data.sender);
+            setActiveUsers(activeTabsRef.current.size + 1); // +1 for current tab
+
+            // Remove inactive tabs after 3 seconds
+            setTimeout(() => {
+              activeTabsRef.current.delete(event.data.sender);
+              setActiveUsers(activeTabsRef.current.size + 1);
+            }, 3000);
+          } else if (event.data.type === 'ping') {
+            // Respond to presence check
+            bc.postMessage({
+              type: 'presence',
+              sender: currentUserIdRef.current
+            });
+          }
+        };
+
+        // Broadcast updates to other tabs
+        ydoc.on('update', (update: Uint8Array) => {
+          bc.postMessage({
+            type: 'update',
+            update: Array.from(update),
+            sender: currentUserIdRef.current
+          });
+        });
+
+        // Send presence heartbeat
+        const presenceInterval = setInterval(() => {
+          bc.postMessage({
+            type: 'presence',
+            sender: currentUserIdRef.current
+          });
+        }, 1000);
+
+        // Initial presence check
         bc.postMessage({
-          type: 'presence',
+          type: 'ping',
           sender: currentUserIdRef.current
         });
+
+        // Set up undo manager
+        const undoManager = new Y.UndoManager(ymap);
+        undoManagerRef.current = undoManager;
+
+        // Wait for provider to sync
+        provider.on('synced', () => {
+          if (!isMounted) return;
+          setIsConnected(true);
+
+          // Load schedule data from Yjs
+          const loadedData: ScheduleData = {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ymap.forEach((value: any, key: any) => {
+            try {
+              loadedData[key] = JSON.parse(value as string);
+            } catch (e) {
+              console.error('Error parsing schedule data:', e);
+            }
+          });
+          setScheduleData(loadedData);
+        });
+
+        // Listen to changes from other tabs/users
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updateHandler = (event: any) => {
+          if (!isMounted) return;
+
+          const newData: ScheduleData = {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ymap.forEach((value: any, key: any) => {
+            try {
+              newData[key] = JSON.parse(value as string);
+            } catch (e) {
+              console.error('Error parsing schedule data:', e);
+            }
+          });
+          setScheduleData(newData);
+
+          // Add to edit history
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          event.changes.keys.forEach((change: any, key: string) => {
+            if (change.action === 'update' || change.action === 'add') {
+              const now = new Date();
+              const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              setEditHistory(prev => [
+                {
+                  user: 'Collaborator',
+                  action: change.action === 'add' ? 'Added section' : 'Updated section',
+                  time: timeStr,
+                  course: key
+                },
+                ...prev.slice(0, 9) // Keep last 10 edits
+              ]);
+            }
+          });
+        };
+
+        ymap.observe(updateHandler);
+
+        setIsYjsLoading(false);
+
+        return () => {
+          clearInterval(presenceInterval);
+          ymap.unobserve(updateHandler);
+          provider.destroy();
+          ydoc.destroy();
+          bc.close();
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+        };
+      } catch (error) {
+        console.error('Error initializing Yjs:', error);
+        setIsYjsLoading(false);
       }
-    };
+    }
 
-    // Broadcast updates to other tabs
-    ydoc.on('update', (update: Uint8Array) => {
-      bc.postMessage({
-        type: 'update',
-        update: Array.from(update),
-        sender: currentUserIdRef.current
-      });
-    });
-
-    // Send presence heartbeat
-    const presenceInterval = setInterval(() => {
-      bc.postMessage({
-        type: 'presence',
-        sender: currentUserIdRef.current
-      });
-    }, 1000);
-
-    // Initial presence check
-    bc.postMessage({
-      type: 'ping',
-      sender: currentUserIdRef.current
-    });
-
-    // Set up undo manager
-    const undoManager = new Y.UndoManager(ymap);
-    undoManagerRef.current = undoManager;
-
-    // Wait for provider to sync
-    provider.on('synced', () => {
-      setIsConnected(true);
-      
-      // Load schedule data from Yjs
-      const loadedData: ScheduleData = {};
-      ymap.forEach((value, key) => {
-        try {
-          loadedData[key] = JSON.parse(value as string);
-        } catch (e) {
-          console.error('Error parsing schedule data:', e);
-        }
-      });
-      setScheduleData(loadedData);
-    });
-
-    // Listen to changes from other tabs/users
-    const updateHandler = (event: Y.YMapEvent<any>) => {
-      const newData: ScheduleData = {};
-      ymap.forEach((value, key) => {
-        try {
-          newData[key] = JSON.parse(value as string);
-        } catch (e) {
-          console.error('Error parsing schedule data:', e);
-        }
-      });
-      setScheduleData(newData);
-      
-      // Add to edit history
-      event.changes.keys.forEach((change, key) => {
-        if (change.action === 'update' || change.action === 'add') {
-          const now = new Date();
-          const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          setEditHistory(prev => [
-            {
-              user: 'Collaborator',
-              action: change.action === 'add' ? 'Added section' : 'Updated section',
-              time: timeStr,
-              course: key
-            },
-            ...prev.slice(0, 9) // Keep last 10 edits
-          ]);
-        }
-      });
-    };
-
-    ymap.observe(updateHandler);
+    initializeYjs();
 
     return () => {
-      clearInterval(presenceInterval);
-      ymap.unobserve(updateHandler);
-      provider.destroy();
-      ydoc.destroy();
-      bc.close();
+      isMounted = false;
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
+      if (ydocRef.current) {
+        ydocRef.current.destroy();
+      }
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -312,9 +375,9 @@ export default function CollaborationPage() {
   // Auto-save function with debounce
   const autoSave = useCallback(() => {
     if (!ydocRef.current) return;
-    
+
     setSaveStatus('saving');
-    
+
     // Simulate save operation (in reality, Yjs already saves via IndexedDB)
     // This is for visual feedback
     setTimeout(() => {
@@ -326,7 +389,7 @@ export default function CollaborationPage() {
   // Update section data for a course
   const updateSectionField = useCallback((courseCode: string, sectionNo: string, field: string, value: string | string[] | number) => {
     if (!ydocRef.current || !isSWECourse(courseCode)) return;
-    
+
     // Validation based on field type
     const errorKey = `${courseCode}-${sectionNo}-${field}`;
     let isValid = true;
@@ -357,11 +420,11 @@ export default function CollaborationPage() {
         return newErrors;
       });
     }
-    
+
     setSaveStatus('unsaved');
-    
+
     const ymap = ydocRef.current.getMap('scheduleData');
-    
+
     // Get current data or fall back to original sections from course
     let currentData = scheduleData[courseCode];
     if (!currentData) {
@@ -370,7 +433,7 @@ export default function CollaborationPage() {
       const originalSections = course?.section_groups?.[0]?.sections || [];
       currentData = { sections: originalSections };
     }
-    
+
     // Update the specific section
     const updatedSections = currentData.sections.map(section => {
       if (section.section_no === sectionNo) {
@@ -380,6 +443,7 @@ export default function CollaborationPage() {
           return {
             ...section,
             [parent]: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ...(section as any)[parent],
               [child]: value
             }
@@ -392,19 +456,19 @@ export default function CollaborationPage() {
       }
       return section;
     });
-    
+
     const updatedData = {
       ...currentData,
       sections: updatedSections
     };
-    
+
     ymap.set(courseCode, JSON.stringify(updatedData));
-    
+
     // Debounced auto-save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave();
     }, 1500);
@@ -413,11 +477,11 @@ export default function CollaborationPage() {
   // Update course notes
   const updateCourseNotes = useCallback((courseCode: string, notes: string) => {
     if (!ydocRef.current || !isSWECourse(courseCode)) return;
-    
+
     setSaveStatus('unsaved');
-    
+
     const ymap = ydocRef.current.getMap('scheduleData');
-    
+
     // Get current data or fall back to original sections from course
     let currentData = scheduleData[courseCode];
     if (!currentData) {
@@ -425,19 +489,19 @@ export default function CollaborationPage() {
       const originalSections = course?.section_groups?.[0]?.sections || [];
       currentData = { sections: originalSections };
     }
-    
+
     const updatedData = {
       ...currentData,
       notes
     };
-    
+
     ymap.set(courseCode, JSON.stringify(updatedData));
-    
+
     // Debounced auto-save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave();
     }, 1500);
@@ -446,11 +510,11 @@ export default function CollaborationPage() {
   // Add new section to a course
   const addSection = useCallback((courseCode: string) => {
     if (!ydocRef.current || !isSWECourse(courseCode)) return;
-    
+
     setSaveStatus('unsaved');
-    
+
     const ymap = ydocRef.current.getMap('scheduleData');
-    
+
     // Get current data or fall back to original sections from course
     let currentData = scheduleData[courseCode];
     if (!currentData) {
@@ -458,13 +522,13 @@ export default function CollaborationPage() {
       const originalSections = course?.section_groups?.[0]?.sections || [];
       currentData = { sections: originalSections };
     }
-    
+
     // Generate new section number
     const existingSections = currentData.sections || [];
-    const maxSectionNum = existingSections.length > 0 
+    const maxSectionNum = existingSections.length > 0
       ? Math.max(...existingSections.map(s => parseInt(s.section_no) || 0))
       : 0;
-    
+
     const newSection: Section = {
       section_no: `${String(maxSectionNum + 1).padStart(2, '0')}L`,
       section_type: 'lecture',
@@ -479,12 +543,12 @@ export default function CollaborationPage() {
         duration_minutes: 90
       }
     };
-    
+
     const updatedData = {
       ...currentData,
       sections: [...existingSections, newSection]
     };
-    
+
     ymap.set(courseCode, JSON.stringify(updatedData));
     autoSave();
   }, [scheduleData, autoSave, allCourses]);
@@ -492,11 +556,11 @@ export default function CollaborationPage() {
   // Remove section from a course
   const removeSection = useCallback((courseCode: string, sectionNo: string) => {
     if (!ydocRef.current || !isSWECourse(courseCode)) return;
-    
+
     setSaveStatus('unsaved');
-    
+
     const ymap = ydocRef.current.getMap('scheduleData');
-    
+
     // Get current data or fall back to original sections from course
     let currentData = scheduleData[courseCode];
     if (!currentData) {
@@ -504,14 +568,14 @@ export default function CollaborationPage() {
       const originalSections = course?.section_groups?.[0]?.sections || [];
       currentData = { sections: originalSections };
     }
-    
+
     const updatedSections = currentData.sections.filter(s => s.section_no !== sectionNo);
-    
+
     const updatedData = {
       ...currentData,
       sections: updatedSections
     };
-    
+
     ymap.set(courseCode, JSON.stringify(updatedData));
     autoSave();
   }, [scheduleData, autoSave, allCourses]);
@@ -519,11 +583,11 @@ export default function CollaborationPage() {
   // Duplicate section
   const duplicateSection = useCallback((courseCode: string, sectionNo: string) => {
     if (!ydocRef.current || !isSWECourse(courseCode)) return;
-    
+
     setSaveStatus('unsaved');
-    
+
     const ymap = ydocRef.current.getMap('scheduleData');
-    
+
     // Get current data or fall back to original sections from course
     let currentData = scheduleData[courseCode];
     if (!currentData) {
@@ -531,23 +595,23 @@ export default function CollaborationPage() {
       const originalSections = course?.section_groups?.[0]?.sections || [];
       currentData = { sections: originalSections };
     }
-    
+
     const sectionToDuplicate = currentData.sections.find(s => s.section_no === sectionNo);
     if (!sectionToDuplicate) return;
-    
+
     // Generate new section number
     const maxSectionNum = Math.max(...currentData.sections.map(s => parseInt(s.section_no) || 0));
-    
+
     const newSection: Section = {
       ...sectionToDuplicate,
       section_no: `${String(maxSectionNum + 1).padStart(2, '0')}${sectionToDuplicate.section_type.charAt(0).toUpperCase()}`
     };
-    
+
     const updatedData = {
       ...currentData,
       sections: [...currentData.sections, newSection]
     };
-    
+
     ymap.set(courseCode, JSON.stringify(updatedData));
     autoSave();
   }, [scheduleData, autoSave, allCourses]);
@@ -560,10 +624,34 @@ export default function CollaborationPage() {
     undoManagerRef.current?.redo();
   };
 
+  // Show loading state while Yjs libraries are being loaded
+  // This prevents the 65ms compilation delay on other pages
+  if (isYjsLoading) {
+    return (
+      <div className="container mx-auto p-8 space-y-6">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Loading Collaboration Editor</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Initializing Yjs libraries for real-time collaboration...
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-8 space-y-6">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -610,7 +698,7 @@ export default function CollaborationPage() {
                     {activeUsers} Active {activeUsers === 1 ? 'User' : 'Users'}
                   </span>
                 </div>
-                
+
                 {/* Level Selector */}
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-600" />
@@ -718,330 +806,331 @@ export default function CollaborationPage() {
         {allCourses
           .filter(course => showReadOnly || isSWECourse(course.code))
           .map((course, idx) => {
-          const isEditable = isSWECourse(course.code);
-          const courseData = scheduleData[course.code];
-          const sections = courseData?.sections || course.section_groups?.[0]?.sections || [];
+            const isEditable = isSWECourse(course.code);
+            const courseData = scheduleData[course.code];
+            const sections = courseData?.sections || course.section_groups?.[0]?.sections || [];
 
-          return (
-            <motion.div
-              key={course.code}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-            >
-              <Card className={`shadow-xl border-2 ${isEditable ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-gray-50/30'}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-xl">{course.code}</CardTitle>
-                        {isEditable ? (
-                          <Badge className="bg-green-500 hover:bg-green-600">
-                            <Edit className="h-3 w-3 mr-1" />
-                            Editable
+            return (
+              <motion.div
+                key={course.code}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+              >
+                <Card className={`shadow-xl border-2 ${isEditable ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-gray-50/30'}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CardTitle className="text-xl">{course.code}</CardTitle>
+                          {isEditable ? (
+                            <Badge className="bg-green-500 hover:bg-green-600">
+                              <Edit className="h-3 w-3 mr-1" />
+                              Editable
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Read-only
+                            </Badge>
+                          )}
+                          <Badge variant="outline">
+                            {course.credits || course.credit_hours} Credits
                           </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Read-only
-                          </Badge>
+                        </div>
+                        <CardDescription className="text-base font-medium">{course.title}</CardDescription>
+                        {course.prerequisite && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Prerequisites: {course.prerequisite}
+                          </p>
                         )}
-                        <Badge variant="outline">
-                          {course.credits || course.credit_hours} Credits
-                        </Badge>
                       </div>
-                      <CardDescription className="text-base font-medium">{course.title}</CardDescription>
-                      {course.prerequisite && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Prerequisites: {course.prerequisite}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {sections.length > 0 ? (
-                    <div className="space-y-4">
-                      {sections.map((section) => {
-                        const errorKeyPrefix = `${course.code}-${section.section_no}`;
-                        return (
-                        <div
-                          key={section.section_no}
-                          className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow ${isEditable ? 'hover:border-green-300' : ''}`}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="default" className="font-mono">
-                                {section.section_no}
-                              </Badge>
-                              {isEditable ? (
-                                <Select
-                                  value={section.section_type}
-                                  onValueChange={(value) => updateSectionField(course.code, section.section_no, 'section_type', value)}
-                                >
-                                  <SelectTrigger className="w-28 h-7 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="lecture">Lecture</SelectItem>
-                                    <SelectItem value="tutorial">Tutorial</SelectItem>
-                                    <SelectItem value="lab">Lab</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Badge variant="outline">{section.section_type}</Badge>
-                              )}
-                            </div>
-                            
-                            {isEditable && (
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => duplicateSection(course.code, section.section_no)}
-                                  className="h-7 w-7 p-0"
-                                  title="Duplicate section"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
+                  </CardHeader>
+                  <CardContent>
+                    {sections.length > 0 ? (
+                      <div className="space-y-4">
+                        {sections.map((section) => {
+                          const errorKeyPrefix = `${course.code}-${section.section_no}`;
+                          return (
+                            <div
+                              key={section.section_no}
+                              className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow ${isEditable ? 'hover:border-green-300' : ''}`}
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="default" className="font-mono">
+                                    {section.section_no}
+                                  </Badge>
+                                  {isEditable ? (
+                                    <Select
+                                      value={section.section_type}
+                                      onValueChange={(value) => updateSectionField(course.code, section.section_no, 'section_type', value)}
+                                    >
+                                      <SelectTrigger className="w-28 h-7 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="lecture">Lecture</SelectItem>
+                                        <SelectItem value="tutorial">Tutorial</SelectItem>
+                                        <SelectItem value="lab">Lab</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Badge variant="outline">{section.section_type}</Badge>
+                                  )}
+                                </div>
+
+                                {isEditable && (
+                                  <div className="flex gap-1">
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
-                                      title="Delete section"
+                                      onClick={() => duplicateSection(course.code, section.section_no)}
+                                      className="h-7 w-7 p-0"
+                                      title="Duplicate section"
                                     >
-                                      <Trash2 className="h-3.5 w-3.5" />
+                                      <Copy className="h-3.5 w-3.5" />
                                     </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Section?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete section {section.section_no}? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => removeSection(course.code, section.section_no)}
-                                        className="bg-red-600 hover:bg-red-700"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-3">
-                              {/* Instructor Name */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-blue-600" />
-                                  <Label className="text-sm font-medium">Instructor Name:</Label>
-                                </div>
-                                {isEditable ? (
-                                  <>
-                                    <Input
-                                      value={section.instructor.name}
-                                      onChange={(e) => updateSectionField(course.code, section.section_no, 'instructor.name', e.target.value)}
-                                      className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-instructor.name`] ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                      placeholder="Instructor name"
-                                    />
-                                    {fieldErrors[`${errorKeyPrefix}-instructor.name`] && (
-                                      <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-instructor.name`]}</p>
-                                    )}
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-gray-700">{section.instructor.name}</p>
-                                )}
-                              </div>
-
-                              {/* Instructor Email */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-blue-600" />
-                                  <Label className="text-sm font-medium">Instructor Email:</Label>
-                                </div>
-                                {isEditable ? (
-                                  <>
-                                    <Input
-                                      type="email"
-                                      value={section.instructor.email}
-                                      onChange={(e) => updateSectionField(course.code, section.section_no, 'instructor.email', e.target.value)}
-                                      className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-instructor.email`] ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                      placeholder="email@university.edu"
-                                    />
-                                    {fieldErrors[`${errorKeyPrefix}-instructor.email`] && (
-                                      <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-instructor.email`]}</p>
-                                    )}
-                                  </>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground">{section.instructor.email}</p>
-                                )}
-                              </div>
-                              
-                              {/* Room Code */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-purple-600" />
-                                  <Label className="text-sm font-medium">Room:</Label>
-                                </div>
-                                {isEditable ? (
-                                  <>
-                                    <Input
-                                      value={section.room_code}
-                                      onChange={(e) => updateSectionField(course.code, section.section_no, 'room_code', e.target.value)}
-                                      className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-room_code`] ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                      placeholder="Room code"
-                                    />
-                                    {fieldErrors[`${errorKeyPrefix}-room_code`] && (
-                                      <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-room_code`]}</p>
-                                    )}
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-gray-700">{section.room_code}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              {/* Meeting Days */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-green-600" />
-                                  <Label className="text-sm font-medium">Meeting Days:</Label>
-                                </div>
-                                {isEditable ? (
-                                  <div className="flex flex-wrap gap-2">
-                                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'].map((day) => (
-                                      <div key={day} className="flex items-center space-x-1">
-                                        <Checkbox
-                                          id={`${section.section_no}-${day}`}
-                                          checked={section.meeting_pattern.days.includes(day)}
-                                          onCheckedChange={(checked) => {
-                                            const newDays = checked
-                                              ? [...section.meeting_pattern.days, day]
-                                              : section.meeting_pattern.days.filter(d => d !== day);
-                                            updateSectionField(course.code, section.section_no, 'meeting_pattern.days', newDays);
-                                          }}
-                                        />
-                                        <label
-                                          htmlFor={`${section.section_no}-${day}`}
-                                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
+                                          title="Delete section"
                                         >
-                                          {day.slice(0, 3)}
-                                        </label>
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete Section?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to delete section {section.section_no}? This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => removeSection(course.code, section.section_no)}
+                                            className="bg-red-600 hover:bg-red-700"
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid md:grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                  {/* Instructor Name */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-blue-600" />
+                                      <Label className="text-sm font-medium">Instructor Name:</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <>
+                                        <Input
+                                          value={section.instructor.name}
+                                          onChange={(e) => updateSectionField(course.code, section.section_no, 'instructor.name', e.target.value)}
+                                          className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-instructor.name`] ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                          placeholder="Instructor name"
+                                        />
+                                        {fieldErrors[`${errorKeyPrefix}-instructor.name`] && (
+                                          <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-instructor.name`]}</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-gray-700">{section.instructor.name}</p>
+                                    )}
+                                  </div>
+
+                                  {/* Instructor Email */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-blue-600" />
+                                      <Label className="text-sm font-medium">Instructor Email:</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <>
+                                        <Input
+                                          type="email"
+                                          value={section.instructor.email}
+                                          onChange={(e) => updateSectionField(course.code, section.section_no, 'instructor.email', e.target.value)}
+                                          className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-instructor.email`] ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                          placeholder="email@university.edu"
+                                        />
+                                        {fieldErrors[`${errorKeyPrefix}-instructor.email`] && (
+                                          <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-instructor.email`]}</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">{section.instructor.email}</p>
+                                    )}
+                                  </div>
+
+                                  {/* Room Code */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-4 w-4 text-purple-600" />
+                                      <Label className="text-sm font-medium">Room:</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <>
+                                        <Input
+                                          value={section.room_code}
+                                          onChange={(e) => updateSectionField(course.code, section.section_no, 'room_code', e.target.value)}
+                                          className={`text-sm transition-all ${fieldErrors[`${errorKeyPrefix}-room_code`] ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                          placeholder="Room code"
+                                        />
+                                        {fieldErrors[`${errorKeyPrefix}-room_code`] && (
+                                          <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-room_code`]}</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-gray-700">{section.room_code}</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {/* Meeting Days */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="h-4 w-4 text-green-600" />
+                                      <Label className="text-sm font-medium">Meeting Days:</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <div className="flex flex-wrap gap-2">
+                                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'].map((day) => (
+                                          <div key={day} className="flex items-center space-x-1">
+                                            <Checkbox
+                                              id={`${section.section_no}-${day}`}
+                                              checked={section.meeting_pattern.days.includes(day)}
+                                              onCheckedChange={(checked) => {
+                                                const newDays = checked
+                                                  ? [...section.meeting_pattern.days, day]
+                                                  : section.meeting_pattern.days.filter(d => d !== day);
+                                                updateSectionField(course.code, section.section_no, 'meeting_pattern.days', newDays);
+                                              }}
+                                            />
+                                            <label
+                                              htmlFor={`${section.section_no}-${day}`}
+                                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                            >
+                                              {day.slice(0, 3)}
+                                            </label>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {section.meeting_pattern.days.map((day) => (
-                                      <Badge key={day} variant="secondary" className="text-xs">
-                                        {day}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Start Time */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-orange-600" />
-                                  <Label className="text-sm font-medium">Start Time:</Label>
-                                </div>
-                                {isEditable ? (
-                                  <>
-                                    <Input
-                                      type="time"
-                                      value={section.meeting_pattern.start_time}
-                                      onChange={(e) => updateSectionField(course.code, section.section_no, 'meeting_pattern.start_time', e.target.value)}
-                                      className={`text-sm w-32 transition-all ${fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`] ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                    />
-                                    {fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`] && (
-                                      <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`]}</p>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-1">
+                                        {section.meeting_pattern.days.map((day) => (
+                                          <Badge key={day} variant="secondary" className="text-xs">
+                                            {day}
+                                          </Badge>
+                                        ))}
+                                      </div>
                                     )}
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-gray-700">{section.meeting_pattern.start_time}</p>
-                                )}
-                              </div>
+                                  </div>
 
-                              {/* Duration */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-orange-600" />
-                                  <Label className="text-sm font-medium">Duration (minutes):</Label>
-                                </div>
-                                {isEditable ? (
-                                  <>
-                                    <Input
-                                      type="number"
-                                      value={section.meeting_pattern.duration_minutes}
-                                      onChange={(e) => updateSectionField(course.code, section.section_no, 'meeting_pattern.duration_minutes', parseInt(e.target.value))}
-                                      className={`text-sm w-24 transition-all ${fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`] ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                      min="1"
-                                      max="300"
-                                    />
-                                    {fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`] && (
-                                      <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`]}</p>
+                                  {/* Start Time */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-4 w-4 text-orange-600" />
+                                      <Label className="text-sm font-medium">Start Time:</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <>
+                                        <Input
+                                          type="time"
+                                          value={section.meeting_pattern.start_time}
+                                          onChange={(e) => updateSectionField(course.code, section.section_no, 'meeting_pattern.start_time', e.target.value)}
+                                          className={`text-sm w-32 transition-all ${fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`] ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                        />
+                                        {fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`] && (
+                                          <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-meeting_pattern.start_time`]}</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-gray-700">{section.meeting_pattern.start_time}</p>
                                     )}
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-gray-700">{section.meeting_pattern.duration_minutes} min</p>
-                                )}
+                                  </div>
+
+                                  {/* Duration */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-4 w-4 text-orange-600" />
+                                      <Label className="text-sm font-medium">Duration (minutes):</Label>
+                                    </div>
+                                    {isEditable ? (
+                                      <>
+                                        <Input
+                                          type="number"
+                                          value={section.meeting_pattern.duration_minutes}
+                                          onChange={(e) => updateSectionField(course.code, section.section_no, 'meeting_pattern.duration_minutes', parseInt(e.target.value))}
+                                          className={`text-sm w-24 transition-all ${fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`] ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                          min="1"
+                                          max="300"
+                                        />
+                                        {fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`] && (
+                                          <p className="text-xs text-red-600">{fieldErrors[`${errorKeyPrefix}-meeting_pattern.duration_minutes`]}</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-gray-700">{section.meeting_pattern.duration_minutes} min</p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
+                          )
+                        })}
+
+                        {/* Add Section Button */}
+                        {isEditable && (
+                          <Button
+                            onClick={() => addSection(course.code)}
+                            variant="outline"
+                            className="w-full border-dashed border-2 hover:border-green-500 hover:bg-green-50 transition-colors"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add New Section
+                          </Button>
+                        )}
+
+                        {/* Course Notes */}
+                        {isEditable && (
+                          <div className="mt-4 space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Activity className="h-4 w-4 text-purple-600" />
+                              Course Notes:
+                            </label>
+                            <Textarea
+                              value={courseData?.notes || ''}
+                              onChange={(e) => updateCourseNotes(course.code, e.target.value)}
+                              placeholder="Add notes about this course (schedule changes, assignments, etc.)"
+                              className="min-h-[80px]"
+                            />
                           </div>
-                        </div>
-                      )})}
-
-                      {/* Add Section Button */}
-                      {isEditable && (
-                        <Button
-                          onClick={() => addSection(course.code)}
-                          variant="outline"
-                          className="w-full border-dashed border-2 hover:border-green-500 hover:bg-green-50 transition-colors"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add New Section
-                        </Button>
-                      )}
-
-                      {/* Course Notes */}
-                      {isEditable && (
-                        <div className="mt-4 space-y-2">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-purple-600" />
-                            Course Notes:
-                          </label>
-                          <Textarea
-                            value={courseData?.notes || ''}
-                            onChange={(e) => updateCourseNotes(course.code, e.target.value)}
-                            placeholder="Add notes about this course (schedule changes, assignments, etc.)"
-                            className="min-h-[80px]"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <BookOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No sections available for this course</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <BookOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No sections available for this course</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
       </div>
 
       {/* Recent Activity Sidebar */}
@@ -1211,8 +1300,8 @@ export default function CollaborationPage() {
                 <h3 className="font-semibold">Try it yourself!</h3>
               </div>
               <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-                Open this page in multiple browser tabs and edit SWE course sections (marked with green badge). 
-                Watch changes sync instantly across all tabs! External courses are read-only. 
+                Open this page in multiple browser tabs and edit SWE course sections (marked with green badge).
+                Watch changes sync instantly across all tabs! External courses are read-only.
                 All changes are saved automatically via IndexedDB and persist across sessions.
               </p>
             </div>

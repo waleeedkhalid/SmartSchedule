@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { MessageSquare, CheckCircle, Clock, Edit2, Trash2, X, Save } from "lucide-react";
 import { format } from "date-fns";
 
-interface Comment {
+export interface Comment {
   id: string;
   comment_text: string;
   section_id: string | null;
@@ -72,25 +72,25 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
       toast.error("Comment cannot be empty");
       return;
     }
-    
+
     setIsEditing(true);
-    
+
     try {
       const response = await fetch(`/api/schedule-comments/${commentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ comment_text: editText.trim() }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to update comment');
       }
-      
+
       toast.success('Comment updated successfully');
       setEditingCommentId(null);
       setEditText("");
-      
+
       if (onCommentUpdated) {
         onCommentUpdated();
       }
@@ -105,20 +105,20 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
   // Delete comment
   const deleteComment = async (commentId: string) => {
     setIsDeleting(true);
-    
+
     try {
       const response = await fetch(`/api/schedule-comments/${commentId}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete comment');
       }
-      
+
       toast.success('Comment deleted successfully');
       setDeletingCommentId(null);
-      
+
       if (onCommentUpdated) {
         onCommentUpdated();
       }
@@ -235,7 +235,7 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
                       </Badge>
                     </div>
                   </div>
-                  
+
                   {!comment.is_resolved && (
                     <div className="flex gap-2">
                       <Button
@@ -290,7 +290,7 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{comment.comment_text}</p>
                 )}
-                
+
                 <div className="text-xs text-muted-foreground space-y-1">
                   <div>
                     Submitted {format(new Date(comment.created_at), 'PPp')}

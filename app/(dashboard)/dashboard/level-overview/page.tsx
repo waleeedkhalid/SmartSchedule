@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { BarChart, TrendingUp, Users, BookOpen, AlertTriangle } from 'lucide-react'
+import { BarChart, Users, BookOpen, AlertTriangle } from 'lucide-react'
 import {
   Chart as ChartJS,
   CategoryScale,

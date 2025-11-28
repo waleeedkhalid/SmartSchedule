@@ -1,116 +1,116 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/supabase/server'
-import { markNotificationAsRead, deleteNotification } from '@/lib/db/notifications'
-
 /**
- * PATCH /api/notifications/[id]
- * Mark a specific notification as read
+ * Single Notification API Route
+ * 
+ * PATCH /api/notifications/[id] - Mark single notification as read
+ * DELETE /api/notifications/[id] - Delete single notification
  */
+
+import { NextRequest } from 'next/server';
+import { createClient } from '@/supabase/server';
+import { authenticateRequest } from '@/lib/api/auth-utils';
+import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from '@/lib/api/error-handler';
+
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+	try {
+		const user = await authenticateRequest(request);
+		const supabase = await createClient();
+		const { id } = await params;
 
-    const notificationId = params.id
+		// Verify notification belongs to user
+		const { data: notification, error: fetchError } = await supabase
+			.from('notification')
+			.select('id, user_id')
+			.eq('id', id)
+			.single();
 
-    // Verify the notification belongs to the user
-    const { data: notification } = await supabase
-      .from('notification')
-      .select('user_id')
-      .eq('id', notificationId)
-      .maybeSingle()
+		if (fetchError) throw fetchError;
 
-    if (!notification) {
-      return NextResponse.json(
-        { error: 'Notification not found' },
-        { status: 404 }
-      )
-    }
+		if (!notification) {
+			return createErrorResponse(
+				404,
+				ErrorCodes.NOT_FOUND,
+				'Notification not found'
+			);
+		}
 
-    if (notification.user_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
-    }
+		if (notification.user_id !== user.id) {
+			return createErrorResponse(
+				403,
+				ErrorCodes.FORBIDDEN,
+				'Access denied'
+			);
+		}
 
-    await markNotificationAsRead(notificationId)
+		// Mark as read
+		const { data, error } = await supabase
+			.from('notification')
+			.update({ read_at: new Date().toISOString() })
+			.eq('id', id)
+			.eq('user_id', user.id)
+			.select()
+			.single();
 
-    return NextResponse.json({ message: 'Notification marked as read' })
+		if (error) throw error;
 
-  } catch (error) {
-    console.error('Error updating notification:', error)
-    return NextResponse.json(
-      { error: 'Failed to update notification' },
-      { status: 500 }
-    )
-  }
+		return createSuccessResponse(data, 200, 'Notification marked as read');
+	} catch (error) {
+		return handleApiError(error);
+	}
 }
 
-/**
- * DELETE /api/notifications/[id]
- * Delete a specific notification
- */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+	try {
+		const user = await authenticateRequest(request);
+		const supabase = await createClient();
+		const { id } = await params;
 
-    const notificationId = params.id
+		// Verify notification belongs to user
+		const { data: notification, error: fetchError } = await supabase
+			.from('notification')
+			.select('id, user_id')
+			.eq('id', id)
+			.single();
 
-    // Verify the notification belongs to the user
-    const { data: notification } = await supabase
-      .from('notification')
-      .select('user_id')
-      .eq('id', notificationId)
-      .maybeSingle()
+		if (fetchError) throw fetchError;
 
-    if (!notification) {
-      return NextResponse.json(
-        { error: 'Notification not found' },
-        { status: 404 }
-      )
-    }
+		if (!notification) {
+			return createErrorResponse(
+				404,
+				ErrorCodes.NOT_FOUND,
+				'Notification not found'
+			);
+		}
 
-    if (notification.user_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
-    }
+		if (notification.user_id !== user.id) {
+			return createErrorResponse(
+				403,
+				ErrorCodes.FORBIDDEN,
+				'Access denied'
+			);
+		}
 
-    await deleteNotification(notificationId)
+		// Delete notification
+		const { error } = await supabase
+			.from('notification')
+			.delete()
+			.eq('id', id)
+			.eq('user_id', user.id);
 
-    return NextResponse.json({ message: 'Notification deleted' })
+		if (error) throw error;
 
-  } catch (error) {
-    console.error('Error deleting notification:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete notification' },
-      { status: 500 }
-    )
-  }
+		return createSuccessResponse(
+			{ deleted: true },
+			200,
+			'Notification deleted'
+		);
+	} catch (error) {
+		return handleApiError(error);
+	}
 }
 

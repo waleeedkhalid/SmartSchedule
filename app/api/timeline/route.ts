@@ -1,163 +1,217 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/supabase/server'
-import {
-	getTimelineEvents,
-	createTimelineEvent,
-	getTimelineEventsByStatus,
-	getTimelineEventsByPriority,
-	getTimelineEventsByCategory,
-	getActionRequiredEvents,
-	getUpcomingDeadlinesForRole,
-	getOverdueEvents,
-	getTimelineStatistics,
-	updateTimelineEventStatuses,
-} from '@/lib/db/timeline'
-
 /**
- * GET /api/timeline
- * Get timeline events with optional filters
+ * Timeline API Route
  * 
- * Query params:
- * - semester: semester code to filter by
- * - status: upcoming | in_progress | completed | overdue | cancelled
- * - priority: low | medium | high | critical
- * - category: category name
- * - actionRequired: 'true' to get only events requiring action
- * - role: get upcoming deadlines for specific role
- * - overdue: 'true' to get overdue events
- * - stats: 'true' to get statistics
+ * GET /api/timeline - List timeline events with optional filters
+ * POST /api/timeline - Create new timeline event (scheduling/registrar only)
+ * 
+ * Query Parameters:
+ * - semester: Filter by semester code
+ * - status: Filter by status (upcoming, in_progress, completed, overdue, cancelled)
+ * - priority: Filter by priority (low, medium, high, critical)
+ * - category: Filter by category
+ * - role: Get upcoming deadlines for specific role
+ * - overdue: Get overdue events (true)
+ * - stats: Get statistics summary (true)
  */
+
+import { NextRequest } from 'next/server';
+import { createClient } from '@/supabase/server';
+import { authenticateRequest, requireRole } from '@/lib/api/auth-utils';
+import { createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api/error-handler';
+import { calculateTimelineStatus } from '@/lib/utils/timeline-status';
+import type { Database } from '@/lib/types/database';
+
+type TimelineEvent = Database['public']['Tables']['semester_timeline']['Row'];
+
 export async function GET(request: NextRequest) {
 	try {
-		const supabase = await createClient()
+		await authenticateRequest(request);
+		const supabase = await createClient();
+		const { searchParams } = new URL(request.url);
 
-		// Check authentication
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		if (authError || !user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-		}
+		const semester = searchParams.get('semester');
+		const status = searchParams.get('status');
+		const priority = searchParams.get('priority');
+		const category = searchParams.get('category');
+		const role = searchParams.get('role');
+		const overdue = searchParams.get('overdue') === 'true';
+		const stats = searchParams.get('stats') === 'true';
 
-		const searchParams = request.nextUrl.searchParams
-		const semester = searchParams.get('semester') || undefined
-		const status = searchParams.get('status')
-		const priority = searchParams.get('priority')
-		const category = searchParams.get('category')
-		const actionRequired = searchParams.get('actionRequired') === 'true'
-		const role = searchParams.get('role')
-		const overdue = searchParams.get('overdue') === 'true'
-		const stats = searchParams.get('stats') === 'true'
-
-		// Update statuses first
-		await updateTimelineEventStatuses()
-
-		// Get statistics
+		// Get statistics if requested
 		if (stats) {
-			const data = await getTimelineStatistics(semester)
-			return NextResponse.json(data)
+			let query = supabase
+				.from('semester_timeline')
+				.select('status, priority, start_date, end_date, is_deadline', { count: 'exact', head: false });
+
+			if (semester) {
+				query = query.eq('term_code', semester);
+			}
+
+			const { data, error, count } = await query;
+
+			if (error) throw error;
+
+			// Calculate statistics with dynamically calculated statuses
+			type TimelineEvent = { 
+				status: string; 
+				priority: string;
+				start_date: string;
+				end_date: string;
+				is_deadline?: boolean;
+			};
+			const events = (data || []) as TimelineEvent[];
+			
+			// Calculate status for each event
+			const eventsWithCalculatedStatus = events.map((e) => ({
+				...e,
+				status: calculateTimelineStatus({
+					status: e.status,
+					start_date: e.start_date,
+					end_date: e.end_date,
+					is_deadline: e.is_deadline,
+				}),
+			}));
+
+			const statistics = {
+				total: count || 0,
+				upcoming: eventsWithCalculatedStatus.filter((e) => e.status === 'upcoming').length,
+				in_progress: eventsWithCalculatedStatus.filter((e) => e.status === 'in_progress').length,
+				overdue: eventsWithCalculatedStatus.filter((e) => e.status === 'overdue').length,
+				completed: eventsWithCalculatedStatus.filter((e) => e.status === 'completed').length,
+				cancelled: eventsWithCalculatedStatus.filter((e) => e.status === 'cancelled').length,
+				by_priority: {
+					low: events.filter((e) => e.priority === 'low').length,
+					medium: events.filter((e) => e.priority === 'medium').length,
+					high: events.filter((e) => e.priority === 'high').length,
+					critical: events.filter((e) => e.priority === 'critical').length,
+				},
+			};
+
+			return createSuccessResponse(statistics, 200);
 		}
 
 		// Get overdue events
 		if (overdue) {
-			const data = await getOverdueEvents()
-			return NextResponse.json(data)
+			const { data, error } = await supabase.rpc('get_overdue_events', {
+				semester_code: semester || null,
+			});
+
+			if (error) throw error;
+			return createSuccessResponse(data || [], 200);
 		}
 
-		// Get upcoming deadlines for role
+		// Get upcoming deadlines for specific role
 		if (role) {
-			const daysAhead = parseInt(searchParams.get('daysAhead') || '30')
-			const data = await getUpcomingDeadlinesForRole(role, daysAhead)
-			return NextResponse.json(data)
+			const { data, error } = await supabase.rpc('get_upcoming_deadlines_for_role', {
+				role_name: role,
+				days_ahead: 30,
+			});
+
+			if (error) throw error;
+
+			// Calculate status dynamically and filter to only show upcoming/in_progress
+			const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
+				...event,
+				status: calculateTimelineStatus({
+					status: event.status || 'upcoming',
+					start_date: event.start_date,
+					end_date: event.end_date,
+					is_deadline: event.is_deadline || false,
+				}),
+			})).filter((event: TimelineEvent & { status: string }) =>
+				event.status === 'upcoming' || event.status === 'in_progress'
+			);
+
+			return createSuccessResponse(eventsWithCalculatedStatus, 200);
 		}
 
-		// Get events requiring action
-		if (actionRequired) {
-			const data = await getActionRequiredEvents(semester)
-			return NextResponse.json(data)
+		// Get all events with filters
+		let query = supabase
+			.from('semester_timeline')
+			.select('*')
+			.order('start_date', { ascending: true });
+
+		if (semester) {
+			query = query.eq('term_code', semester);
 		}
 
-		// Filter by status
 		if (status) {
-			const data = await getTimelineEventsByStatus(
-				status as 'upcoming' | 'in_progress' | 'completed' | 'overdue' | 'cancelled',
-				semester
-			)
-			return NextResponse.json(data)
+			query = query.eq('status', status);
 		}
 
-		// Filter by priority
 		if (priority) {
-			const data = await getTimelineEventsByPriority(
-				priority as 'low' | 'medium' | 'high' | 'critical',
-				semester
-			)
-			return NextResponse.json(data)
+			query = query.eq('priority', priority);
 		}
 
-		// Filter by category
 		if (category) {
-			const data = await getTimelineEventsByCategory(category, semester)
-			return NextResponse.json(data)
+			query = query.eq('category', category);
 		}
 
-		// Get all events
-		const data = await getTimelineEvents(semester)
-		return NextResponse.json(data)
+		const { data, error } = await query;
+
+		if (error) throw error;
+
+		// Calculate status dynamically based on dates
+		const eventsWithCalculatedStatus = (data || []).map((event: TimelineEvent) => ({
+			...event,
+				status: calculateTimelineStatus({
+					status: event.status || 'upcoming',
+					start_date: event.start_date,
+					end_date: event.end_date,
+					is_deadline: event.is_deadline || false,
+				}),
+		}));
+
+		return createSuccessResponse(eventsWithCalculatedStatus, 200);
 	} catch (error) {
-		console.error('Error fetching timeline events:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch timeline events' },
-			{ status: 500 }
-		)
+		return handleApiError(error);
 	}
 }
 
-/**
- * POST /api/timeline
- * Create a new timeline event (scheduling or registrar role only)
- */
 export async function POST(request: NextRequest) {
 	try {
-		const supabase = await createClient()
+		const user = await authenticateRequest(request);
+		requireRole(user, ['scheduling', 'registrar']);
 
-		// Check authentication
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		if (authError || !user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-		}
-
-		// Check authorization
-		const { data: userRole } = await supabase
-			.from('user_roles')
-			.select('role')
-			.eq('user_id', user.id)
-			.maybeSingle()
-
-		if (!userRole || !['scheduling', 'registrar'].includes(userRole.role)) {
-			return NextResponse.json(
-				{ error: 'Only scheduling and registrar roles can create timeline events' },
-				{ status: 403 }
-			)
-		}
-
-		const body = await request.json()
+		const supabase = await createClient();
+		const body = await request.json();
 
 		// Validate required fields
-		if (!body.term_code || !body.title || !body.event_type || !body.category || !body.start_date || !body.end_date) {
-			return NextResponse.json(
-				{ error: 'Missing required fields' },
-				{ status: 400 }
-			)
+		if (!body.term_code || !body.title || !body.start_date || !body.end_date) {
+			return createErrorResponse(
+				400,
+				'VALIDATION_ERROR',
+				'Missing required fields: term_code, title, start_date, end_date'
+			);
 		}
 
-		const data = await createTimelineEvent(body)
+		// Create timeline event
+		const { data, error } = await supabase
+			.from('semester_timeline')
+			.insert({
+				term_code: body.term_code,
+				title: body.title,
+				description: body.description || null,
+				event_type: body.event_type || 'general',
+				category: body.category || 'administrative',
+				start_date: body.start_date,
+				end_date: body.end_date,
+				requires_action: body.requires_action || false,
+				target_roles: body.target_roles || [],
+				notification_days_before: body.notification_days_before || [],
+				is_deadline: body.is_deadline || false,
+				priority: body.priority || 'medium',
+				status: body.status || 'upcoming',
+				metadata: body.metadata || {},
+			})
+			.select()
+			.single();
 
-		return NextResponse.json(data, { status: 201 })
+		if (error) throw error;
+
+		return createSuccessResponse(data, 201);
 	} catch (error) {
-		console.error('Error creating timeline event:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create timeline event' },
-			{ status: 500 }
-		)
+		return handleApiError(error);
 	}
 }
 

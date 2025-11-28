@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Instructor } from "@/lib/types/database";
+import { Instructor } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
 const formSchema = z.object({
   name: z.string().min(2).max(100),
@@ -40,9 +41,9 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: instructor ? {
-      name: instructor.name,
+      name: instructor.name || "",
       email: instructor.email || "",
-      max_load_per_week: instructor.max_load_per_week,
+      max_load_per_week: instructor.max_load_per_week || 12,
     } : {
       name: "",
       email: "",
@@ -53,31 +54,41 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const url = isEditing ? `/api/instructors/${instructor?.id}` : "/api/instructors";
-      const method = isEditing ? "PATCH" : "POST";
+      const authHeader = await getAuthHeader();
 
-      const payload = {
-        ...values,
-        email: values.email || null,
-        preferred_times: instructor?.preferred_times || [],
-        unavailable_times: instructor?.unavailable_times || [],
-      };
+      // Get id from instructor (could be id or user_id)
+      const instructorId = instructor && ('id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : undefined));
+      const url = isEditing
+        ? `/api/v1/instructors/${instructorId}`
+        : '/api/v1/instructors';
+
+      const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email || null,
+          max_load_per_week: values.max_load_per_week,
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} instructor`);
+        throw new Error(data.error || `Failed to ${isEditing ? 'update' : 'create'} instructor`);
       }
 
       toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully`);
       router.push("/dashboard/instructors");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} instructor`);
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} instructor`;
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -154,7 +165,7 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     <strong>Note:</strong> Time preferences and unavailable times can be managed
-                    in the instructor's detailed view after creation.
+                    in the instructor&apos;s detailed view after creation.
                   </p>
                 </div>
               )}
