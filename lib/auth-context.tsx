@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { UserRoleRow } from "@/lib/types";
 
 interface AuthContextType {
@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -37,9 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchingRef = useRef<Set<string>>(new Set());
   const cachedRoleRef = useRef<Map<string, UserRoleRow | null>>(new Map());
 
+  // Ref to track mounting state and prevent double-invocation in Strict Mode
+  const mountedRef = useRef(false);
+
   // 1. Centralized logic to fetch role based on user ID
   // CACHED: Prevents duplicate requests for the same user ID
-  const fetchUserRole = useCallback(async (userId: string) => {
+  const fetchUserRole = useCallback(async (userId: string, signal?: AbortSignal) => {
     // If we already have cached data for this user, use it
     if (cachedRoleRef.current.has(userId)) {
       const cached = cachedRoleRef.current.get(userId);
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("user_roles")
         .select("role, name, email, created_at, updated_at, onboarding_completed")
         .eq("user_id", userId)
+        .abortSignal(signal!) // Pass signal to Supabase
         .single();
 
       if (data && !error) {
@@ -82,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(null);
       }
     } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('Fetch aborted');
+        return;
+      }
+
       // Cache null result on error
       cachedRoleRef.current.set(userId, null);
       console.error("Error fetching role:", err);
@@ -93,7 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    let mounted = true;
+    // 1. Prevent running twice in Strict Mode
+    // Note: In development Strict Mode, this effect runs twice. 
+    // We use a ref to track if we're mounted and to handle cleanup correctly.
+    mountedRef.current = true;
+
+    const controller = new AbortController();
 
     // 2. Initial Session Fetch
     const initializeAuth = async () => {
@@ -104,25 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn("Error getting session:", error);
         }
 
-        if (mounted) {
+        if (mountedRef.current) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
 
           if (currentSession?.user) {
-            await fetchUserRole(currentSession.user.id);
+            await fetchUserRole(currentSession.user.id, controller.signal);
           } else {
             setUserRole(null);
           }
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
-        if (mounted) {
+        if (mountedRef.current) {
           setUser(null);
           setSession(null);
           setUserRole(null);
         }
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mountedRef.current) setIsLoading(false);
       }
     };
 
@@ -131,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 3. Real-time Subscription (The "Production" Way)
     // This automatically updates state on login, logout, or token refresh
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -140,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Only fetch role if the user changed or we don't have it cached
         const userId = newSession.user.id;
         if (userId !== user?.id || !cachedRoleRef.current.has(userId)) {
-          await fetchUserRole(userId);
+          await fetchUserRole(userId, controller.signal);
         } else {
           // Use cached value
           const cached = cachedRoleRef.current.get(userId);
@@ -154,7 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchingRef.current.clear();
         setUserRole(null);
         // Optional: Redirect to login on sign out
-        // router.push('/login'); 
+        // Safe navigation check: Don't push if already on login page
+        // if (pathname !== '/login') router.push('/login'); 
       }
 
       setIsLoading(false);
@@ -166,10 +183,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
+      controller.abort();
       subscription.unsubscribe();
     };
-  }, [supabase, router, user?.id, fetchUserRole]);
+  }, [supabase, router, pathname, user?.id, fetchUserRole]);
 
   const signOut = useCallback(async () => {
     try {

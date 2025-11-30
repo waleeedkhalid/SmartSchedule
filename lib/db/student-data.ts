@@ -463,3 +463,79 @@ export const getUserNotifications = cache(async (userId: string, limit: number =
   return data || [];
 });
 
+
+/**
+ * Get registration status for the active semester
+ * Wrapped with React.cache() for request memoization
+ */
+export interface RegistrationStatus {
+  is_open: boolean;
+  semester: {
+    code: string;
+    name: string;
+  } | null;
+  message: string;
+}
+
+export const getRegistrationStatus = cache(async (): Promise<RegistrationStatus> => {
+  const supabase = await createClient();
+
+  // 1. Get the active academic term (draft or released)
+  const { data: activeTerm } = await supabase
+    .from("academic_term")
+    .select("code, name, status")
+    .in("status", ["draft", "released"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!activeTerm) {
+    return {
+      is_open: false,
+      semester: null,
+      message: "No active semester found.",
+    };
+  }
+
+  // 2. Check for a registration event in the timeline for this term
+  const { data: registrationEvent } = await supabase
+    .from("semester_timeline")
+    .select("start_date, end_date, status")
+    .eq("term_code", activeTerm.code)
+    .eq("event_type", "registration")
+    .order("start_date", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (registrationEvent) {
+    const now = new Date();
+    const startDate = new Date(registrationEvent.start_date);
+    const endDate = new Date(registrationEvent.end_date);
+
+    // Registration is open if:
+    // 1. Current time is within the event window
+    // 2. Event status is explicitly 'in_progress'
+    const isOpen = now >= startDate && now <= endDate && registrationEvent.status === "in_progress";
+
+    return {
+      is_open: isOpen,
+      semester: {
+        code: activeTerm.code,
+        name: activeTerm.name,
+      },
+      message: isOpen
+        ? "Registration is currently open"
+        : "Registration is closed. Check the timeline for registration dates.",
+    };
+  }
+
+  // Default if no registration event found
+  return {
+    is_open: false,
+    semester: {
+      code: activeTerm.code,
+      name: activeTerm.name,
+    },
+    message: "Registration is closed. Check the timeline for registration dates.",
+  };
+});

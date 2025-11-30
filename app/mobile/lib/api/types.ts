@@ -192,6 +192,7 @@ export interface Enrollment {
 export interface CreateEnrollmentRequest {
   section_id: string;
   semester_id?: string;
+  student_id?: string; // For registrar override
 }
 
 export interface DeleteEnrollmentResponse {

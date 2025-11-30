@@ -37,7 +37,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,58 +62,66 @@ interface OnboardingFormProps {
 }
 
 export function OnboardingForm({ userId, userName, userRole }: OnboardingFormProps) {
-  // Calculate current Hijri year using Intl.DateTimeFormat API
-  // This provides accurate conversion from Gregorian to Hijri calendar
-  function getCurrentHijriYear(): number {
-    const currentDate = new Date();
+  // Hydration Fix: Use state for time-dependent data
+  const [mounted, setMounted] = useState(false);
+  const [currentHijriYear, setCurrentHijriYear] = useState<number>(1445); // Default safe value
 
-    // Use 'en' locale to get Western numerals instead of Arabic numerals
-    const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
-      year: 'numeric',
-    });
-    const parts = hijriFormatter.formatToParts(currentDate);
-    const yearPart = parts.find(part => part.type === 'year');
-
-    if (yearPart) {
-      const yearValue = parseInt(yearPart.value, 10);
-      // Validate the parsed year is reasonable (between 1400 and 1500)
-      if (!isNaN(yearValue) && yearValue >= 1400 && yearValue <= 1500) {
-        return yearValue;
+  useEffect(() => {
+    setMounted(true);
+    // Calculate Hijri year only on client after mount
+    const calculateHijriYear = (): number => {
+      const currentDate = new Date();
+      try {
+        const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+          year: 'numeric',
+        });
+        const parts = hijriFormatter.formatToParts(currentDate);
+        const yearPart = parts.find(part => part.type === 'year');
+        if (yearPart) {
+          const yearValue = parseInt(yearPart.value, 10);
+          if (!isNaN(yearValue) && yearValue >= 1400 && yearValue <= 1500) {
+            return yearValue;
+          }
+        }
+      } catch (e) {
+        console.warn('Error calculating Hijri year:', e);
       }
-    }
+      return new Date().getFullYear() - 621;
+    };
 
-    // Fallback to approximation if parsing fails
-    return new Date().getFullYear() - 621;
-  }
-
-  const currentHijriYear = getCurrentHijriYear();
-  // Ensure we have a valid Hijri year, fallback to approximation if needed
-  const validHijriYear = isNaN(currentHijriYear) || currentHijriYear <= 0
-    ? new Date().getFullYear() - 621
-    : currentHijriYear;
+    setCurrentHijriYear(calculateHijriYear());
+  }, []);
 
   // Form state
   const [academicLevel, setAcademicLevel] = useState<string>("4");
-  const [enrollmentYear, setEnrollmentYear] = useState<string>(validHijriYear.toString());
+  const [enrollmentYear, setEnrollmentYear] = useState<string>("");
   const [confirmed, setConfirmed] = useState(false);
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  // Create Supabase client - will be created fresh for each operation
-  // This ensures we have a valid client instance
 
   // Academic level options (1-8 for full system support)
   // DO NOT CHANGE THIS ARRAY. IT IS USED TO GENERATE THE LEVEL OPTIONS FOR THE SELECT DROP DOWN.
   // Our scope is only for levels 4-8.
   const levelOptions = [4, 5, 6, 7, 8];
 
-  // Generate enrollment year options (current year - 10 to current year)
-  // Filter out any invalid values (NaN, undefined, null) and ensure they're valid numbers
-  const enrollmentYearOptions = Array.from({ length: 11 }, (_, i) => validHijriYear - 10 + i)
-    .filter(year => !isNaN(year) && year > 0 && Number.isInteger(year))
-    .reverse(); // Reverse to show current year first (highest to lowest)
+  // Generate enrollment year options based on current Hijri year
+  // Memoize this or just calculate it render-time since it depends on state now
+  const enrollmentYearOptions = mounted
+    ? Array.from({ length: 11 }, (_, i) => currentHijriYear - 10 + i)
+      .filter(year => !isNaN(year) && year > 0 && Number.isInteger(year))
+      .reverse()
+    : [];
+
+  // Set default enrollment year once mounted
+  useEffect(() => {
+    if (mounted && currentHijriYear && !enrollmentYear) {
+      setEnrollmentYear(currentHijriYear.toString());
+    }
+  }, [mounted, currentHijriYear, enrollmentYear]);
 
   /**
    * Validate form before submission
@@ -176,13 +184,14 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
       e.stopPropagation();
     }
 
-    // Early return if already submitting
-    if (isSubmitting) {
-      console.log('Already submitting, ignoring duplicate click');
+    // Early return if already submitting or redirecting
+    if (isSubmitting || isRedirecting) {
+      console.log('Already submitting or redirecting, ignoring duplicate click');
       return;
     }
 
     console.log('Onboarding form submit started', { userRole, userId, userName, confirmed, academicLevel });
+    setSubmitError(null);
 
     // Validate form BEFORE setting isSubmitting to prevent stuck loading state
     // Double-check values directly instead of relying on state
@@ -228,6 +237,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     const timeoutId: NodeJS.Timeout = setTimeout(() => {
       console.warn('Onboarding submission taking too long, resetting button state');
       setIsSubmitting(false);
+      setSubmitError('Submission timed out. Please check your internet connection and try again.');
       toast.error('Submission is taking longer than expected. Please try again.');
     }, 30000);
 
@@ -239,7 +249,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
     } catch (clientError) {
       clearTimeout(timeoutId);
       console.error('Failed to create Supabase client:', clientError);
-      toast.error('Failed to initialize database connection. Please refresh the page and try again.');
+      const errMsg = 'Failed to initialize database connection. Please refresh the page and try again.';
+      setSubmitError(errMsg);
+      toast.error(errMsg);
       setIsSubmitting(false);
       return;
     }
@@ -281,29 +293,26 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             code: profileError.code
           });
 
+          let errMsg = `Failed to create student profile: ${profileError.message || 'Unknown error'}`;
+
           // Check for RLS violations
           // PostgrestError doesn't have status, but code indicates the error type
           if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
             // PGRST errors or permission denied (42501)
-            toast.error(
-              `Permission denied: Unable to create student profile. ` +
-              `This may be due to Row Level Security policies. ` +
-              `Please ensure you are logged in as a student. ` +
-              `Error: ${profileError.message || 'Unknown error'}`
-            );
+            errMsg = `Permission denied: Unable to create student profile. Please ensure you are logged in as a student.`;
           } else if (profileError.code === '23505') {
             // Unique constraint violation - profile already exists
-            toast.error('Student profile already exists. Please contact support if you need assistance.');
+            errMsg = 'Student profile already exists. Please contact support if you need assistance.';
           } else if (profileError.code === '23503') {
             // Foreign key violation
-            toast.error('Invalid user ID. Please log out and log back in.');
+            errMsg = 'Invalid user ID. Please log out and log back in.';
           } else if (profileError.code === '23514') {
             // Check constraint violation (e.g., level out of range)
-            toast.error(`Invalid data: ${profileError.message || 'Please check your input values.'}`);
-          } else {
-            toast.error(`Failed to create student profile: ${profileError.message || 'Unknown error'}`);
+            errMsg = `Invalid data: ${profileError.message || 'Please check your input values.'}`;
           }
 
+          setSubmitError(errMsg);
+          toast.error(errMsg);
           setIsSubmitting(false);
           return;
         }
@@ -319,14 +328,18 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
 
           if (authError) {
             console.error('Error getting auth user:', authError);
-            toast.error(`Failed to get user information: ${authError.message}. Please try again.`);
+            const errMsg = `Failed to get user information: ${authError.message}. Please try again.`;
+            setSubmitError(errMsg);
+            toast.error(errMsg);
             setIsSubmitting(false);
             return;
           }
 
           if (!authUser?.email) {
             console.error('Error: Could not get user email for faculty profile creation');
-            toast.error('Failed to get user email. Please try again or contact support.');
+            const errMsg = 'Failed to get user email. Please try again or contact support.';
+            setSubmitError(errMsg);
+            toast.error(errMsg);
             setIsSubmitting(false);
             return;
           }
@@ -365,7 +378,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
 
             if (updateError) {
               console.error('Error updating faculty profile:', updateError);
-              toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
+              const errMsg = `Failed to update faculty profile: ${updateError.message || 'Unknown error'}`;
+              setSubmitError(errMsg);
+              toast.error(errMsg);
               setIsSubmitting(false);
               return;
             }
@@ -421,7 +436,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
 
                 if (updateError) {
                   console.error('Error updating faculty profile after race condition:', updateError);
-                  toast.error(`Failed to update faculty profile: ${updateError.message || 'Unknown error'}`);
+                  const errMsg = `Failed to update faculty profile: ${updateError.message || 'Unknown error'}`;
+                  setSubmitError(errMsg);
+                  toast.error(errMsg);
                   setIsSubmitting(false);
                   return;
                 }
@@ -431,6 +448,7 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 // Other error - show message
                 const errorMsg = profileError.message || 'Unknown error';
                 console.error('Failed to create faculty profile:', errorMsg);
+                setSubmitError(`Failed to create faculty profile: ${errorMsg}`);
                 toast.error(`Failed to create faculty profile: ${errorMsg}`);
                 setIsSubmitting(false);
                 return;
@@ -444,7 +462,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         } catch (authErr) {
           // Catch any unexpected errors from auth.getUser()
           console.error('Unexpected error getting auth user:', authErr);
-          toast.error(`Unexpected error: ${authErr instanceof Error ? authErr.message : 'Unknown error'}`);
+          const errMsg = `Unexpected error: ${authErr instanceof Error ? authErr.message : 'Unknown error'}`;
+          setSubmitError(errMsg);
+          toast.error(errMsg);
           setIsSubmitting(false);
           return;
         }
@@ -491,7 +511,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
 
               if (verifyError) {
                 console.error('Error verifying committee profile after race condition:', verifyError);
-                toast.error(`Failed to create committee profile: ${profileError.message || 'Unknown error'}`);
+                const errMsg = `Failed to create committee profile: ${profileError.message || 'Unknown error'}`;
+                setSubmitError(errMsg);
+                toast.error(errMsg);
                 setIsSubmitting(false);
                 return;
               }
@@ -508,19 +530,17 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                 code: profileError.code
               });
 
+              let errMsg = `Failed to create committee profile: ${errorMsg}`;
+
               // Check for RLS violations
               if (profileError.code?.startsWith('PGRST') || profileError.code === '42501') {
-                toast.error(
-                  `Permission denied: Unable to create committee profile. ` +
-                  `This may be due to Row Level Security policies. ` +
-                  `Please ensure you are logged in correctly. ` +
-                  `Error: ${errorMsg}`
-                );
+                errMsg = `Permission denied: Unable to create committee profile. Please ensure you are logged in correctly.`;
               } else if (profileError.code === '23503') {
-                toast.error('Invalid user ID. Please log out and log back in.');
-              } else {
-                toast.error(`Failed to create committee profile: ${errorMsg}`);
+                errMsg = 'Invalid user ID. Please log out and log back in.';
               }
+
+              setSubmitError(errMsg);
+              toast.error(errMsg);
               setIsSubmitting(false);
               return;
             }
@@ -561,6 +581,9 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         // Success! Show success message
         toast.success('Welcome to SmartSchedule! Your profile is all set up.');
 
+        // Set redirecting state to keep UI locked/loading
+        setIsRedirecting(true);
+
         // Small delay to show success message, then redirect
         setTimeout(() => {
           // Redirect based on role to appropriate dashboard
@@ -576,13 +599,17 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
                     ? '/dashboard/registrar'
                     : '/dashboard';
 
+          console.log('Redirecting to:', dashboardRoute);
+
           // Use hard navigation to bypass Next.js Router Cache
           // This ensures middleware re-checks onboarding status with fresh data
           window.location.href = dashboardRoute;
         }, 1000);
       } else {
         console.error('Profile was not created, cannot complete onboarding');
-        toast.error('Failed to create profile. Please try again.');
+        const errMsg = 'Failed to create profile. Please try again.';
+        setSubmitError(errMsg);
+        toast.error(errMsg);
         setIsSubmitting(false);
         return;
       }
@@ -598,14 +625,12 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
         stack: error instanceof Error ? error.stack : undefined,
         error: error
       });
-      toast.error(`An unexpected error occurred: ${errorMessage}. Please try again.`);
+
+      const displayMsg = `An unexpected error occurred: ${errorMessage}. Please try again.`;
+      setSubmitError(displayMsg);
+      toast.error(displayMsg);
       setIsSubmitting(false);
     }
-
-    // Note: We don't use finally here because:
-    // 1. Success case redirects (doesn't need to reset)
-    // 2. All error cases explicitly reset isSubmitting
-    // 3. Using finally would reset isSubmitting even on success, causing flicker
   }
 
   return (
@@ -772,6 +797,14 @@ export function OnboardingForm({ userId, userName, userRole }: OnboardingFormPro
             </div>
             {errors.confirmed && (
               <p className="text-sm text-red-500 ml-7">{errors.confirmed}</p>
+            )}
+
+            {/* Submit Error Message */}
+            {submitError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong className="font-bold">Error: </strong>
+                <span className="block sm:inline">{submitError}</span>
+              </div>
             )}
           </div>
 

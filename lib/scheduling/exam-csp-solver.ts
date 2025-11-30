@@ -100,15 +100,13 @@ export function generateExamDomain(
 ): ExamDomain {
   const domain: ExamDomain = [];
 
-  // Filter rooms by type (Lecture Hall or Auditorium) and capacity
-  const suitableRooms = config.examRooms.filter((room) => {
-    if (room.type !== 'Lecture' && room.type !== 'Auditorium') return false;
-    if (room.capacity < variable.student_enrollment_count) return false;
-    return true;
-  });
+  // Accept any room type - capacity will be checked as a hard constraint later
+  // Just use all available rooms
+  const suitableRooms = config.examRooms;
 
   for (const date of config.examDays) {
     for (const time of config.examTimeSlots) {
+      // Add all available rooms
       for (const room of suitableRooms) {
         domain.push({
           date,
@@ -117,6 +115,15 @@ export function generateExamDomain(
           duration_minutes: variable.duration_minutes,
         });
       }
+
+      // Always add a "TBD" room option as fallback
+      // This allows scheduling day/time even when no suitable room is available
+      domain.push({
+        date,
+        time,
+        room: 'TBD',
+        duration_minutes: variable.duration_minutes,
+      });
     }
   }
 
@@ -196,34 +203,41 @@ export function checkExamHardConstraints(
     };
   }
 
-  // 2. Room Capacity Constraint
-  const room = config.examRooms.find((r) => r.code === assignment.room);
-  if (!room || room.capacity < variable.student_enrollment_count) {
-    return {
-      isValid: false,
-      violationType: 'room_capacity',
-      message: `Room ${assignment.room} capacity (${room?.capacity || 0}) is less than enrollment (${variable.student_enrollment_count})`,
-    };
-  }
-
-  // 3. Unique Exam Room Assignment
-  for (const [, existingAssignment] of currentState.assignments.entries()) {
-    if (
-      existingAssignment.room === assignment.room &&
-      doExamTimesOverlap(
-        existingAssignment.date,
-        existingAssignment.time,
-        existingAssignment.duration_minutes,
-        assignment.date,
-        assignment.time,
-        assignment.duration_minutes
-      )
-    ) {
+  // 2. Room Capacity Constraint (skip if room is TBD)
+  if (assignment.room !== 'TBD') {
+    const room = config.examRooms.find((r) => r.code === assignment.room);
+    if (!room || room.capacity < variable.student_enrollment_count) {
       return {
         isValid: false,
-        violationType: 'room_conflict',
-        message: `Room ${assignment.room} already occupied at ${assignment.date} ${assignment.time}`,
+        violationType: 'room_capacity',
+        message: `Room ${assignment.room} capacity (${room?.capacity || 0}) is less than enrollment (${variable.student_enrollment_count})`,
       };
+    }
+  }
+
+  // 3. Unique Exam Room Assignment (skip if room is TBD)
+  if (assignment.room !== 'TBD') {
+    for (const [, existingAssignment] of currentState.assignments.entries()) {
+      // Also skip if existing assignment has TBD room
+      if (existingAssignment.room === 'TBD') continue;
+
+      if (
+        existingAssignment.room === assignment.room &&
+        doExamTimesOverlap(
+          existingAssignment.date,
+          existingAssignment.time,
+          existingAssignment.duration_minutes,
+          assignment.date,
+          assignment.time,
+          assignment.duration_minutes
+        )
+      ) {
+        return {
+          isValid: false,
+          violationType: 'room_conflict',
+          message: `Room ${assignment.room} already occupied at ${assignment.date} ${assignment.time}`,
+        };
+      }
     }
   }
 
@@ -278,7 +292,7 @@ export function checkExamHardConstraints(
     }
   }
 
-  // 6. Room Type already checked in domain generation
+  // All constraints passed
 
   return { isValid: true };
 }

@@ -28,6 +28,21 @@ export class SchedulesRepository {
 
     return apiClient.get<StudentSchedule | FacultySchedule>(url);
   }
+  /**
+   * Generate schedule
+   */
+  async generateSchedule(termId: string): Promise<{ job_id: string }> {
+    return apiClient.post<{ job_id: string }>(API_ENDPOINTS.SCHEDULES.GENERATE, { term_id: termId });
+  }
+
+  /**
+   * Get generation status
+   */
+  async getGenerationStatus(jobId: string): Promise<{ status: string; progress: number; message?: string }> {
+    return apiClient.get<{ status: string; progress: number; message?: string }>(
+      `${API_ENDPOINTS.SCHEDULES.STATUS}?job_id=${jobId}`
+    );
+  }
 }
 
 export const schedulesRepository = new SchedulesRepository();

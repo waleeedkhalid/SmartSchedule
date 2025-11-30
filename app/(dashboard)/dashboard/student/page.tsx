@@ -21,7 +21,7 @@
  * - Follows Next.js 15 Server/Client Component best practices
  */
 
-import { getStudentCreditStats, getStudentEnrollments, getStudentExams, getStudentLevel, getStudentNumber, getUpcomingDeadlines, getUserNotifications } from "@/lib/db/student-data";
+import { getStudentCreditStats, getStudentEnrollments, getStudentExams, getStudentLevel, getStudentNumber, getUpcomingDeadlines, getUserNotifications, getRegistrationStatus } from "@/lib/db/student-data";
 import { redirect } from "next/navigation";
 import { getServerUser, getDashboardPath, validateOnboardingAndProfile } from "@/lib/server-auth";
 import { StudentDashboardTabs } from "@/components/student-dashboard-tabs";
@@ -51,13 +51,13 @@ export default async function StudentDashboardPage() {
 
   // Validate onboarding and profile status
   const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role)
-  
+
   if (needsOnboarding || !profileExists) {
     redirect('/onboarding')
   }
 
   // Fetch dashboard stats from database (including student level, student number, timeline, and notifications)
-  const [creditStats, enrollments, exams, studentLevel, studentNumber, deadlines, notifications] = await Promise.all([
+  const [creditStats, enrollments, exams, studentLevel, studentNumber, deadlines, notifications, registrationStatus] = await Promise.all([
     getStudentCreditStats(user.id),
     getStudentEnrollments(user.id),
     getStudentExams(user.id),
@@ -65,8 +65,9 @@ export default async function StudentDashboardPage() {
     getStudentNumber(user.id),
     getUpcomingDeadlines('student', 30),
     getUserNotifications(user.id, 10),
+    getRegistrationStatus(),
   ]);
-  
+
   const totalEnrollments = enrollments.length;
   const upcomingExams = exams.filter(e => {
     const examDate = new Date(`${e.date}T${e.start}`);
@@ -99,6 +100,7 @@ export default async function StudentDashboardPage() {
         totalExams={exams.length}
         initialDeadlines={deadlines}
         initialNotifications={notifications}
+        isRegistrationOpen={registrationStatus.is_open}
       />
     </div>
   );

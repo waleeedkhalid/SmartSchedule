@@ -18,6 +18,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  * Returns null if no token is found
  * 
  * OPTIMIZATION: Uses in-memory cache to avoid repeated getSession() calls
+ * SAFETY: Includes timeout protection to prevent hanging
  */
 export async function getAuthToken(): Promise<string | null> {
   if (typeof window === 'undefined') {
@@ -30,11 +31,28 @@ export async function getAuthToken(): Promise<string | null> {
     return sessionTokenCache.token;
   }
 
-  // Try to get Supabase session token
+  // Try to get Supabase session token with timeout protection
   try {
     const supabase = createClient();
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
+
+    // Create timeout promise
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 3000) // 3 second timeout
+    );
+
+    // Race between getSession and timeout
+    const sessionPromise = supabase.auth.getSession();
+    const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+    // If timeout occurred, result will be null
+    if (result === null) {
+      console.warn('Supabase getSession timed out, falling back to localStorage');
+      sessionTokenCache = null;
+      return localStorage.getItem('auth_token');
+    }
+
+    const { data: { session }, error } = result;
+
     if (!error && session?.access_token) {
       // Cache the token
       sessionTokenCache = {
@@ -46,8 +64,9 @@ export async function getAuthToken(): Promise<string | null> {
       // Clear cache if session is invalid
       sessionTokenCache = null;
     }
-  } catch {
-    // If Supabase client fails, clear cache
+  } catch (error) {
+    // If Supabase client fails, clear cache and log warning
+    console.warn('Error fetching Supabase session:', error);
     sessionTokenCache = null;
   }
 

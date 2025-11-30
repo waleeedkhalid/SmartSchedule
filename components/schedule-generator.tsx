@@ -83,6 +83,16 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     assigned: number;
     unassigned: number;
     message: string;
+    assignments?: Array<{
+      course_code: string;
+      date: string;
+      time: string;
+      room: string;
+    }>;
+    unassignedDetails?: Array<{
+      course_code: string;
+      reason: string;
+    }>;
   } | null>(null);
 
   async function handleGenerate() {
@@ -92,30 +102,23 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
 
     try {
       console.log('Getting auth header...');
-      // Get auth header first with timeout to prevent hanging
-      let authHeader: string;
-      try {
-        const authHeaderPromise = getAuthHeader();
-        const authTimeoutPromise = new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error('Authentication timeout')), 5000)
-        );
-
-        authHeader = await Promise.race([authHeaderPromise, authTimeoutPromise]);
-        console.log('Auth header obtained:', authHeader ? 'Bearer ***' : 'empty');
-      } catch (authError) {
-        console.error('Auth header error:', authError);
-        const errorMessage = authError instanceof Error
-          ? authError.message
-          : 'Authentication failed';
-
-        if (errorMessage.includes('timeout')) {
-          throw new Error('Authentication timeout: Please refresh the page and try again');
-        }
-        throw new Error(`Authentication failed: ${errorMessage}`);
-      }
+      // Get auth header (now has built-in timeout protection)
+      const authHeader = await getAuthHeader();
+      console.log('Auth header obtained:', authHeader ? 'Bearer ***' : 'empty');
 
       if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
-        throw new Error('Authentication required: No auth token available. Please log in again.');
+        console.error('No auth token available. User may need to log in.');
+        toast.error('Please log in to generate schedules', {
+          description: 'Redirecting to login page...',
+          duration: 3000,
+        });
+
+        // Give user time to read the message, then redirect
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+
+        return; // Exit function instead of throwing error
       }
 
       console.log('Fetching academic terms...');
@@ -688,7 +691,11 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               The exam scheduler uses a specialized Constraint Satisfaction Problem solver that prioritizes
               <strong> student conflict avoidance</strong> above all else. No student can have two exams at the same time.
               <br /><br />
-              <strong>Hard Constraints:</strong> Student conflicts (ABSOLUTE PRIORITY), room capacity, unique room assignment, instructor conflicts, room type (Lecture Hall/Auditorium only).
+              <strong>Priority System:</strong> Day and time are always assigned. Exams are assigned to real rooms when suitable rooms are available (sufficient capacity). If no suitable room is available, the exam is assigned to "TBD" and can be manually assigned to a room later.
+              <br /><br />
+              <strong>Hard Constraints:</strong> Student conflicts (ABSOLUTE PRIORITY), instructor conflicts, level conflicts (same-level courses at different times).
+              <br /><br />
+              <strong>Room Assignment:</strong> Room capacity is checked for real rooms. Multiple exams can use "TBD" without conflict. "TBD" exams can be manually assigned to appropriate rooms after scheduling.
               <br /><br />
               <strong>Soft Constraints:</strong> Spread student load (minimize multiple exams per day), distribute exams across exam window, theory before lab exams.
             </AlertDescription>
@@ -744,6 +751,8 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                     assigned: result.data.stats.assigned || 0,
                     unassigned: result.data.stats.unassigned || 0,
                     message: result.data.message || 'Exam scheduling completed',
+                    assignments: result.data.assignments || [],
+                    unassignedDetails: result.data.unassigned || [],
                   });
 
                   if (result.data.stats.unassigned === 0) {
@@ -793,8 +802,9 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
               )}
               <AlertTitle>{examResult.success ? 'Exam Scheduling Complete' : 'Partial Exam Scheduling'}</AlertTitle>
               <AlertDescription>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p>{examResult.message}</p>
+
                   <div className="grid grid-cols-2 gap-4 mt-2">
                     <div>
                       <p className="text-sm text-muted-foreground">Assigned</p>
@@ -805,6 +815,86 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
                       <p className="text-xl font-bold text-orange-600">{examResult.unassigned}</p>
                     </div>
                   </div>
+
+                  {examResult.assignments && examResult.assignments.length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      <h4 className="text-sm font-medium">Room Assignments:</h4>
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {(() => {
+                          const tbdExams = examResult.assignments?.filter(a => a.room === 'TBD') || [];
+                          const realRoomExams = examResult.assignments?.filter(a => a.room !== 'TBD') || [];
+
+                          return (
+                            <>
+                              {realRoomExams.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium text-green-700 dark:text-green-400">
+                                    ✓ {realRoomExams.length} exam{realRoomExams.length !== 1 ? 's' : ''} with real rooms
+                                  </p>
+                                  {realRoomExams.slice(0, 3).map((assignment, idx) => (
+                                    <div key={idx} className="flex items-center justify-between rounded-md bg-green-50 dark:bg-green-950/20 p-2 text-xs">
+                                      <Badge variant="outline" className="text-xs">
+                                        {assignment.course_code}
+                                      </Badge>
+                                      <span className="text-muted-foreground">
+                                        {assignment.date} at {assignment.time} in {assignment.room}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {realRoomExams.length > 3 && (
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                      ... and {realRoomExams.length - 3} more
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {tbdExams.length > 0 && (
+                                <div className="space-y-1 mt-2">
+                                  <p className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                                    ⚠ {tbdExams.length} exam{tbdExams.length !== 1 ? 's' : ''} need room assignment (TBD)
+                                  </p>
+                                  {tbdExams.slice(0, 3).map((assignment, idx) => (
+                                    <div key={idx} className="flex items-center justify-between rounded-md bg-blue-50 dark:bg-blue-950/20 p-2 text-xs">
+                                      <Badge variant="outline" className="text-xs">
+                                        {assignment.course_code}
+                                      </Badge>
+                                      <span className="text-muted-foreground">
+                                        {assignment.date} at {assignment.time} - Room: TBD
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {tbdExams.length > 3 && (
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                      ... and {tbdExams.length - 3} more
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {examResult.unassignedDetails && examResult.unassignedDetails.length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      <h4 className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                        ❌ Unassigned Exams ({examResult.unassignedDetails.length}):
+                      </h4>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {examResult.unassignedDetails.map((exam, idx) => (
+                          <div key={idx} className="flex items-center justify-between rounded-md bg-orange-50 dark:bg-orange-950/20 p-2 text-xs">
+                            <Badge variant="outline" className="text-xs">
+                              {exam.course_code}
+                            </Badge>
+                            <span className="text-muted-foreground">{exam.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </AlertDescription>
             </Alert>

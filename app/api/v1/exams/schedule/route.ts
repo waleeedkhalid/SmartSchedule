@@ -109,11 +109,10 @@ export async function POST(request: NextRequest) {
       supabase
         .from("course")
         .select("code, title, recommended_level, credits, weekly_hours, is_elective"),
-      // Get exam rooms (Lecture Halls and Auditoriums)
+      // Get all available rooms
       supabase
         .from("room")
-        .select("code, type, capacity")
-        .in("type", ["Lecture", "Lab"]), // Filter for large rooms
+        .select("code, type, capacity"),
       // Get time grid configuration for exam settings
       supabase
         .from("time_grid_config")
@@ -186,8 +185,8 @@ export async function POST(request: NextRequest) {
     const enrollmentMatrix: StudentEnrollmentMatrix = new Map();
     for (const enrollment of enrollments) {
       // Handle section as array or single object
-      const section = Array.isArray(enrollment.section) 
-        ? enrollment.section[0] 
+      const section = Array.isArray(enrollment.section)
+        ? enrollment.section[0]
         : enrollment.section;
       if (!section?.course_code) continue;
 
@@ -286,25 +285,16 @@ export async function POST(request: NextRequest) {
       examTimeSlots.push(`${String(hour).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`);
     }
 
-    // Filter rooms to only Lecture Halls/Auditoriums with sufficient capacity
+    // Use all available rooms - let the CSP solver handle capacity constraints
     const examRooms = ((rooms || []) as RoomQueryResult[])
-      .filter((r) => {
-        // Only large rooms for exams
-        return r.type === "Lecture" && (r.capacity || 0) >= 50;
-      })
       .map((r) => ({
         code: r.code,
         capacity: r.capacity || 0,
         type: r.type as "Lecture" | "Lab" | "Auditorium",
       }));
 
-    if (examRooms.length === 0) {
-      return createErrorResponse(
-        400,
-        ErrorCodes.VALIDATION_ERROR,
-        "No suitable exam rooms found. Exams require Lecture Halls or Auditoriums with capacity >= 50."
-      );
-    }
+    // Allow scheduling to proceed even if no rooms are available
+    // Exams will be left unassigned if no suitable assignments can be found
 
     // Configure CSP solver
     const cspConfig: ExamCSPSolverConfig = {
@@ -382,11 +372,11 @@ export async function POST(request: NextRequest) {
         unassigned: result.unassigned,
         csp_stats: result.stats.softConstraintCost
           ? {
-              studentLoadPenalty: result.stats.softConstraintCost.studentLoadPenalty,
-              courseLoadImbalance: result.stats.softConstraintCost.courseLoadImbalance,
-              finalsFollowUp: result.stats.softConstraintCost.finalsFollowUp,
-              total: result.stats.softConstraintCost.total,
-            }
+            studentLoadPenalty: result.stats.softConstraintCost.studentLoadPenalty,
+            courseLoadImbalance: result.stats.softConstraintCost.courseLoadImbalance,
+            finalsFollowUp: result.stats.softConstraintCost.finalsFollowUp,
+            total: result.stats.softConstraintCost.total,
+          }
           : undefined,
       },
       200

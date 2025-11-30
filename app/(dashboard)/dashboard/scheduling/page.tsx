@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BookOpen, 
-  Calendar, 
-  DoorOpen, 
-  Users, 
-  AlertCircle, 
+import {
+  BookOpen,
+  Calendar,
+  DoorOpen,
+  Users,
+  AlertCircle,
   GitBranch,
   CheckCircle,
   BarChart3
@@ -45,7 +45,7 @@ export default async function SchedulingDashboardPage() {
 
   // Validate onboarding and profile status
   const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role)
-  
+
   if (needsOnboarding || !profileExists) {
     redirect('/onboarding')
   }
@@ -54,9 +54,9 @@ export default async function SchedulingDashboardPage() {
   const stats = await getSchedulingStats();
   const scheduleStatus = await getScheduleStatus();
 
-  const isSystemReady = stats.coursesCount > 0 && 
-                        stats.roomsCount > 0 && 
-                        stats.instructorsCount > 0;
+  const isSystemReady = stats.coursesCount > 0 &&
+    stats.roomsCount > 0 &&
+    stats.instructorsCount > 0;
 
   return (
     <div className="p-8">
@@ -119,50 +119,50 @@ export default async function SchedulingDashboardPage() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Courses</CardTitle>
-              <BookOpen className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.coursesCount}</div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Courses</CardTitle>
+                  <BookOpen className="h-4 w-4 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.coursesCount}</div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Sections</CardTitle>
-              <Calendar className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.sectionsCount}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.draftSectionsCount} draft, {stats.releasedSectionsCount} released
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Sections</CardTitle>
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.sectionsCount}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats.draftSectionsCount} draft, {stats.releasedSectionsCount} released
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Rooms</CardTitle>
-              <DoorOpen className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.roomsCount}</div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Rooms</CardTitle>
+                  <DoorOpen className="h-4 w-4 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.roomsCount}</div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Instructors</CardTitle>
-              <Users className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.instructorsCount}</div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Instructors</CardTitle>
+                  <Users className="h-4 w-4 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.instructorsCount}</div>
+                </CardContent>
+              </Card>
 
-        </div>
+            </div>
 
             {/* Schedule Generation Section - Wrapped in ClientOnly to prevent hydration errors from state logic and progress bars */}
             {isSystemReady ? (
