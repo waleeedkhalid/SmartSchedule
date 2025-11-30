@@ -19,18 +19,15 @@
  * - Server Component: Fetches data from database
  * - Client Component: Handles tabbed interface and interactivity
  * - Follows Next.js 15 Server/Client Component best practices
+ *
+ * Performance Optimizations:
+ * - Single optimized data fetch function
+ * - Parallel queries with shared Supabase client
+ * - Minimal data selection for initial render
+ * - React.cache() for request-level memoization
  */
 
-import {
-  getStudentCreditStats,
-  getStudentEnrollments,
-  getStudentExams,
-  getStudentLevel,
-  getStudentNumber,
-  getUpcomingDeadlines,
-  getUserNotifications,
-  getRegistrationStatus,
-} from "@/lib/db/student-data";
+import { getStudentDashboardData } from "@/lib/db/student/dashboard-data";
 import { redirect } from "next/navigation";
 import {
   getServerUser,
@@ -72,32 +69,8 @@ export default async function StudentDashboardPage() {
     redirect("/onboarding");
   }
 
-  // Fetch dashboard stats from database (including student level, student number, timeline, and notifications)
-  const [
-    creditStats,
-    enrollments,
-    exams,
-    studentLevel,
-    studentNumber,
-    deadlines,
-    notifications,
-    registrationStatus,
-  ] = await Promise.all([
-    getStudentCreditStats(user.id),
-    getStudentEnrollments(user.id),
-    getStudentExams(user.id),
-    getStudentLevel(user.id),
-    getStudentNumber(user.id),
-    getUpcomingDeadlines("student", 30),
-    getUserNotifications(user.id, 10),
-    getRegistrationStatus(),
-  ]);
-
-  const totalEnrollments = enrollments.length;
-  const upcomingExams = exams.filter((e) => {
-    const examDate = new Date(`${e.date}T${e.start}`);
-    return examDate > new Date();
-  }).length;
+  // Fetch all dashboard data in a single optimized call
+  const dashboardData = await getStudentDashboardData(user.id);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -110,8 +83,10 @@ export default async function StudentDashboardPage() {
           Manage your schedule, register for courses, and track your exams
         </p>
         <div className="flex items-center gap-4 mt-2">
-          {studentNumber && (
-            <CopyableStudentNumber studentNumber={studentNumber} />
+          {dashboardData.studentNumber && (
+            <CopyableStudentNumber
+              studentNumber={dashboardData.studentNumber}
+            />
           )}
         </div>
       </div>
@@ -119,14 +94,14 @@ export default async function StudentDashboardPage() {
       {/* Main Tabbed Interface - Client Component with server-fetched data */}
       <StudentDashboardTabs
         userId={user.id}
-        studentLevel={studentLevel}
-        creditStats={creditStats}
-        totalEnrollments={totalEnrollments}
-        upcomingExams={upcomingExams}
-        totalExams={exams.length}
-        initialDeadlines={deadlines}
-        initialNotifications={notifications}
-        isRegistrationOpen={registrationStatus.is_open}
+        studentLevel={dashboardData.studentLevel}
+        creditStats={dashboardData.creditStats}
+        totalEnrollments={dashboardData.enrollmentCount}
+        upcomingExams={dashboardData.upcomingExamsCount}
+        totalExams={dashboardData.totalExamsCount}
+        initialDeadlines={dashboardData.deadlines}
+        initialNotifications={dashboardData.notifications}
+        isRegistrationOpen={dashboardData.registrationStatus.is_open}
       />
     </div>
   );

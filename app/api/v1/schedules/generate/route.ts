@@ -4,8 +4,11 @@
  * POST /api/v1/schedules/generate - Generate schedule for a term
  *
  * Only scheduling role can generate schedules.
- * This endpoint uses the scheduling algorithm to assign rooms and time slots
- * to all draft sections, then creates schedule entries.
+ * This endpoint uses the CSP scheduling algorithm to:
+ * 1. Assign rooms and time slots to all draft sections
+ * 2. Auto-assign instructors to sections (with load balancing)
+ * 3. Schedule final exams with room assignments
+ * All operations target the current active semester.
  */
 
 import { NextRequest } from "next/server";
@@ -21,7 +24,18 @@ import {
   generateSchedule,
   type SchedulingInput,
 } from "@/lib/scheduling/algorithm";
-import { solveCSP } from "@/lib/scheduling/csp-solver";
+import {
+  solveCSP,
+  assignInstructorsToSections,
+  type InstructorForAssignment,
+  type InstructorAssignmentResult,
+} from "@/lib/scheduling/csp-solver";
+import {
+  solveExamCSP,
+  type ExamVariable,
+  type ExamCSPSolverConfig,
+  type StudentEnrollmentMatrix,
+} from "@/lib/scheduling/exam-csp-solver";
 
 interface MeetingPattern {
   days?: string[];
@@ -92,6 +106,8 @@ export async function POST(request: NextRequest) {
       roomsResult,
       timeGridResult,
       existingSchedulesResult,
+      instructorsResult,
+      enrollmentsResult,
     ] = await Promise.all([
       // Get all courses (for creating sections)
       supabase
@@ -116,6 +132,17 @@ export async function POST(request: NextRequest) {
         .single(),
       // Get existing schedules for this term
       supabase.from("schedule").select("section_id").eq("term_id", term_id),
+      // Get all instructors for auto-assignment
+      supabase
+        .from("faculty_profile")
+        .select("id, name, email, max_load_per_week, unavailable_times"),
+      // Get all student enrollments for exam scheduling
+      supabase
+        .from("student_enrollment")
+        .select(
+          "student_id, section_id, status, section:section_id(course_code)"
+        )
+        .eq("status", "registered"),
     ]);
 
     if (coursesResult.error) {
@@ -130,11 +157,67 @@ export async function POST(request: NextRequest) {
       throw roomsResult.error;
     }
 
+    // Handle instructors fetch result (don't fail if no instructors)
+    if (instructorsResult.error) {
+      console.warn("Could not fetch instructors:", instructorsResult.error);
+    }
+
+    // Handle enrollments fetch result (don't fail if no enrollments)
+    if (enrollmentsResult.error) {
+      console.warn("Could not fetch enrollments:", enrollmentsResult.error);
+    }
+
     const courses = coursesResult.data || [];
     const allSections = sectionsResult.data || [];
     const rooms = (roomsResult.data || []) as RoomForScheduling[];
     const existingSchedules = (existingSchedulesResult.data ||
       []) as ScheduleEntry[];
+
+    // Process instructors for auto-assignment
+    const rawInstructors = instructorsResult.data || [];
+
+    // Calculate current load for each instructor based on existing sections
+    const instructorSectionCounts = new Map<string, number>();
+    for (const section of allSections) {
+      if (section.instructor_id) {
+        const current = instructorSectionCounts.get(section.instructor_id) || 0;
+        // Estimate hours based on activity type (3 for lecture, 2 for lab/tutorial)
+        const hours =
+          section.activity === "lab" || section.activity === "tutorial" ? 2 : 3;
+        instructorSectionCounts.set(section.instructor_id, current + hours);
+      }
+    }
+
+    // Prepare instructors for assignment
+    interface RawInstructor {
+      id: string;
+      name: string;
+      email: string | null;
+      max_load_per_week: number | null;
+      unavailable_times: Array<{
+        day: string;
+        slots: Array<{ start: string; end: string; type: string }>;
+      }> | null;
+    }
+
+    const instructorsForAssignment: InstructorForAssignment[] = (
+      rawInstructors as RawInstructor[]
+    ).map((inst) => ({
+      id: inst.id,
+      name: inst.name,
+      email: inst.email,
+      max_load_per_week: inst.max_load_per_week,
+      unavailable_times: inst.unavailable_times,
+      current_load: instructorSectionCounts.get(inst.id) || 0,
+    }));
+
+    // Process enrollments for exam scheduling
+    const enrollments = (enrollmentsResult.data || []) as Array<{
+      student_id: string;
+      section_id: string;
+      status: string;
+      section: { course_code: string } | { course_code: string }[] | null;
+    }>;
 
     // Step 1: Create draft sections for courses that don't have any sections
     // Only create sections for SWE courses in levels 4-8 (per PRD scheduling scope)
@@ -412,7 +495,56 @@ export async function POST(request: NextRequest) {
       result = await generateSchedule(schedulingInput);
     }
 
-    // Update sections with assigned room and meeting pattern
+    // Step 2: Auto-assign instructors to all scheduled sections
+    // Re-evaluate all sections and assign instructors based on availability and load balancing
+    let instructorAssignmentResults: InstructorAssignmentResult[] = [];
+    let instructorsAssigned = 0;
+    let instructorAssignmentsFailed = 0;
+
+    if (result.assignments.length > 0 && instructorsForAssignment.length > 0) {
+      // Prepare sections with time slots for instructor assignment
+      const sectionsForInstructorAssignment = result.assignments.map(
+        (assignment) => ({
+          id: assignment.section_id,
+          course_code: assignment.course_code,
+          time_slot: assignment.time_slot,
+          weekly_hours: courseWeeklyHoursMap.get(assignment.course_code) || 3,
+        })
+      );
+
+      // Reset instructor loads since we're re-evaluating all sections
+      const freshInstructors = instructorsForAssignment.map((inst) => ({
+        ...inst,
+        current_load: 0, // Start fresh for this scheduling run
+      }));
+
+      instructorAssignmentResults = assignInstructorsToSections(
+        sectionsForInstructorAssignment,
+        freshInstructors,
+        [] // No existing assignments since we're assigning all
+      );
+
+      // Count successes and failures
+      instructorsAssigned = instructorAssignmentResults.filter(
+        (r) => r.success
+      ).length;
+      instructorAssignmentsFailed = instructorAssignmentResults.filter(
+        (r) => !r.success
+      ).length;
+    }
+
+    // Create a map of section_id to assigned instructor_id
+    const instructorAssignmentMap = new Map<string, string | null>();
+    for (const assignmentResult of instructorAssignmentResults) {
+      if (assignmentResult.success && assignmentResult.instructor_id) {
+        instructorAssignmentMap.set(
+          assignmentResult.section_id,
+          assignmentResult.instructor_id
+        );
+      }
+    }
+
+    // Update sections with assigned room, meeting pattern, and instructor
     const updatePromises = result.assignments.map(async (assignment) => {
       const meetingPattern = {
         days: assignment.time_slot.days,
@@ -424,6 +556,7 @@ export async function POST(request: NextRequest) {
       const updateData: {
         meeting_pattern: typeof meetingPattern;
         room_code?: string;
+        instructor_id?: string | null;
       } = {
         meeting_pattern: meetingPattern,
       };
@@ -431,6 +564,14 @@ export async function POST(request: NextRequest) {
       // Only update room if one was assigned
       if (assignment.room_code) {
         updateData.room_code = assignment.room_code;
+      }
+
+      // Update instructor if one was assigned
+      const assignedInstructorId = instructorAssignmentMap.get(
+        assignment.section_id
+      );
+      if (assignedInstructorId !== undefined) {
+        updateData.instructor_id = assignedInstructorId;
       }
 
       return supabase
@@ -457,167 +598,210 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Schedule exams for all courses with scheduled sections
-    // Get unique courses from scheduled sections
+    // Schedule exams for all courses with scheduled sections using CSP solver
+    // Step 3: Schedule final exams with room assignments
     const scheduledCourses = new Set(
       result.assignments.map((a) => a.course_code)
     );
 
-    // Get existing exams for this term's courses to avoid duplicates
-    const { data: existingExams } = await supabase
-      .from("exam")
-      .select("course_code, date")
-      .in("course_code", Array.from(scheduledCourses));
+    // Build student enrollment matrix for exam conflict checking
+    const enrollmentMatrix: StudentEnrollmentMatrix = new Map();
+    for (const enrollment of enrollments) {
+      const section = Array.isArray(enrollment.section)
+        ? enrollment.section[0]
+        : enrollment.section;
+      if (!section?.course_code) continue;
 
-    const existingExamKeys = new Set(
-      (existingExams || []).map((e) => `${e.course_code}-${e.date}`)
-    );
-
-    // Get exam rooms (use lecture rooms for exams)
-    const examRooms = rooms.filter((r) => r.type === "Lecture");
-
-    if (examRooms.length === 0) {
-      console.warn("No lecture rooms available for exam scheduling");
+      const studentId = enrollment.student_id;
+      if (!enrollmentMatrix.has(studentId)) {
+        enrollmentMatrix.set(studentId, new Set());
+      }
+      enrollmentMatrix.get(studentId)!.add(section.course_code);
     }
 
-    // Calculate exam dates based on term dates and exam_days
-    const examDates: string[] = [];
+    // Prepare exam variables for CSP solver
+    const courseSectionMap = new Map<string, typeof result.assignments>();
+    for (const assignment of result.assignments) {
+      if (!courseSectionMap.has(assignment.course_code)) {
+        courseSectionMap.set(assignment.course_code, []);
+      }
+      courseSectionMap.get(assignment.course_code)!.push(assignment);
+    }
+
+    const examVariables: ExamVariable[] = [];
+    for (const courseCode of scheduledCourses) {
+      const courseSections = courseSectionMap.get(courseCode) || [];
+      const course = courses.find(
+        (c: { code: string }) => c.code === courseCode
+      );
+
+      // Calculate total enrollment from sections
+      const totalEnrollment = sectionsToSchedule
+        .filter((s) => s.course_code === courseCode)
+        .reduce((sum, s) => sum + (s.capacity || 30), 0);
+
+      // Get instructor from first section
+      const assignedInstructorId =
+        instructorAssignmentMap.get(courseSections[0]?.section_id || "") ||
+        null;
+
+      // Check if course has lab component
+      const hasLab = courseSections.some((s) => s.activity === "lab");
+
+      examVariables.push({
+        course_code: courseCode,
+        course_title: course?.title || courseCode,
+        duration_minutes: 120, // Default 2-hour exam
+        student_enrollment_count: totalEnrollment,
+        instructor_id: assignedInstructorId,
+        course_level: course?.recommended_level || 4,
+        has_lab_component: hasLab,
+      });
+    }
+
+    // Configure exam scheduling
+    let examSchedulingResult: {
+      success: boolean;
+      assigned: number;
+      unassigned: number;
+      assignments: Array<{
+        course_code: string;
+        date: string;
+        time: string;
+        room: string;
+      }>;
+      unassignedDetails: Array<{
+        course_code: string;
+        reason: string;
+      }>;
+    } = {
+      success: true,
+      assigned: 0,
+      unassigned: 0,
+      assignments: [],
+      unassignedDetails: [],
+    };
+
     if (
-      term.start_date &&
-      term.end_date &&
+      examVariables.length > 0 &&
       timeGridConfig.exam_days &&
       timeGridConfig.exam_days.length > 0
     ) {
-      const startDate = new Date(term.start_date);
-      const endDate = new Date(term.end_date);
+      // Generate exam days from configuration
+      const examDays: string[] = [];
+      const today = new Date();
+      const examDaysConfig = timeGridConfig.exam_days as string[];
 
-      // Day name to day of week mapping
-      const dayMap: { [key: string]: number } = {
-        Sunday: 0,
-        Monday: 1,
-        Tuesday: 2,
-        Wednesday: 3,
-        Thursday: 4,
-        Friday: 5,
-        Saturday: 6,
+      // Generate exam dates for the next 10 weeks on exam days
+      for (let i = 0; i < 70; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+        if (examDaysConfig.includes(dayName)) {
+          examDays.push(date.toISOString().split("T")[0]);
+          if (examDays.length >= 10) break; // Limit to 10 exam days
+        }
+      }
+
+      // Generate exam time slots
+      const examTimeSlots: string[] = [];
+      const [startHour] = (timeGridConfig.exam_start_time || "09:00:00")
+        .split(":")
+        .map(Number);
+      const [endHour] = (timeGridConfig.exam_end_time || "17:00:00")
+        .split(":")
+        .map(Number);
+
+      // Generate slots every 3 hours
+      for (let hour = startHour; hour < endHour; hour += 3) {
+        examTimeSlots.push(`${String(hour).padStart(2, "0")}:00`);
+      }
+
+      // Prepare exam rooms
+      const examRooms = rooms.map((r) => ({
+        code: r.code,
+        capacity: r.capacity || 0,
+        type: r.type as "Lecture" | "Lab" | "Auditorium",
+      }));
+
+      // Configure and run exam CSP solver
+      const examConfig: ExamCSPSolverConfig = {
+        examDays,
+        examTimeSlots,
+        examRooms,
+        studentEnrollmentMatrix: enrollmentMatrix,
+        maxBacktracks: 50000,
+        enableForwardChecking: true,
+        enableSoftConstraints: true,
+        softConstraintWeights: {
+          studentLoadPenalty: 20,
+          courseLoadImbalance: 10,
+          finalsFollowUp: 5,
+        },
       };
 
-      const examDayNumbers = timeGridConfig.exam_days
-        .map((day: string) => dayMap[day] ?? -1)
-        .filter((d: number) => d >= 0);
+      try {
+        const examResult = await solveExamCSP(examVariables, examConfig);
 
-      // Find exam dates within term (typically midterm and final)
-      // Midterm: around 1/3 of term
-      // Final: near end of term
-      const termDuration = endDate.getTime() - startDate.getTime();
-      const midtermDate = new Date(startDate.getTime() + termDuration / 3);
-      const finalDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 1 week before end
-
-      // Find closest exam day to midterm and final dates
-      for (const targetDate of [midtermDate, finalDate]) {
-        for (let i = 0; i < 7; i++) {
-          const checkDate = new Date(targetDate);
-          checkDate.setDate(targetDate.getDate() + i - 3);
-
-          if (checkDate >= startDate && checkDate <= endDate) {
-            const dayOfWeek = checkDate.getDay();
-            if (examDayNumbers.includes(dayOfWeek)) {
-              const dateStr = checkDate.toISOString().split("T")[0];
-              if (!examDates.includes(dateStr)) {
-                examDates.push(dateStr);
-                break;
-              }
-            }
-          }
+        // Delete existing exams for scheduled courses
+        if (examResult.assignments.size > 0) {
+          const courseCodes = Array.from(scheduledCourses);
+          await supabase.from("exam").delete().in("course_code", courseCodes);
         }
-      }
-    }
 
-    // Create exams for each course
-    const examEntries: Array<{
-      course_code: string;
-      date: string;
-      start_time: string;
-      duration_minutes: number;
-      room_codes: string[];
-      created_by: string | null;
-    }> = [];
-
-    if (
-      examDates.length > 0 &&
-      examRooms.length > 0 &&
-      timeGridConfig.exam_start_time &&
-      timeGridConfig.exam_end_time
-    ) {
-      // Parse exam time window
-      const [startHour, startMin] = timeGridConfig.exam_start_time
-        .split(":")
-        .map(Number);
-      const [endHour, endMin] = timeGridConfig.exam_end_time
-        .split(":")
-        .map(Number);
-      const examStartMinutes = startHour * 60 + startMin;
-      const examEndMinutes = endHour * 60 + endMin;
-
-      // Default exam duration: 2 hours (120 minutes)
-      const defaultExamDuration = 120;
-
-      let roomIndex = 0;
-      let currentTime = examStartMinutes;
-
-      for (const courseCode of scheduledCourses) {
-        for (const examDate of examDates) {
-          const examKey = `${courseCode}-${examDate}`;
-
-          // Skip if exam already exists
-          if (existingExamKeys.has(examKey)) {
-            continue;
-          }
-
-          // Calculate start time
-          if (currentTime + defaultExamDuration > examEndMinutes) {
-            // Move to next day or next room group
-            currentTime = examStartMinutes;
-            roomIndex =
-              (roomIndex + 1) % Math.max(1, Math.floor(examRooms.length / 2));
-          }
-
-          // Format start time
-          const hours = Math.floor(currentTime / 60);
-          const minutes = currentTime % 60;
-          const startTime = `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:00`;
-
-          // Assign rooms (use 1-2 rooms per exam depending on capacity needs)
-          const assignedRooms = examRooms
-            .slice(roomIndex, roomIndex + 2)
-            .map((r) => r.code);
-
-          examEntries.push({
+        // Insert new exams
+        const examsToInsert = [];
+        for (const [
+          courseCode,
+          assignment,
+        ] of examResult.assignments.entries()) {
+          examsToInsert.push({
             course_code: courseCode,
-            date: examDate,
-            start_time: startTime,
-            duration_minutes: defaultExamDuration,
-            room_codes: assignedRooms,
+            date: assignment.date,
+            start_time: assignment.time,
+            duration_minutes: assignment.duration_minutes,
+            room_codes: [assignment.room],
             created_by: user.id,
           });
-
-          // Move time forward for next exam
-          currentTime += defaultExamDuration + 30; // 30 min buffer between exams
         }
-      }
 
-      // Insert exams
-      if (examEntries.length > 0) {
-        const { error: examInsertError } = await supabase
-          .from("exam")
-          .insert(examEntries);
+        if (examsToInsert.length > 0) {
+          const { error: examInsertError } = await supabase
+            .from("exam")
+            .insert(examsToInsert);
 
-        if (examInsertError) {
-          console.error("Error creating exams:", examInsertError);
-          // Don't fail the entire request if exam creation fails
+          if (examInsertError) {
+            console.error("Error creating exams:", examInsertError);
+          }
         }
+
+        examSchedulingResult = {
+          success: examResult.success,
+          assigned: examResult.stats.assigned,
+          unassigned: examResult.stats.unassigned,
+          assignments: Array.from(examResult.assignments.entries()).map(
+            ([courseCode, assignment]) => ({
+              course_code: courseCode,
+              date: assignment.date,
+              time: assignment.time,
+              room: assignment.room,
+            })
+          ),
+          unassignedDetails: examResult.unassigned,
+        };
+      } catch (examError) {
+        console.error("Error in exam CSP solver:", examError);
+        examSchedulingResult.success = false;
+        examSchedulingResult.unassignedDetails = [
+          {
+            course_code: "ALL",
+            reason:
+              "Exam scheduling failed: " +
+              (examError instanceof Error
+                ? examError.message
+                : "Unknown error"),
+          },
+        ];
       }
     }
 
@@ -641,21 +825,53 @@ export async function POST(request: NextRequest) {
           }
         : undefined;
 
+    // Build comprehensive message
+    let message = creationMessage;
+    if (result.success) {
+      message += `Successfully generated schedule for ${result.assignments.length} sections`;
+    } else {
+      message += `Partially generated schedule: ${result.assignments.length} assigned, ${result.unassigned.length} unassigned`;
+    }
+    message += `. Instructors: ${instructorsAssigned} assigned`;
+    if (instructorAssignmentsFailed > 0) {
+      message += `, ${instructorAssignmentsFailed} failed`;
+    }
+    message += `. Exams: ${examSchedulingResult.assigned} scheduled`;
+    if (examSchedulingResult.unassigned > 0) {
+      message += `, ${examSchedulingResult.unassigned} unassigned`;
+    }
+    message += ".";
+
     return createSuccessResponse(
       {
-        message:
-          creationMessage +
-          (result.success
-            ? `Successfully generated schedule for ${result.assignments.length} sections`
-            : `Partially generated schedule: ${result.assignments.length} assigned, ${result.unassigned.length} unassigned`),
+        message,
         stats: {
           total_sections: draftSections.length,
-          added: result.assignments.length,
+          sections_assigned: result.assignments.length,
+          sections_unassigned: result.unassigned.length,
           already_scheduled: existingSectionIds.size,
-          unassigned: result.unassigned.length,
-          created: createdSections.length,
+          sections_created: createdSections.length,
+          instructors_assigned: instructorsAssigned,
+          instructors_failed: instructorAssignmentsFailed,
+          exams_scheduled: examSchedulingResult.assigned,
+          exams_unassigned: examSchedulingResult.unassigned,
         },
         unassigned: unassignedDetails,
+        instructor_assignments: instructorAssignmentResults
+          .filter((r) => r.success)
+          .map((r) => ({
+            section_id: r.section_id,
+            instructor_id: r.instructor_id,
+            instructor_name: r.instructor_name,
+          })),
+        instructor_failures: instructorAssignmentResults
+          .filter((r) => !r.success)
+          .map((r) => ({
+            section_id: r.section_id,
+            reason: r.reason,
+          })),
+        exam_assignments: examSchedulingResult.assignments,
+        exam_unassigned: examSchedulingResult.unassignedDetails,
         csp_stats: cspStats,
       },
       200

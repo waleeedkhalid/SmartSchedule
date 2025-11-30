@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, Calendar, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, Calendar, TrendingUp } from "lucide-react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,8 +23,8 @@ import {
   Tooltip,
   Legend,
   Filler,
-} from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+} from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -44,146 +50,314 @@ interface ChartData {
     [key: string]: any;
   }>;
 }
+
+interface ScheduleCourse {
+  course_code: string;
+  course_title: string;
+  credits: number;
+  sections: Array<{
+    section_id: string;
+    section_no: string;
+    type: string;
+    meeting_pattern?: {
+      days?: string[];
+      start?: string;
+      duration?: number;
+    };
+  }>;
+}
+
+interface ScheduleResponse {
+  schedule: ScheduleCourse[];
+  is_empty: boolean;
+}
+
+interface ElectivePreference {
+  id: string;
+  course_code: string;
+  rank: number;
+  course: {
+    code: string;
+    title: string;
+    credits: number;
+    is_elective: boolean;
+  };
+}
+
+interface ElectivePreferencesResponse {
+  preferences: ElectivePreference[];
+  available_electives: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    is_elective: boolean;
+  }>;
+}
+
 export function StudentDashboardCharts() {
   const [isMounted, setIsMounted] = useState(false);
   const [enrollmentData, setEnrollmentData] = useState<ChartData | null>(null);
-  const [weeklyScheduleData, setWeeklyScheduleData] = useState<ChartData | null>(null);
-  const [gradeTrendsData, setGradeTrendsData] = useState<ChartData | null>(null);
-  const [electivePreferencesData, setElectivePreferencesData] = useState<ChartData | null>(null);
+  const [weeklyScheduleData, setWeeklyScheduleData] =
+    useState<ChartData | null>(null);
+  const [gradeTrendsData, setGradeTrendsData] = useState<ChartData | null>(
+    null
+  );
+  const [electivePreferencesData, setElectivePreferencesData] =
+    useState<ChartData | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
-    // setLastUpdate(new Date());
 
     async function loadData() {
-      // TODO: Replace with real API calls
-      // For now, using empty data structure
-      const creditStats = {
-        required_credits: 0,
-        elective_credits: 0,
-        total: 0,
-        enrolled_sections: 0,
-        available_credits: 20,
-      };
-      // const enrollments: Enrollment[] = []; // Unused variable
-      interface Schedule {
-        schedule: unknown[];
-      }
-      const schedule: Schedule = { schedule: [] };
+      try {
+        // Fetch schedule data from API
+        const scheduleRes = await fetch("/api/v1/schedules/me");
+        const scheduleJson = await scheduleRes.json();
+        const scheduleData: ScheduleResponse = scheduleJson.data || {
+          schedule: [],
+          is_empty: true,
+        };
 
-      // Enrollment data (Doughnut)
-      const requiredCredits = creditStats.required_credits || 0;
-      const electiveCredits = creditStats.elective_credits || 0;
-      setEnrollmentData({
-        labels: ['Required Courses', 'Elective Courses'],
-        datasets: [{
-          data: [requiredCredits, electiveCredits],
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.85)',
-            'rgba(139, 92, 246, 0.85)',
-          ],
-          borderColor: '#ffffff',
-          borderWidth: 3,
-          hoverOffset: 8,
-        }],
-      });
+        // Fetch all courses to determine which are electives
+        const coursesRes = await fetch("/api/v1/courses");
+        const coursesJson = await coursesRes.json();
+        const coursesMap = new Map<string, { is_elective: boolean }>();
 
-      // Weekly schedule data (Bar)
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-      const dayCredits: Record<string, number> = {};
-      days.forEach(day => dayCredits[day] = 0);
-
-      // Fix: Schedule API returns courses with sections array, not flat sections
-      // Ensure schedule is an array of courses
-      const scheduleArray = Array.isArray(schedule)
-        ? schedule
-        : (schedule?.schedule && Array.isArray(schedule.schedule))
-          ? schedule.schedule
-          : [];
-
-      // Iterate through each course and then through its sections
-      interface CourseWithSections {
-        sections?: Array<{
-          meeting_pattern?: {
-            days?: string[];
-          };
-          credits?: number;
-        }>;
-        credits?: number;
-      }
-      scheduleArray.forEach((course: CourseWithSections) => {
-        if (course.sections && Array.isArray(course.sections)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          course.sections.forEach((section: any) => {
-            const pattern = section.meeting_pattern;
-            if (pattern?.days && Array.isArray(pattern.days)) {
-              // Use course credits (each section belongs to a course)
-              const credits = course.credits || section.credits || 3;
-              pattern.days.forEach((day: string) => {
-                if (dayCredits.hasOwnProperty(day)) {
-                  dayCredits[day] += credits;
-                }
+        // The courses API returns an array directly in data
+        if (Array.isArray(coursesJson.data)) {
+          coursesJson.data.forEach(
+            (course: { code: string; course_type: string }) => {
+              coursesMap.set(course.code, {
+                is_elective: course.course_type === "elective",
               });
             }
-          });
+          );
         }
-      });
 
-      setWeeklyScheduleData({
-        labels: days,
-        datasets: [{
-          label: 'Credit Hours',
-          data: days.map(day => dayCredits[day] || 0),
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(139, 92, 246, 0.8)',
-            'rgba(236, 72, 153, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(245, 158, 11, 0.8)',
+        // Calculate enrollment credits (required vs elective)
+        let requiredCredits = 0;
+        let electiveCredits = 0;
+
+        scheduleData.schedule.forEach((course) => {
+          const courseInfo = coursesMap.get(course.course_code);
+          if (courseInfo?.is_elective) {
+            electiveCredits += course.credits;
+          } else {
+            requiredCredits += course.credits;
+          }
+        });
+
+        setEnrollmentData({
+          labels: ["Required Courses", "Elective Courses"],
+          datasets: [
+            {
+              data: [requiredCredits, electiveCredits],
+              backgroundColor: [
+                "rgba(59, 130, 246, 0.85)",
+                "rgba(139, 92, 246, 0.85)",
+              ],
+              borderColor: "#ffffff",
+              borderWidth: 3,
+              hoverOffset: 8,
+            },
           ],
-          borderColor: [
-            'rgb(59, 130, 246)',
-            'rgb(139, 92, 246)',
-            'rgb(236, 72, 153)',
-            'rgb(34, 197, 94)',
-            'rgb(245, 158, 11)',
+        });
+
+        // Weekly schedule data (Bar)
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+        const dayCredits: Record<string, number> = {};
+        days.forEach((day) => (dayCredits[day] = 0));
+
+        // Process schedule to count credits per day
+        scheduleData.schedule.forEach((course: ScheduleCourse) => {
+          if (course.sections && Array.isArray(course.sections)) {
+            course.sections.forEach((section) => {
+              const pattern = section.meeting_pattern;
+              if (pattern?.days && Array.isArray(pattern.days)) {
+                // Each day the section meets adds the course credits to that day
+                pattern.days.forEach((day: string) => {
+                  if (Object.prototype.hasOwnProperty.call(dayCredits, day)) {
+                    dayCredits[day] += course.credits;
+                  }
+                });
+              }
+            });
+          }
+        });
+
+        setWeeklyScheduleData({
+          labels: days,
+          datasets: [
+            {
+              label: "Credit Hours",
+              data: days.map((day) => dayCredits[day] || 0),
+              backgroundColor: [
+                "rgba(59, 130, 246, 0.8)",
+                "rgba(139, 92, 246, 0.8)",
+                "rgba(236, 72, 153, 0.8)",
+                "rgba(34, 197, 94, 0.8)",
+                "rgba(245, 158, 11, 0.8)",
+              ],
+              borderColor: [
+                "rgb(59, 130, 246)",
+                "rgb(139, 92, 246)",
+                "rgb(236, 72, 153)",
+                "rgb(34, 197, 94)",
+                "rgb(245, 158, 11)",
+              ],
+              borderWidth: 2,
+              borderRadius: 8,
+            },
           ],
-          borderWidth: 2,
-          borderRadius: 8,
-        }],
-      });
+        });
 
-      // Grade trends (Line) - Mock data
-      setGradeTrendsData({
-        labels: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Current'],
-        datasets: [{
-          label: 'GPA',
-          data: [3.2, 3.4, 3.5, 3.6, 3.7, 3.8],
-          borderColor: 'rgb(34, 197, 94)',
-          backgroundColor: 'rgba(34, 197, 94, 0.15)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: 'rgb(34, 197, 94)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 3,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-        }],
-      });
+        // Grade trends (Line) - Mock data for now (no grades table in schema)
+        setGradeTrendsData({
+          labels: [
+            "Semester 1",
+            "Semester 2",
+            "Semester 3",
+            "Semester 4",
+            "Semester 5",
+            "Current",
+          ],
+          datasets: [
+            {
+              label: "GPA",
+              data: [3.2, 3.4, 3.5, 3.6, 3.7, 3.8],
+              borderColor: "rgb(34, 197, 94)",
+              backgroundColor: "rgba(34, 197, 94, 0.15)",
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: "rgb(34, 197, 94)",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8,
+            },
+          ],
+        });
 
-      // Elective preferences (Horizontal Bar) - Mock data
-      setElectivePreferencesData({
-        labels: ['ML Basics', 'Cloud Computing', 'Mobile Dev', 'Cybersecurity', 'Blockchain', 'Data Science'],
-        datasets: [{
-          label: 'Interest Score',
-          data: [95, 82, 78, 88, 65, 91],
-          backgroundColor: 'rgba(236, 72, 153, 0.8)',
-          borderColor: 'rgb(236, 72, 153)',
-          borderWidth: 2,
-          borderRadius: 8,
-        }],
-      });
+        // Fetch elective preferences from API
+        const prefsRes = await fetch("/api/elective-preferences");
+        const prefsJson = await prefsRes.json();
+        const prefsData: ElectivePreferencesResponse = prefsJson.data || {
+          preferences: [],
+          available_electives: [],
+        };
+
+        // Create chart data from preferences (sorted by rank)
+        const sortedPrefs = [...(prefsData.preferences || [])].sort(
+          (a, b) => a.rank - b.rank
+        );
+        const prefLabels = sortedPrefs
+          .map((p) => p.course?.title || p.course_code)
+          .slice(0, 6);
+        // Convert rank to interest score (rank 1 = 100%, rank 6 = ~50%)
+        const prefScores = sortedPrefs
+          .map((p, idx) => Math.max(100 - idx * 10, 50))
+          .slice(0, 6);
+
+        setElectivePreferencesData({
+          labels: prefLabels.length > 0 ? prefLabels : ["No preferences set"],
+          datasets: [
+            {
+              label: "Preference Rank",
+              data: prefScores.length > 0 ? prefScores : [0],
+              backgroundColor: "rgba(236, 72, 153, 0.8)",
+              borderColor: "rgb(236, 72, 153)",
+              borderWidth: 2,
+              borderRadius: 8,
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        // Set default empty data on error
+        setEnrollmentData({
+          labels: ["Required Courses", "Elective Courses"],
+          datasets: [
+            {
+              data: [0, 0],
+              backgroundColor: [
+                "rgba(59, 130, 246, 0.85)",
+                "rgba(139, 92, 246, 0.85)",
+              ],
+              borderColor: "#ffffff",
+              borderWidth: 3,
+              hoverOffset: 8,
+            },
+          ],
+        });
+
+        setWeeklyScheduleData({
+          labels: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+          datasets: [
+            {
+              label: "Credit Hours",
+              data: [0, 0, 0, 0, 0],
+              backgroundColor: [
+                "rgba(59, 130, 246, 0.8)",
+                "rgba(139, 92, 246, 0.8)",
+                "rgba(236, 72, 153, 0.8)",
+                "rgba(34, 197, 94, 0.8)",
+                "rgba(245, 158, 11, 0.8)",
+              ],
+              borderColor: [
+                "rgb(59, 130, 246)",
+                "rgb(139, 92, 246)",
+                "rgb(236, 72, 153)",
+                "rgb(34, 197, 94)",
+                "rgb(245, 158, 11)",
+              ],
+              borderWidth: 2,
+              borderRadius: 8,
+            },
+          ],
+        });
+
+        setGradeTrendsData({
+          labels: [
+            "Semester 1",
+            "Semester 2",
+            "Semester 3",
+            "Semester 4",
+            "Semester 5",
+            "Current",
+          ],
+          datasets: [
+            {
+              label: "GPA",
+              data: [3.2, 3.4, 3.5, 3.6, 3.7, 3.8],
+              borderColor: "rgb(34, 197, 94)",
+              backgroundColor: "rgba(34, 197, 94, 0.15)",
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: "rgb(34, 197, 94)",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8,
+            },
+          ],
+        });
+
+        setElectivePreferencesData({
+          labels: ["No data available"],
+          datasets: [
+            {
+              label: "Preference Rank",
+              data: [0],
+              backgroundColor: "rgba(236, 72, 153, 0.8)",
+              borderColor: "rgb(236, 72, 153)",
+              borderWidth: 2,
+              borderRadius: 8,
+            },
+          ],
+        });
+      }
     }
 
     loadData();
@@ -194,19 +368,19 @@ export function StudentDashboardCharts() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: "600" as const },
           usePointStyle: true,
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: "rgba(255, 255, 255, 0.1)",
         borderWidth: 1,
       },
     },
@@ -214,11 +388,11 @@ export function StudentDashboardCharts() {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.06)',
+          color: "rgba(0, 0, 0, 0.06)",
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: "500" as const },
           padding: 8,
         },
         border: { display: false },
@@ -229,7 +403,7 @@ export function StudentDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: "600" as const },
           padding: 8,
         },
         border: { display: false },
@@ -238,21 +412,21 @@ export function StudentDashboardCharts() {
   };
 
   const horizontalBarOptions = {
-    indexAxis: 'y' as const,
+    indexAxis: "y" as const,
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           label: function (context: { parsed?: { x?: number } }) {
-            return 'Interest: ' + (context.parsed?.x || 0) + '%';
-          }
-        }
+            return "Interest: " + (context.parsed?.x || 0) + "%";
+          },
+        },
       },
     },
     scales: {
@@ -260,15 +434,15 @@ export function StudentDashboardCharts() {
         beginAtZero: true,
         max: 100,
         grid: {
-          color: 'rgba(0, 0, 0, 0.06)',
+          color: "rgba(0, 0, 0, 0.06)",
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: "500" as const },
           padding: 8,
           callback: function (value: string | number) {
-            return value + '%';
-          }
+            return value + "%";
+          },
         },
         border: { display: false },
       },
@@ -278,7 +452,7 @@ export function StudentDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: "600" as const },
           padding: 8,
         },
         border: { display: false },
@@ -291,27 +465,29 @@ export function StudentDashboardCharts() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom' as const,
+        position: "bottom" as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: '600' as const },
+          font: { size: 14, weight: "600" as const },
           usePointStyle: true,
-          pointStyle: 'circle',
+          pointStyle: "circle",
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           label: function (context: { label?: string; parsed?: number }) {
-            return (context.label || '') + ': ' + (context.parsed || 0) + ' credits';
-          }
-        }
+            return (
+              (context.label || "") + ": " + (context.parsed || 0) + " credits"
+            );
+          },
+        },
       },
     },
-    cutout: '65%',
+    cutout: "65%",
   };
 
   const lineOptions = {
@@ -320,15 +496,15 @@ export function StudentDashboardCharts() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           label: function (context: { parsed?: { y?: number } }) {
-            return 'GPA: ' + (context.parsed?.y || 0).toFixed(2);
-          }
-        }
+            return "GPA: " + (context.parsed?.y || 0).toFixed(2);
+          },
+        },
       },
     },
     scales: {
@@ -336,11 +512,11 @@ export function StudentDashboardCharts() {
         beginAtZero: true,
         max: 4.0,
         grid: {
-          color: 'rgba(0, 0, 0, 0.06)',
+          color: "rgba(0, 0, 0, 0.06)",
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '500' as const },
+          font: { size: 13, weight: "500" as const },
           padding: 8,
           stepSize: 0.5,
         },
@@ -352,7 +528,7 @@ export function StudentDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: '600' as const },
+          font: { size: 13, weight: "600" as const },
           padding: 8,
         },
         border: { display: false },
@@ -391,33 +567,66 @@ export function StudentDashboardCharts() {
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <Doughnut data={enrollmentData as any} options={doughnutOptions as any} />
+              <Doughnut
+                data={enrollmentData as any}
+                options={doughnutOptions as any}
+              />
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
               <div className="p-6 bg-blue-50 rounded-lg border border-blue-100">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-blue-900">Required Courses</h4>
+                  <h4 className="font-semibold text-blue-900">
+                    Required Courses
+                  </h4>
                   <BookOpen className="h-5 w-5 text-blue-600" />
                 </div>
-                <p className="text-4xl font-bold text-blue-600 mb-2">{requiredCredits}</p>
+                <p className="text-4xl font-bold text-blue-600 mb-2">
+                  {requiredCredits}
+                </p>
                 <p className="text-sm text-gray-700">
                   Core curriculum courses completed and in progress
                 </p>
                 <div className="w-full h-3 bg-blue-200 rounded-full mt-4">
-                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(requiredCredits + electiveCredits) > 0 ? (requiredCredits / (requiredCredits + electiveCredits)) * 100 : 0}%` }}></div>
+                  <div
+                    className="h-full bg-blue-600 rounded-full"
+                    style={{
+                      width: `${
+                        requiredCredits + electiveCredits > 0
+                          ? (requiredCredits /
+                              (requiredCredits + electiveCredits)) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
                 </div>
               </div>
               <div className="p-6 bg-purple-50 rounded-lg border border-purple-100">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-purple-900">Elective Courses</h4>
+                  <h4 className="font-semibold text-purple-900">
+                    Elective Courses
+                  </h4>
                   <Calendar className="h-5 w-5 text-purple-600" />
                 </div>
-                <p className="text-4xl font-bold text-purple-600 mb-2">{electiveCredits}</p>
+                <p className="text-4xl font-bold text-purple-600 mb-2">
+                  {electiveCredits}
+                </p>
                 <p className="text-sm text-gray-700">
                   Selected electives based on career interests and goals
                 </p>
                 <div className="w-full h-3 bg-purple-200 rounded-full mt-4">
-                  <div className="h-full bg-purple-600 rounded-full" style={{ width: `${(requiredCredits + electiveCredits) > 0 ? (electiveCredits / (requiredCredits + electiveCredits)) * 100 : 0}%` }}></div>
+                  <div
+                    className="h-full bg-purple-600 rounded-full"
+                    style={{
+                      width: `${
+                        requiredCredits + electiveCredits > 0
+                          ? (electiveCredits /
+                              (requiredCredits + electiveCredits)) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -440,16 +649,29 @@ export function StudentDashboardCharts() {
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {weeklyScheduleData && <Bar data={weeklyScheduleData as any} options={chartOptions as any} />}
+              {weeklyScheduleData && (
+                <Bar
+                  data={weeklyScheduleData as any}
+                  options={chartOptions as any}
+                />
+              )}
             </div>
             <div className="grid grid-cols-5 gap-4 mt-6">
-              {weeklyScheduleData?.labels && weeklyScheduleData.labels.map((day: string, idx: number) => (
-                <div key={day} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{day}</p>
-                  <p className="text-2xl font-bold text-purple-600 mt-2">{weeklyScheduleData.datasets?.[0]?.data?.[idx]}</p>
-                  <p className="text-xs text-muted-foreground mt-1">credit hours</p>
-                </div>
-              ))}
+              {weeklyScheduleData?.labels &&
+                weeklyScheduleData.labels.map((day: string, idx: number) => (
+                  <div
+                    key={day}
+                    className="text-center p-4 bg-gray-50 rounded-lg border"
+                  >
+                    <p className="text-sm font-semibold text-gray-700">{day}</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-2">
+                      {weeklyScheduleData.datasets?.[0]?.data?.[idx]}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      credit hours
+                    </p>
+                  </div>
+                ))}
             </div>
           </CardContent>
         </Card>
@@ -470,16 +692,31 @@ export function StudentDashboardCharts() {
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {gradeTrendsData && <Line data={gradeTrendsData as any} options={lineOptions as any} />}
+              {gradeTrendsData && (
+                <Line
+                  data={gradeTrendsData as any}
+                  options={lineOptions as any}
+                />
+              )}
             </div>
             <div className="grid grid-cols-6 gap-4 mt-6">
-              {gradeTrendsData?.labels && gradeTrendsData.labels.map((semester: string, idx: number) => (
-                <div key={semester} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{semester}</p>
-                  <p className="text-2xl font-bold text-green-600 mt-2">{gradeTrendsData.datasets?.[0]?.data?.[idx]}</p>
-                  <Badge variant="outline" className="mt-2">A-</Badge>
-                </div>
-              ))}
+              {gradeTrendsData?.labels &&
+                gradeTrendsData.labels.map((semester: string, idx: number) => (
+                  <div
+                    key={semester}
+                    className="text-center p-4 bg-gray-50 rounded-lg border"
+                  >
+                    <p className="text-sm font-semibold text-gray-700">
+                      {semester}
+                    </p>
+                    <p className="text-2xl font-bold text-green-600 mt-2">
+                      {gradeTrendsData.datasets?.[0]?.data?.[idx]}
+                    </p>
+                    <Badge variant="outline" className="mt-2">
+                      A-
+                    </Badge>
+                  </div>
+                ))}
             </div>
           </CardContent>
         </Card>
@@ -500,19 +737,38 @@ export function StudentDashboardCharts() {
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-8 border border-pink-100">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {electivePreferencesData && <Bar data={electivePreferencesData as any} options={horizontalBarOptions as any} />}
+              {electivePreferencesData && (
+                <Bar
+                  data={electivePreferencesData as any}
+                  options={horizontalBarOptions as any}
+                />
+              )}
             </div>
             <div className="grid grid-cols-3 gap-4 mt-8">
-              {electivePreferencesData?.labels && electivePreferencesData.labels.slice(0, 3).map((course: string, idx: number) => (
-                <div key={course} className="p-6 bg-pink-50 rounded-lg border border-pink-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="bg-white">#{idx + 1}</Badge>
-                    <span className="text-2xl font-bold text-pink-600">{electivePreferencesData.datasets?.[0]?.data?.[idx]}%</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{course}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Interest score</p>
-                </div>
-              ))}
+              {electivePreferencesData?.labels &&
+                electivePreferencesData.labels
+                  .slice(0, 3)
+                  .map((course: string, idx: number) => (
+                    <div
+                      key={course}
+                      className="p-6 bg-pink-50 rounded-lg border border-pink-100"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className="bg-white">
+                          #{idx + 1}
+                        </Badge>
+                        <span className="text-2xl font-bold text-pink-600">
+                          {electivePreferencesData.datasets?.[0]?.data?.[idx]}%
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {course}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Interest score
+                      </p>
+                    </div>
+                  ))}
             </div>
           </CardContent>
         </Card>
@@ -520,4 +776,3 @@ export function StudentDashboardCharts() {
     </Tabs>
   );
 }
-

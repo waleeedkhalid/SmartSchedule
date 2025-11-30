@@ -63,12 +63,11 @@ export function SectionsTable({ sections }: SectionsTableProps) {
   const [conflictMap, setConflictMap] = useState<ConflictMap>({});
   const [isLoadingConflicts, setIsLoadingConflicts] = useState(false);
 
-  // Check conflicts for all sections on mount
+  // Check conflicts for all sections on mount using batch endpoint
   useEffect(() => {
     async function checkAllConflicts() {
       if (sections.length === 0) return;
 
-      // Limit the number of sections to check to prevent spam
       // Only check conflicts for sections with meeting patterns
       const sectionsToCheck = sections.filter(
         (s) => s.meeting_pattern?.days && s.meeting_pattern.days.length > 0
@@ -77,102 +76,51 @@ export function SectionsTable({ sections }: SectionsTableProps) {
       if (sectionsToCheck.length === 0) return;
 
       setIsLoadingConflicts(true);
-      const conflicts: ConflictMap = {};
-      let hasAuthError = false;
 
       try {
-        // Get auth header once for all requests
+        // Get auth header once
         const authHeader = await getAuthHeader();
 
-        // If no auth header, skip conflict checking to prevent spam
+        // If no auth header, skip conflict checking
         if (!authHeader) {
           console.warn("No auth token available, skipping conflict checks");
           return;
         }
 
-        // Get current term_id once (optional - API will use active term if not provided)
-        let termId: string | null = null;
-        try {
-          const termsResponse = await fetch('/api/v1/academic-terms', {
-            headers: {
-              'Authorization': authHeader,
-            },
-          });
-          if (termsResponse.ok) {
-            const termsData = await termsResponse.json();
-            interface Term {
-              status?: string;
-            }
-            const activeTerm = termsData.data?.find((t: Term) =>
-              t.status === 'draft' || t.status === 'released'
-            );
-            if (activeTerm) {
-              termId = activeTerm.id;
-            }
-          }
-        } catch (e) {
-          // If term fetch fails, continue without term_id (API will use active term)
-          console.warn('Could not fetch active term for conflict check:', e);
+        // Use batch endpoint for all sections at once (single API call)
+        const response = await fetch("/api/v1/sections/check-conflicts/batch", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: authHeader,
+          },
+          body: JSON.stringify({
+            sections: sectionsToCheck.map((section) => ({
+              section_id: section.id,
+              room_code: section.room_code || null,
+              instructor_id: section.instructor_id || null,
+              meeting_days: section.meeting_pattern.days,
+              meeting_start: section.meeting_pattern.start,
+              meeting_duration: section.meeting_pattern.duration,
+            })),
+          }),
+        });
+
+        // Handle auth errors
+        if (response.status === 401) {
+          // Silently handle auth errors
+          return;
         }
 
-        // Check conflicts for each section (with auth header)
-        await Promise.all(
-          sectionsToCheck.map(async (section) => {
-            // Skip if we already encountered an auth error
-            if (hasAuthError) return;
-
-            try {
-              const response = await fetch("/api/v1/sections/check-conflicts", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": authHeader,
-                },
-                body: JSON.stringify({
-                  room_code: section.room_code || null,
-                  instructor_id: section.instructor_id || null,
-                  meeting_days: section.meeting_pattern.days,
-                  meeting_start: section.meeting_pattern.start,
-                  meeting_duration: section.meeting_pattern.duration,
-                  term_id: termId, // Optional - API will use active term if not provided
-                  exclude_section_id: section.id,
-                }),
-              });
-
-              // Handle 401 errors - stop making more requests
-              if (response.status === 401) {
-                hasAuthError = true;
-                // Silently handle auth errors to prevent spam
-                return;
-              }
-
-              if (response.ok) {
-                try {
-                  const responseData = await response.json();
-                  // Extract the actual conflict data from the API response wrapper
-                  // API returns { data: { has_conflicts: ..., ... } }
-                  conflicts[section.id] = responseData.data || responseData;
-                } catch (parseError) {
-                  // Silently handle JSON parse errors
-                  if (process.env.NODE_ENV === 'development') {
-                    console.error(`Error parsing conflict response for section ${section.id}:`, parseError);
-                  }
-                }
-              }
-            } catch (error) {
-              // Silently handle network errors to prevent spam
-              // Only log in development
-              if (process.env.NODE_ENV === 'development') {
-                console.error(`Error checking conflicts for section ${section.id}:`, error);
-              }
-            }
-          })
-        );
-
-        setConflictMap(conflicts);
+        if (response.ok) {
+          const responseData = await response.json();
+          // API returns { data: { [sectionId]: { has_conflicts, ... } } }
+          const conflicts = responseData.data || responseData;
+          setConflictMap(conflicts);
+        }
       } catch (error) {
         // Silently handle errors to prevent spam
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           console.error("Error in checkAllConflicts:", error);
         }
       } finally {
@@ -183,8 +131,16 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     checkAllConflicts();
   }, [sections]);
 
-  async function handleDelete(id: string, courseCode: string, sectionNo: string) {
-    if (!confirm(`Are you sure you want to delete section ${courseCode}-${sectionNo}? This action cannot be undone.`)) {
+  async function handleDelete(
+    id: string,
+    courseCode: string,
+    sectionNo: string
+  ) {
+    if (
+      !confirm(
+        `Are you sure you want to delete section ${courseCode}-${sectionNo}? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -192,29 +148,33 @@ export function SectionsTable({ sections }: SectionsTableProps) {
       const authHeader = await getAuthHeader();
 
       const response = await fetch(`/api/v1/sections/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': authHeader,
+          Authorization: authHeader,
         },
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || 'Failed to delete section');
+        throw new Error(
+          result.error || result.message || "Failed to delete section"
+        );
       }
 
       toast.success(`Section ${courseCode}-${sectionNo} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete section");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete section"
+      );
       console.error(error);
     }
   }
 
   function formatDays(days: string[]) {
     if (!Array.isArray(days) || days.length === 0) return "—";
-    return days.map(d => d.substring(0, 3)).join(", ");
+    return days.map((d) => d.substring(0, 3)).join(", ");
   }
 
   function formatTime(time: string) {
@@ -256,10 +216,13 @@ export function SectionsTable({ sections }: SectionsTableProps) {
         <TableBody>
           {sections.map((section) => (
             <TableRow key={section.id}>
-              <TableCell className="font-medium">{section.course_code}</TableCell>
+              <TableCell className="font-medium">
+                {section.course_code}
+              </TableCell>
               <TableCell>{section.section_no}</TableCell>
               <TableCell>
-                {(section as { is_scheduled_by_algorithm?: boolean }).is_scheduled_by_algorithm ? (
+                {(section as { is_scheduled_by_algorithm?: boolean })
+                  .is_scheduled_by_algorithm ? (
                   <Badge className="bg-blue-600">Algorithm</Badge>
                 ) : (
                   <Badge variant="outline">Manual</Badge>
@@ -271,13 +234,16 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                 {section.activity && (
                   <Badge
                     variant={
-                      section.activity === 'lab' ? 'default' :
-                        section.activity === 'tutorial' ? 'secondary' :
-                          'outline'
+                      section.activity === "lab"
+                        ? "default"
+                        : section.activity === "tutorial"
+                        ? "secondary"
+                        : "outline"
                     }
                     className="ml-2"
                   >
-                    {section.activity.charAt(0).toUpperCase() + section.activity.slice(1)}
+                    {section.activity.charAt(0).toUpperCase() +
+                      section.activity.slice(1)}
                   </Badge>
                 )}
               </TableCell>
@@ -297,17 +263,20 @@ export function SectionsTable({ sections }: SectionsTableProps) {
               </TableCell>
               <TableCell>
                 <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${section.state === 'released'
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    section.state === "released"
                       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                       : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                    }`}
+                  }`}
                 >
                   {section.state}
                 </span>
               </TableCell>
               <TableCell>
                 {isLoadingConflicts ? (
-                  <span className="text-xs text-muted-foreground">Checking...</span>
+                  <span className="text-xs text-muted-foreground">
+                    Checking...
+                  </span>
                 ) : conflictMap[section.id]?.has_conflicts ? (
                   <HoverCard>
                     <HoverCardTrigger asChild>
@@ -320,42 +289,63 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80" align="end">
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold">Scheduling Conflicts</h4>
+                        <h4 className="text-sm font-semibold">
+                          Scheduling Conflicts
+                        </h4>
                         {conflictMap[section.id].room_conflicts.length > 0 && (
                           <div className="space-y-1">
                             <div className="text-xs font-medium text-red-600">
-                              Room Conflicts ({conflictMap[section.id].room_conflicts.length}):
+                              Room Conflicts (
+                              {conflictMap[section.id].room_conflicts.length}):
                             </div>
                             <ul className="text-xs space-y-1 ml-2">
-                              {conflictMap[section.id].room_conflicts.map((conflict, idx) => (
-                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
-                                  <span className="font-mono font-medium">
-                                    {conflict.course_code}-{conflict.section_no}
-                                  </span>
-                                  <span className="text-muted-foreground font-mono text-[10px]">
-                                    ID: {conflict.section_id}
-                                  </span>
-                                </li>
-                              ))}
+                              {conflictMap[section.id].room_conflicts.map(
+                                (conflict, idx) => (
+                                  <li
+                                    key={conflict.section_id || idx}
+                                    className="flex flex-col gap-0.5"
+                                  >
+                                    <span className="font-mono font-medium">
+                                      {conflict.course_code}-
+                                      {conflict.section_no}
+                                    </span>
+                                    <span className="text-muted-foreground font-mono text-[10px]">
+                                      ID: {conflict.section_id}
+                                    </span>
+                                  </li>
+                                )
+                              )}
                             </ul>
                           </div>
                         )}
-                        {conflictMap[section.id].instructor_conflicts.length > 0 && (
+                        {conflictMap[section.id].instructor_conflicts.length >
+                          0 && (
                           <div className="space-y-1">
                             <div className="text-xs font-medium text-red-600">
-                              Instructor Conflicts ({conflictMap[section.id].instructor_conflicts.length}):
+                              Instructor Conflicts (
+                              {
+                                conflictMap[section.id].instructor_conflicts
+                                  .length
+                              }
+                              ):
                             </div>
                             <ul className="text-xs space-y-1 ml-2">
-                              {conflictMap[section.id].instructor_conflicts.map((conflict, idx) => (
-                                <li key={conflict.section_id || idx} className="flex flex-col gap-0.5">
-                                  <span className="font-mono font-medium">
-                                    {conflict.course_code}-{conflict.section_no}
-                                  </span>
-                                  <span className="text-muted-foreground font-mono text-[10px]">
-                                    ID: {conflict.section_id}
-                                  </span>
-                                </li>
-                              ))}
+                              {conflictMap[section.id].instructor_conflicts.map(
+                                (conflict, idx) => (
+                                  <li
+                                    key={conflict.section_id || idx}
+                                    className="flex flex-col gap-0.5"
+                                  >
+                                    <span className="font-mono font-medium">
+                                      {conflict.course_code}-
+                                      {conflict.section_no}
+                                    </span>
+                                    <span className="text-muted-foreground font-mono text-[10px]">
+                                      ID: {conflict.section_id}
+                                    </span>
+                                  </li>
+                                )
+                              )}
                             </ul>
                           </div>
                         )}
@@ -366,7 +356,10 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                     </HoverCardContent>
                   </HoverCard>
                 ) : conflictMap[section.id] ? (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+                  <Badge
+                    variant="outline"
+                    className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                  >
                     ✓ Clear
                   </Badge>
                 ) : null}
@@ -382,7 +375,13 @@ export function SectionsTable({ sections }: SectionsTableProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(section.id, section.course_code, section.section_no)}
+                  onClick={() =>
+                    handleDelete(
+                      section.id,
+                      section.course_code,
+                      section.section_no
+                    )
+                  }
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
@@ -394,4 +393,3 @@ export function SectionsTable({ sections }: SectionsTableProps) {
     </div>
   );
 }
-

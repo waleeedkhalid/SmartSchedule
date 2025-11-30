@@ -1,13 +1,13 @@
 /**
  * Authentication Middleware
- * 
+ *
  * Handles authentication for Supabase production accounts.
  * Uses Supabase SSR pattern to automatically refresh auth sessions on every request.
- * 
+ *
  * CRITICAL: This middleware calls `supabase.auth.getUser()` which refreshes the
  * auth session automatically. This keeps the session alive and ensures cookies
  * are properly set for Server Actions.
- * 
+ *
  * Note: Redirects authenticated users from auth pages to /dashboard,
  * which will then redirect to the role-specific dashboard.
  */
@@ -26,17 +26,17 @@ function clearAuthCookies(response: NextResponse): NextResponse {
 
   // Clear all auth-related cookies (both custom and Supabase)
   const cookiesToClear = [
-    'auth_token',
+    "auth_token",
     // Supabase SSR cookie patterns (these are the actual cookie names used by @supabase/ssr)
-    'sb-access-token',
-    'sb-refresh-token',
-    'sb-auth-token',
-    'sb-auth-token-code-verifier',
+    "sb-access-token",
+    "sb-refresh-token",
+    "sb-auth-token",
+    "sb-auth-token-code-verifier",
   ];
 
   // Also clear any cookies that match Supabase patterns
-  allCookies.forEach(cookie => {
-    if (cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) {
+  allCookies.forEach((cookie) => {
+    if (cookie.name.startsWith("sb-") || cookie.name.includes("supabase")) {
       cookiesToClear.push(cookie.name);
     }
   });
@@ -46,14 +46,14 @@ function clearAuthCookies(response: NextResponse): NextResponse {
 
   // Clear each cookie once with path: '/' and maxAge: 0
   // This is sufficient for cookie deletion across all paths
-  uniqueCookies.forEach(cookieName => {
+  uniqueCookies.forEach((cookieName) => {
     response.cookies.delete(cookieName);
-    response.cookies.set(cookieName, '', {
+    response.cookies.set(cookieName, "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: 0,
-      path: '/',
+      path: "/",
     });
   });
 
@@ -77,13 +77,16 @@ function autoSignOut(request: NextRequest, reason: string): NextResponse {
  * Copies cookies from source response to destination response
  * This ensures Supabase session cookies are preserved on redirects
  */
-function copyCookiesToResponse(source: NextResponse, destination: NextResponse): NextResponse {
+function copyCookiesToResponse(
+  source: NextResponse,
+  destination: NextResponse
+): NextResponse {
   source.cookies.getAll().forEach((cookie) => {
     destination.cookies.set(cookie.name, cookie.value, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
     });
   });
   return destination;
@@ -100,10 +103,10 @@ export async function updateSession(request: NextRequest) {
 
   // Check for standard Next.js internal paths and static files
   if (
-    pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/manifest.json' ||
-    pathname === '/sw.js'
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/manifest.json" ||
+    pathname === "/sw.js"
   ) {
     return NextResponse.next({
       request,
@@ -112,52 +115,53 @@ export async function updateSession(request: NextRequest) {
 
   // Check for RSC query parameters (React Server Components)
   // These are used by Next.js for React Server Component requests
-  const hasRscQuery = searchParams.has('__rsc__') ||
-    searchParams.has('_rsc') ||
-    searchParams.has('__nextjs_router_prefetch__') ||
-    url.includes('__rsc__') ||
-    url.includes('_rsc=');
+  const hasRscQuery =
+    searchParams.has("__rsc__") ||
+    searchParams.has("_rsc") ||
+    searchParams.has("__nextjs_router_prefetch__") ||
+    url.includes("__rsc__") ||
+    url.includes("_rsc=");
 
   // Check for Next.js internal headers
   // These indicate internal Next.js requests (RSC, prefetch, etc.)
   const hasNextInternalHeader =
-    request.headers.get('rsc') === '1' ||
-    request.headers.get('next-router-prefetch') === '1' ||
-    request.headers.get('next-action') !== null ||
-    request.headers.get('x-middleware-subrequest') !== null ||
-    request.headers.get('x-nextjs-data') !== null;
+    request.headers.get("rsc") === "1" ||
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("next-action") !== null ||
+    request.headers.get("x-middleware-subrequest") !== null ||
+    request.headers.get("x-nextjs-data") !== null;
 
   // Check for fetch-server-response patterns
   // fetch-server-response makes internal requests that may not have RSC indicators
   // These requests typically have specific accept headers or come from Next.js internals
-  const acceptHeader = request.headers.get('accept') || '';
-  const refererHeader = request.headers.get('referer') || '';
-  const userAgent = request.headers.get('user-agent') || '';
+  const acceptHeader = request.headers.get("accept") || "";
+  const refererHeader = request.headers.get("referer") || "";
+  const userAgent = request.headers.get("user-agent") || "";
 
   // Detect fetch-server-response requests
   // These are internal Next.js requests for fetching server component responses
   // The key is to identify requests that are NOT user-initiated navigation
   const isFetchServerResponse =
     // RSC component requests (text/x-component is the RSC content type)
-    acceptHeader.includes('text/x-component') ||
+    acceptHeader.includes("text/x-component") ||
     // JSON requests from Next.js internals (fetch-server-response pattern)
-    (acceptHeader.includes('application/json') &&
-      (refererHeader.includes('/_next/') ||
-        refererHeader.includes('__rsc__') ||
-        refererHeader.includes('_rsc='))) ||
+    (acceptHeader.includes("application/json") &&
+      (refererHeader.includes("/_next/") ||
+        refererHeader.includes("__rsc__") ||
+        refererHeader.includes("_rsc="))) ||
     // Next.js internal requests often have specific user-agent patterns
-    (userAgent.includes('Next.js') && !acceptHeader.includes('text/html')) ||
+    (userAgent.includes("Next.js") && !acceptHeader.includes("text/html")) ||
     // Requests that are clearly from Next.js internals
     // Key indicators: specific accept header (not */*), no browser navigation headers
-    (request.method === 'GET' &&
-      !pathname.startsWith('/api/') && // Don't block API routes
+    (request.method === "GET" &&
+      !pathname.startsWith("/api/") && // Don't block API routes
       acceptHeader &&
-      acceptHeader !== '*/*' && // Browsers send */*, Next.js internals are specific
-      !acceptHeader.includes('text/html') && // Not a browser page request
-      !request.headers.get('x-requested-with') && // No XHR header (browser would have this)
+      acceptHeader !== "*/*" && // Browsers send */*, Next.js internals are specific
+      !acceptHeader.includes("text/html") && // Not a browser page request
+      !request.headers.get("x-requested-with") && // No XHR header (browser would have this)
       refererHeader &&
       refererHeader.includes(request.nextUrl.origin) && // Same origin
-      (refererHeader.includes('/_next/') || refererHeader.includes('__rsc__')));
+      (refererHeader.includes("/_next/") || refererHeader.includes("__rsc__")));
 
   // CRITICAL: Skip ALL internal Next.js requests immediately
   // This prevents fetch-server-response and RSC requests from triggering auth checks
@@ -202,9 +206,10 @@ export async function updateSession(request: NextRequest) {
               response.cookies.set(name, value, {
                 ...options,
                 httpOnly: options?.httpOnly ?? true,
-                secure: options?.secure ?? process.env.NODE_ENV === 'production',
-                sameSite: options?.sameSite ?? 'lax',
-                path: options?.path ?? '/',
+                secure:
+                  options?.secure ?? process.env.NODE_ENV === "production",
+                sameSite: options?.sameSite ?? "lax",
+                path: options?.path ?? "/",
               });
             });
           },
@@ -221,7 +226,7 @@ export async function updateSession(request: NextRequest) {
   } catch (error) {
     // Handle errors creating or using Supabase client
     // This prevents middleware from crashing if createServerClient fails
-    console.error('Failed to create or use Supabase client:', error);
+    console.error("Failed to create or use Supabase client:", error);
     // supabase remains null, which is handled gracefully by the rest of the code
     authError = error instanceof Error ? error : new Error(String(error));
     hasSupabaseSession = false;
@@ -232,44 +237,44 @@ export async function updateSession(request: NextRequest) {
   // All /mobile routes are public (PWA - users can access landing, login, register without auth)
   // Static files like manifest.json and sw.js are also public
   const publicRoutes = [
-    '/',
-    '/login',
-    '/register',
-    '/auth',
-    '/error',
-    '/onboarding',
-    '/api',
-    '/mobile', // All mobile routes are public
-    '/manifest.json', // PWA manifest
-    '/sw.js', // Service worker
+    "/",
+    "/login",
+    "/register",
+    "/auth",
+    "/error",
+    "/onboarding",
+    "/api",
+    "/mobile", // All mobile routes are public
+    "/manifest.json", // PWA manifest
+    "/sw.js", // Service worker
   ];
 
-  const isPublicRoute = publicRoutes.some(route =>
-    pathname === route || pathname.startsWith(`${route}/`)
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
   // AUTOMATIC SIGNOUT: If Supabase session expired or invalid, sign out immediately
   // This prevents errors from appearing when user tries to access protected routes
   // Also clear cookies on response to prevent redirect loops
-  if (authError && !isPublicRoute && pathname.startsWith('/dashboard')) {
+  if (authError && !isPublicRoute && pathname.startsWith("/dashboard")) {
     // Session expired or invalid - automatically sign out and clear all cookies
-    console.warn('Session expired or invalid, automatically signing out:', {
+    console.warn("Session expired or invalid, automatically signing out:", {
       error: authError.message,
-      pathname
+      pathname,
     });
     // autoSignOut handles cookie clearing internally
-    return autoSignOut(request, 'session_expired');
+    return autoSignOut(request, "session_expired");
   }
 
   // AGGRESSIVE CLEANUP: If we have auth errors on any protected route, clear cookies
   // This prevents infinite redirect loops when session is corrupted
   if (authError && !isPublicRoute) {
-    console.warn('Auth error detected on protected route, clearing session:', {
+    console.warn("Auth error detected on protected route, clearing session:", {
       error: authError.message,
-      pathname
+      pathname,
     });
     // Use standard autoSignOut helper for consistent behavior
-    return autoSignOut(request, 'auth_error');
+    return autoSignOut(request, "auth_error");
   }
 
   // Check if user is authenticated
@@ -278,35 +283,71 @@ export async function updateSession(request: NextRequest) {
   // Redirect logged-in users away from auth pages
   // Redirect to /dashboard which will detect role
   // Note: Don't redirect from mobile routes - mobile handles its own auth flow
-  if (isAuthenticated && (pathname === '/login' || pathname === '/register') && !pathname.startsWith('/mobile')) {
+  if (
+    isAuthenticated &&
+    (pathname === "/login" || pathname === "/register") &&
+    !pathname.startsWith("/mobile")
+  ) {
     // Supabase user - redirect to /dashboard which will detect role
     // Session is already validated by getUser() call above
     // Note: hasSupabaseSession is defined as !!supabaseUser && !authError,
     // so if hasSupabaseSession is true, supabaseUser is guaranteed to exist
 
+    // Check if user has completed onboarding via user_metadata
+    const onboardingCompleted =
+      supabaseUser?.user_metadata?.onboarding_completed === true;
+
     // Create redirect response and copy Supabase session cookies
-    const redirectUrl = new URL("/dashboard", request.url);
+    const redirectUrl = new URL(
+      onboardingCompleted ? "/dashboard" : "/onboarding",
+      request.url
+    );
     const redirectResponse = NextResponse.redirect(redirectUrl);
     return copyCookiesToResponse(response, redirectResponse);
   }
 
+  // Redirect already-onboarded users away from /onboarding page
+  // This prevents confusion when users manually navigate to /onboarding after completing it
+  if (
+    isAuthenticated &&
+    pathname === "/onboarding" &&
+    !pathname.startsWith("/mobile")
+  ) {
+    const onboardingCompleted =
+      supabaseUser?.user_metadata?.onboarding_completed === true;
+
+    if (onboardingCompleted) {
+      // User already completed onboarding - redirect to dashboard
+      const redirectUrl = new URL("/dashboard", request.url);
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      return copyCookiesToResponse(response, redirectResponse);
+    }
+    // User hasn't completed onboarding - let them access the onboarding page
+  }
+
   // Protect dashboard routes - require authentication
-  if (!isAuthenticated && pathname.startsWith('/dashboard') && !isPublicRoute) {
+  if (!isAuthenticated && pathname.startsWith("/dashboard") && !isPublicRoute) {
     // If we have Supabase cookies but no valid session, it's corrupted - sign out immediately
     // This prevents redirect loops from corrupted sessions
-    const hasSupabaseCookies = request.cookies.getAll().some(
-      cookie => cookie.name.startsWith('sb-') || cookie.name.includes('supabase')
-    );
+    const hasSupabaseCookies = request.cookies
+      .getAll()
+      .some(
+        (cookie) =>
+          cookie.name.startsWith("sb-") || cookie.name.includes("supabase")
+      );
 
     if (hasSupabaseCookies) {
       // Corrupted session - sign out immediately instead of redirecting
       // This happens when cookies exist but session is invalid (expired, corrupted, etc.)
-      console.warn('Corrupted session detected (cookies present but no valid auth), signing out immediately:', {
-        pathname,
-        hasAuthError: !!authError,
-        authErrorMessage: authError?.message
-      });
-      return autoSignOut(request, 'corrupted_session');
+      console.warn(
+        "Corrupted session detected (cookies present but no valid auth), signing out immediately:",
+        {
+          pathname,
+          hasAuthError: !!authError,
+          authErrorMessage: authError?.message,
+        }
+      );
+      return autoSignOut(request, "corrupted_session");
     }
 
     // Legitimate unauthenticated user - redirect to login

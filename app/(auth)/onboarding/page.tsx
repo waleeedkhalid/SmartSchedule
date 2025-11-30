@@ -53,23 +53,39 @@ async function OnboardingContent() {
 
   // SYNC CHECK: If metadata says false, but DB says true -> Fix metadata and redirect
   // This fixes the infinite loop for existing users who have profiles but missing metadata
-  try {
-    const { data: userRole } = await supabase
-      .from("user_roles")
-      .select("onboarding_completed")
-      .eq("user_id", user.id)
-      .single();
+  // Note: We check DB status first, then redirect outside try-catch to avoid catching NEXT_REDIRECT
+  let shouldRedirectToDashboard = false;
+  let syncError: Error | null = null;
 
-    if (userRole?.onboarding_completed === true) {
-      // Sync metadata
+  const { data: userRole, error: fetchError } = await supabase
+    .from("user_roles")
+    .select("onboarding_completed")
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError) {
+    // If no user_role record exists, user needs onboarding - this is expected
+    if (fetchError.code !== "PGRST116") {
+      // PGRST116 = no rows returned
+      console.warn("Error fetching user role:", fetchError.message);
+    }
+  } else if (userRole?.onboarding_completed === true) {
+    // User is already onboarded in DB, sync metadata and redirect
+    try {
       await supabase.auth.updateUser({
         data: { onboarding_completed: true },
       });
-      redirect("/dashboard");
+    } catch (error) {
+      syncError = error as Error;
+      console.warn("Error syncing onboarding metadata:", syncError.message);
     }
-  } catch (error) {
-    console.warn("Error syncing onboarding status:", error);
-    // Continue to render form if sync fails
+    // Redirect even if metadata sync fails - DB is source of truth
+    shouldRedirectToDashboard = true;
+  }
+
+  // Perform redirect outside try-catch to avoid catching NEXT_REDIRECT error
+  if (shouldRedirectToDashboard) {
+    redirect("/dashboard");
   }
 
   // 2. Get formatted user data for the form

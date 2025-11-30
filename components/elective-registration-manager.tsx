@@ -73,7 +73,10 @@ interface AvailableSection {
   course_code: string;
   course_title: string;
   course_credits: number;
+  course_level: number;
+  is_elective: boolean;
   section_no: string;
+  activity: string;
   instructor_name: string | null;
   room_code: string | null;
   capacity: number;
@@ -85,6 +88,14 @@ interface AvailableSection {
     start: string;
     duration: number;
   };
+  // Academic rule information
+  is_locked: boolean;
+  lock_reasons: string[];
+  prerequisites: string[];
+  missing_prerequisites: string[];
+  is_enrolled: boolean;
+  is_enrolled_in_course: boolean;
+  can_register: boolean;
 }
 
 interface CreditStats {
@@ -206,73 +217,48 @@ export function ElectiveRegistrationManager({
         }
       );
 
-      // Fetch available sections (released sections)
+      // Fetch available sections from new endpoint with academic rules applied
       // Cache for 5 minutes - sections don't change frequently during registration
-      const sectionsData = await cachedFetch<{ data: SectionResponse[] }>(
-        "/api/v1/sections?state=released",
+      interface AvailableSectionResponse {
+        section_id: string;
+        course_code: string;
+        course_title: string;
+        course_credits: number;
+        course_level: number;
+        is_elective: boolean;
+        section_no: string;
+        activity: string;
+        instructor_name: string | null;
+        room_code: string | null;
+        capacity: number;
+        enrolled_count: number;
+        available_seats: number;
+        is_full: boolean;
+        meeting_pattern: {
+          days: string[];
+          start: string;
+          duration: number;
+        };
+        is_locked: boolean;
+        lock_reasons: string[];
+        prerequisites: string[];
+        missing_prerequisites: string[];
+        is_enrolled: boolean;
+        is_enrolled_in_course: boolean;
+        can_register: boolean;
+      }
+
+      const sectionsData = await cachedFetch<{
+        data: AvailableSectionResponse[];
+      }>(
+        "/api/v1/available-sections",
         {
           headers: authHeader ? { Authorization: authHeader } : {},
         },
         userId,
         CacheTTL.MEDIUM
       );
-      const allSections = sectionsData.data || [];
-
-      // Filter for valid courses
-      interface SectionResponse {
-        id: string;
-        course_code: string;
-        section_no: string;
-        room_code?: string | null;
-        capacity: number;
-        meeting_pattern: unknown;
-        course?: {
-          code: string;
-          title: string;
-          credits: number;
-          is_elective: boolean;
-        } | null;
-        instructor?: { name: string } | null;
-        room?: { code: string } | null;
-      }
-
-      const availableSectionsList = allSections.filter((s: SectionResponse) => {
-        // Check if course exists
-        return !!s.course;
-      });
-
-      // Count enrollments per section from the enrollments we already fetched
-      const enrollmentCounts = new Map<string, number>();
-      enrollmentsList.forEach((e: EnrollmentResponse) => {
-        const count = enrollmentCounts.get(e.section_id) || 0;
-        enrollmentCounts.set(e.section_id, count + 1);
-      });
-
-      // Transform to available sections format
-      const availableSectionsData = availableSectionsList.map(
-        (section: SectionResponse) => {
-          const enrolledCount = enrollmentCounts.get(section.id) || 0;
-          const capacity = section.capacity || 0;
-          const availableSeats = capacity - enrolledCount;
-
-          return {
-            section_id: section.id,
-            course_code: section.course_code,
-            course_title: section.course?.title || "",
-            course_credits: section.course?.credits || 0,
-            section_no: section.section_no,
-            instructor_name: section.instructor?.name || null,
-            room_code: section.room?.code || section.room_code || null,
-            capacity,
-            enrolled_count: enrolledCount,
-            available_seats: availableSeats,
-            is_full: availableSeats <= 0,
-            meeting_pattern: (section.meeting_pattern
-              ? parseMeetingPattern(section.meeting_pattern)
-              : null) || { days: [], start: "TBA", duration: 0 },
-          };
-        }
-      );
+      const availableSectionsData = sectionsData.data || [];
 
       // Calculate credit stats from enrollments
       let totalCredits = 0;
@@ -318,6 +304,18 @@ export function ElectiveRegistrationManager({
    * Uses real API endpoint for enrollment
    */
   async function handleEnroll(section: AvailableSection) {
+    // Pre-check: Academic rules (client-side for immediate feedback)
+    if (section.is_locked) {
+      toast.error(`Cannot enroll: ${section.lock_reasons.join("; ")}`);
+      return;
+    }
+
+    // Pre-check: Already enrolled in this course
+    if (section.is_enrolled_in_course) {
+      toast.error("Already enrolled in another section of this course");
+      return;
+    }
+
     // Pre-check: Credit limit (client-side for immediate feedback)
     if (creditStats && creditStats.total + section.course_credits > 20) {
       toast.error(
@@ -345,14 +343,14 @@ export function ElectiveRegistrationManager({
         },
         body: JSON.stringify({
           section_id: section.section_id,
-          enrollment_type: "elective",
+          enrollment_type: section.is_elective ? "elective" : "required",
         }),
       });
 
       // Invalidate cache after successful enrollment
       if (response.ok) {
         apiCache.invalidatePattern("/api/v1/enrollments");
-        apiCache.invalidatePattern("/api/v1/sections");
+        apiCache.invalidatePattern("/api/v1/available-sections");
         apiCache.invalidatePattern("/api/v1/schedules/me");
       }
 
@@ -394,7 +392,7 @@ export function ElectiveRegistrationManager({
       // Invalidate cache after successful drop
       if (response.ok) {
         apiCache.invalidatePattern("/api/v1/enrollments");
-        apiCache.invalidatePattern("/api/v1/sections");
+        apiCache.invalidatePattern("/api/v1/available-sections");
         apiCache.invalidatePattern("/api/v1/schedules/me");
       }
 
@@ -602,22 +600,25 @@ export function ElectiveRegistrationManager({
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
               {availableSections.map((section) => {
-                const isEnrolled = enrollments.some(
-                  (e) => e.section_id === section.section_id
-                );
+                const isEnrolled =
+                  section.is_enrolled ||
+                  section.is_enrolled_in_course ||
+                  enrollments.some((e) => e.section_id === section.section_id);
 
                 return (
                   <div
                     key={section.section_id}
                     className={`p-4 border rounded-lg ${
                       isEnrolled
-                        ? "bg-green-50 border-green-200"
+                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                        : section.is_locked
+                        ? "bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-700 opacity-75"
                         : "hover:shadow-md"
                     } transition-all`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-lg">
                             {section.course_code}
                           </span>
@@ -627,8 +628,27 @@ export function ElectiveRegistrationManager({
                           <Badge variant="outline">
                             {section.course_credits} cr
                           </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Level {section.course_level}
+                          </Badge>
+                          {section.is_elective && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                            >
+                              Elective
+                            </Badge>
+                          )}
                           {section.is_full && (
                             <Badge variant="destructive">Full</Badge>
+                          )}
+                          {section.is_locked && (
+                            <Badge
+                              variant="destructive"
+                              className="bg-orange-500"
+                            >
+                              Locked
+                            </Badge>
                           )}
                           {isEnrolled && (
                             <Badge className="bg-green-600">Enrolled</Badge>
@@ -637,10 +657,50 @@ export function ElectiveRegistrationManager({
                         <p className="text-sm text-muted-foreground mb-2">
                           {section.course_title}
                         </p>
+
+                        {/* Prerequisites Info */}
+                        {section.prerequisites.length > 0 && (
+                          <div className="mb-2 text-xs">
+                            <span className="text-muted-foreground">
+                              Prerequisites:{" "}
+                            </span>
+                            <span
+                              className={
+                                section.missing_prerequisites.length > 0
+                                  ? "text-orange-600 dark:text-orange-400"
+                                  : "text-green-600 dark:text-green-400"
+                              }
+                            >
+                              {section.prerequisites.join(", ")}
+                            </span>
+                            {section.missing_prerequisites.length > 0 && (
+                              <span className="text-orange-600 dark:text-orange-400 ml-1">
+                                (Missing:{" "}
+                                {section.missing_prerequisites.join(", ")})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Lock Reasons */}
+                        {section.is_locked &&
+                          section.lock_reasons.length > 0 && (
+                            <div className="mb-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded text-xs">
+                              <div className="flex items-start gap-1">
+                                <AlertCircle className="h-3 w-3 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-orange-800 dark:text-orange-200">
+                                  {section.lock_reasons.map((reason, idx) => (
+                                    <div key={idx}>{reason}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {section.meeting_pattern.days.join(", ")}
+                            {section.meeting_pattern.days.join(", ") || "TBA"}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -664,7 +724,13 @@ export function ElectiveRegistrationManager({
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div className="text-right">
-                          <p className="text-xs font-medium">
+                          <p
+                            className={`text-xs font-medium ${
+                              section.available_seats <= 5
+                                ? "text-orange-600"
+                                : ""
+                            }`}
+                          >
                             {section.available_seats} seats left
                           </p>
                         </div>
@@ -673,16 +739,20 @@ export function ElectiveRegistrationManager({
                             size="sm"
                             onClick={() => handleEnroll(section)}
                             disabled={
+                              !section.can_register ||
+                              actionLoading === section.section_id ||
                               !!(
-                                section.is_full ||
-                                actionLoading === section.section_id ||
-                                (creditStats &&
-                                  creditStats.total + section.course_credits >
-                                    20)
+                                creditStats &&
+                                creditStats.total + section.course_credits > 20
                               )
                             }
+                            variant={
+                              section.is_locked ? "secondary" : "default"
+                            }
                             title={
-                              section.is_full
+                              section.is_locked
+                                ? section.lock_reasons.join("; ")
+                                : section.is_full
                                 ? "Section is full"
                                 : actionLoading === section.section_id
                                 ? "Loading..."
@@ -690,10 +760,12 @@ export function ElectiveRegistrationManager({
                                   creditStats.total + section.course_credits >
                                     20
                                 ? "Would exceed 20-credit limit"
-                                : undefined
+                                : section.is_enrolled_in_course
+                                ? "Already enrolled in another section of this course"
+                                : "Click to register"
                             }
                           >
-                            Register
+                            {section.is_locked ? "Locked" : "Register"}
                           </Button>
                         )}
                       </div>
