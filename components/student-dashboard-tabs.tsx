@@ -2,10 +2,10 @@
 
 /**
  * Student Dashboard Tabs Component
- * 
+ *
  * Client Component that handles the tabbed interface for the student dashboard.
  * Receives server-fetched data as props to minimize client bundle size.
- * 
+ *
  * Following Next.js 15 best practices:
  * - Server Component (page.tsx) fetches data
  * - Client Component (this file) handles interactivity
@@ -15,7 +15,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Calendar, BookOpen, MessageSquare, GraduationCap, CreditCard, Lock } from "lucide-react";
+import {
+  Calendar,
+  BookOpen,
+  MessageSquare,
+  GraduationCap,
+  CreditCard,
+  Lock,
+} from "lucide-react";
 import Link from "next/link";
 import { ElectiveRegistrationManager } from "@/components/elective-registration-manager";
 import { StudentScheduleView } from "@/components/student-schedule-view";
@@ -24,7 +31,12 @@ import { StudentDashboardChartsWrapper } from "@/components/student-dashboard-ch
 import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
 import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
 import { ClientOnly } from "@/components/client-only";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UpcomingDeadline {
   id: string;
@@ -50,6 +62,7 @@ interface Notification {
 }
 
 interface StudentDashboardTabsProps {
+  userId: string;
   studentLevel: number | null;
   creditStats: {
     total: number;
@@ -65,6 +78,7 @@ interface StudentDashboardTabsProps {
 }
 
 export function StudentDashboardTabs({
+  userId,
   studentLevel,
   creditStats,
   totalEnrollments,
@@ -74,7 +88,6 @@ export function StudentDashboardTabs({
   initialNotifications,
   isRegistrationOpen,
 }: StudentDashboardTabsProps) {
-
   return (
     <TooltipProvider>
       <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -87,13 +100,20 @@ export function StudentDashboardTabs({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="w-full h-full">
-                  <TabsTrigger value="registration" disabled className="w-full h-full opacity-50 cursor-not-allowed">
+                  <TabsTrigger
+                    value="registration"
+                    disabled
+                    className="w-full h-full opacity-50 cursor-not-allowed"
+                  >
                     Registration <Lock className="ml-2 h-3 w-3" />
                   </TabsTrigger>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Registration is currently closed. Check the timeline for upcoming dates.</p>
+                <p>
+                  Registration is currently closed. Check the timeline for
+                  upcoming dates.
+                </p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -115,13 +135,18 @@ export function StudentDashboardTabs({
                   </CardHeader>
                   <CardContent>
                     <div className="h-32 flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">Loading...</p>
+                      <p className="text-sm text-muted-foreground">
+                        Loading...
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               }
             >
-              <UpcomingDeadlinesWidget userRole="student" initialData={initialDeadlines} />
+              <UpcomingDeadlinesWidget
+                userRole="student"
+                initialData={initialDeadlines}
+              />
             </ClientOnly>
             <ClientOnly
               fallback={
@@ -131,13 +156,18 @@ export function StudentDashboardTabs({
                   </CardHeader>
                   <CardContent>
                     <div className="h-32 flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">Loading...</p>
+                      <p className="text-sm text-muted-foreground">
+                        Loading...
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               }
             >
-              <RoleNotificationsWidget role="student" initialData={initialNotifications} />
+              <RoleNotificationsWidget
+                role="student"
+                initialData={initialNotifications}
+              />
             </ClientOnly>
           </div>
 
@@ -150,7 +180,9 @@ export function StudentDashboardTabs({
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Loading charts...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Loading charts...
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -162,12 +194,14 @@ export function StudentDashboardTabs({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Academic Level</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Academic Level
+                </CardTitle>
                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {studentLevel ? `Level ${studentLevel}` : 'Not Set'}
+                  {studentLevel ? `Level ${studentLevel}` : "Not Set"}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Current academic standing
@@ -177,7 +211,9 @@ export function StudentDashboardTabs({
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Credits
+                </CardTitle>
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -185,14 +221,17 @@ export function StudentDashboardTabs({
                   {creditStats?.total || 0} / 20
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {creditStats?.required_credits || 0} required, {creditStats?.elective_credits || 0} elective
+                  {creditStats?.required_credits || 0} required,{" "}
+                  {creditStats?.elective_credits || 0} elective
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Enrollments</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Enrollments
+                </CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -205,7 +244,9 @@ export function StudentDashboardTabs({
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Upcoming Exams</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Upcoming Exams
+                </CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -223,25 +264,33 @@ export function StudentDashboardTabs({
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">1</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                  1
+                </div>
                 <div>
                   <p className="font-medium">Register for Electives</p>
                   <p className="text-sm text-muted-foreground">
-                    Browse available elective sections and register (max 20 credits total)
+                    Browse available elective sections and register (max 20
+                    credits total)
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">2</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                  2
+                </div>
                 <div>
                   <p className="font-medium">View Your Schedule</p>
                   <p className="text-sm text-muted-foreground">
-                    See your complete weekly schedule (required courses + registered electives)
+                    See your complete weekly schedule (required courses +
+                    registered electives)
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">3</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                  3
+                </div>
                 <div>
                   <p className="font-medium">Check Exam Dates</p>
                   <p className="text-sm text-muted-foreground">
@@ -250,7 +299,9 @@ export function StudentDashboardTabs({
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">4</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                  4
+                </div>
                 <div>
                   <p className="font-medium">Provide Feedback</p>
                   <p className="text-sm text-muted-foreground">
@@ -265,7 +316,7 @@ export function StudentDashboardTabs({
         {/* Registration Tab - Elective Section Enrollment */}
         <TabsContent value="registration">
           {isRegistrationOpen ? (
-            <ElectiveRegistrationManager />
+            <ElectiveRegistrationManager userId={userId} />
           ) : (
             <Card>
               <CardHeader>
@@ -273,7 +324,8 @@ export function StudentDashboardTabs({
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Elective registration is currently closed. Please check the timeline for the next registration period.
+                  Elective registration is currently closed. Please check the
+                  timeline for the next registration period.
                 </p>
               </CardContent>
             </Card>
@@ -290,7 +342,9 @@ export function StudentDashboardTabs({
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Loading schedule...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Loading schedule...
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -310,7 +364,9 @@ export function StudentDashboardTabs({
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Loading exam schedule...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Loading exam schedule...
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -346,7 +402,8 @@ export function StudentDashboardTabs({
                         Feature Under Maintenance
                       </h3>
                       <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        We&apos;re upgrading the feedback system to support comments from all users (students, faculty, and staff).
+                        We&apos;re upgrading the feedback system to support
+                        comments from all users (students, faculty, and staff).
                         This feature will be back online shortly.
                       </p>
                     </div>
@@ -394,4 +451,3 @@ export function StudentDashboardTabs({
     </TooltipProvider>
   );
 }
-

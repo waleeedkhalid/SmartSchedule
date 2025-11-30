@@ -1,16 +1,21 @@
 /**
  * Time Grid Configuration Endpoint
- * 
+ *
  * GET /api/v1/time-grid-config - Get current time grid configuration
  * PUT /api/v1/time-grid-config - Update time grid configuration
- * 
+ *
  * All authenticated users can view configuration.
  * Only scheduling role can update configuration.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -31,19 +36,30 @@ export async function GET(request: NextRequest) {
     if (error) {
       // If no config exists, return defaults
       if (error.code === "PGRST116") {
-        return createSuccessResponse({
-          id: null,
-          teaching_days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-          daily_start_time: '08:00:00',
-          daily_end_time: '17:00:00',
-          slot_duration_minutes: 60,
-          break_start_time: '12:00:00',
-          break_end_time: '13:00:00',
-          exam_days: ['Saturday'],
-          exam_start_time: '09:00:00',
-          exam_end_time: '17:00:00',
-          typical_lab_duration_minutes: 120,
-        }, 200);
+        return createSuccessResponse(
+          {
+            id: null,
+            teaching_days: [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+            ],
+            daily_start_time: "08:00:00",
+            daily_end_time: "17:00:00",
+            slot_duration_minutes: 60,
+            break_start_time: "12:00:00",
+            break_end_time: "13:00:00",
+            exam_days: ["Saturday"],
+            exam_start_time: "09:00:00",
+            exam_end_time: "17:00:00",
+            min_days_between_exams: 1,
+            max_exams_per_day: 2,
+            typical_lab_duration_minutes: 120,
+          },
+          200
+        );
       }
       throw error;
     }
@@ -72,6 +88,8 @@ export async function PUT(request: NextRequest) {
       exam_days,
       exam_start_time,
       exam_end_time,
+      min_days_between_exams,
+      max_exams_per_day,
       typical_lab_duration_minutes,
     } = body;
 
@@ -92,7 +110,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (!slot_duration_minutes || slot_duration_minutes < 15 || slot_duration_minutes > 180) {
+    if (
+      !slot_duration_minutes ||
+      slot_duration_minutes < 15 ||
+      slot_duration_minutes > 180
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -124,7 +146,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (!typical_lab_duration_minutes || typical_lab_duration_minutes < 60 || typical_lab_duration_minutes > 300) {
+    if (min_days_between_exams !== undefined && min_days_between_exams < 0) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "min_days_between_exams must be non-negative"
+      );
+    }
+
+    if (max_exams_per_day !== undefined && max_exams_per_day < 1) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "max_exams_per_day must be at least 1"
+      );
+    }
+
+    if (
+      !typical_lab_duration_minutes ||
+      typical_lab_duration_minutes < 60 ||
+      typical_lab_duration_minutes > 300
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -146,6 +188,10 @@ export async function PUT(request: NextRequest) {
       exam_days,
       exam_start_time,
       exam_end_time,
+      min_days_between_exams: min_days_between_exams
+        ? parseInt(min_days_between_exams)
+        : 1,
+      max_exams_per_day: max_exams_per_day ? parseInt(max_exams_per_day) : 2,
       typical_lab_duration_minutes: parseInt(typical_lab_duration_minutes),
       updated_by: user.id,
     };
@@ -202,4 +248,3 @@ export async function PUT(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

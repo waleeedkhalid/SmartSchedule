@@ -30,10 +30,13 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 const roleBadgeColors: Record<UserRole, string> = {
-  scheduling: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  teaching_load: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  scheduling:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  teaching_load:
+    "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   faculty: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  student: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  student:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   registrar: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 
@@ -42,46 +45,64 @@ export default function UserAuthState() {
   const [isPending, startTransision] = useTransition();
   const queryClient = useQueryClient();
 
+  // Determine effective role and name
+  // Prefer userRole (from DB) but fallback to metadata (from Auth Session)
+  // This ensures the role is displayed even if the DB fetch is slow or fails
+  const effectiveRole =
+    userRole?.role || (user?.user_metadata?.role as UserRole);
+  const effectiveName =
+    userRole?.name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    "User";
+
   async function removeUser() {
     startTransision(async () => {
       try {
         // Get token from cookie or localStorage
-        const token = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('auth_token='))
-          ?.split('=')[1] ||
-          (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+        const token =
+          document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("auth_token="))
+            ?.split("=")[1] ||
+          (typeof window !== "undefined"
+            ? localStorage.getItem("auth_token")
+            : null);
 
         // Use the unified logout API route
-        const response = await fetch('/api/v1/auth/logout', {
-          method: 'POST',
+        const response = await fetch("/api/v1/auth/logout", {
+          method: "POST",
           headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
+            Authorization: token ? `Bearer ${token}` : "",
           },
         });
 
         // Clear all cookies and localStorage using utility
-        const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+        const { performClientLogoutCleanup } = await import(
+          "@/lib/utils/cookie-utils"
+        );
         performClientLogoutCleanup();
 
         if (response.ok) {
           queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
           toast.success("You're logged out!");
-          window.location.href = '/login';
+          window.location.href = "/login";
         } else {
           // Even if API fails, clear local storage and redirect
           queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
           toast.success("You're logged out!");
-          window.location.href = '/login';
+          window.location.href = "/login";
         }
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error("Logout error:", error);
         // Clear all cookies and localStorage even on error
-        const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+        const { performClientLogoutCleanup } = await import(
+          "@/lib/utils/cookie-utils"
+        );
         performClientLogoutCleanup();
         queryClient.invalidateQueries({ queryKey: ["user", "userRole"] });
         toast.success("You're logged out!");
-        window.location.href = '/login';
+        window.location.href = "/login";
       }
     });
   }
@@ -115,11 +136,13 @@ export default function UserAuthState() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{userRole?.name || "User"}</p>
+                <p className="text-sm font-medium">{effectiveName}</p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                {userRole && (
-                  <Badge className={cn("mt-1 w-fit", roleBadgeColors[userRole.role])}>
-                    {roleLabels[userRole.role]}
+                {effectiveRole && roleLabels[effectiveRole] && (
+                  <Badge
+                    className={cn("mt-1 w-fit", roleBadgeColors[effectiveRole])}
+                  >
+                    {roleLabels[effectiveRole]}
                   </Badge>
                 )}
               </div>

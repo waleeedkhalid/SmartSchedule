@@ -1,19 +1,27 @@
 /**
  * Section Detail Endpoint
- * 
+ *
  * GET /api/v1/sections/:id - Get section details
  * PUT /api/v1/sections/:id - Update section
  * DELETE /api/v1/sections/:id - Delete section
- * 
+ *
  * All authenticated users can view section details.
  * Only scheduling and teaching_load roles can update/delete sections.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { revalidateSections, revalidateSchedules } from "@/lib/cache/revalidation";
+import {
+  revalidateSections,
+  revalidateSchedules,
+} from "@/lib/cache/revalidation";
 
 interface RouteParams {
   params: Promise<{
@@ -21,10 +29,7 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate user
     await authenticateRequest(request);
@@ -35,7 +40,8 @@ export async function GET(
     // Fix: Explicitly select 'activity' field to ensure it's available in response
     const { data, error } = await supabase
       .from("section")
-      .select(`
+      .select(
+        `
         *,
         activity,
         course:course!section_course_code_fkey (
@@ -44,6 +50,7 @@ export async function GET(
           credits
         ),
         instructor:faculty_profile!section_instructor_id_fkey (
+          id,
           user_id,
           name,
           email
@@ -52,7 +59,8 @@ export async function GET(
           code,
           type
         )
-      `)
+      `
+      )
       .eq("id", id)
       .single();
 
@@ -74,19 +82,20 @@ export async function GET(
       section_no: data.section_no,
       section_type: data.activity || "lecture",
       instructor_id: data.instructor_id,
-      instructor: data.instructor
-        ? {
-          id: data.instructor.user_id,
-          name: data.instructor.name || "",
-          email: data.instructor.email || "",
-        }
-        : null,
+      instructor:
+        data.instructor && (data.instructor.id || data.instructor.user_id)
+          ? {
+              id: data.instructor.id || data.instructor.user_id,
+              name: data.instructor.name || "",
+              email: data.instructor.email || "",
+            }
+          : null,
       room_code: data.room_code,
       room: data.room
         ? {
-          code: data.room.code,
-          type: data.room.type,
-        }
+            code: data.room.code,
+            type: data.room.type,
+          }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,
@@ -102,10 +111,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
@@ -145,10 +151,12 @@ export async function PUT(
     // Prepare update data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {};
-    if (instructor_id !== undefined) updateData.instructor_id = instructor_id || null;
+    if (instructor_id !== undefined)
+      updateData.instructor_id = instructor_id || null;
     if (room_code !== undefined) updateData.room_code = room_code || null;
     if (capacity !== undefined) updateData.capacity = parseInt(capacity);
-    if (group_level !== undefined) updateData.group_level = parseInt(group_level);
+    if (group_level !== undefined)
+      updateData.group_level = parseInt(group_level);
     if (activity !== undefined) updateData.activity = activity;
     if (state !== undefined) updateData.state = state;
 
@@ -165,7 +173,9 @@ export async function PUT(
       updateData.meeting_pattern = {
         days: meeting_days || currentPattern.days,
         start: meeting_start || currentPattern.start,
-        duration: meeting_duration ? parseInt(meeting_duration) : currentPattern.duration,
+        duration: meeting_duration
+          ? parseInt(meeting_duration)
+          : currentPattern.duration,
       };
     }
 
@@ -174,7 +184,8 @@ export async function PUT(
       .from("section")
       .update(updateData)
       .eq("id", id)
-      .select(`
+      .select(
+        `
         *,
         activity,
         course:course_code (
@@ -183,6 +194,7 @@ export async function PUT(
           credits
         ),
         instructor:faculty_profile!section_instructor_id_fkey (
+          id,
           user_id,
           name,
           email
@@ -191,7 +203,8 @@ export async function PUT(
           code,
           type
         )
-      `)
+      `
+      )
       .single();
 
     if (error) {
@@ -205,19 +218,20 @@ export async function PUT(
       section_no: data.section_no,
       section_type: data.activity || "lecture",
       instructor_id: data.instructor_id,
-      instructor: data.instructor
-        ? {
-          id: data.instructor.user_id,
-          name: data.instructor.name || "",
-          email: data.instructor.email || "",
-        }
-        : null,
+      instructor:
+        data.instructor && (data.instructor.id || data.instructor.user_id)
+          ? {
+              id: data.instructor.id || data.instructor.user_id,
+              name: data.instructor.name || "",
+              email: data.instructor.email || "",
+            }
+          : null,
       room_code: data.room_code,
       room: data.room
         ? {
-          code: data.room.code,
-          type: data.room.type,
-        }
+            code: data.room.code,
+            type: data.room.type,
+          }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,
@@ -237,10 +251,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
@@ -280,16 +291,10 @@ export async function DELETE(
     }
 
     // Delete from schedule first (if exists)
-    await supabase
-      .from("schedule")
-      .delete()
-      .eq("section_id", id);
+    await supabase.from("schedule").delete().eq("section_id", id);
 
     // Delete section
-    const { error } = await supabase
-      .from("section")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("section").delete().eq("id", id);
 
     if (error) {
       throw error;
@@ -300,7 +305,9 @@ export async function DELETE(
     revalidateSchedules();
 
     return createSuccessResponse(
-      { message: `Section ${existing.course_code}-${existing.section_no} deleted successfully` },
+      {
+        message: `Section ${existing.course_code}-${existing.section_no} deleted successfully`,
+      },
       200
     );
   } catch (error) {

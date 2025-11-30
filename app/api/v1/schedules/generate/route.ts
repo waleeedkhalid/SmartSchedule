@@ -1,8 +1,8 @@
 /**
  * Schedule Generation Endpoint
- * 
+ *
  * POST /api/v1/schedules/generate - Generate schedule for a term
- * 
+ *
  * Only scheduling role can generate schedules.
  * This endpoint uses the scheduling algorithm to assign rooms and time slots
  * to all draft sections, then creates schedule entries.
@@ -10,9 +10,18 @@
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
-import { generateSchedule, type SchedulingInput } from "@/lib/scheduling/algorithm";
+import {
+  generateSchedule,
+  type SchedulingInput,
+} from "@/lib/scheduling/algorithm";
+import { solveCSP } from "@/lib/scheduling/csp-solver";
 
 interface MeetingPattern {
   days?: string[];
@@ -49,7 +58,7 @@ export async function POST(request: NextRequest) {
     requireRole(user, ["scheduling"]);
 
     const body = await request.json();
-    const { term_id } = body;
+    const { term_id, use_csp_solver, csp_config } = body;
 
     if (!term_id) {
       return createErrorResponse(
@@ -87,15 +96,17 @@ export async function POST(request: NextRequest) {
       // Get all courses (for creating sections)
       supabase
         .from("course")
-        .select("code, title, recommended_level, credits, weekly_hours, is_elective"),
+        .select(
+          "code, title, recommended_level, credits, weekly_hours, is_elective"
+        ),
       // Get all sections (to check which courses already have sections)
       supabase
         .from("section")
-        .select("id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern, state"),
+        .select(
+          "id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern, state"
+        ),
       // Get all rooms
-      supabase
-        .from("room")
-        .select("code, type, capacity"),
+      supabase.from("room").select("code, type, capacity"),
       // Get time grid configuration
       supabase
         .from("time_grid_config")
@@ -104,10 +115,7 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .single(),
       // Get existing schedules for this term
-      supabase
-        .from("schedule")
-        .select("section_id")
-        .eq("term_id", term_id),
+      supabase.from("schedule").select("section_id").eq("term_id", term_id),
     ]);
 
     if (coursesResult.error) {
@@ -125,12 +133,22 @@ export async function POST(request: NextRequest) {
     const courses = coursesResult.data || [];
     const allSections = sectionsResult.data || [];
     const rooms = (roomsResult.data || []) as RoomForScheduling[];
-    const existingSchedules = (existingSchedulesResult.data || []) as ScheduleEntry[];
+    const existingSchedules = (existingSchedulesResult.data ||
+      []) as ScheduleEntry[];
 
     // Step 1: Create draft sections for courses that don't have any sections
     // Only create sections for SWE courses in levels 4-8 (per PRD scheduling scope)
-    const sweCourses = courses.filter((c: { code: string; recommended_level: number | null; is_elective: boolean }) =>
-      c.code.startsWith('SWE') && c.recommended_level !== null && c.recommended_level >= 4 && c.recommended_level <= 8 && !c.is_elective
+    const sweCourses = courses.filter(
+      (c: {
+        code: string;
+        recommended_level: number | null;
+        is_elective: boolean;
+      }) =>
+        c.code.startsWith("SWE") &&
+        c.recommended_level !== null &&
+        c.recommended_level >= 4 &&
+        c.recommended_level <= 8 &&
+        !c.is_elective
     );
 
     // Check which courses already have sections (any state)
@@ -145,23 +163,31 @@ export async function POST(request: NextRequest) {
     // Create draft sections for courses that need them
     const createdSections: SectionForScheduling[] = [];
     if (coursesNeedingSections.length > 0) {
-      const sectionsToCreate = coursesNeedingSections.map((course: { code: string; recommended_level: number | null; credits: number }) => ({
-        course_code: course.code,
-        section_no: "01", // Default to section 01
-        instructor_id: null,
-        room_code: null,
-        capacity: 30, // Default capacity
-        group_level: course.recommended_level ?? 1, // Use recommended_level, default to 1 if null
-        activity: "lecture" as const,
-        meeting_pattern: {},
-        state: "draft",
-        created_by: user.id,
-      }));
+      const sectionsToCreate = coursesNeedingSections.map(
+        (course: {
+          code: string;
+          recommended_level: number | null;
+          credits: number;
+        }) => ({
+          course_code: course.code,
+          section_no: "01", // Default to section 01
+          instructor_id: null,
+          room_code: null,
+          capacity: 30, // Default capacity
+          group_level: course.recommended_level ?? 1, // Use recommended_level, default to 1 if null
+          activity: "lecture" as const,
+          meeting_pattern: {},
+          state: "draft",
+          created_by: user.id,
+        })
+      );
 
       const { data: newSections, error: createError } = await supabase
         .from("section")
         .insert(sectionsToCreate)
-        .select("id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern, state");
+        .select(
+          "id, course_code, section_no, instructor_id, room_code, capacity, group_level, activity, meeting_pattern, state"
+        );
 
       if (createError) {
         throw createError;
@@ -195,7 +221,11 @@ export async function POST(request: NextRequest) {
       const config = timeGridResult.data;
 
       // Validate that all required settings are present
-      if (!config.teaching_days || !Array.isArray(config.teaching_days) || config.teaching_days.length === 0) {
+      if (
+        !config.teaching_days ||
+        !Array.isArray(config.teaching_days) ||
+        config.teaching_days.length === 0
+      ) {
         return createErrorResponse(
           400,
           ErrorCodes.VALIDATION_ERROR,
@@ -211,7 +241,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!config.slot_duration_minutes || config.slot_duration_minutes < 15 || config.slot_duration_minutes > 180) {
+      if (
+        !config.slot_duration_minutes ||
+        config.slot_duration_minutes < 15 ||
+        config.slot_duration_minutes > 180
+      ) {
         return createErrorResponse(
           400,
           ErrorCodes.VALIDATION_ERROR,
@@ -227,7 +261,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!config.typical_lab_duration_minutes || config.typical_lab_duration_minutes < 60 || config.typical_lab_duration_minutes > 300) {
+      if (
+        !config.typical_lab_duration_minutes ||
+        config.typical_lab_duration_minutes < 60 ||
+        config.typical_lab_duration_minutes > 300
+      ) {
         return createErrorResponse(
           400,
           ErrorCodes.VALIDATION_ERROR,
@@ -259,7 +297,9 @@ export async function POST(request: NextRequest) {
     if (draftSections.length === 0) {
       return createSuccessResponse(
         {
-          message: creationMessage + "No draft sections found to schedule. All courses already have sections.",
+          message:
+            creationMessage +
+            "No draft sections found to schedule. All courses already have sections.",
           stats: {
             total_sections: 0,
             added: 0,
@@ -310,8 +350,9 @@ export async function POST(request: NextRequest) {
     // Even sections with existing assignments need to be validated for conflicts
     const sectionsForAlgorithm = sectionsToSchedule.map((s) => {
       const pattern = s.meeting_pattern as MeetingPattern | null;
-      const hasPattern = pattern &&
-        typeof pattern === 'object' &&
+      const hasPattern =
+        pattern &&
+        typeof pattern === "object" &&
         Object.keys(pattern).length > 0 &&
         pattern.days &&
         pattern.days.length > 0;
@@ -328,18 +369,19 @@ export async function POST(request: NextRequest) {
         capacity: s.capacity,
         group_level: s.group_level,
         weekly_hours: weeklyHours,
-        activity: (s.activity || 'lecture') as 'lecture' | 'tutorial' | 'lab',
-        meeting_pattern: hasPattern && pattern
-          ? {
-            days: pattern.days || [],
-            start: pattern.start || '',
-            duration: pattern.duration || 0,
-          }
-          : {
-            days: [],
-            start: '',
-            duration: 0,
-          },
+        activity: (s.activity || "lecture") as "lecture" | "tutorial" | "lab",
+        meeting_pattern:
+          hasPattern && pattern
+            ? {
+                days: pattern.days || [],
+                start: pattern.start || "",
+                duration: pattern.duration || 0,
+              }
+            : {
+                days: [],
+                start: "",
+                duration: 0,
+              },
       };
     });
 
@@ -363,7 +405,12 @@ export async function POST(request: NextRequest) {
       timeGridConfig, // Uses configured settings from Scheduling Settings page
     };
 
-    const result = await generateSchedule(schedulingInput);
+    let result;
+    if (use_csp_solver) {
+      result = await solveCSP(schedulingInput, csp_config);
+    } else {
+      result = await generateSchedule(schedulingInput);
+    }
 
     // Update sections with assigned room and meeting pattern
     const updatePromises = result.assignments.map(async (assignment) => {
@@ -371,7 +418,7 @@ export async function POST(request: NextRequest) {
         days: assignment.time_slot.days,
         start: assignment.time_slot.start_time,
         duration: assignment.time_slot.duration,
-        is_lab: assignment.activity === 'lab',
+        is_lab: assignment.activity === "lab",
       };
 
       const updateData: {
@@ -435,7 +482,12 @@ export async function POST(request: NextRequest) {
 
     // Calculate exam dates based on term dates and exam_days
     const examDates: string[] = [];
-    if (term.start_date && term.end_date && timeGridConfig.exam_days && timeGridConfig.exam_days.length > 0) {
+    if (
+      term.start_date &&
+      term.end_date &&
+      timeGridConfig.exam_days &&
+      timeGridConfig.exam_days.length > 0
+    ) {
       const startDate = new Date(term.start_date);
       const endDate = new Date(term.end_date);
 
@@ -450,7 +502,9 @@ export async function POST(request: NextRequest) {
         Saturday: 6,
       };
 
-      const examDayNumbers = timeGridConfig.exam_days.map((day: string) => dayMap[day] ?? -1).filter((d: number) => d >= 0);
+      const examDayNumbers = timeGridConfig.exam_days
+        .map((day: string) => dayMap[day] ?? -1)
+        .filter((d: number) => d >= 0);
 
       // Find exam dates within term (typically midterm and final)
       // Midterm: around 1/3 of term
@@ -489,10 +543,19 @@ export async function POST(request: NextRequest) {
       created_by: string | null;
     }> = [];
 
-    if (examDates.length > 0 && examRooms.length > 0 && timeGridConfig.exam_start_time && timeGridConfig.exam_end_time) {
+    if (
+      examDates.length > 0 &&
+      examRooms.length > 0 &&
+      timeGridConfig.exam_start_time &&
+      timeGridConfig.exam_end_time
+    ) {
       // Parse exam time window
-      const [startHour, startMin] = timeGridConfig.exam_start_time.split(":").map(Number);
-      const [endHour, endMin] = timeGridConfig.exam_end_time.split(":").map(Number);
+      const [startHour, startMin] = timeGridConfig.exam_start_time
+        .split(":")
+        .map(Number);
+      const [endHour, endMin] = timeGridConfig.exam_end_time
+        .split(":")
+        .map(Number);
       const examStartMinutes = startHour * 60 + startMin;
       const examEndMinutes = endHour * 60 + endMin;
 
@@ -515,13 +578,16 @@ export async function POST(request: NextRequest) {
           if (currentTime + defaultExamDuration > examEndMinutes) {
             // Move to next day or next room group
             currentTime = examStartMinutes;
-            roomIndex = (roomIndex + 1) % Math.max(1, Math.floor(examRooms.length / 2));
+            roomIndex =
+              (roomIndex + 1) % Math.max(1, Math.floor(examRooms.length / 2));
           }
 
           // Format start time
           const hours = Math.floor(currentTime / 60);
           const minutes = currentTime % 60;
-          const startTime = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+          const startTime = `${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}:00`;
 
           // Assign rooms (use 1-2 rooms per exam depending on capacity needs)
           const assignedRooms = examRooms
@@ -563,11 +629,25 @@ export async function POST(request: NextRequest) {
       reason: u.reason,
     }));
 
+    // Extract CSP stats if available
+    const cspStats =
+      "stats" in result && "backtracks" in result.stats
+        ? {
+            backtracks: result.stats.backtracks,
+            softConstraintCost:
+              "softConstraintCost" in result.stats
+                ? result.stats.softConstraintCost
+                : undefined,
+          }
+        : undefined;
+
     return createSuccessResponse(
       {
-        message: creationMessage + (result.success
-          ? `Successfully generated schedule for ${result.assignments.length} sections`
-          : `Partially generated schedule: ${result.assignments.length} assigned, ${result.unassigned.length} unassigned`),
+        message:
+          creationMessage +
+          (result.success
+            ? `Successfully generated schedule for ${result.assignments.length} sections`
+            : `Partially generated schedule: ${result.assignments.length} assigned, ${result.unassigned.length} unassigned`),
         stats: {
           total_sections: draftSections.length,
           added: result.assignments.length,
@@ -576,6 +656,7 @@ export async function POST(request: NextRequest) {
           created: createdSections.length,
         },
         unassigned: unassignedDetails,
+        csp_stats: cspStats,
       },
       200
     );
@@ -583,4 +664,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

@@ -1,17 +1,22 @@
 /**
  * Instructor Detail Endpoint
- * 
+ *
  * GET /api/v1/instructors/:id - Get instructor details
  * PUT /api/v1/instructors/:id - Update instructor
  * DELETE /api/v1/instructors/:id - Delete instructor
- * 
+ *
  * All authenticated users can view instructor details.
  * Only scheduling and teaching_load roles can update/delete instructors.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
 interface RouteParams {
@@ -20,10 +25,7 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate user
     await authenticateRequest(request);
@@ -34,7 +36,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("faculty_profile")
       .select("*")
-      .eq("user_id", id)
+      .eq("id", id)
       .single();
 
     if (error) {
@@ -54,10 +56,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
@@ -65,15 +64,21 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, email, max_load_per_week, preferred_times, unavailable_times } = body;
+    const {
+      name,
+      email,
+      max_load_per_week,
+      preferred_times,
+      unavailable_times,
+    } = body;
 
     const supabase = await createClient();
 
     // Check if faculty profile exists
     const { data: existing, error: checkError } = await supabase
       .from("faculty_profile")
-      .select("user_id, email")
-      .eq("user_id", id)
+      .select("id, user_id, email")
+      .eq("id", id)
       .single();
 
     if (checkError || !existing) {
@@ -85,7 +90,12 @@ export async function PUT(
     }
 
     // Validate email format if provided
-    if (email !== undefined && email !== null && email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (
+      email !== undefined &&
+      email !== null &&
+      email !== "" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -94,7 +104,10 @@ export async function PUT(
     }
 
     // Validate max_load_per_week if provided
-    if (max_load_per_week !== undefined && (max_load_per_week < 1 || max_load_per_week > 40)) {
+    if (
+      max_load_per_week !== undefined &&
+      (max_load_per_week < 1 || max_load_per_week > 40)
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -106,7 +119,7 @@ export async function PUT(
     if (email && email !== existing.email) {
       const { data: emailExists } = await supabase
         .from("faculty_profile")
-        .select("user_id")
+        .select("id")
         .eq("email", email)
         .single();
 
@@ -124,15 +137,18 @@ export async function PUT(
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email || null;
-    if (max_load_per_week !== undefined) updateData.max_load_per_week = parseInt(max_load_per_week);
-    if (preferred_times !== undefined) updateData.preferred_times = preferred_times;
-    if (unavailable_times !== undefined) updateData.unavailable_times = unavailable_times;
+    if (max_load_per_week !== undefined)
+      updateData.max_load_per_week = parseInt(max_load_per_week);
+    if (preferred_times !== undefined)
+      updateData.preferred_times = preferred_times;
+    if (unavailable_times !== undefined)
+      updateData.unavailable_times = unavailable_times;
 
     // Update faculty profile
     const { data, error } = await supabase
       .from("faculty_profile")
       .update(updateData)
-      .eq("user_id", id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -146,10 +162,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     // Authenticate and check role
     const user = await authenticateRequest(request);
@@ -161,8 +174,8 @@ export async function DELETE(
     // Check if faculty profile exists
     const { data: existing, error: checkError } = await supabase
       .from("faculty_profile")
-      .select("user_id")
-      .eq("user_id", id)
+      .select("id")
+      .eq("id", id)
       .single();
 
     if (checkError || !existing) {
@@ -192,15 +205,17 @@ export async function DELETE(
     const { error } = await supabase
       .from("faculty_profile")
       .delete()
-      .eq("user_id", id);
+      .eq("id", id);
 
     if (error) {
       throw error;
     }
 
-    return createSuccessResponse({ message: `Faculty profile deleted successfully` }, 200);
+    return createSuccessResponse(
+      { message: `Faculty profile deleted successfully` },
+      200
+    );
   } catch (error) {
     return handleApiError(error);
   }
 }
-

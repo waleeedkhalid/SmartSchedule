@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import type { Database } from '@/lib/types/database'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import type { Database } from "@/lib/types/database";
 import {
   Table,
   TableBody,
@@ -10,181 +10,200 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Edit, Save, X, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { getAuthHeader } from '@/lib/utils/client-auth'
+} from "@/components/ui/select";
+import { Edit, Save, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { getAuthHeader } from "@/lib/utils/client-auth";
 
-type Section = Database['public']['Tables']['section']['Row'] & {
-  course?: { code: string; title: string; credits: number } | null
-  instructor?: { user_id: string; name: string; email: string } | null
-  room?: { code: string; type: string } | null
-}
+type Section = Database["public"]["Tables"]["section"]["Row"] & {
+  course?: { code: string; title: string; credits: number } | null;
+  instructor?: {
+    id?: string;
+    user_id?: string | null;
+    name: string;
+    email: string | null;
+  } | null;
+  room?: { code: string; type: string } | null;
+};
 
 interface TeachingLoadRoomsTableProps {
-  sections: Section[]
-  rooms: Array<{ code: string; type: string; capacity?: number | null }>
+  sections: Section[];
+  rooms: Array<{ code: string; type: string; capacity?: number | null }>;
 }
 
-export function TeachingLoadRoomsTable({ 
-  sections, 
-  rooms 
+export function TeachingLoadRoomsTable({
+  sections,
+  rooms,
 }: TeachingLoadRoomsTableProps) {
-  const router = useRouter()
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
-  const [selectedRoomCode, setSelectedRoomCode] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [localSections, setLocalSections] = useState<Section[]>(sections)
+  const router = useRouter();
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [selectedRoomCode, setSelectedRoomCode] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [localSections, setLocalSections] = useState<Section[]>(sections);
 
   // Update local sections when props change
   useEffect(() => {
-    setLocalSections(sections)
-  }, [sections])
+    setLocalSections(sections);
+  }, [sections]);
 
   async function handleSave(sectionId: string) {
     // selectedRoomCode can be null (unassigned) or a valid room code
     // No need to validate here as null is a valid value for unassigning
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      const authHeader = await getAuthHeader()
-      
+      const authHeader = await getAuthHeader();
+
       if (!authHeader) {
-        throw new Error('Authentication required. Please log in again.')
+        throw new Error("Authentication required. Please log in again.");
       }
 
-      console.log('Updating room assignment:', { sectionId, room_code: selectedRoomCode })
-      
+      console.log("Updating room assignment:", {
+        sectionId,
+        room_code: selectedRoomCode,
+      });
+
       const response = await fetch(`/api/v1/sections/${sectionId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader,
+          "Content-Type": "application/json",
+          Authorization: authHeader,
         },
         body: JSON.stringify({
           room_code: selectedRoomCode || null,
         }),
-      })
+      });
 
-      console.log('Response status:', response.status, response.statusText)
+      console.log("Response status:", response.status, response.statusText);
 
-      let result
+      let result;
       try {
-        const text = await response.text()
-        console.log('Response text:', text)
-        result = JSON.parse(text)
+        const text = await response.text();
+        console.log("Response text:", text);
+        result = JSON.parse(text);
       } catch (jsonError) {
-        console.error('Failed to parse response:', jsonError)
-        throw new Error('Invalid response from server')
+        console.error("Failed to parse response:", jsonError);
+        throw new Error("Invalid response from server");
       }
 
-      console.log('Parsed result:', result)
+      console.log("Parsed result:", result);
 
       if (!response.ok) {
-        const errorMessage = result?.error || result?.message || response.statusText || 'Failed to update room assignment'
-        console.error('API error:', errorMessage, result)
-        throw new Error(errorMessage)
+        const errorMessage =
+          result?.error ||
+          result?.message ||
+          response.statusText ||
+          "Failed to update room assignment";
+        console.error("API error:", errorMessage, result);
+        throw new Error(errorMessage);
       }
 
       // Check if result has the expected structure
       if (!result || !result.data) {
-        console.error('Unexpected response structure:', result)
-        throw new Error('Invalid response from server')
+        console.error("Unexpected response structure:", result);
+        throw new Error("Invalid response from server");
       }
 
-      console.log('Room data from response:', result.data?.room)
+      console.log("Room data from response:", result.data?.room);
 
       // Update local state
-      setLocalSections(prev => prev.map(section => 
-        section.id === sectionId
-          ? { 
-              ...section, 
-              room_code: selectedRoomCode, 
-              room: result.data?.room || null 
-            }
-          : section
-      ))
+      setLocalSections((prev) =>
+        prev.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                room_code: selectedRoomCode,
+                room: result.data?.room || null,
+              }
+            : section
+        )
+      );
 
-      toast.success('Room assignment updated successfully')
-      setEditingSectionId(null)
-      setSelectedRoomCode(null)
-      
+      toast.success("Room assignment updated successfully");
+      setEditingSectionId(null);
+      setSelectedRoomCode(null);
+
       // Use router.refresh() instead of window.location.reload() to avoid hydration issues
       // Small delay to show success message
       setTimeout(() => {
-        router.refresh()
-      }, 500)
+        router.refresh();
+      }, 500);
     } catch (error) {
-      console.error('Error updating room assignment:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update room assignment'
-      toast.error(errorMessage)
+      console.error("Error updating room assignment:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to update room assignment";
+      toast.error(errorMessage);
       // Reset editing state on error so user can try again
-      setEditingSectionId(null)
-      setSelectedRoomCode(null)
+      setEditingSectionId(null);
+      setSelectedRoomCode(null);
     } finally {
       // Always reset loading state
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 
   function handleCancel() {
-    setEditingSectionId(null)
-    setSelectedRoomCode(null)
+    setEditingSectionId(null);
+    setSelectedRoomCode(null);
   }
 
   function handleEdit(section: Section) {
-    setEditingSectionId(section.id)
-    setSelectedRoomCode(section.room_code)
+    setEditingSectionId(section.id);
+    setSelectedRoomCode(section.room_code);
   }
 
   function formatDays(days: string[] | null) {
-    if (!days || !Array.isArray(days) || days.length === 0) return '—'
-    return days.map(d => d.substring(0, 3)).join(', ')
+    if (!days || !Array.isArray(days) || days.length === 0) return "—";
+    return days.map((d) => d.substring(0, 3)).join(", ");
   }
 
   function formatTime(time: string | null) {
-    if (!time) return '—'
-    const [hours, minutes] = time.split(':')
-    const h = parseInt(hours)
-    const ampm = h >= 12 ? 'PM' : 'AM'
-    const hour12 = h % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
+    if (!time) return "—";
+    const [hours, minutes] = time.split(":");
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   }
 
   // Filter rooms by activity type if section has activity
   function getFilteredRooms(section: Section) {
     if (!section.activity) {
-      return rooms
+      return rooms;
     }
-    
+
     // Filter rooms based on activity type
     // Labs typically need Lab rooms, lectures need Lecture rooms
-    if (section.activity === 'lab') {
-      return rooms.filter(room => room.type === 'Lab')
-    } else if (section.activity === 'tutorial') {
+    if (section.activity === "lab") {
+      return rooms.filter((room) => room.type === "Lab");
+    } else if (section.activity === "tutorial") {
       // Tutorials can use either Lecture or Lab rooms
-      return rooms
+      return rooms;
     } else {
       // Lectures need Lecture rooms
-      return rooms.filter(room => room.type === 'Lecture')
+      return rooms.filter((room) => room.type === "Lecture");
     }
   }
 
   if (localSections.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
-        <p>No sections found. Sections will appear here once they are created.</p>
+        <p>
+          No sections found. Sections will appear here once they are created.
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -206,13 +225,13 @@ export function TeachingLoadRoomsTable({
         </TableHeader>
         <TableBody>
           {localSections.map((section) => {
-            const isEditing = editingSectionId === section.id
+            const isEditing = editingSectionId === section.id;
             const meetingPattern = section.meeting_pattern as {
-              days?: string[]
-              start?: string
-              duration?: number
-            } | null
-            const filteredRooms = getFilteredRooms(section)
+              days?: string[];
+              start?: string;
+              duration?: number;
+            } | null;
+            const filteredRooms = getFilteredRooms(section);
 
             return (
               <TableRow key={section.id}>
@@ -227,23 +246,28 @@ export function TeachingLoadRoomsTable({
                 <TableCell>{section.section_no}</TableCell>
                 <TableCell>
                   {section.activity ? (
-                    <Badge 
+                    <Badge
                       variant={
-                        section.activity === 'lab' ? 'default' : 
-                        section.activity === 'tutorial' ? 'secondary' : 
-                        'outline'
+                        section.activity === "lab"
+                          ? "default"
+                          : section.activity === "tutorial"
+                          ? "secondary"
+                          : "outline"
                       }
                     >
-                      {section.activity.charAt(0).toUpperCase() + section.activity.slice(1)}
+                      {section.activity.charAt(0).toUpperCase() +
+                        section.activity.slice(1)}
                     </Badge>
                   ) : (
-                    '—'
+                    "—"
                   )}
                 </TableCell>
                 <TableCell>
                   {section.instructor ? (
                     <div>
-                      <div className="font-medium">{section.instructor.name}</div>
+                      <div className="font-medium">
+                        {section.instructor.name}
+                      </div>
                       {section.instructor.email && (
                         <div className="text-xs text-muted-foreground">
                           {section.instructor.email}
@@ -257,8 +281,12 @@ export function TeachingLoadRoomsTable({
                 <TableCell>
                   {isEditing ? (
                     <Select
-                      value={selectedRoomCode || 'unassigned'}
-                      onValueChange={(value) => setSelectedRoomCode(value === 'unassigned' ? null : value)}
+                      value={selectedRoomCode || "unassigned"}
+                      onValueChange={(value) =>
+                        setSelectedRoomCode(
+                          value === "unassigned" ? null : value
+                        )
+                      }
                       disabled={isSaving}
                     >
                       <SelectTrigger className="w-[200px]">
@@ -284,7 +312,9 @@ export function TeachingLoadRoomsTable({
                           </div>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">Unassigned</span>
+                        <span className="text-muted-foreground">
+                          Unassigned
+                        </span>
                       )}
                     </div>
                   )}
@@ -308,9 +338,9 @@ export function TeachingLoadRoomsTable({
                 <TableCell>
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      section.state === 'released'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      section.state === "released"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                     }`}
                   >
                     {section.state}
@@ -351,11 +381,10 @@ export function TeachingLoadRoomsTable({
                   )}
                 </TableCell>
               </TableRow>
-            )
+            );
           })}
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
-

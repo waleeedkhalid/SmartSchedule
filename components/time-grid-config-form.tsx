@@ -15,7 +15,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { TimeGridConfig } from "@/lib/types/database";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
@@ -31,6 +37,8 @@ const formSchema = z.object({
   exam_days: z.string(),
   exam_start_time: z.string(),
   exam_end_time: z.string(),
+  min_days_between_exams: z.coerce.number().min(0).default(1),
+  max_exams_per_day: z.coerce.number().min(1).default(2),
   typical_lab_duration_minutes: z.coerce.number().min(60).max(300),
 });
 
@@ -54,6 +62,8 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
       exam_days: initialConfig.exam_days.join(", "),
       exam_start_time: initialConfig.exam_start_time.substring(0, 5),
       exam_end_time: initialConfig.exam_end_time.substring(0, 5),
+      min_days_between_exams: initialConfig.min_days_between_exams ?? 1,
+      max_exams_per_day: initialConfig.max_exams_per_day ?? 2,
       typical_lab_duration_minutes: initialConfig.typical_lab_duration_minutes,
     },
   });
@@ -62,7 +72,7 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
     setIsLoading(true);
     try {
       const authHeader = await getAuthHeader();
-      
+
       // Prepare the config data
       const configData = {
         id: initialConfig.id || null,
@@ -75,6 +85,8 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
         exam_days: values.exam_days.split(",").map((d) => d.trim()),
         exam_start_time: values.exam_start_time + ":00",
         exam_end_time: values.exam_end_time + ":00",
+        min_days_between_exams: values.min_days_between_exams,
+        max_exams_per_day: values.max_exams_per_day,
         typical_lab_duration_minutes: values.typical_lab_duration_minutes,
       };
 
@@ -82,7 +94,7 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": authHeader,
+          Authorization: authHeader,
         },
         body: JSON.stringify(configData),
       });
@@ -96,7 +108,10 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
       toast.success("Configuration updated successfully");
       router.refresh();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update configuration";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to update configuration";
       toast.error(errorMessage);
       console.error(error);
     } finally {
@@ -122,7 +137,10 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
                 <FormItem>
                   <FormLabel>Teaching Days</FormLabel>
                   <FormControl>
-                    <Input placeholder="Sunday, Monday, Tuesday, Wednesday, Thursday" {...field} />
+                    <Input
+                      placeholder="Sunday, Monday, Tuesday, Wednesday, Thursday"
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
                     Comma-separated list of teaching days
@@ -214,9 +232,7 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
         <Card>
           <CardHeader>
             <CardTitle>Exam Schedule</CardTitle>
-            <CardDescription>
-              Configure exam days and hours
-            </CardDescription>
+            <CardDescription>Configure exam days and hours</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -271,9 +287,7 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
         <Card>
           <CardHeader>
             <CardTitle>Lab Settings</CardTitle>
-            <CardDescription>
-              Configure lab duration settings
-            </CardDescription>
+            <CardDescription>Configure lab duration settings</CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -295,6 +309,52 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Exam Spacing Settings</CardTitle>
+            <CardDescription>
+              Configure settings for exam spacing
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="min_days_between_exams"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Min Days Between Exams</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="0" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Minimum gap between exams for a student
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="max_exams_per_day"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Exams Per Day</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="1" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Maximum exams a student can have in one day
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "Saving..." : "Save Configuration"}
@@ -304,4 +364,3 @@ export function TimeGridConfigForm({ initialConfig }: TimeGridConfigFormProps) {
     </Form>
   );
 }
-
