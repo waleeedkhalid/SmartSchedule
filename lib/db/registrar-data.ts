@@ -1,23 +1,30 @@
 /**
  * Registrar Dashboard Data Access Layer
- * 
+ *
  * Provides data access functions for registrar role:
  * - Irregular students management
  * - Student enrollment management
  * - Student listing
- * 
+ *
  * Wrapped with React.cache() for request memoization - ensures the same
  * data is only fetched once per request, even if called multiple times
  * in the same render tree.
- * 
+ *
  * Note: These functions use createClient() which accesses cookies(), so they cannot
  * be wrapped with unstable_cache() for persistent caching. React.cache() provides
  * request-level memoization which is sufficient for preventing duplicate queries.
  */
 
-import { cache } from 'react';
+import { cache } from "react";
 import { createClient } from "@/supabase/server";
-
+import {
+  PaginationParams,
+  PaginatedResult,
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  calculateRange,
+  buildPaginatedResult,
+} from "@/lib/utils/pagination";
 
 export interface StudentView {
   user_id: string;
@@ -71,12 +78,96 @@ export interface EnrollmentView {
   };
 }
 
+/**
+ * Get students with pagination support
+ *
+ * @param params - Pagination parameters (page, pageSize, search)
+ * @returns Paginated list of students with profile information
+ *
+ * Performance: Uses pagination to limit data transfer, searches in name/email
+ */
+export const getStudentsPaginated = cache(
+  async (
+    params: PaginationParams = {}
+  ): Promise<PaginatedResult<StudentView>> => {
+    const supabase = await createClient();
+
+    const page = params.page ?? DEFAULT_PAGE;
+    const pageSize = params.pageSize ?? DEFAULT_PAGE_SIZE;
+    const search = params.search?.trim().toLowerCase() ?? "";
+    const { from, to } = calculateRange(page, pageSize);
+
+    // Build query with count
+    let query = supabase
+      .from("user_roles")
+      .select("user_id, name, email", { count: "exact" })
+      .eq("role", "student");
+
+    // Apply search filter
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+    }
+
+    // Apply sorting and pagination
+    const {
+      data: students,
+      error: studentsError,
+      count,
+    } = await query.order("name", { ascending: true }).range(from, to);
+
+    if (studentsError) {
+      console.error("Error fetching students:", studentsError);
+      throw studentsError;
+    }
+
+    if (!students || students.length === 0) {
+      return buildPaginatedResult([], count ?? 0, page, pageSize);
+    }
+
+    // Get student profiles separately (more reliable with RLS)
+    const studentIds = students.map((s) => s.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("student_profile")
+      .select("user_id, level, department, student_number")
+      .in("user_id", studentIds);
+
+    if (profilesError) {
+      console.warn("Error fetching student profiles:", profilesError);
+    }
+
+    // Create a map for quick lookup
+    const profileMap = new Map(
+      (profiles || []).map((p) => [
+        p.user_id,
+        {
+          level: p.level,
+          department: p.department,
+          student_number: p.student_number,
+        },
+      ])
+    );
+
+    const data = students.map((s) => {
+      const profile = profileMap.get(s.user_id);
+      return {
+        user_id: s.user_id,
+        name: s.name,
+        email: s.email,
+        level: profile?.level || null,
+        department: profile?.department || null,
+        student_number: profile?.student_number || null,
+      };
+    });
+
+    return buildPaginatedResult(data, count ?? 0, page, pageSize);
+  }
+);
 
 /**
  * Get all students with profile information
- * Stable backend function for registrar
- * Uses separate queries to avoid RLS issues with joins
- * 
+ *
+ * @deprecated Use getStudentsPaginated for better performance
+ *
  * Wrapped with React.cache() for request memoization
  */
 export const getAllStudents = cache(async (): Promise<StudentView[]> => {
@@ -99,7 +190,7 @@ export const getAllStudents = cache(async (): Promise<StudentView[]> => {
   }
 
   // Get student profiles separately (more reliable with RLS)
-  const studentIds = students.map(s => s.user_id);
+  const studentIds = students.map((s) => s.user_id);
   const { data: profiles, error: profilesError } = await supabase
     .from("student_profile")
     .select("user_id, level, department, student_number")
@@ -112,14 +203,17 @@ export const getAllStudents = cache(async (): Promise<StudentView[]> => {
 
   // Create a map for quick lookup
   const profileMap = new Map(
-    (profiles || []).map(p => [p.user_id, {
-      level: p.level,
-      department: p.department,
-      student_number: p.student_number
-    }])
+    (profiles || []).map((p) => [
+      p.user_id,
+      {
+        level: p.level,
+        department: p.department,
+        student_number: p.student_number,
+      },
+    ])
   );
 
-  return students.map(s => {
+  return students.map((s) => {
     const profile = profileMap.get(s.user_id);
     return {
       user_id: s.user_id,
@@ -135,35 +229,37 @@ export const getAllStudents = cache(async (): Promise<StudentView[]> => {
 /**
  * Get detailed academic progress for a specific student
  * Includes enrollments, credits, and course details
- * 
+ *
  * Wrapped with React.cache() for request memoization
  */
-export const getStudentAcademicProgress = cache(async (studentId: string): Promise<StudentAcademicProgress | null> => {
-  const supabase = await createClient();
+export const getStudentAcademicProgress = cache(
+  async (studentId: string): Promise<StudentAcademicProgress | null> => {
+    const supabase = await createClient();
 
-  // Get student basic info
-  const { data: student, error: studentError } = await supabase
-    .from("user_roles")
-    .select("user_id, name, email")
-    .eq("user_id", studentId)
-    .eq("role", "student")
-    .single();
+    // Get student basic info
+    const { data: student, error: studentError } = await supabase
+      .from("user_roles")
+      .select("user_id, name, email")
+      .eq("user_id", studentId)
+      .eq("role", "student")
+      .single();
 
-  if (studentError || !student) {
-    return null;
-  }
+    if (studentError || !student) {
+      return null;
+    }
 
-  // Get student profile separately
-  const { data: profile } = await supabase
-    .from("student_profile")
-    .select("level, department")
-    .eq("user_id", studentId)
-    .single();
+    // Get student profile separately
+    const { data: profile } = await supabase
+      .from("student_profile")
+      .select("level, department")
+      .eq("user_id", studentId)
+      .single();
 
-  // Get all enrollments with course details
-  const { data: enrollments, error: enrollmentsError } = await supabase
-    .from("student_enrollment")
-    .select(`
+    // Get all enrollments with course details
+    const { data: enrollments, error: enrollmentsError } = await supabase
+      .from("student_enrollment")
+      .select(
+        `
       id,
       status,
       enrolled_at,
@@ -177,90 +273,96 @@ export const getStudentAcademicProgress = cache(async (studentId: string): Promi
           is_elective
         )
       )
-    `)
-    .eq("student_id", studentId)
-    .order("enrolled_at", { ascending: false });
+    `
+      )
+      .eq("student_id", studentId)
+      .order("enrolled_at", { ascending: false });
 
-  if (enrollmentsError) {
-    console.error("Error fetching enrollments:", enrollmentsError);
-  }
-
-  // Calculate statistics
-  interface EnrollmentWithStatus {
-    status?: string;
-  }
-  const activeEnrollments = (enrollments || []).filter(
-    (e: EnrollmentWithStatus) => e.status === "registered"
-  );
-  const droppedEnrollments = (enrollments || []).filter(
-    (e: EnrollmentWithStatus) => e.status === "dropped"
-  );
-
-  let totalCredits = 0;
-  let requiredCredits = 0;
-  let electiveCredits = 0;
-
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enrolledCourses = activeEnrollments.map((enrollment: any) => {
-    const sectionData = Array.isArray(enrollment.section) ? enrollment.section[0] : enrollment.section;
-    const courseData = Array.isArray(sectionData?.course) ? sectionData.course[0] : sectionData?.course;
-
-    if (courseData) {
-      const credits = courseData.credits || 0;
-      totalCredits += credits;
-
-      if (courseData.is_elective) {
-        electiveCredits += credits;
-      } else {
-        requiredCredits += credits;
-      }
+    if (enrollmentsError) {
+      console.error("Error fetching enrollments:", enrollmentsError);
     }
 
-    return {
-      course_code: sectionData?.course_code || "",
-      course_title: courseData?.title || "",
-      credits: courseData?.credits || 0,
-      is_elective: courseData?.is_elective || false,
-      section_no: sectionData?.section_no || "",
-      enrolled_at: enrollment.enrolled_at || "",
-    };
-  });
+    // Calculate statistics
+    interface EnrollmentWithStatus {
+      status?: string;
+    }
+    const activeEnrollments = (enrollments || []).filter(
+      (e: EnrollmentWithStatus) => e.status === "registered"
+    );
+    const droppedEnrollments = (enrollments || []).filter(
+      (e: EnrollmentWithStatus) => e.status === "dropped"
+    );
 
-  return {
-    user_id: student.user_id,
-    name: student.name,
-    email: student.email,
-    level: profile?.level || null,
-    department: profile?.department || null,
-    total_credits: totalCredits,
-    required_credits: requiredCredits,
-    elective_credits: electiveCredits,
-    total_enrollments: enrollments?.length || 0,
-    active_enrollments: activeEnrollments.length,
-    dropped_enrollments: droppedEnrollments.length,
-    enrolled_courses: enrolledCourses,
-  };
-});
+    let totalCredits = 0;
+    let requiredCredits = 0;
+    let electiveCredits = 0;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const enrolledCourses = activeEnrollments.map((enrollment: any) => {
+      const sectionData = Array.isArray(enrollment.section)
+        ? enrollment.section[0]
+        : enrollment.section;
+      const courseData = Array.isArray(sectionData?.course)
+        ? sectionData.course[0]
+        : sectionData?.course;
+
+      if (courseData) {
+        const credits = courseData.credits || 0;
+        totalCredits += credits;
+
+        if (courseData.is_elective) {
+          electiveCredits += credits;
+        } else {
+          requiredCredits += credits;
+        }
+      }
+
+      return {
+        course_code: sectionData?.course_code || "",
+        course_title: courseData?.title || "",
+        credits: courseData?.credits || 0,
+        is_elective: courseData?.is_elective || false,
+        section_no: sectionData?.section_no || "",
+        enrolled_at: enrollment.enrolled_at || "",
+      };
+    });
+
+    return {
+      user_id: student.user_id,
+      name: student.name,
+      email: student.email,
+      level: profile?.level || null,
+      department: profile?.department || null,
+      total_credits: totalCredits,
+      required_credits: requiredCredits,
+      elective_credits: electiveCredits,
+      total_enrollments: enrollments?.length || 0,
+      active_enrollments: activeEnrollments.length,
+      dropped_enrollments: droppedEnrollments.length,
+      enrolled_courses: enrolledCourses,
+    };
+  }
+);
 
 /**
  * Get student enrollments with filters
- * 
+ *
  * Wrapped with React.cache() for request memoization
- * 
+ *
  * Note: student_enrollment.student_id references auth.users.id, not user_roles.user_id.
  * We fetch student info from user_roles separately using the user_id.
  */
-export const getStudentEnrollments = cache(async (filters: {
-  student_id?: string;
-  status?: "registered" | "dropped";
-} = {}): Promise<EnrollmentView[]> => {
-  const supabase = await createClient();
+export const getStudentEnrollments = cache(
+  async (
+    filters: {
+      student_id?: string;
+      status?: "registered" | "dropped";
+    } = {}
+  ): Promise<EnrollmentView[]> => {
+    const supabase = await createClient();
 
-  // Fetch enrollments with section and course info
-  let query = supabase
-    .from("student_enrollment")
-    .select(`
+    // Fetch enrollments with section and course info
+    let query = supabase.from("student_enrollment").select(`
       id,
       student_id,
       section_id,
@@ -277,72 +379,83 @@ export const getStudentEnrollments = cache(async (filters: {
       )
     `);
 
-  if (filters.student_id) {
-    query = query.eq("student_id", filters.student_id);
+    if (filters.student_id) {
+      query = query.eq("student_id", filters.student_id);
+    }
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    const { data: enrollments, error } = await query.order("enrolled_at", {
+      ascending: false,
+    });
+
+    if (error) {
+      console.error("Error fetching enrollments:", error);
+      throw error;
+    }
+
+    if (!enrollments || enrollments.length === 0) {
+      return [];
+    }
+
+    // Fetch student info from user_roles separately
+    // student_enrollment.student_id = auth.users.id = user_roles.user_id
+    const studentIds = [...new Set(enrollments.map((e) => e.student_id))];
+    const { data: students, error: studentsError } = await supabase
+      .from("user_roles")
+      .select("user_id, name, email")
+      .in("user_id", studentIds);
+
+    if (studentsError) {
+      console.warn("Error fetching student info:", studentsError);
+    }
+
+    // Create a map for quick lookup
+    const studentMap = new Map(
+      (students || []).map((s) => [s.user_id, { name: s.name, email: s.email }])
+    );
+
+    interface SectionWithDetails {
+      course_code?: string;
+      section_no?: string;
+      course?: {
+        title?: string;
+        credits?: number;
+      };
+    }
+
+    return enrollments.map((item) => ({
+      id: item.id,
+      student_id: item.student_id,
+      section_id: item.section_id,
+      status: item.status as "registered" | "dropped",
+      enrolled_at: item.enrolled_at,
+      dropped_at: item.dropped_at,
+      student: studentMap.get(item.student_id)
+        ? {
+            name: studentMap.get(item.student_id)!.name,
+            email: studentMap.get(item.student_id)!.email,
+          }
+        : undefined,
+      section: item.section
+        ? {
+            course_code: (item.section as SectionWithDetails).course_code || "",
+            section_no: (item.section as SectionWithDetails).section_no || "",
+            course: (item.section as SectionWithDetails).course
+              ? {
+                  title:
+                    (item.section as SectionWithDetails).course?.title || "",
+                  credits:
+                    (item.section as SectionWithDetails).course?.credits || 0,
+                }
+              : undefined,
+          }
+        : undefined,
+    }));
   }
-
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-
-  const { data: enrollments, error } = await query.order("enrolled_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching enrollments:", error);
-    throw error;
-  }
-
-  if (!enrollments || enrollments.length === 0) {
-    return [];
-  }
-
-  // Fetch student info from user_roles separately
-  // student_enrollment.student_id = auth.users.id = user_roles.user_id
-  const studentIds = [...new Set(enrollments.map(e => e.student_id))];
-  const { data: students, error: studentsError } = await supabase
-    .from("user_roles")
-    .select("user_id, name, email")
-    .in("user_id", studentIds);
-
-  if (studentsError) {
-    console.warn("Error fetching student info:", studentsError);
-  }
-
-  // Create a map for quick lookup
-  const studentMap = new Map(
-    (students || []).map(s => [s.user_id, { name: s.name, email: s.email }])
-  );
-
-  interface SectionWithDetails {
-    course_code?: string;
-    section_no?: string;
-    course?: {
-      title?: string;
-      credits?: number;
-    };
-  }
-
-  return enrollments.map(item => ({
-    id: item.id,
-    student_id: item.student_id,
-    section_id: item.section_id,
-    status: item.status as "registered" | "dropped",
-    enrolled_at: item.enrolled_at,
-    dropped_at: item.dropped_at,
-    student: studentMap.get(item.student_id) ? {
-      name: studentMap.get(item.student_id)!.name,
-      email: studentMap.get(item.student_id)!.email,
-    } : undefined,
-    section: item.section ? {
-      course_code: (item.section as SectionWithDetails).course_code || "",
-      section_no: (item.section as SectionWithDetails).section_no || "",
-      course: (item.section as SectionWithDetails).course ? {
-        title: (item.section as SectionWithDetails).course?.title || "",
-        credits: (item.section as SectionWithDetails).course?.credits || 0,
-      } : undefined,
-    } : undefined,
-  }));
-});
+);
 
 /**
  * Create a student enrollment (manual registration)
@@ -376,28 +489,31 @@ export async function createStudentEnrollment(
   const capacity = section.capacity;
 
   // Calculate over-capacity percentage
-  const overCapacityPercent = ((currentEnrollments - capacity) / capacity) * 100;
+  const overCapacityPercent =
+    ((currentEnrollments - capacity) / capacity) * 100;
 
   // Check if section is within 15-50% over capacity range
   if (currentEnrollments < capacity) {
     throw new Error(
       `Section is not over capacity. Current: ${currentEnrollments}/${capacity}. ` +
-      `Registrar can only register students when section is 15-50% over capacity.`
+        `Registrar can only register students when section is 15-50% over capacity.`
     );
   }
 
   if (overCapacityPercent < 15) {
     throw new Error(
       `Section is only ${overCapacityPercent.toFixed(1)}% over capacity. ` +
-      `Must be at least 15% over capacity (currently ${currentEnrollments}/${capacity}).`
+        `Must be at least 15% over capacity (currently ${currentEnrollments}/${capacity}).`
     );
   }
 
   if (overCapacityPercent > 50) {
     throw new Error(
       `Section is ${overCapacityPercent.toFixed(1)}% over capacity. ` +
-      `Registrar can only register students when section is 15-50% over capacity ` +
-      `(currently ${currentEnrollments}/${capacity}, max allowed: ${Math.floor(capacity * 1.5)}).`
+        `Registrar can only register students when section is 15-50% over capacity ` +
+        `(currently ${currentEnrollments}/${capacity}, max allowed: ${Math.floor(
+          capacity * 1.5
+        )}).`
     );
   }
 
@@ -432,14 +548,19 @@ export async function createStudentEnrollment(
 
   return {
     id: data.id,
-    message: `Student registered successfully. Section is now ${((currentEnrollments + 1 - capacity) / capacity * 100).toFixed(1)}% over capacity.`,
+    message: `Student registered successfully. Section is now ${(
+      ((currentEnrollments + 1 - capacity) / capacity) *
+      100
+    ).toFixed(1)}% over capacity.`,
   };
 }
 
 /**
  * Delete a student enrollment (drop)
  */
-export async function deleteStudentEnrollment(enrollmentId: string): Promise<void> {
+export async function deleteStudentEnrollment(
+  enrollmentId: string
+): Promise<void> {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -455,4 +576,3 @@ export async function deleteStudentEnrollment(enrollmentId: string): Promise<voi
     throw error;
   }
 }
-

@@ -64,6 +64,13 @@ export class SectionsRepository {
   async getSection(id: string): Promise<Section> {
     return apiClient.get<Section>(API_ENDPOINTS.SECTIONS.DETAIL(id));
   }
+
+  /**
+   * Update a section
+   */
+  async updateSection(id: string, section: Partial<Section>): Promise<Section> {
+    return apiClient.patch<Section>(API_ENDPOINTS.SECTIONS.UPDATE(id), section);
+  }
 }
 
 export const sectionsRepository = new SectionsRepository();

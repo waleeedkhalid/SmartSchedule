@@ -1,19 +1,27 @@
 /**
  * Sections List Endpoint
- * 
+ *
  * GET /api/v1/sections - List sections (optionally filtered by term)
  * POST /api/v1/sections - Create a new section
- * 
+ *
  * All authenticated users can view sections.
  * Only scheduling and teaching_load roles can create sections.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 import type { Database } from "@/lib/types/database";
-import { revalidateSections, revalidateSchedules } from "@/lib/cache/revalidation";
+import {
+  revalidateSections,
+  revalidateSchedules,
+} from "@/lib/cache/revalidation";
 
 // Type for section query result with relations
 type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
@@ -24,9 +32,10 @@ type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
     is_elective: boolean;
   } | null;
   instructor: {
-    user_id: string;
-    name: string;
-    email: string;
+    id: string | null;
+    user_id: string | null;
+    name: string | null;
+    email: string | null;
   } | null;
   room: {
     code: string;
@@ -73,14 +82,14 @@ export async function GET(request: NextRequest) {
         .select("section_id")
         .eq("term_id", termId);
 
-      sectionIds = (scheduleSections || []).map((s: ScheduleSection) => s.section_id);
+      sectionIds = (scheduleSections || []).map(
+        (s: ScheduleSection) => s.section_id
+      );
     }
 
     // Build query with filters
     // Fix: Explicitly select 'activity' field to ensure it's available in response
-    let query = supabase
-      .from("section")
-      .select(`
+    let query = supabase.from("section").select(`
         *,
         activity,
         course:course_code (
@@ -90,6 +99,7 @@ export async function GET(request: NextRequest) {
           is_elective
         ),
         instructor:faculty_profile!section_instructor_id_fkey (
+          id,
           user_id,
           name,
           email
@@ -135,7 +145,9 @@ export async function GET(request: NextRequest) {
 
     // Order by course_code to use idx_section_course_code index
     // If filtering by course_code, this ensures index usage
-    const { data, error } = await query.order("course_code", { ascending: true });
+    const { data, error } = await query.order("course_code", {
+      ascending: true,
+    });
 
     if (error) {
       throw error;
@@ -148,19 +160,21 @@ export async function GET(request: NextRequest) {
       section_no: section.section_no,
       section_type: section.activity || "lecture",
       instructor_id: section.instructor_id,
-      instructor: section.instructor
-        ? {
-          id: section.instructor.user_id,
-          name: section.instructor.name || "",
-          email: section.instructor.email || "",
-        }
-        : null,
+      instructor:
+        section.instructor &&
+        (section.instructor.id || section.instructor.user_id)
+          ? {
+              id: section.instructor.id || section.instructor.user_id,
+              name: section.instructor.name || "",
+              email: section.instructor.email || "",
+            }
+          : null,
       room_code: section.room_code,
       room: section.room
         ? {
-          code: section.room.code,
-          type: section.room.type,
-        }
+            code: section.room.code,
+            type: section.room.type,
+          }
         : null,
       capacity: section.capacity,
       current_enrollment: 0, // Will be calculated from student_enrollment
@@ -170,11 +184,11 @@ export async function GET(request: NextRequest) {
       created_at: section.created_at,
       course: section.course
         ? {
-          code: section.course.code,
-          title: section.course.title,
-          credits: section.course.credits,
-          is_elective: section.course.is_elective || false,
-        }
+            code: section.course.code,
+            title: section.course.title,
+            credits: section.course.credits,
+            is_elective: section.course.is_elective || false,
+          }
         : null,
     }));
 
@@ -215,7 +229,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!meeting_days || !Array.isArray(meeting_days) || meeting_days.length === 0) {
+    if (
+      !meeting_days ||
+      !Array.isArray(meeting_days) ||
+      meeting_days.length === 0
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -286,7 +304,8 @@ export async function POST(request: NextRequest) {
         state: state || "draft",
         created_by: user.id,
       })
-      .select(`
+      .select(
+        `
         *,
         course:course_code (
           code,
@@ -295,6 +314,7 @@ export async function POST(request: NextRequest) {
           is_elective
         ),
         instructor:faculty_profile!section_instructor_id_fkey (
+          id,
           user_id,
           name,
           email
@@ -303,7 +323,8 @@ export async function POST(request: NextRequest) {
           code,
           type
         )
-      `)
+      `
+      )
       .single();
 
     if (error) {
@@ -312,12 +333,10 @@ export async function POST(request: NextRequest) {
 
     // If term_id is provided, add section to schedule
     if (term_id) {
-      const { error: scheduleError } = await supabase
-        .from("schedule")
-        .insert({
-          term_id,
-          section_id: data.id,
-        });
+      const { error: scheduleError } = await supabase.from("schedule").insert({
+        term_id,
+        section_id: data.id,
+      });
 
       if (scheduleError) {
         // Log error but don't fail the request
@@ -334,19 +353,20 @@ export async function POST(request: NextRequest) {
       section_no: data.section_no,
       section_type: data.activity || "lecture",
       instructor_id: data.instructor_id,
-      instructor: data.instructor
-        ? {
-          id: data.instructor.user_id,
-          name: data.instructor.name,
-          email: data.instructor.email,
-        }
-        : null,
+      instructor:
+        data.instructor && (data.instructor.id || data.instructor.user_id)
+          ? {
+              id: data.instructor.id || data.instructor.user_id,
+              name: data.instructor.name || "",
+              email: data.instructor.email || "",
+            }
+          : null,
       room_code: data.room_code,
       room: data.room
         ? {
-          code: data.room.code,
-          type: data.room.type,
-        }
+            code: data.room.code,
+            type: data.room.type,
+          }
         : null,
       capacity: data.capacity,
       current_enrollment: 0,

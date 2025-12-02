@@ -1,6 +1,6 @@
 /**
  * Exam Scheduling Constraint Satisfaction Problem (CSP) Solver
- * 
+ *
  * Implements a specialized CSP solver for scheduling final exams with:
  * - Student conflict avoidance (ABSOLUTE PRIORITY)
  * - Backtracking search with MCV and LCV heuristics
@@ -64,7 +64,7 @@ export interface ExamCSPSolverConfig {
   examRooms: Array<{
     code: string;
     capacity: number;
-    type: 'Lecture' | 'Lab' | 'Auditorium';
+    type: "Lecture" | "Lab" | "Auditorium";
   }>;
   studentEnrollmentMatrix: StudentEnrollmentMatrix;
   maxBacktracks?: number;
@@ -75,11 +75,26 @@ export interface ExamCSPSolverConfig {
     courseLoadImbalance: number;
     finalsFollowUp: number;
   };
-  instructorPreferences?: Map<string, { preferredDays?: string[]; preferredTimes?: string[] }>;
+  instructorPreferences?: Map<
+    string,
+    { preferredDays?: string[]; preferredTimes?: string[] }
+  >;
+  minDaysBetweenExams?: number;
+  maxExamsPerDay?: number;
+  _courseToStudents?: Map<string, string[]>; // Internal optimization
 }
 
 // Default configuration
-const DEFAULT_EXAM_CONFIG: Required<Omit<ExamCSPSolverConfig, 'examDays' | 'examTimeSlots' | 'examRooms' | 'studentEnrollmentMatrix'>> = {
+const DEFAULT_EXAM_CONFIG: Required<
+  Omit<
+    ExamCSPSolverConfig,
+    | "examDays"
+    | "examTimeSlots"
+    | "examRooms"
+    | "studentEnrollmentMatrix"
+    | "_courseToStudents"
+  >
+> = {
   maxBacktracks: 50000, // Higher limit for exams (more critical)
   enableForwardChecking: true,
   enableSoftConstraints: true,
@@ -89,6 +104,8 @@ const DEFAULT_EXAM_CONFIG: Required<Omit<ExamCSPSolverConfig, 'examDays' | 'exam
     finalsFollowUp: 5,
   },
   instructorPreferences: new Map(),
+  minDaysBetweenExams: 1,
+  maxExamsPerDay: 2,
 };
 
 /**
@@ -100,15 +117,13 @@ export function generateExamDomain(
 ): ExamDomain {
   const domain: ExamDomain = [];
 
-  // Filter rooms by type (Lecture Hall or Auditorium) and capacity
-  const suitableRooms = config.examRooms.filter((room) => {
-    if (room.type !== 'Lecture' && room.type !== 'Auditorium') return false;
-    if (room.capacity < variable.student_enrollment_count) return false;
-    return true;
-  });
+  // Accept any room type - capacity will be checked as a hard constraint later
+  // Just use all available rooms
+  const suitableRooms = config.examRooms;
 
   for (const date of config.examDays) {
     for (const time of config.examTimeSlots) {
+      // Add all available rooms
       for (const room of suitableRooms) {
         domain.push({
           date,
@@ -117,6 +132,15 @@ export function generateExamDomain(
           duration_minutes: variable.duration_minutes,
         });
       }
+
+      // Always add a "TBD" room option as fallback
+      // This allows scheduling day/time even when no suitable room is available
+      domain.push({
+        date,
+        time,
+        room: "TBD",
+        duration_minutes: variable.duration_minutes,
+      });
     }
   }
 
@@ -138,8 +162,8 @@ function doExamTimesOverlap(
   if (date1 !== date2) return false;
 
   // Check time overlap
-  const [h1, m1] = time1.split(':').map(Number);
-  const [h2, m2] = time2.split(':').map(Number);
+  const [h1, m1] = time1.split(":").map(Number);
+  const [h2, m2] = time2.split(":").map(Number);
 
   const start1 = h1 * 60 + m1;
   const end1 = start1 + duration1;
@@ -161,7 +185,10 @@ export function checkExamHardConstraints(
   // 1. Student Conflict Avoidance (ABSOLUTE PRIORITY)
   const conflictingStudents: string[] = [];
 
-  for (const [courseCode, existingAssignment] of currentState.assignments.entries()) {
+  for (const [
+    courseCode,
+    existingAssignment,
+  ] of currentState.assignments.entries()) {
     if (courseCode === variable.course_code) continue;
 
     // Check if times overlap
@@ -176,7 +203,10 @@ export function checkExamHardConstraints(
       )
     ) {
       // Find students enrolled in both courses
-      for (const [studentId, enrolledCourses] of config.studentEnrollmentMatrix.entries()) {
+      for (const [
+        studentId,
+        enrolledCourses,
+      ] of config.studentEnrollmentMatrix.entries()) {
         if (
           enrolledCourses.has(variable.course_code) &&
           enrolledCourses.has(courseCode)
@@ -190,46 +220,58 @@ export function checkExamHardConstraints(
   if (conflictingStudents.length > 0) {
     return {
       isValid: false,
-      violationType: 'student_conflict',
+      violationType: "student_conflict",
       message: `${conflictingStudents.length} students have conflicting exams`,
       conflictingStudents,
     };
   }
 
-  // 2. Room Capacity Constraint
-  const room = config.examRooms.find((r) => r.code === assignment.room);
-  if (!room || room.capacity < variable.student_enrollment_count) {
-    return {
-      isValid: false,
-      violationType: 'room_capacity',
-      message: `Room ${assignment.room} capacity (${room?.capacity || 0}) is less than enrollment (${variable.student_enrollment_count})`,
-    };
-  }
-
-  // 3. Unique Exam Room Assignment
-  for (const [, existingAssignment] of currentState.assignments.entries()) {
-    if (
-      existingAssignment.room === assignment.room &&
-      doExamTimesOverlap(
-        existingAssignment.date,
-        existingAssignment.time,
-        existingAssignment.duration_minutes,
-        assignment.date,
-        assignment.time,
-        assignment.duration_minutes
-      )
-    ) {
+  // 2. Room Capacity Constraint (skip if room is TBD)
+  if (assignment.room !== "TBD") {
+    const room = config.examRooms.find((r) => r.code === assignment.room);
+    if (!room || room.capacity < variable.student_enrollment_count) {
       return {
         isValid: false,
-        violationType: 'room_conflict',
-        message: `Room ${assignment.room} already occupied at ${assignment.date} ${assignment.time}`,
+        violationType: "room_capacity",
+        message: `Room ${assignment.room} capacity (${
+          room?.capacity || 0
+        }) is less than enrollment (${variable.student_enrollment_count})`,
       };
+    }
+  }
+
+  // 3. Unique Exam Room Assignment (skip if room is TBD)
+  if (assignment.room !== "TBD") {
+    for (const [, existingAssignment] of currentState.assignments.entries()) {
+      // Also skip if existing assignment has TBD room
+      if (existingAssignment.room === "TBD") continue;
+
+      if (
+        existingAssignment.room === assignment.room &&
+        doExamTimesOverlap(
+          existingAssignment.date,
+          existingAssignment.time,
+          existingAssignment.duration_minutes,
+          assignment.date,
+          assignment.time,
+          assignment.duration_minutes
+        )
+      ) {
+        return {
+          isValid: false,
+          violationType: "room_conflict",
+          message: `Room ${assignment.room} already occupied at ${assignment.date} ${assignment.time}`,
+        };
+      }
     }
   }
 
   // 4. Instructor Constraint
   if (variable.instructor_id) {
-    for (const [courseCode, existingAssignment] of currentState.assignments.entries()) {
+    for (const [
+      courseCode,
+      existingAssignment,
+    ] of currentState.assignments.entries()) {
       const existingVar = findExamVariableById(courseCode, currentState);
       if (
         existingVar?.instructor_id === variable.instructor_id &&
@@ -244,7 +286,7 @@ export function checkExamHardConstraints(
       ) {
         return {
           isValid: false,
-          violationType: 'instructor_conflict',
+          violationType: "instructor_conflict",
           message: `Instructor already supervising exam at ${assignment.date} ${assignment.time}`,
         };
       }
@@ -254,7 +296,10 @@ export function checkExamHardConstraints(
   // 5. Level Conflict Constraint: Courses in the same level cannot conflict
   // This ensures that students taking courses at the same level don't have overlapping exams
   if (variable.course_level && variable.course_level > 0) {
-    for (const [courseCode, existingAssignment] of currentState.assignments.entries()) {
+    for (const [
+      courseCode,
+      existingAssignment,
+    ] of currentState.assignments.entries()) {
       const existingVar = findExamVariableById(courseCode, currentState);
       if (
         existingVar?.course_level &&
@@ -271,14 +316,80 @@ export function checkExamHardConstraints(
       ) {
         return {
           isValid: false,
-          violationType: 'level_conflict',
+          violationType: "level_conflict",
           message: `Level ${variable.course_level} course already has exam at ${assignment.date} ${assignment.time}. Courses in the same level cannot conflict.`,
         };
       }
     }
   }
 
-  // 6. Room Type already checked in domain generation
+  // 6. Student Constraints (Max Exams Per Day & Min Days Between)
+  const maxExams = config.maxExamsPerDay ?? 2;
+  const minDays = config.minDaysBetweenExams ?? 1;
+
+  // Get students for this course
+  // If _courseToStudents is available use it, otherwise iterate matrix (fallback)
+  let students: string[] = [];
+  if (config._courseToStudents) {
+    students = config._courseToStudents.get(variable.course_code) || [];
+  } else {
+    for (const [
+      studentId,
+      courses,
+    ] of config.studentEnrollmentMatrix.entries()) {
+      if (courses.has(variable.course_code)) students.push(studentId);
+    }
+  }
+
+  if (students.length > 0) {
+    for (const studentId of students) {
+      const enrolledCourses = config.studentEnrollmentMatrix.get(studentId);
+      if (!enrolledCourses) continue;
+
+      let examsOnDay = 1; // Including current one
+
+      for (const courseCode of enrolledCourses) {
+        if (courseCode === variable.course_code) continue;
+
+        const existingAssignment = currentState.assignments.get(courseCode);
+        if (!existingAssignment) continue;
+
+        // Check Max Exams Per Day
+        if (existingAssignment.date === assignment.date) {
+          examsOnDay++;
+        }
+
+        // Check Min Days Between Exams
+        if (minDays > 0) {
+          const dayDiff = Math.abs(
+            (new Date(assignment.date).getTime() -
+              new Date(existingAssignment.date).getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
+
+          // Check for violation (gap is smaller than required)
+          // If minDays=1 (1 day gap), then diff=1 (consecutive) is violation.
+          if (dayDiff > 0 && dayDiff <= minDays) {
+            return {
+              isValid: false,
+              violationType: "student_min_days_gap",
+              message: `Student conflict: Exams too close (${existingAssignment.date} and ${assignment.date})`,
+            };
+          }
+        }
+      }
+
+      if (examsOnDay > maxExams) {
+        return {
+          isValid: false,
+          violationType: "student_max_exams_per_day",
+          message: `Student conflict: Max exams per day exceeded (${examsOnDay} > ${maxExams})`,
+        };
+      }
+    }
+  }
+
+  // All constraints passed
 
   return { isValid: true };
 }
@@ -325,7 +436,12 @@ export function forwardCheckExam(
       tempState.assignments.set(assignedVariable.course_code, assignment);
 
       // Check constraints
-      const check = checkExamHardConstraints(variable, value, tempState, config);
+      const check = checkExamHardConstraints(
+        variable,
+        value,
+        tempState,
+        config
+      );
       if (check.isValid) {
         prunedDomain.push(value);
       }
@@ -360,7 +476,8 @@ export function selectExamMCV(state: ExamCSPState): ExamVariable | null {
     // If enrollment is same, prefer smaller domain
     if (
       variable.student_enrollment_count > maxEnrollment ||
-      (variable.student_enrollment_count === maxEnrollment && domain.length < minDomainSize)
+      (variable.student_enrollment_count === maxEnrollment &&
+        domain.length < minDomainSize)
     ) {
       maxEnrollment = variable.student_enrollment_count;
       minDomainSize = domain.length;
@@ -404,7 +521,12 @@ export function orderExamLCV(
 
       const otherDomain = state.domains.get(otherVar.course_code) || [];
       for (const otherValue of otherDomain) {
-        const check = checkExamHardConstraints(otherVar, otherValue, tempState, config);
+        const check = checkExamHardConstraints(
+          otherVar,
+          otherValue,
+          tempState,
+          config
+        );
         if (check.isValid) {
           score++;
         }
@@ -435,16 +557,29 @@ export function calculateExamSoftConstraintCost(
     };
   }
 
-  const weights = config.softConstraintWeights || DEFAULT_EXAM_CONFIG.softConstraintWeights;
+  const weights =
+    config.softConstraintWeights || DEFAULT_EXAM_CONFIG.softConstraintWeights;
 
   // 1. Student Load Penalty (multiple exams per day/3-day window)
-  const studentLoadPenalty = calculateStudentLoadPenalty(state, config, weights.studentLoadPenalty);
+  const studentLoadPenalty = calculateStudentLoadPenalty(
+    state,
+    config,
+    weights.studentLoadPenalty
+  );
 
   // 2. Course Load Imbalance
-  const courseLoadImbalance = calculateCourseLoadImbalance(state, config, weights.courseLoadImbalance);
+  const courseLoadImbalance = calculateCourseLoadImbalance(
+    state,
+    config,
+    weights.courseLoadImbalance
+  );
 
   // 3. Finals Follow-up
-  const finalsFollowUp = calculateFinalsFollowUp(state, config, weights.finalsFollowUp);
+  const finalsFollowUp = calculateFinalsFollowUp(
+    state,
+    config,
+    weights.finalsFollowUp
+  );
 
   const total = studentLoadPenalty + courseLoadImbalance + finalsFollowUp;
 
@@ -470,31 +605,49 @@ function calculateStudentLoadPenalty(
 
   for (const [courseCode, assignment] of state.assignments.entries()) {
     // Find students enrolled in this course
-    for (const [studentId, enrolledCourses] of config.studentEnrollmentMatrix.entries()) {
+    for (const [
+      studentId,
+      enrolledCourses,
+    ] of config.studentEnrollmentMatrix.entries()) {
       if (enrolledCourses.has(courseCode)) {
         // Count per day
         if (!studentDayCounts.has(studentId)) {
           studentDayCounts.set(studentId, new Map());
         }
         const dayCounts = studentDayCounts.get(studentId)!;
-        dayCounts.set(assignment.date, (dayCounts.get(assignment.date) || 0) + 1);
+        dayCounts.set(
+          assignment.date,
+          (dayCounts.get(assignment.date) || 0) + 1
+        );
 
         // Count in 3-day windows
         const assignmentDate = new Date(assignment.date);
-        for (const [otherCourseCode, otherAssignment] of state.assignments.entries()) {
+        for (const [
+          otherCourseCode,
+          otherAssignment,
+        ] of state.assignments.entries()) {
           if (courseCode === otherCourseCode) continue;
           if (!enrolledCourses.has(otherCourseCode)) continue;
 
           const otherDate = new Date(otherAssignment.date);
           const daysDiff = Math.abs(
-            Math.floor((assignmentDate.getTime() - otherDate.getTime()) / (1000 * 60 * 60 * 24))
+            Math.floor(
+              (assignmentDate.getTime() - otherDate.getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
           );
 
           if (daysDiff <= 2) {
             // Within 3-day window (0, 1, or 2 days apart)
-            const earlierDate = assignment.date < otherAssignment.date ? assignment.date : otherAssignment.date;
+            const earlierDate =
+              assignment.date < otherAssignment.date
+                ? assignment.date
+                : otherAssignment.date;
             const key = `${studentId}-${earlierDate}`;
-            studentWindowCounts.set(key, (studentWindowCounts.get(key) || 0) + 1);
+            studentWindowCounts.set(
+              key,
+              (studentWindowCounts.get(key) || 0) + 1
+            );
           }
         }
       }
@@ -572,8 +725,12 @@ function calculateFinalsFollowUp(
     // Check if any theory exam for same course is scheduled after lab
     for (const theoryCourse of theoryCourses) {
       // Simplified: assume same course code means related
-      if (theoryCourse.course_code.startsWith(labCourse.course_code.split(' ')[0])) {
-        const theoryAssignment = state.assignments.get(theoryCourse.course_code);
+      if (
+        theoryCourse.course_code.startsWith(labCourse.course_code.split(" ")[0])
+      ) {
+        const theoryAssignment = state.assignments.get(
+          theoryCourse.course_code
+        );
         if (theoryAssignment) {
           const theoryDate = new Date(theoryAssignment.date);
           if (theoryDate > labDate) {
@@ -592,10 +749,15 @@ function calculateFinalsFollowUp(
  */
 export function backtrackExamSearch(
   state: ExamCSPState,
-  config: Required<Omit<ExamCSPSolverConfig, 'examDays' | 'examTimeSlots' | 'examRooms' | 'studentEnrollmentMatrix'>> & {
+  config: Required<
+    Omit<
+      ExamCSPSolverConfig,
+      "examDays" | "examTimeSlots" | "examRooms" | "studentEnrollmentMatrix"
+    >
+  > & {
     examDays: string[];
     examTimeSlots: string[];
-    examRooms: ExamCSPSolverConfig['examRooms'];
+    examRooms: ExamCSPSolverConfig["examRooms"];
     studentEnrollmentMatrix: StudentEnrollmentMatrix;
   },
   onProgress?: (state: ExamCSPState, backtracks: number) => void
@@ -662,7 +824,10 @@ export function backtrackExamSearch(
         }
 
         // Update domains with pruned values
-        for (const [courseCode, prunedDomain] of fcResult.prunedDomains.entries()) {
+        for (const [
+          courseCode,
+          prunedDomain,
+        ] of fcResult.prunedDomains.entries()) {
           newState.domains.set(courseCode, prunedDomain);
         }
       }
@@ -718,6 +883,17 @@ export async function solveExamCSP(
     softConstraintCost?: ExamSoftConstraintCost;
   };
 }> {
+  // Pre-calculate course to students map for performance
+  const courseToStudents = new Map<string, string[]>();
+  for (const [studentId, courses] of config.studentEnrollmentMatrix.entries()) {
+    for (const course of courses) {
+      if (!courseToStudents.has(course)) {
+        courseToStudents.set(course, []);
+      }
+      courseToStudents.get(course)!.push(studentId);
+    }
+  }
+
   const finalConfig = {
     ...DEFAULT_EXAM_CONFIG,
     ...config,
@@ -726,6 +902,7 @@ export async function solveExamCSP(
       ...config.softConstraintWeights,
     },
     instructorPreferences: config.instructorPreferences || new Map(),
+    _courseToStudents: courseToStudents,
   };
 
   // Initialize CSP state
@@ -743,10 +920,15 @@ export async function solveExamCSP(
   }
 
   // Run backtracking search
-  type RequiredConfig = Required<Omit<ExamCSPSolverConfig, 'examDays' | 'examTimeSlots' | 'examRooms' | 'studentEnrollmentMatrix'>> & {
+  type RequiredConfig = Required<
+    Omit<
+      ExamCSPSolverConfig,
+      "examDays" | "examTimeSlots" | "examRooms" | "studentEnrollmentMatrix"
+    >
+  > & {
     examDays: string[];
     examTimeSlots: string[];
-    examRooms: ExamCSPSolverConfig['examRooms'];
+    examRooms: ExamCSPSolverConfig["examRooms"];
     studentEnrollmentMatrix: StudentEnrollmentMatrix;
   };
   const searchResult = backtrackExamSearch(
@@ -768,15 +950,18 @@ export async function solveExamCSP(
   const unassigned: Array<{ course_code: string; reason: string }> = [];
 
   for (const variable of examVariables) {
-    const assignment = searchResult.finalState.assignments.get(variable.course_code);
+    const assignment = searchResult.finalState.assignments.get(
+      variable.course_code
+    );
     if (!assignment) {
-      const domain = searchResult.finalState.domains.get(variable.course_code) || [];
+      const domain =
+        searchResult.finalState.domains.get(variable.course_code) || [];
       unassigned.push({
         course_code: variable.course_code,
         reason:
           domain.length === 0
-            ? 'No valid assignments available (domain exhausted)'
-            : 'Could not find conflict-free assignment',
+            ? "No valid assignments available (domain exhausted)"
+            : "Could not find conflict-free assignment",
       });
     }
   }
@@ -803,4 +988,3 @@ export async function solveExamCSP(
     },
   };
 }
-

@@ -92,5 +92,28 @@ export const API_ENDPOINTS = {
   ELECTIVE_STATS: {
     GET: `${API_BASE_URL}/api/${API_VERSION}/elective-stats`,
   },
+
+  // Faculty Availability
+  FACULTY_AVAILABILITY: {
+    GET: `${API_BASE_URL}/api/${API_VERSION}/faculty/availability`,
+    UPDATE: `${API_BASE_URL}/api/${API_VERSION}/faculty/availability`,
+  },
+
+  // Students (Registrar)
+  STUDENTS: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/students`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/students/${id}`,
+    ACADEMIC_PLAN: (id: string) => `${API_BASE_URL}/api/${API_VERSION}/students/${id}/academic-plan`,
+  },
+
+  // Instructors (Teaching Load)
+  INSTRUCTORS: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/instructors`,
+  },
+
+  // Rooms (Teaching Load)
+  ROOMS: {
+    LIST: `${API_BASE_URL}/api/${API_VERSION}/rooms`,
+  },
 } as const;
 

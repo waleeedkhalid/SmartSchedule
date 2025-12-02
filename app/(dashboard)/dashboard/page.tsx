@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   // CRITICAL: Check onboarding status before allowing access to any dashboard
   // Users must complete onboarding before accessing their dashboard
   const { needsOnboarding, profileExists } = await validateOnboardingAndProfile(user.id, user.role);
-  
+
   if (needsOnboarding || !profileExists) {
     redirect('/onboarding');
   }
@@ -28,5 +28,21 @@ export default async function DashboardPage() {
   // This is the main purpose of this page - route users to their role dashboard
   // Middleware handles redirect loop detection and cookie clearing
   const dashboardPath = getDashboardPath(user.role);
+
+  // Prevent infinite redirect loop if getDashboardPath returns the current path
+  if (dashboardPath === '/dashboard') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <h1 className="text-2xl font-bold">Welcome to SmartSchedule</h1>
+        <p className="text-muted-foreground">
+          You are logged in as <span className="font-semibold capitalize">{user.role.replace('_', ' ')}</span>.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Your role does not have a specific dashboard view yet.
+        </p>
+      </div>
+    );
+  }
+
   redirect(dashboardPath);
 }

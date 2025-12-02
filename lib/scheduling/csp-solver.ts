@@ -1,14 +1,37 @@
 /**
  * Constraint Satisfaction Problem (CSP) Solver for Schedule Generation
- * 
+ *
  * Implements a backtracking search algorithm with:
  * - Most Constrained Variable (MCV) heuristic
  * - Least Constraining Value (LCV) heuristic
  * - Forward Checking for constraint propagation
  * - Hard and Soft constraint handling
+ * - Instructor auto-assignment with load balancing
  */
 
-import type { SchedulingInput, SectionAssignment, TimeSlot } from './algorithm';
+import type { SchedulingInput, SectionAssignment, TimeSlot } from "./algorithm";
+
+// Instructor types for auto-assignment
+export interface InstructorForAssignment {
+  id: string;
+  name: string;
+  email: string | null;
+  max_load_per_week: number | null;
+  unavailable_times: Array<{
+    day: string;
+    slots: Array<{ start: string; end: string; type: string }>;
+  }> | null;
+  current_load: number; // Current number of assigned sections/hours
+}
+
+// Result of instructor assignment
+export interface InstructorAssignmentResult {
+  section_id: string;
+  instructor_id: string | null;
+  instructor_name: string | null;
+  success: boolean;
+  reason?: string;
+}
 
 // CSP Variable: A section that needs to be scheduled
 export interface CSPVariable {
@@ -18,7 +41,7 @@ export interface CSPVariable {
   instructor_id: string | null;
   capacity: number;
   group_level: number;
-  activity: 'lecture' | 'tutorial' | 'lab';
+  activity: "lecture" | "tutorial" | "lab";
   weekly_hours: number;
   room_code: string | null; // Pre-assigned room if any
 }
@@ -79,7 +102,10 @@ export interface CSPSolverConfig {
     instructorPreference: number;
   };
   externalSchedules?: ExternalScheduleEntry[];
-  instructorPreferences?: Map<string, { preferredDays?: string[]; preferredTimes?: string[] }>;
+  instructorPreferences?: Map<
+    string,
+    { preferredDays?: string[]; preferredTimes?: string[] }
+  >;
 }
 
 // Default configuration
@@ -102,15 +128,15 @@ const DEFAULT_CONFIG: Required<CSPSolverConfig> = {
  */
 export function generateDomain(
   variable: CSPVariable,
-  rooms: SchedulingInput['rooms'],
+  rooms: SchedulingInput["rooms"],
   timeSlots: TimeSlot[],
   config: CSPSolverConfig
 ): Domain {
   const domain: Domain = [];
   const suitableRooms = rooms.filter((room) => {
     // Room type matching
-    if (variable.activity === 'lab' && room.type !== 'Lab') return false;
-    if (variable.activity !== 'lab' && room.type !== 'Lecture') return false;
+    if (variable.activity === "lab" && room.type !== "Lab") return false;
+    if (variable.activity !== "lab" && room.type !== "Lecture") return false;
     // Capacity constraint
     if (room.capacity < variable.capacity) return false;
     return true;
@@ -168,7 +194,7 @@ export function checkHardConstraints(
   if (externalConflict) {
     return {
       isValid: false,
-      violationType: 'external_schedule',
+      violationType: "external_schedule",
       message: `Conflicts with external schedule: ${assignment.day} ${assignment.time} ${assignment.room}`,
     };
   }
@@ -187,7 +213,7 @@ export function checkHardConstraints(
     ) {
       return {
         isValid: false,
-        violationType: 'room_conflict',
+        violationType: "room_conflict",
         message: `Room ${assignment.room} already occupied at ${assignment.day} ${assignment.time}`,
       };
     }
@@ -195,7 +221,10 @@ export function checkHardConstraints(
 
   // 3. Instructor Conflict (HARD)
   if (variable.instructor_id) {
-    for (const [varId, existingAssignment] of currentState.assignments.entries()) {
+    for (const [
+      varId,
+      existingAssignment,
+    ] of currentState.assignments.entries()) {
       const existingVar = findVariableById(varId, currentState);
       if (
         existingVar?.instructor_id === variable.instructor_id &&
@@ -209,7 +238,7 @@ export function checkHardConstraints(
       ) {
         return {
           isValid: false,
-          violationType: 'instructor_conflict',
+          violationType: "instructor_conflict",
           message: `Instructor already teaching at ${assignment.day} ${assignment.time}`,
         };
       }
@@ -217,7 +246,10 @@ export function checkHardConstraints(
   }
 
   // 4. Student Level Conflict (HARD)
-  for (const [varId, existingAssignment] of currentState.assignments.entries()) {
+  for (const [
+    varId,
+    existingAssignment,
+  ] of currentState.assignments.entries()) {
     const existingVar = findVariableById(varId, currentState);
     if (
       existingVar?.group_level === variable.group_level &&
@@ -231,7 +263,7 @@ export function checkHardConstraints(
     ) {
       return {
         isValid: false,
-        violationType: 'student_level_conflict',
+        violationType: "student_level_conflict",
         message: `Level ${variable.group_level} students already have class at ${assignment.day} ${assignment.time}`,
       };
     }
@@ -251,8 +283,8 @@ function doTimeSlotsOverlap(
   time2: string,
   duration2: number
 ): boolean {
-  const [h1, m1] = time1.split(':').map(Number);
-  const [h2, m2] = time2.split(':').map(Number);
+  const [h1, m1] = time1.split(":").map(Number);
+  const [h2, m2] = time2.split(":").map(Number);
 
   const start1 = h1 * 60 + m1;
   const end1 = start1 + duration1;
@@ -375,7 +407,12 @@ export function orderLCV(
 
       const otherDomain = state.domains.get(otherVar.section_id) || [];
       for (const otherValue of otherDomain) {
-        const check = checkHardConstraints(otherVar, otherValue, tempState, config);
+        const check = checkHardConstraints(
+          otherVar,
+          otherValue,
+          tempState,
+          config
+        );
         if (check.isValid) {
           score++;
         }
@@ -407,7 +444,8 @@ export function calculateSoftConstraintCost(
     };
   }
 
-  const weights = config.softConstraintWeights || DEFAULT_CONFIG.softConstraintWeights;
+  const weights =
+    config.softConstraintWeights || DEFAULT_CONFIG.softConstraintWeights;
 
   // 1. Student Gap Minimization
   const studentGaps = calculateStudentGaps(state, weights.studentGaps);
@@ -460,15 +498,15 @@ function calculateStudentGaps(state: CSPState, weight: number): number {
   for (const assignments of levelDayAssignments.values()) {
     // Sort by time
     assignments.sort((a, b) => {
-      const [h1, m1] = a.time.split(':').map(Number);
-      const [h2, m2] = b.time.split(':').map(Number);
+      const [h1, m1] = a.time.split(":").map(Number);
+      const [h2, m2] = b.time.split(":").map(Number);
       return h1 * 60 + m1 - (h2 * 60 + m2);
     });
 
     // Count gaps (one-slot gaps between classes)
     for (let i = 0; i < assignments.length - 1; i++) {
-      const [h1, m1] = assignments[i].time.split(':').map(Number);
-      const [h2, m2] = assignments[i + 1].time.split(':').map(Number);
+      const [h1, m1] = assignments[i].time.split(":").map(Number);
+      const [h2, m2] = assignments[i + 1].time.split(":").map(Number);
       const end1 = h1 * 60 + m1 + assignments[i].duration;
       const start2 = h2 * 60 + m2;
       const gap = start2 - end1;
@@ -503,7 +541,7 @@ function calculateLoadImbalance(state: CSPState, weight: number): number {
 
   const levelCounts = new Map<number, number[]>();
   for (const [key, count] of levelDayCounts.entries()) {
-    const [level] = key.split('-').map(Number);
+    const [level] = key.split("-").map(Number);
     if (!levelCounts.has(level)) {
       levelCounts.set(level, []);
     }
@@ -561,7 +599,9 @@ function calculateInstructorPreference(
     const variable = findVariableById(varId, state);
     if (!variable || !variable.instructor_id) continue;
 
-    const preferences = config.instructorPreferences.get(variable.instructor_id);
+    const preferences = config.instructorPreferences.get(
+      variable.instructor_id
+    );
     if (!preferences) continue;
 
     // Check day preference
@@ -574,9 +614,9 @@ function calculateInstructorPreference(
 
     // Check time preference (simplified - check if time is in preferred range)
     if (preferences.preferredTimes) {
-      const [h] = assignment.time.split(':').map(Number);
+      const [h] = assignment.time.split(":").map(Number);
       const preferredHours = preferences.preferredTimes.map((t) => {
-        const [th] = t.split(':').map(Number);
+        const [th] = t.split(":").map(Number);
         return th;
       });
       if (!preferredHours.includes(h)) {
@@ -595,7 +635,7 @@ export function backtrackSearch(
   state: CSPState,
   config: Required<CSPSolverConfig>,
   timeSlots: TimeSlot[],
-  rooms: SchedulingInput['rooms'],
+  rooms: SchedulingInput["rooms"],
   onProgress?: (state: CSPState, backtracks: number) => void
 ): { success: boolean; finalState: CSPState; backtracks: number } {
   let backtracks = 0;
@@ -744,7 +784,9 @@ export async function solveCSP(
   }));
 
   // Generate time slots
-  const { generateTimeSlots, generateLabTimeSlots } = await import('./algorithm');
+  const { generateTimeSlots, generateLabTimeSlots } = await import(
+    "./algorithm"
+  );
   const lectureSlots = generateTimeSlots(input.timeGridConfig);
   const labSlots = generateLabTimeSlots(input.timeGridConfig);
 
@@ -758,8 +800,13 @@ export async function solveCSP(
 
   // Generate initial domains for all variables
   for (const variable of variables) {
-    const timeSlots = variable.activity === 'lab' ? labSlots : lectureSlots;
-    const domain = generateDomain(variable, input.rooms, timeSlots, finalConfig);
+    const timeSlots = variable.activity === "lab" ? labSlots : lectureSlots;
+    const domain = generateDomain(
+      variable,
+      input.rooms,
+      timeSlots,
+      finalConfig
+    );
     state.domains.set(variable.section_id, domain);
   }
 
@@ -791,11 +838,14 @@ export async function solveCSP(
   }> = [];
 
   for (const variable of variables) {
-    const assignment = searchResult.finalState.assignments.get(variable.section_id);
+    const assignment = searchResult.finalState.assignments.get(
+      variable.section_id
+    );
     if (assignment) {
       // Find the original time slot pattern that matches this assignment
       // This ensures we preserve the multi-day pattern if it exists
-      const variableTimeSlots = variable.activity === 'lab' ? labSlots : lectureSlots;
+      const variableTimeSlots =
+        variable.activity === "lab" ? labSlots : lectureSlots;
       const originalTimeSlot = variableTimeSlots.find(
         (ts) =>
           ts.days.includes(assignment.day) &&
@@ -818,15 +868,16 @@ export async function solveCSP(
         activity: variable.activity,
       });
     } else {
-      const domain = searchResult.finalState.domains.get(variable.section_id) || [];
+      const domain =
+        searchResult.finalState.domains.get(variable.section_id) || [];
       unassigned.push({
         section_id: variable.section_id,
         course_code: variable.course_code,
         section_no: variable.section_no,
         reason:
           domain.length === 0
-            ? 'No valid assignments available (domain exhausted)'
-            : 'Could not find conflict-free assignment',
+            ? "No valid assignments available (domain exhausted)"
+            : "Could not find conflict-free assignment",
       });
     }
   }
@@ -855,3 +906,274 @@ export async function solveCSP(
   };
 }
 
+/**
+ * Check if an instructor is available at a specific time slot
+ * @param instructor The instructor to check
+ * @param day The day of the week (e.g., "Sunday", "Monday")
+ * @param startTime The start time (e.g., "08:00")
+ * @param duration Duration in minutes
+ * @returns true if available, false if unavailable
+ */
+export function isInstructorAvailable(
+  instructor: InstructorForAssignment,
+  day: string,
+  startTime: string,
+  duration: number
+): boolean {
+  if (
+    !instructor.unavailable_times ||
+    instructor.unavailable_times.length === 0
+  ) {
+    return true; // No unavailability defined, assume available
+  }
+
+  const dayAvailability = instructor.unavailable_times.find(
+    (ua) => ua.day.toLowerCase() === day.toLowerCase()
+  );
+
+  if (
+    !dayAvailability ||
+    !dayAvailability.slots ||
+    dayAvailability.slots.length === 0
+  ) {
+    return true; // No unavailability for this day
+  }
+
+  // Parse the section time
+  const [startHour, startMin] = startTime.split(":").map(Number);
+  const sectionStart = startHour * 60 + startMin;
+  const sectionEnd = sectionStart + duration;
+
+  // Check each unavailable slot
+  for (const slot of dayAvailability.slots) {
+    if (slot.type !== "unavailable") continue;
+
+    const [unavailStartHour, unavailStartMin] = slot.start
+      .split(":")
+      .map(Number);
+    const [unavailEndHour, unavailEndMin] = slot.end.split(":").map(Number);
+    const unavailStart = unavailStartHour * 60 + unavailStartMin;
+    const unavailEnd = unavailEndHour * 60 + unavailEndMin;
+
+    // Check for overlap
+    if (sectionStart < unavailEnd && sectionEnd > unavailStart) {
+      return false; // Time slot overlaps with unavailable period
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Check if an instructor has a conflict with already assigned sections
+ * @param instructorId The instructor ID to check
+ * @param day The day of the assignment
+ * @param startTime The start time
+ * @param duration Duration in minutes
+ * @param existingAssignments Already made section assignments
+ * @returns true if there's a conflict, false otherwise
+ */
+export function hasInstructorConflict(
+  instructorId: string,
+  day: string,
+  startTime: string,
+  duration: number,
+  existingAssignments: Array<{
+    instructor_id: string | null;
+    time_slot: { days: string[]; start_time: string; duration: number };
+  }>
+): boolean {
+  const [startHour, startMin] = startTime.split(":").map(Number);
+  const sectionStart = startHour * 60 + startMin;
+  const sectionEnd = sectionStart + duration;
+
+  for (const assignment of existingAssignments) {
+    if (assignment.instructor_id !== instructorId) continue;
+
+    // Check if the assignment is on the same day
+    if (!assignment.time_slot.days.includes(day)) continue;
+
+    const [assignStartHour, assignStartMin] = assignment.time_slot.start_time
+      .split(":")
+      .map(Number);
+    const assignStart = assignStartHour * 60 + assignStartMin;
+    const assignEnd = assignStart + assignment.time_slot.duration;
+
+    // Check for overlap
+    if (sectionStart < assignEnd && sectionEnd > assignStart) {
+      return true; // Conflict found
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Assign an available instructor to a section based on load balancing
+ * Selects from instructors with lowest current load who are available at the section's time
+ *
+ * TODO: Add course preferences matching when faculty course preferences feature is implemented
+ * This would allow matching instructors to courses based on their expertise/preferences
+ *
+ * @param section The section needing an instructor
+ * @param instructors All available instructors with their current load
+ * @param existingAssignments Already made section assignments (for conflict checking)
+ * @returns The assigned instructor ID and name, or null if no suitable instructor found
+ */
+export function assignAvailableInstructor(
+  section: {
+    id: string;
+    course_code: string;
+    time_slot: { days: string[]; start_time: string; duration: number };
+    weekly_hours?: number;
+  },
+  instructors: InstructorForAssignment[],
+  existingAssignments: Array<{
+    instructor_id: string | null;
+    time_slot: { days: string[]; start_time: string; duration: number };
+  }>
+): InstructorAssignmentResult {
+  // Filter instructors who are available for all days in the time slot
+  const availableInstructors = instructors.filter((instructor) => {
+    // Check max load constraint
+    const maxLoad = instructor.max_load_per_week || 20; // Default to 20 hours
+    const sectionHours = section.weekly_hours || 3; // Default 3 hours
+    if (instructor.current_load + sectionHours > maxLoad) {
+      return false; // Would exceed max load
+    }
+
+    // Check availability for each day in the section's time slot
+    for (const day of section.time_slot.days) {
+      if (
+        !isInstructorAvailable(
+          instructor,
+          day,
+          section.time_slot.start_time,
+          section.time_slot.duration
+        )
+      ) {
+        return false; // Not available on this day
+      }
+
+      // Check for conflicts with existing assignments
+      if (
+        hasInstructorConflict(
+          instructor.id,
+          day,
+          section.time_slot.start_time,
+          section.time_slot.duration,
+          existingAssignments
+        )
+      ) {
+        return false; // Has conflict with existing assignment
+      }
+    }
+
+    return true;
+  });
+
+  if (availableInstructors.length === 0) {
+    return {
+      section_id: section.id,
+      instructor_id: null,
+      instructor_name: null,
+      success: false,
+      reason:
+        "No available instructors found (all are unavailable, overloaded, or have conflicts)",
+    };
+  }
+
+  // Sort by current load (ascending) to achieve better distribution
+  availableInstructors.sort((a, b) => a.current_load - b.current_load);
+
+  // Select the instructor with the lowest load
+  const selectedInstructor = availableInstructors[0];
+
+  return {
+    section_id: section.id,
+    instructor_id: selectedInstructor.id,
+    instructor_name: selectedInstructor.name,
+    success: true,
+  };
+}
+
+/**
+ * Assign instructors to multiple sections with load balancing
+ * Re-evaluates all sections and assigns instructors based on availability and load
+ *
+ * @param sections Array of sections to assign instructors to
+ * @param instructors Array of all instructors with their data
+ * @param existingScheduleAssignments Existing schedule assignments for conflict checking
+ * @returns Array of assignment results
+ */
+export function assignInstructorsToSections(
+  sections: Array<{
+    id: string;
+    course_code: string;
+    time_slot: { days: string[]; start_time: string; duration: number };
+    weekly_hours?: number;
+  }>,
+  instructors: InstructorForAssignment[],
+  existingScheduleAssignments: Array<{
+    instructor_id: string | null;
+    time_slot: { days: string[]; start_time: string; duration: number };
+  }> = []
+): InstructorAssignmentResult[] {
+  const results: InstructorAssignmentResult[] = [];
+
+  // Track assignments made in this batch for conflict checking
+  const batchAssignments: Array<{
+    instructor_id: string | null;
+    time_slot: { days: string[]; start_time: string; duration: number };
+  }> = [...existingScheduleAssignments];
+
+  // Create a mutable copy of instructors to track load changes
+  const instructorLoadMap = new Map<string, number>();
+  for (const instructor of instructors) {
+    instructorLoadMap.set(instructor.id, instructor.current_load);
+  }
+
+  // Sort sections by constraints (more constrained first - e.g., labs, specific time requirements)
+  // This helps ensure harder-to-schedule sections get instructors first
+  const sortedSections = [...sections].sort((a, b) => {
+    // Labs are typically more constrained
+    const aIsLab = a.course_code.toLowerCase().includes("lab");
+    const bIsLab = b.course_code.toLowerCase().includes("lab");
+    if (aIsLab && !bIsLab) return -1;
+    if (!aIsLab && bIsLab) return 1;
+
+    // More days = more constrained
+    return b.time_slot.days.length - a.time_slot.days.length;
+  });
+
+  for (const section of sortedSections) {
+    // Update instructors with current load from our tracking map
+    const updatedInstructors = instructors.map((inst) => ({
+      ...inst,
+      current_load: instructorLoadMap.get(inst.id) || inst.current_load,
+    }));
+
+    const result = assignAvailableInstructor(
+      section,
+      updatedInstructors,
+      batchAssignments
+    );
+
+    results.push(result);
+
+    if (result.success && result.instructor_id) {
+      // Update load tracking
+      const currentLoad = instructorLoadMap.get(result.instructor_id) || 0;
+      const sectionHours = section.weekly_hours || 3;
+      instructorLoadMap.set(result.instructor_id, currentLoad + sectionHours);
+
+      // Add to batch assignments for conflict checking
+      batchAssignments.push({
+        instructor_id: result.instructor_id,
+        time_slot: section.time_slot,
+      });
+    }
+  }
+
+  return results;
+}

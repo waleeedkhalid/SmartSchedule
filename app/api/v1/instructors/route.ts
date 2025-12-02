@@ -1,16 +1,21 @@
 /**
  * Instructors List Endpoint
- * 
+ *
  * GET /api/v1/instructors - List all instructors
  * POST /api/v1/instructors - Create a new instructor
- * 
+ *
  * All authenticated users can view instructors.
  * Only scheduling and teaching_load roles can create instructors.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -63,7 +68,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate max_load_per_week
-    if (max_load_per_week !== undefined && (max_load_per_week < 1 || max_load_per_week > 40)) {
+    if (
+      max_load_per_week !== undefined &&
+      (max_load_per_week < 1 || max_load_per_week > 40)
+    ) {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -77,7 +85,7 @@ export async function POST(request: NextRequest) {
     if (email) {
       const { data: existing } = await supabase
         .from("faculty_profile")
-        .select("user_id")
+        .select("id")
         .eq("email", email)
         .single();
 
@@ -90,16 +98,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Insert new faculty profile
-    // Note: faculty_profile requires user_id, so we need to create it for the current user
-    // or use a provided user_id. For now, we'll use the current user's ID.
+    // Insert new faculty profile without requiring an auth-backed user_id
     const { data, error } = await supabase
       .from("faculty_profile")
       .insert({
-        user_id: user.id,
         name,
         email: email || null,
-        max_load_per_week: max_load_per_week ? parseInt(max_load_per_week) : 12,
+        max_load_per_week: max_load_per_week || 12,
+        preferred_times: [],
+        unavailable_times: [],
       })
       .select()
       .single();
@@ -113,4 +120,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

@@ -1,9 +1,9 @@
 /**
  * API Cache Utility
- * 
+ *
  * Implements client-side caching for API requests using localStorage.
  * Prevents duplicate requests within the same session.
- * 
+ *
  * Features:
  * - localStorage persistence across page reloads
  * - TTL (Time To Live) for cache entries
@@ -30,15 +30,15 @@ class APICache {
 
   constructor(config: CacheConfig = {}) {
     this.defaultTTL = config.ttl || 5 * 60 * 1000; // Default 5 minutes
-    this.keyPrefix = config.keyPrefix || 'api_cache_';
+    this.keyPrefix = config.keyPrefix || "api_cache_";
   }
 
   /**
    * Generate cache key from endpoint and user ID
    */
   private getCacheKey(endpoint: string, userId?: string): string {
-    const baseKey = endpoint.replace(/[^a-zA-Z0-9]/g, '_');
-    const userPart = userId ? `_user_${userId}` : '';
+    const baseKey = endpoint.replace(/[^a-zA-Z0-9]/g, "_");
+    const userPart = userId ? `_user_${userId}` : "";
     return `${this.keyPrefix}${baseKey}${userPart}`;
   }
 
@@ -47,7 +47,7 @@ class APICache {
    */
   private isValid(entry: CacheEntry<unknown>): boolean {
     const now = Date.now();
-    return (now - entry.timestamp) < entry.ttl;
+    return now - entry.timestamp < entry.ttl;
   }
 
   /**
@@ -77,7 +77,7 @@ class APICache {
         }
       }
     } catch (error) {
-      console.warn('Error reading from localStorage cache:', error);
+      console.warn("Error reading from localStorage cache:", error);
     }
 
     return null;
@@ -102,17 +102,17 @@ class APICache {
       localStorage.setItem(key, JSON.stringify(entry));
     } catch (error) {
       // Handle quota exceeded or other localStorage errors
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        console.warn('localStorage quota exceeded, clearing old cache entries');
+      if (error instanceof Error && error.name === "QuotaExceededError") {
+        console.warn("localStorage quota exceeded, clearing old cache entries");
         this.clearOldEntries();
         // Try again
         try {
           localStorage.setItem(key, JSON.stringify(entry));
         } catch (retryError) {
-          console.warn('Failed to cache after cleanup:', retryError);
+          console.warn("Failed to cache after cleanup:", retryError);
         }
       } else {
-        console.warn('Error writing to localStorage cache:', error);
+        console.warn("Error writing to localStorage cache:", error);
       }
     }
   }
@@ -122,15 +122,15 @@ class APICache {
    */
   remove(endpoint: string, userId?: string): void {
     const key = this.getCacheKey(endpoint, userId);
-    
+
     // Remove from memory
     this.memoryCache.delete(key);
-    
+
     // Remove from localStorage
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.warn('Error removing from localStorage cache:', error);
+      console.warn("Error removing from localStorage cache:", error);
     }
   }
 
@@ -154,7 +154,7 @@ class APICache {
         }
       });
     } catch (error) {
-      console.warn('Error clearing user cache:', error);
+      console.warn("Error clearing user cache:", error);
     }
   }
 
@@ -174,7 +174,7 @@ class APICache {
         }
       });
     } catch (error) {
-      console.warn('Error clearing all cache:', error);
+      console.warn("Error clearing all cache:", error);
     }
   }
 
@@ -208,7 +208,7 @@ class APICache {
         this.memoryCache.delete(key);
       });
     } catch (error) {
-      console.warn('Error clearing old cache entries:', error);
+      console.warn("Error clearing old cache entries:", error);
     }
   }
 
@@ -235,7 +235,7 @@ class APICache {
         }
       });
     } catch (error) {
-      console.warn('Error invalidating cache pattern:', error);
+      console.warn("Error invalidating cache pattern:", error);
     }
   }
 }
@@ -243,24 +243,40 @@ class APICache {
 // Create singleton instance
 export const apiCache = new APICache({
   ttl: 5 * 60 * 1000, // 5 minutes default
-  keyPrefix: 'ssv2_api_',
+  keyPrefix: "ssv2_api_",
 });
 
 /**
  * Get user ID from Supabase session
  */
 async function getUserId(): Promise<string | undefined> {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return undefined;
   }
 
   try {
-    const { createClient } = await import('@/supabase/client');
+    const { createClient } = await import("@/supabase/client");
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 3000)
+    );
+
+    const sessionPromise = supabase.auth.getSession();
+    const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+    if (result === null) {
+      console.warn("Supabase getSession timed out in getUserId");
+      return undefined;
+    }
+
+    const {
+      data: { session },
+    } = result as { data: { session: { user?: { id?: string } } | null } };
     return session?.user?.id;
   } catch (error) {
-    console.warn('Error getting user ID for cache:', error);
+    console.warn("Error getting user ID for cache:", error);
     return undefined;
   }
 }
@@ -276,17 +292,19 @@ export async function cachedFetch<T>(
   ttl?: number
 ): Promise<T> {
   // Only cache GET requests
-  if (options.method && options.method !== 'GET') {
+  if (options.method && options.method !== "GET") {
     const response = await fetch(endpoint, options);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      throw new Error(
+        errorData.error || `HTTP error! status: ${response.status}`
+      );
     }
     return response.json() as Promise<T>;
   }
 
   // Get user ID if not provided
-  const finalUserId = userId || await getUserId();
+  const finalUserId = userId || (await getUserId());
 
   // Check cache first
   const cached = apiCache.get<T>(endpoint, finalUserId);
@@ -298,14 +316,16 @@ export async function cachedFetch<T>(
   const response = await fetch(endpoint, options);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    throw new Error(
+      errorData.error || `HTTP error! status: ${response.status}`
+    );
   }
 
-  const data = await response.json() as T;
-  
+  const data = (await response.json()) as T;
+
   // Cache the response
   apiCache.set(endpoint, data, finalUserId, ttl);
-  
+
   return data;
 }
 
@@ -313,9 +333,8 @@ export async function cachedFetch<T>(
  * Cache TTL constants for different endpoints
  */
 export const CacheTTL = {
-  SHORT: 1 * 60 * 1000,      // 1 minute - for frequently changing data
-  MEDIUM: 5 * 60 * 1000,     // 5 minutes - default
-  LONG: 15 * 60 * 1000,      // 15 minutes - for relatively static data
+  SHORT: 1 * 60 * 1000, // 1 minute - for frequently changing data
+  MEDIUM: 5 * 60 * 1000, // 5 minutes - default
+  LONG: 15 * 60 * 1000, // 15 minutes - for relatively static data
   VERY_LONG: 30 * 60 * 1000, // 30 minutes - for rarely changing data
 } as const;
-

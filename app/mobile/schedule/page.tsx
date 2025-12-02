@@ -303,13 +303,40 @@ export default function SchedulePage() {
               </Button>
             </>
           )}
+          {user.role === "faculty" && (
+            <Button
+              variant="outline"
+              onClick={() => router.push("/mobile/availability")}
+              className="flex-1"
+            >
+              Availability
+            </Button>
+          )}
+          {user.role === "registrar" && (
+            <Button
+              variant="outline"
+              onClick={() => router.push("/mobile/registrar")}
+              className="flex-1"
+            >
+              Registrar Dashboard
+            </Button>
+          )}
           {user.role === "scheduling" && (
             <Button
               variant="outline"
-              onClick={() => router.push("/mobile/elective-stats")}
+              onClick={() => router.push("/mobile/scheduler")}
               className="flex-1"
             >
-              Elective Stats
+              Scheduler Dashboard
+            </Button>
+          )}
+          {user.role === "teaching_load" && (
+            <Button
+              variant="outline"
+              onClick={() => router.push("/mobile/teaching-load")}
+              className="flex-1"
+            >
+              Teaching Load
             </Button>
           )}
         </div>

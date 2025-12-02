@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,50 +41,37 @@ const priorityColors = {
 export function UpcomingDeadlinesWidget({
 	userRole,
 	compact = false,
-	showAll = false,
 	initialData,
 }: UpcomingDeadlinesWidgetProps) {
-	const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>(initialData || [])
-	const [isLoading, setIsLoading] = useState(!initialData)
-
-	async function loadDeadlines() {
-		setIsLoading(true)
-		try {
+	const { data: deadlines = [], isLoading } = useQuery({
+		queryKey: ['timeline', 'topbar', userRole],
+		queryFn: async () => {
 			const authHeader = await getAuthHeader()
-			const response = await fetch(
-				`/api/timeline?role=${userRole}&daysAhead=${showAll ? 90 : 30}`,
-				{
-					headers: {
-						'Authorization': authHeader,
-					},
-				}
-			)
-			if (response.ok) {
-				const result = await response.json()
-				setDeadlines(result.data || [])
+			const response = await fetch(`/api/timeline?role=${userRole}`, {
+				headers: {
+					'Authorization': authHeader,
+				},
+			})
+			if (!response.ok) {
+				throw new Error('Failed to fetch deadlines')
 			}
-		} finally {
-			setIsLoading(false)
-		}
-	}
-
-	useEffect(() => {
-		// Only fetch if initial data was not provided
-		if (!initialData) {
-			loadDeadlines()
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [userRole, initialData])
+			const result = await response.json()
+			return (result.data || []) as UpcomingDeadline[]
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		enabled: !!userRole && !initialData,
+		initialData: initialData,
+	})
 
 	function calculateDaysUntilStart(startDate: string): number {
 		try {
 			const now = new Date()
 			const start = startDate ? new Date(startDate) : null
-			
+
 			if (!start || isNaN(start.getTime())) {
 				return 0
 			}
-			
+
 			return differenceInDays(start, now)
 		} catch {
 			return 0
@@ -95,11 +82,11 @@ export function UpcomingDeadlinesWidget({
 		try {
 			const now = new Date()
 			const end = endDate ? new Date(endDate) : null
-			
+
 			if (!end || isNaN(end.getTime())) {
 				return 0
 			}
-			
+
 			return differenceInDays(end, now)
 		} catch {
 			return 0
@@ -160,7 +147,7 @@ export function UpcomingDeadlinesWidget({
 
 		// If event has ended, show red
 		if (calculatedStatus === 'overdue') return 'text-red-600'
-		
+
 		// If event is in progress, show yellow/orange
 		if (calculatedStatus === 'in_progress') {
 			if (daysUntilEnd <= 3) return 'text-orange-600'

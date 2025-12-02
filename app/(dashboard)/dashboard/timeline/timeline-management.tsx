@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -106,54 +106,40 @@ export function TimelineManagement({
 		refetchOnWindowFocus: false,
 	})
 
-	const { data: statistics, isLoading: isLoadingStats } = useQuery({
-		queryKey: ['timeline', 'statistics', selectedSemester],
-		queryFn: async () => {
-			const params = new URLSearchParams({ stats: 'true' })
-			if (selectedSemester) {
-				params.append('semester', selectedSemester)
-			}
-			const authHeader = await getAuthHeader()
-			const response = await fetch(`/api/timeline?${params}`, {
-				headers: { 'Authorization': authHeader },
-			})
-			if (!response.ok) throw new Error('Failed to load statistics')
-			const result = await response.json()
-			const stats = result.data || null
-			return stats ? {
-				...stats,
-				total_events: stats.total,
-				upcoming_events: stats.upcoming,
-				in_progress_events: stats.in_progress,
-				overdue_events: stats.overdue,
-				completed_events: stats.completed,
-				high_priority_count: stats.by_priority?.high || 0,
-			} as TimelineStatistics : null
-		},
-		staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-		gcTime: 10 * 60 * 1000,
-		refetchOnWindowFocus: false,
-	})
+	// OPTIMIZATION: Derive statistics and upcoming events from the main events list
+	// This saves 2 extra API calls per page load
+	const { statistics, upcomingEvents } = useMemo(() => {
+		if (!events.length) return { statistics: null, upcomingEvents: [] }
 
-	const { data: upcomingEvents = [], isLoading: isLoadingUpcoming } = useQuery({
-		queryKey: ['timeline', 'upcoming', selectedSemester],
-		queryFn: async () => {
-			const params = new URLSearchParams({ status: 'upcoming' })
-			if (selectedSemester) {
-				params.append('semester', selectedSemester)
-			}
-			const authHeader = await getAuthHeader()
-			const response = await fetch(`/api/timeline?${params}`, {
-				headers: { 'Authorization': authHeader },
-			})
-			if (!response.ok) throw new Error('Failed to load upcoming events')
-			const result = await response.json()
-			return (result.data || []) as TimelineEvent[]
-		},
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
-		refetchOnWindowFocus: false,
-	})
+		const upcoming = events.filter(e => e.status === 'upcoming')
+		const inProgress = events.filter(e => e.status === 'in_progress')
+		const overdue = events.filter(e => e.status === 'overdue')
+		const completed = events.filter(e => e.status === 'completed')
+		const cancelled = events.filter(e => e.status === 'cancelled')
+
+		const stats: TimelineStatistics = {
+			total: events.length,
+			upcoming: upcoming.length,
+			in_progress: inProgress.length,
+			overdue: overdue.length,
+			completed: completed.length,
+			cancelled: cancelled.length,
+			by_priority: {
+				low: events.filter(e => e.priority === 'low').length,
+				medium: events.filter(e => e.priority === 'medium').length,
+				high: events.filter(e => e.priority === 'high').length,
+				critical: events.filter(e => e.priority === 'critical').length,
+			},
+			total_events: events.length,
+			upcoming_events: upcoming.length,
+			in_progress_events: inProgress.length,
+			overdue_events: overdue.length,
+			completed_events: completed.length,
+			high_priority_count: events.filter(e => e.priority === 'high').length,
+		}
+
+		return { statistics: stats, upcomingEvents: upcoming }
+	}, [events])
 
 	const { data: overdueEvents = [], isLoading: isLoadingOverdue } = useQuery({
 		queryKey: ['timeline', 'overdue'],
@@ -171,7 +157,7 @@ export function TimelineManagement({
 		refetchOnWindowFocus: false,
 	})
 
-	const isLoading = isLoadingEvents || isLoadingStats || isLoadingUpcoming || isLoadingOverdue
+	const isLoading = isLoadingEvents || isLoadingOverdue
 
 	// Helper function to invalidate timeline queries after mutations
 	const invalidateTimelineQueries = useCallback(() => {
@@ -334,8 +320,8 @@ export function TimelineManagement({
 				const data = result.data || result
 				alert(
 					`Deadline check completed!\n\n` +
-						`Notifications sent: ${data.notifications_sent || 0}\n` +
-						`Total recipients: ${data.total_recipients || 0}`
+					`Notifications sent: ${data.notifications_sent || 0}\n` +
+					`Total recipients: ${data.total_recipients || 0}`
 				)
 				invalidateTimelineQueries()
 			} else {

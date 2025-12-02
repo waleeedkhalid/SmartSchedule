@@ -9,10 +9,12 @@ interface CopyableStudentNumberProps {
   studentNumber: string;
 }
 
-export function CopyableStudentNumber({ studentNumber }: CopyableStudentNumberProps) {
+export function CopyableStudentNumber({
+  studentNumber,
+}: CopyableStudentNumberProps) {
   const [copied, setCopied] = useState(false);
 
-  async function handleCopy() {
+  const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(studentNumber);
       setCopied(true);
@@ -22,7 +24,7 @@ export function CopyableStudentNumber({ studentNumber }: CopyableStudentNumberPr
       toast.error("Failed to copy student number");
       console.error("Failed to copy:", error);
     }
-  }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -44,4 +46,3 @@ export function CopyableStudentNumber({ studentNumber }: CopyableStudentNumberPr
     </div>
   );
 }
-

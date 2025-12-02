@@ -1,19 +1,19 @@
 /**
  * Student Schedule View Component
- * 
+ *
  * Purpose: Display weekly schedule grid for student's courses
- * 
+ *
  * Schedule Composition:
  * - Required courses: Blue badges (auto-enrolled)
  * - Elective courses: Green badges (manually registered)
- * 
+ *
  * Features:
  * - Weekly grid view (Sunday-Thursday)
  * - Time slots from 8:00-17:00
  * - Color-coded course types
  * - Course details on hover
  * - Print-friendly layout
- * 
+ *
  * Data Flow:
  * 1. Fetch complete schedule from API
  * 2. Parse meeting patterns into time slots
@@ -24,10 +24,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, User, Download, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Download,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { cachedFetch, CacheTTL } from "@/lib/utils/api-cache";
@@ -66,17 +79,40 @@ interface ScheduleData {
 }
 
 // Days of the week (Sunday-Thursday for academic schedule)
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
 // Time slots (8:00 AM - 5:00 PM)
 const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00'
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
 ];
+
+// SWE department course prefixes
+const SWE_COURSE_PREFIXES = ["SWE", "CPIT", "CPIS"];
+
+/**
+ * Check if a course belongs to the SWE department based on course code
+ */
+function isSWECourse(courseCode: string): boolean {
+  if (!courseCode) return false;
+  const upperCode = courseCode.toUpperCase();
+  return SWE_COURSE_PREFIXES.some((prefix) => upperCode.startsWith(prefix));
+}
+
+type TimeFormat = "12h" | "24h";
 
 export function StudentScheduleView() {
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>("12h");
 
   useEffect(() => {
     fetchSchedule();
@@ -99,7 +135,7 @@ export function StudentScheduleView() {
         message?: string;
       }
       const result = await cachedFetch<{ data: ApiScheduleData }>(
-        '/api/v1/schedules/me',
+        "/api/v1/schedules/me",
         {
           headers: authHeader ? { Authorization: authHeader } : {},
         },
@@ -109,16 +145,20 @@ export function StudentScheduleView() {
       const scheduleData = result.data;
 
       // Transform API response to component format
-      if (scheduleData.is_empty || !scheduleData.schedule || scheduleData.schedule.length === 0) {
+      if (
+        scheduleData.is_empty ||
+        !scheduleData.schedule ||
+        scheduleData.schedule.length === 0
+      ) {
         setSchedule({
-          student_id: scheduleData.student_id || '',
+          student_id: scheduleData.student_id || "",
           level: scheduleData.level || 1,
           total_credits: 0,
           required_credits: 0,
           elective_credits: 0,
           sections: [],
           is_empty: true,
-          message: scheduleData.message || 'No schedule available',
+          message: scheduleData.message || "No schedule available",
         });
         return;
       }
@@ -171,23 +211,26 @@ export function StudentScheduleView() {
             sections.push({
               id: section.section_id || section.id,
               course_code: courseEntry.course_code || section.course_code,
-              course_title: courseEntry.course_name || section.course?.title || '',
-              section_no: section.section_no || '',
+              course_title:
+                courseEntry.course_name || section.course?.title || "",
+              section_no: section.section_no || "",
               credits: courseEntry.credits || section.course?.credits || 0,
-              is_elective: courseEntry.is_elective || section.course?.is_elective || false,
+              is_elective:
+                courseEntry.is_elective || section.course?.is_elective || false,
               is_enrolled: true,
               is_swe_scheduled: section.is_swe_scheduled || false,
               instructor_name: section.instructor?.name || null,
               room_code: section.room?.code || section.room_code || null,
               meeting_pattern: section.meeting_pattern || {
                 days: [],
-                start: '',
+                start: "",
                 duration: 0,
                 is_lab: false,
               },
-              state: section.state || 'released',
+              state: section.state || "released",
               activity: section.activity,
-              enrollment_type: courseEntry.enrollment_type || section.enrollment_type,
+              enrollment_type:
+                courseEntry.enrollment_type || section.enrollment_type,
             });
           });
         }
@@ -208,7 +251,7 @@ export function StudentScheduleView() {
       });
 
       setSchedule({
-        student_id: scheduleData.student_id || '',
+        student_id: scheduleData.student_id || "",
         level: scheduleData.level || 1,
         total_credits: totalCredits,
         required_credits: requiredCredits,
@@ -217,11 +260,12 @@ export function StudentScheduleView() {
         is_empty: sections.length === 0,
       });
     } catch (error: unknown) {
-      console.error('Error fetching schedule:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load schedule';
+      console.error("Error fetching schedule:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load schedule";
       toast.error(errorMessage);
       setSchedule({
-        student_id: '',
+        student_id: "",
         level: 1,
         total_credits: 0,
         required_credits: 0,
@@ -237,13 +281,17 @@ export function StudentScheduleView() {
 
   /**
    * Check if a course occupies a specific time slot on a specific day
-   * 
+   *
    * @param section - The section to check
    * @param day - Day of the week
    * @param timeSlot - Time slot (HH:MM format)
    * @returns True if section meets at this day/time
    */
-  function sectionOccupiesSlot(section: ScheduleSection, day: string, timeSlot: string): boolean {
+  function sectionOccupiesSlot(
+    section: ScheduleSection,
+    day: string,
+    timeSlot: string
+  ): boolean {
     const { days, start, duration } = section.meeting_pattern;
 
     // Check if section meets on this day
@@ -263,8 +311,27 @@ export function StudentScheduleView() {
    * Parse time string (HH:MM) to minutes since midnight
    */
   function parseTime(time: string): number {
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time.split(":").map(Number);
     return hours * 60 + minutes;
+  }
+
+  /**
+   * Format time based on selected format (12h or 24h)
+   */
+  function formatTime(time: string): string {
+    if (!time) return "";
+    const [hours, minutes] = time.split(":").map(Number);
+
+    if (timeFormat === "24h") {
+      return `${hours.toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    // 12-hour format
+    const period = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes.toString().padStart(2, "0")} ${period}`;
   }
 
   /**
@@ -292,7 +359,8 @@ export function StudentScheduleView() {
           <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
           <p className="text-xl font-semibold mb-2">No Schedule Available</p>
           <p className="text-sm text-muted-foreground mb-4">
-            {schedule?.message || 'Your schedule will appear once sections are published by your department.'}
+            {schedule?.message ||
+              "Your schedule will appear once sections are published by your department."}
           </p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 text-sm text-left">
             <p className="font-medium text-blue-900 mb-2">What to do next:</p>
@@ -319,14 +387,40 @@ export function StudentScheduleView() {
                 My Weekly Schedule
               </CardTitle>
               <CardDescription>
-                Level {schedule.level} | {schedule.total_credits} Credits
-                ({schedule.required_credits} required + {schedule.elective_credits} elective)
+                Level {schedule.level} | {schedule.total_credits} Credits (
+                {schedule.required_credits} required +{" "}
+                {schedule.elective_credits} elective)
               </CardDescription>
             </div>
-            <Button onClick={handlePrint} variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Print
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Time Format Toggle */}
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setTimeFormat("12h")}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    timeFormat === "12h"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  12h
+                </button>
+                <button
+                  onClick={() => setTimeFormat("24h")}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    timeFormat === "24h"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  24h
+                </button>
+              </div>
+              <Button onClick={handlePrint} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -334,12 +428,14 @@ export function StudentScheduleView() {
       {/* Legend */}
       <div className="flex items-center gap-4 text-sm flex-wrap">
         <span className="flex items-center gap-2">
-          <Badge className="bg-blue-600">SWE Scheduled</Badge>
-          <span className="text-muted-foreground">SWE courses (algorithm)</span>
+          <Badge className="bg-blue-600">SWE</Badge>
+          <span className="text-muted-foreground">SWE Department courses</span>
         </span>
         <span className="flex items-center gap-2">
-          <Badge className="bg-purple-600">External Dept</Badge>
-          <span className="text-muted-foreground">Pre-scheduled courses</span>
+          <Badge className="bg-purple-600">External</Badge>
+          <span className="text-muted-foreground">
+            Other department courses
+          </span>
         </span>
         <span className="flex items-center gap-2">
           <Badge className="bg-green-600">Elective</Badge>
@@ -357,40 +453,45 @@ export function StudentScheduleView() {
                   <th className="border p-2 text-left w-20 text-sm font-medium">
                     Time
                   </th>
-                  {DAYS.map(day => (
-                    <th key={day} className="border p-2 text-center text-sm font-medium">
+                  {DAYS.map((day) => (
+                    <th
+                      key={day}
+                      className="border p-2 text-center text-sm font-medium"
+                    >
                       {day}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {TIME_SLOTS.map(timeSlot => (
+                {TIME_SLOTS.map((timeSlot) => (
                   <tr key={timeSlot} className="hover:bg-gray-50">
                     <td className="border p-2 text-xs font-medium text-muted-foreground whitespace-nowrap">
-                      {timeSlot}
+                      {formatTime(timeSlot)}
                     </td>
-                    {DAYS.map(day => {
+                    {DAYS.map((day) => {
                       // Find sections that occupy this slot
                       // Ensure schedule.sections is an array
-                      const sections = (schedule?.sections && Array.isArray(schedule.sections))
-                        ? schedule.sections
-                        : [];
-                      const sectionsInSlot = sections.filter(
-                        section => sectionOccupiesSlot(section, day, timeSlot)
+                      const sections =
+                        schedule?.sections && Array.isArray(schedule.sections)
+                          ? schedule.sections
+                          : [];
+                      const sectionsInSlot = sections.filter((section) =>
+                        sectionOccupiesSlot(section, day, timeSlot)
                       );
 
                       return (
                         <td key={`${day}-${timeSlot}`} className="border p-1">
-                          {sectionsInSlot.map(section => (
+                          {sectionsInSlot.map((section) => (
                             <div
                               key={`${section.id}-${day}-${timeSlot}`}
-                              className={`p-2 rounded text-xs ${section.is_swe_scheduled
-                                ? 'bg-blue-100 border border-blue-300'
-                                : section.is_elective
-                                  ? 'bg-green-100 border border-green-300'
-                                  : 'bg-purple-100 border border-purple-300'
-                                } mb-1 last:mb-0`}
+                              className={`p-2 rounded text-xs ${
+                                isSWECourse(section.course_code)
+                                  ? "bg-blue-100 border border-blue-300"
+                                  : section.is_elective
+                                  ? "bg-green-100 border border-green-300"
+                                  : "bg-purple-100 border border-purple-300"
+                              } mb-1 last:mb-0`}
                             >
                               <div className="font-semibold">
                                 {section.course_code}
@@ -404,8 +505,11 @@ export function StudentScheduleView() {
                                   {section.room_code}
                                 </div>
                               )}
-                              {section.activity === 'lab' && (
-                                <Badge variant="outline" className="text-[9px] mt-1 h-4">
+                              {section.activity === "lab" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] mt-1 h-4"
+                                >
                                   Lab
                                 </Badge>
                               )}
@@ -429,29 +533,47 @@ export function StudentScheduleView() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
-            {schedule && schedule.sections && Array.isArray(schedule.sections)
-              ? schedule.sections.map(section => (
+            {schedule &&
+            schedule.sections &&
+            Array.isArray(schedule.sections) ? (
+              schedule.sections.map((section) => (
                 <div
                   key={section.id}
                   className="flex items-start justify-between p-3 border rounded-lg"
                 >
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold">{section.course_code}</span>
+                      <span className="font-semibold">
+                        {section.course_code}
+                      </span>
                       <Badge variant="secondary">{section.section_no}</Badge>
-                      <Badge className={
-                        section.is_swe_scheduled
-                          ? 'bg-blue-600'
+                      <Badge
+                        className={
+                          isSWECourse(section.course_code)
+                            ? "bg-blue-600"
+                            : section.is_elective
+                            ? "bg-green-600"
+                            : "bg-purple-600"
+                        }
+                      >
+                        {isSWECourse(section.course_code)
+                          ? "SWE"
                           : section.is_elective
-                            ? 'bg-green-600'
-                            : 'bg-purple-600'
-                      }>
-                        {section.is_swe_scheduled ? 'SWE Scheduled' : section.is_elective ? 'Elective' : 'External Dept'}
+                          ? "Elective"
+                          : "External"}
                       </Badge>
                       <Badge variant="outline">{section.credits} cr</Badge>
                       {section.enrollment_type && (
-                        <Badge variant={section.enrollment_type === 'required' ? 'default' : 'secondary'}>
-                          {section.enrollment_type === 'required' ? 'Required' : 'Elective'}
+                        <Badge
+                          variant={
+                            section.enrollment_type === "required"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {section.enrollment_type === "required"
+                            ? "Required"
+                            : "Elective"}
                         </Badge>
                       )}
                     </div>
@@ -467,11 +589,12 @@ export function StudentScheduleView() {
                       )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {section.meeting_pattern.days.join(', ')}
+                        {section.meeting_pattern.days.join(", ")}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {section.meeting_pattern.start} ({section.meeting_pattern.duration}min)
+                        {formatTime(section.meeting_pattern.start)} (
+                        {section.meeting_pattern.duration}min)
                       </span>
                       {section.room_code && (
                         <span className="flex items-center gap-1">
@@ -483,15 +606,14 @@ export function StudentScheduleView() {
                   </div>
                 </div>
               ))
-              : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No sections found in schedule
-                </div>
-              )}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No sections found in schedule
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-

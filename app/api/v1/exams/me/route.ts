@@ -1,8 +1,8 @@
 /**
  * Student Exams Endpoint
- * 
+ *
  * GET /api/v1/exams/me
- * 
+ *
  * Returns exams for courses the authenticated student is enrolled in.
  * Only returns exams if the schedule is released.
  */
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Check if schedule is released - exams should only be visible when schedule is released
+    // Check for active academic term (draft or released)
     const { data: currentTerm, error: termError } = await supabase
       .from("academic_term")
       .select("id, status, code, name")
@@ -42,29 +42,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // If schedule is not released, return empty with message
-    if (currentTerm.status !== "released") {
-      return createSuccessResponse(
-        {
-          exams: [],
-          total_exams: 0,
-          has_conflicts: false,
-          is_empty: true,
-          message: "Exams are not available yet. The schedule must be released before exam information can be viewed.",
-        },
-        200
-      );
-    }
-
     // Get all course codes the student is enrolled in
     const { data: enrollments, error: enrollError } = await supabase
       .from("student_enrollment")
-      .select(`
+      .select(
+        `
         section:section_id (
           course_code,
           section_no
         )
-      `)
+      `
+      )
       .eq("student_id", user.id)
       .eq("status", "registered");
 
@@ -72,30 +60,53 @@ export async function GET(request: NextRequest) {
       throw enrollError;
     }
 
-    if (!enrollments || enrollments.length === 0) {
-      return createSuccessResponse(
-        {
-          exams: [],
-          total_exams: 0,
-          has_conflicts: false,
-          is_empty: true,
-          message: "You are not enrolled in any courses. Exams will appear here once you register for courses.",
-        },
-        200
-      );
-    }
-
-    // Extract course codes and section numbers
+    // Extract course codes and section numbers from enrollments
     interface EnrollmentWithSection {
       section?: {
         course_code?: string;
         section_no?: string;
       };
     }
-    const courseCodes = (enrollments as EnrollmentWithSection[])
-      .map((e) => e.section?.course_code)
-      .filter((code): code is string => !!code);
 
+    let courseCodes: string[] = [];
+    const courseSectionMap = new Map<string, string[]>();
+
+    if (enrollments && enrollments.length > 0) {
+      courseCodes = (enrollments as EnrollmentWithSection[])
+        .map((e) => e.section?.course_code)
+        .filter((code): code is string => !!code);
+
+      // Build section map for enrolled courses
+      (enrollments as EnrollmentWithSection[]).forEach((e) => {
+        const courseCode = e.section?.course_code;
+        const sectionNo = e.section?.section_no;
+        if (courseCode && sectionNo) {
+          if (!courseSectionMap.has(courseCode)) {
+            courseSectionMap.set(courseCode, []);
+          }
+          courseSectionMap.get(courseCode)!.push(sectionNo);
+        }
+      });
+    }
+
+    // If no enrollments, try to get courses for the student's level from their academic plan
+    if (courseCodes.length === 0) {
+      // Fallback: Get courses based on student's level from course table
+      const studentLevel = user.level || 1;
+      const levelPrefix = studentLevel.toString();
+
+      // Try to get courses at student's level (course codes typically have level in them like SWE 3xx for level 3)
+      const { data: levelCourses } = await supabase
+        .from("course")
+        .select("code")
+        .like("code", `SWE ${levelPrefix}%`);
+
+      if (levelCourses && levelCourses.length > 0) {
+        courseCodes = levelCourses.map((c: { code: string }) => c.code);
+      }
+    }
+
+    // If still no course codes, return empty
     if (courseCodes.length === 0) {
       return createSuccessResponse(
         {
@@ -103,7 +114,8 @@ export async function GET(request: NextRequest) {
           total_exams: 0,
           has_conflicts: false,
           is_empty: true,
-          message: "No course information found for your enrollments.",
+          message:
+            "No courses found for your current enrollment or academic level.",
         },
         200
       );
@@ -112,7 +124,8 @@ export async function GET(request: NextRequest) {
     // Get exams for these courses
     const { data: exams, error: examsError } = await supabase
       .from("exam")
-      .select(`
+      .select(
+        `
         id,
         course_code,
         date,
@@ -123,7 +136,8 @@ export async function GET(request: NextRequest) {
           code,
           title
         )
-      `)
+      `
+      )
       .in("course_code", courseCodes)
       .order("date", { ascending: true })
       .order("start_time", { ascending: true });
@@ -139,24 +153,12 @@ export async function GET(request: NextRequest) {
           total_exams: 0,
           has_conflicts: false,
           is_empty: true,
-          message: "No exams have been scheduled for your enrolled courses yet.",
+          message:
+            "No exams have been scheduled for your enrolled courses yet.",
         },
         200
       );
     }
-
-    // Build a map of course_code to section numbers for enrolled courses
-    const courseSectionMap = new Map<string, string[]>();
-    (enrollments as EnrollmentWithSection[]).forEach((e) => {
-      const courseCode = e.section?.course_code;
-      const sectionNo = e.section?.section_no;
-      if (courseCode && sectionNo) {
-        if (!courseSectionMap.has(courseCode)) {
-          courseSectionMap.set(courseCode, []);
-        }
-        courseSectionMap.get(courseCode)!.push(sectionNo);
-      }
-    });
 
     // Transform exams and detect conflicts
     interface ExamWithCourse {
@@ -166,26 +168,36 @@ export async function GET(request: NextRequest) {
       start_time: string;
       duration_minutes: number;
       room_codes: string[] | null;
-      course?: {
-        code: string;
-        title: string;
-      } | Array<{
-        code: string;
-        title: string;
-      }>;
+      course?:
+        | {
+            code: string;
+            title: string;
+          }
+        | Array<{
+            code: string;
+            title: string;
+          }>;
     }
     const examData = (exams as ExamWithCourse[]).map((exam) => {
       const courseCode = exam.course_code;
       const sectionNos = courseSectionMap.get(courseCode) || [];
-      
+
       // Safely extract joined relation (can be array from Supabase)
       const course = extractJoinedRelation(exam.course);
-      
+
       // Calculate end time
-      exam.start_time.split(':').map(Number);
+      exam.start_time.split(":").map(Number);
       const startDate = new Date(`${exam.date}T${exam.start_time}`);
-      const endDate = new Date(startDate.getTime() + exam.duration_minutes * 60000);
-      const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}:00`;
+      const endDate = new Date(
+        startDate.getTime() + exam.duration_minutes * 60000
+      );
+      const endTime = `${endDate
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${endDate
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}:00`;
 
       return {
         id: exam.id,
@@ -204,18 +216,20 @@ export async function GET(request: NextRequest) {
 
     // Detect conflicts (exams on same date with overlapping times)
     const conflicts: { [key: string]: boolean } = {};
-    const conflictingExams: { [key: string]: Array<{ course_code: string; course_title: string }> } = {};
+    const conflictingExams: {
+      [key: string]: Array<{ course_code: string; course_title: string }>;
+    } = {};
 
     for (let i = 0; i < examData.length; i++) {
       const exam1 = examData[i];
       for (let j = i + 1; j < examData.length; j++) {
         const exam2 = examData[j];
-        
+
         // Check if same date
         if (exam1.date === exam2.date) {
           // Parse times to minutes for comparison
           const parseTime = (time: string): number => {
-            const [hours, minutes] = time.split(':').map(Number);
+            const [hours, minutes] = time.split(":").map(Number);
             return hours * 60 + minutes;
           };
 
@@ -271,4 +285,3 @@ export async function GET(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

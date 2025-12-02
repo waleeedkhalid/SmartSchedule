@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAllExams } from "@/lib/data/exams";
+import { getAllExams, type Exam } from "@/lib/data/exams";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 
@@ -16,9 +16,17 @@ export default async function ExamsPage() {
     redirect("/dashboard");
   }
 
-  // Fetch exams from database
-  const exams = await getAllExams();
-  
+  // Fetch exams from database with error handling
+  let exams: Exam[] = [];
+  let error: string | null = null;
+
+  try {
+    exams = await getAllExams();
+  } catch (err) {
+    console.error("Error fetching exams:", err);
+    error = err instanceof Error ? err.message : "Failed to fetch exams. Please try again later.";
+  }
+
   // Get current term info
   const supabase = await createClient();
   const { data: currentTerm } = await supabase
@@ -28,7 +36,7 @@ export default async function ExamsPage() {
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
-  
+
   const currentSemester = currentTerm ? {
     name: currentTerm.name || "Current Term",
     code: currentTerm.code || "",
@@ -36,9 +44,7 @@ export default async function ExamsPage() {
     name: "No Active Term",
     code: "",
   };
-  
-  const error = null;
-  
+
   // Mock conflicts for demo (TODO: implement real conflict checking)
   const conflicts: Record<string, { has_conflicts: boolean }> = {};
   exams.forEach(exam => {
