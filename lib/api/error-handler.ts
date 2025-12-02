@@ -1,6 +1,6 @@
 /**
  * Standardized Error Handler for API Routes
- * 
+ *
  * Provides consistent error responses across all API endpoints.
  * This ensures platform-agnostic error handling for mobile/web clients.
  */
@@ -27,7 +27,7 @@ export class ApiException extends Error {
 
 /**
  * Creates a standardized error response
- * 
+ *
  * Why: Ensures all API errors follow the same format, making it easy
  * for any client (PWA, React Native, iOS, Android) to handle errors consistently.
  */
@@ -51,7 +51,7 @@ export function createErrorResponse(
 
 /**
  * Creates a standardized success response
- * 
+ *
  * Why: Ensures all API success responses follow the same format, making it easy
  * for any client (PWA, React Native, iOS, Android) to handle responses consistently.
  */
@@ -59,9 +59,10 @@ export function createSuccessResponse<T = unknown>(
   data: T,
   statusCode: number = 200,
   message?: string
-): NextResponse<{ data: T; message?: string }> {
+): NextResponse<{ success: boolean; data: T; message?: string }> {
   return NextResponse.json(
     {
+      success: true,
       data,
       ...(message && { message }),
     },
@@ -71,7 +72,7 @@ export function createSuccessResponse<T = unknown>(
 
 /**
  * Handles errors and returns appropriate API response
- * 
+ *
  * Why: Centralized error handling prevents inconsistent error formats
  * and makes debugging easier across all platforms.
  */
@@ -104,7 +105,7 @@ export function handleApiError(error: unknown): NextResponse<ApiError> {
 
 /**
  * Common error codes used across the API
- * 
+ *
  * Why: Standardized error codes allow clients to handle specific
  * error scenarios programmatically (e.g., show different UI for AUTH_REQUIRED).
  */
@@ -117,4 +118,3 @@ export const ErrorCodes = {
   DATABASE_ERROR: "DATABASE_ERROR",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
-

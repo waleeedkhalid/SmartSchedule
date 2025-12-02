@@ -143,9 +143,11 @@ export async function GET(request: NextRequest) {
       .eq("student_id", studentId);
 
     // Build set of passed course codes
-    // Consider 'registered' as in-progress (not passed yet)
-    // In a full system, you'd have a grades table to check completion
-    const passedCourseCodes = new Set<string>();
+    // NOTE: Current schema only has 'registered' and 'dropped' status.
+    // For a complete system, we would need a course_history or grades table
+    // to track which courses students have actually passed.
+    // For now, we only track currently enrolled courses to prevent duplicates.
+    const passedCourseCodes = new Set<string>(); // Would come from grades/history table
     const enrolledCourseCodes = new Set<string>();
     const enrolledSectionIds = new Set<string>();
 
@@ -157,15 +159,13 @@ export async function GET(request: NextRequest) {
         : enrollment.section;
       const courseCode = sectionData?.course_code;
       if (courseCode) {
+        // Current schema: 'registered' = actively enrolled, 'dropped' = no longer enrolled
         if (enrollment.status === "registered") {
           enrolledCourseCodes.add(courseCode);
           enrolledSectionIds.add(enrollment.section_id);
-        } else if (
-          enrollment.status === "passed" ||
-          enrollment.status === "completed"
-        ) {
-          passedCourseCodes.add(courseCode);
         }
+        // TODO: When grades table is added, check for passed courses here
+        // if (enrollment.status === "passed") { passedCourseCodes.add(courseCode); }
       }
     });
 

@@ -1,19 +1,27 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   Users,
   DoorOpen,
   BookOpen,
   AlertTriangle,
-  CheckCircle
-} from 'lucide-react'
+  CheckCircle,
+  RefreshCw,
+} from "lucide-react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,9 +35,9 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
-  Filler
-} from 'chart.js'
-import { Bar, Doughnut, Line } from 'react-chartjs-2'
+  Filler,
+} from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 
 // Register Chart.js components
 ChartJS.register(
@@ -44,129 +52,160 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler
-)
+);
 
-interface DashboardStats {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  faculty?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rooms?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  progress?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workload?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  enrollments?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  timeslots?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  electives?: any
+// Type definitions for API response
+interface ProgressStats {
+  total: number;
+  assigned: number;
+  draft: number;
+  released: number;
+  withInstructor: number;
+  withRoom: number;
+  withTime: number;
+  completionRate: number;
+  instructorAssignmentRate: number;
+  roomAssignmentRate: number;
+  timeAssignmentRate: number;
 }
 
-export function SchedulingDashboardCharts() {
-  const [stats, setStats] = useState<DashboardStats>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface RoomStats {
+  totalRooms: number;
+  usedRooms: number;
+  unusedRooms: number;
+  lectureRooms: number;
+  labRooms: number;
+  utilizationRate: number;
+  roomUsageDetails: Array<{
+    room: string;
+    type: string;
+    capacity: number | null;
+    sections: number;
+    utilization: number;
+  }>;
+}
+
+interface WorkloadStats {
+  avgUtilization: number;
+  overloaded: number;
+  nearCapacity: number;
+  balanced: number;
+  underutilized: number;
+  instructors: Array<{
+    id: string;
+    name: string;
+    sections: number;
+    credits: number;
+    utilizationRate: number;
+    status: "overloaded" | "near-capacity" | "balanced" | "underutilized";
+  }>;
+}
+
+interface FacultyStats {
+  totalInstructors: number;
+  withPreferences: number;
+  withoutPreferences: number;
+  withUnavailability: number;
+}
+
+interface ElectiveStats {
+  course_code: string;
+  course_title: string;
+  total_requests: number;
+  first_choice: number;
+  second_choice: number;
+  third_choice: number;
+}
+
+interface TimeslotStats {
+  timeDistribution: Array<{ time: string; sections: number }>;
+  dayDistribution: Array<{ day: string; sections: number }>;
+  totalScheduledSections: number;
+}
+
+interface EnrollmentStats {
+  active: number;
+  retentionRate: number;
+  byLevel: Array<{ level: number; count: number }>;
+}
+
+interface DashboardStats {
+  faculty?: FacultyStats;
+  rooms?: RoomStats;
+  progress?: ProgressStats;
+  workload?: WorkloadStats;
+  enrollments?: EnrollmentStats;
+  timeslots?: TimeslotStats;
+  electives?: ElectiveStats[];
+  termId?: string;
+}
+
+interface Props {
+  termId?: string;
+}
+
+export function SchedulingDashboardCharts({ termId }: Props = {}) {
+  const [stats, setStats] = useState<DashboardStats>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Build API URL with optional term_id parameter
+      const params = new URLSearchParams();
+      if (termId) {
+        params.append("term_id", termId);
+      }
+
+      const url = `/api/v1/scheduling/dashboard-stats${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to fetch dashboard stats: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result.error?.message || "Failed to fetch dashboard stats"
+        );
+      }
+
+      // The API returns data in the expected format, so we can use it directly
+      setStats(result.data);
+    } catch (err) {
+      console.error("Error fetching dashboard stats:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching dashboard statistics"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true)
-        // TODO: Replace with real API call to /api/scheduling/dashboard-stats
-        // For now, using empty data structure
-        const data = {
-          enrollments: { byLevel: [], total: 0 },
-          rooms: { total: 0, used: 0, utilization: [] },
-          workload: { instructors: [], average: 0 },
-          timeslots: { distribution: [] },
-          electives: { courses: [], totalEnrollments: 0 },
-          progress: { totalSections: 0, assigned: 0, unassigned: 0 },
-        }
-
-        // Transform mock data to match expected format
-        const transformedData = {
-          enrollments: {
-            active: data.enrollments?.total || 0,
-            retentionRate: 95.5,
-            byLevel: data.enrollments?.byLevel || [],
-          },
-          rooms: {
-            totalRooms: data.rooms?.total || 0,
-            usedRooms: data.rooms?.used || 0,
-            unusedRooms: (data.rooms?.total || 0) - (data.rooms?.used || 0),
-            utilizationRate: data.rooms?.utilization?.reduce((sum: number, r: { utilization?: number }) => sum + (r.utilization || 0), 0) / (data.rooms?.utilization?.length || 1) || 0,
-            lectureRooms: data.rooms?.utilization?.filter((r: { room?: string }) => r.room?.includes('LEC')).length || 0,
-            labRooms: data.rooms?.utilization?.filter((r: { room?: string }) => r.room?.includes('LAB')).length || 0,
-            roomUsageDetails: data.rooms?.utilization?.slice(0, 10).map((r: { room?: string; used?: number }) => ({
-              room: r.room || '',
-              sections: r.used || 0,
-            })) || [],
-          },
-          workload: {
-            avgUtilization: data.workload?.average || 0,
-            overloaded: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 100).length || 0,
-            nearCapacity: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 80 && (i.utilization || 0) <= 100).length || 0,
-            balanced: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) > 50 && (i.utilization || 0) <= 80).length || 0,
-            underutilized: data.workload?.instructors?.filter((i: { utilization?: number }) => (i.utilization || 0) <= 50).length || 0,
-            instructors: data.workload?.instructors?.map((i: { id?: string; name?: string; sections?: number; utilization?: number }) => ({
-              id: i.id || '',
-              name: i.name || '',
-              sections: i.sections || 0,
-              credits: (i.sections || 0) * 3, // Assume 3 credits per section
-              utilizationRate: i.utilization || 0,
-              status: (i.utilization || 0) > 100 ? 'overloaded' : (i.utilization || 0) > 80 ? 'near-capacity' : (i.utilization || 0) > 50 ? 'balanced' : 'underutilized',
-            })) || [],
-          },
-          progress: {
-            total: data.progress?.totalSections || 0,
-            assigned: data.progress?.assigned || 0,
-            draft: data.progress?.totalSections - (data.progress?.assigned || 0),
-            released: 0,
-            withInstructor: data.progress?.assigned || 0,
-            withRoom: data.progress?.assigned || 0,
-            withTime: data.progress?.assigned || 0,
-            completionRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
-            instructorAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
-            roomAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
-            timeAssignmentRate: data.progress?.totalSections > 0 ? (data.progress?.assigned / data.progress?.totalSections) * 100 : 0,
-          },
-          faculty: {
-            totalInstructors: data.workload?.instructors?.length || 0,
-            withPreferences: Math.floor((data.workload?.instructors?.length || 0) * 0.6),
-            withoutPreferences: Math.floor((data.workload?.instructors?.length || 0) * 0.2),
-            withUnavailability: Math.floor((data.workload?.instructors?.length || 0) * 0.4),
-          },
-          timeslots: {
-            timeDistribution: data.timeslots?.distribution || [],
-            dayDistribution: [
-              { day: 'Monday', sections: 15 },
-              { day: 'Tuesday', sections: 18 },
-              { day: 'Wednesday', sections: 12 },
-              { day: 'Thursday', sections: 16 },
-              { day: 'Friday', sections: 10 },
-            ],
-            totalScheduledSections: data.progress?.assigned || 0,
-          },
-          electives: data.electives?.courses?.map((e: { course_code?: string; course_title?: string; enrollments?: number }) => ({
-            course_code: e.course_code || '',
-            course_title: e.course_title || '',
-            total_requests: e.enrollments || 0,
-            first_choice: Math.floor((e.enrollments || 0) * 0.5),
-            second_choice: Math.floor((e.enrollments || 0) * 0.3),
-            third_choice: Math.floor((e.enrollments || 0) * 0.2),
-          })) || [],
-        }
-
-        setStats(transformedData)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+    fetchData();
+  }, [termId]);
 
   if (loading) {
     return (
@@ -181,53 +220,68 @@ export function SchedulingDashboardCharts() {
             </Card>
           ))}
         </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription className="flex items-center justify-between">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </AlertDescription>
       </Alert>
-    )
+    );
   }
 
   // Chart configurations
-  const chartOptions: ChartOptions<'bar'> = {
+  const chartOptions: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
-      }
+        position: "top" as const,
+      },
     },
     scales: {
       y: {
         beginAtZero: true,
-        ticks: { precision: 0 }
-      }
-    }
-  }
+        ticks: { precision: 0 },
+      },
+    },
+  };
 
-  const doughnutOptions: ChartOptions<'doughnut'> = {
+  const doughnutOptions: ChartOptions<"doughnut"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'right' as const,
-      }
-    }
-  }
+        position: "right" as const,
+      },
+    },
+  };
 
-  const lineChartOptions: ChartOptions<'line'> = {
+  const lineChartOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
-      }
+        position: "top" as const,
+      },
     },
     scales: {
       y: {
@@ -235,146 +289,215 @@ export function SchedulingDashboardCharts() {
         max: 100,
         ticks: {
           callback: function (value) {
-            return value + '%'
-          }
-        }
-      }
-    }
-  }
+            return value + "%";
+          },
+        },
+      },
+    },
+  };
 
   // Elective Preferences Chart Data
-  const electivePreferencesData = stats.electives ? {
-    labels: stats.electives.slice(0, 10).map((e: { course_code?: string }) => e.course_code || ''),
-    datasets: [
-      {
-        label: '1st Choice',
-        data: stats.electives.slice(0, 10).map((e: { first_choice?: number }) => e.first_choice || 0),
-        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 1
-      },
-      {
-        label: '2nd Choice',
-        data: stats.electives.slice(0, 10).map((e: { second_choice?: number }) => e.second_choice || 0),
-        backgroundColor: 'rgba(139, 92, 246, 0.6)',
-        borderColor: 'rgba(139, 92, 246, 1)',
-        borderWidth: 1
-      },
-      {
-        label: '3rd Choice',
-        data: stats.electives.slice(0, 10).map((e: { third_choice?: number }) => e.third_choice || 0),
-        backgroundColor: 'rgba(236, 72, 153, 0.6)',
-        borderColor: 'rgba(236, 72, 153, 1)',
-        borderWidth: 1
+  const electivePreferencesData = stats.electives
+    ? {
+        labels: stats.electives
+          .slice(0, 10)
+          .map((e: { course_code?: string }) => e.course_code || ""),
+        datasets: [
+          {
+            label: "1st Choice",
+            data: stats.electives
+              .slice(0, 10)
+              .map((e: { first_choice?: number }) => e.first_choice || 0),
+            backgroundColor: "rgba(59, 130, 246, 0.6)",
+            borderColor: "rgba(59, 130, 246, 1)",
+            borderWidth: 1,
+          },
+          {
+            label: "2nd Choice",
+            data: stats.electives
+              .slice(0, 10)
+              .map((e: { second_choice?: number }) => e.second_choice || 0),
+            backgroundColor: "rgba(139, 92, 246, 0.6)",
+            borderColor: "rgba(139, 92, 246, 1)",
+            borderWidth: 1,
+          },
+          {
+            label: "3rd Choice",
+            data: stats.electives
+              .slice(0, 10)
+              .map((e: { third_choice?: number }) => e.third_choice || 0),
+            backgroundColor: "rgba(236, 72, 153, 0.6)",
+            borderColor: "rgba(236, 72, 153, 1)",
+            borderWidth: 1,
+          },
+        ],
       }
-    ]
-  } : null
+    : null;
 
   // Faculty Availability Chart Data
-  const facultyAvailabilityData = stats.faculty ? {
-    labels: ['With Preferences', 'Without Preferences', 'With Unavailability'],
-    datasets: [{
-      label: 'Instructors',
-      data: [
-        stats.faculty.withPreferences,
-        stats.faculty.withoutPreferences,
-        stats.faculty.withUnavailability
-      ],
-      backgroundColor: [
-        'rgba(16, 185, 129, 0.6)',
-        'rgba(245, 158, 11, 0.6)',
-        'rgba(239, 68, 68, 0.6)'
-      ],
-      borderWidth: 2,
-      borderColor: '#ffffff'
-    }]
-  } : null
+  const facultyAvailabilityData = stats.faculty
+    ? {
+        labels: [
+          "With Preferences",
+          "Without Preferences",
+          "With Unavailability",
+        ],
+        datasets: [
+          {
+            label: "Instructors",
+            data: [
+              stats.faculty.withPreferences,
+              stats.faculty.withoutPreferences,
+              stats.faculty.withUnavailability,
+            ],
+            backgroundColor: [
+              "rgba(16, 185, 129, 0.6)",
+              "rgba(245, 158, 11, 0.6)",
+              "rgba(239, 68, 68, 0.6)",
+            ],
+            borderWidth: 2,
+            borderColor: "#ffffff",
+          },
+        ],
+      }
+    : null;
 
   // Scheduling Progress Chart Data
-  const progressData = stats.progress ? {
-    labels: ['Instructor', 'Room', 'Time', 'Complete'],
-    datasets: [{
-      label: 'Assignment Progress (%)',
-      data: [
-        stats.progress.instructorAssignmentRate,
-        stats.progress.roomAssignmentRate,
-        stats.progress.timeAssignmentRate,
-        stats.progress.completionRate
-      ],
-      borderColor: 'rgba(16, 185, 129, 1)',
-      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-      tension: 0.4,
-      fill: true
-    }]
-  } : null
+  const progressData = stats.progress
+    ? {
+        labels: ["Instructor", "Room", "Time", "Complete"],
+        datasets: [
+          {
+            label: "Assignment Progress (%)",
+            data: [
+              stats.progress.instructorAssignmentRate,
+              stats.progress.roomAssignmentRate,
+              stats.progress.timeAssignmentRate,
+              stats.progress.completionRate,
+            ],
+            borderColor: "rgba(16, 185, 129, 1)",
+            backgroundColor: "rgba(16, 185, 129, 0.1)",
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      }
+    : null;
 
   // Room Utilization Chart Data
-  const roomUtilizationData = stats.rooms ? {
-    labels: ['Lecture Rooms', 'Lab Rooms'],
-    datasets: [{
-      label: 'Room Types',
-      data: [stats.rooms.lectureRooms, stats.rooms.labRooms],
-      backgroundColor: [
-        'rgba(59, 130, 246, 0.6)',
-        'rgba(139, 92, 246, 0.6)'
-      ],
-      borderWidth: 2,
-      borderColor: '#ffffff'
-    }]
-  } : null
+  const roomUtilizationData = stats.rooms
+    ? {
+        labels: ["Lecture Rooms", "Lab Rooms"],
+        datasets: [
+          {
+            label: "Room Types",
+            data: [stats.rooms.lectureRooms, stats.rooms.labRooms],
+            backgroundColor: [
+              "rgba(59, 130, 246, 0.6)",
+              "rgba(139, 92, 246, 0.6)",
+            ],
+            borderWidth: 2,
+            borderColor: "#ffffff",
+          },
+        ],
+      }
+    : null;
 
   // Instructor Workload Distribution
-  const workloadDistributionData = stats.workload ? {
-    labels: ['Overloaded', 'Near Capacity', 'Balanced', 'Underutilized'],
-    datasets: [{
-      label: 'Instructors',
-      data: [
-        stats.workload.overloaded,
-        stats.workload.nearCapacity,
-        stats.workload.balanced,
-        stats.workload.underutilized
-      ],
-      backgroundColor: [
-        'rgba(239, 68, 68, 0.6)',
-        'rgba(245, 158, 11, 0.6)',
-        'rgba(16, 185, 129, 0.6)',
-        'rgba(59, 130, 246, 0.6)'
-      ],
-      borderWidth: 1
-    }]
-  } : null
+  const workloadDistributionData = stats.workload
+    ? {
+        labels: ["Overloaded", "Near Capacity", "Balanced", "Underutilized"],
+        datasets: [
+          {
+            label: "Instructors",
+            data: [
+              stats.workload.overloaded,
+              stats.workload.nearCapacity,
+              stats.workload.balanced,
+              stats.workload.underutilized,
+            ],
+            backgroundColor: [
+              "rgba(239, 68, 68, 0.6)",
+              "rgba(245, 158, 11, 0.6)",
+              "rgba(16, 185, 129, 0.6)",
+              "rgba(59, 130, 246, 0.6)",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      }
+    : null;
 
   // Time Slot Distribution
-  const timeSlotData = stats.timeslots?.timeDistribution ? {
-    labels: stats.timeslots.timeDistribution.map((t: { time?: string }) => t.time || ''),
-    datasets: [{
-      label: 'Sections',
-      data: stats.timeslots.timeDistribution.map((t: { sections?: number }) => t.sections || 0),
-      backgroundColor: 'rgba(59, 130, 246, 0.6)',
-      borderColor: 'rgba(59, 130, 246, 1)',
-      borderWidth: 1
-    }]
-  } : null
+  const timeSlotData = stats.timeslots?.timeDistribution
+    ? {
+        labels: stats.timeslots.timeDistribution.map(
+          (t: { time?: string }) => t.time || ""
+        ),
+        datasets: [
+          {
+            label: "Sections",
+            data: stats.timeslots.timeDistribution.map(
+              (t: { sections?: number }) => t.sections || 0
+            ),
+            backgroundColor: "rgba(59, 130, 246, 0.6)",
+            borderColor: "rgba(59, 130, 246, 1)",
+            borderWidth: 1,
+          },
+        ],
+      }
+    : null;
 
   // Day Distribution
-  const dayDistributionData = stats.timeslots?.dayDistribution ? {
-    labels: stats.timeslots.dayDistribution.map((d: { day?: string }) => d.day || ''),
-    datasets: [{
-      label: 'Sections',
-      data: stats.timeslots.dayDistribution.map((d: { sections?: number }) => d.sections || 0),
-      backgroundColor: 'rgba(139, 92, 246, 0.6)',
-      borderColor: 'rgba(139, 92, 246, 1)',
-      borderWidth: 1
-    }]
-  } : null
+  const dayDistributionData = stats.timeslots?.dayDistribution
+    ? {
+        labels: stats.timeslots.dayDistribution.map(
+          (d: { day?: string }) => d.day || ""
+        ),
+        datasets: [
+          {
+            label: "Sections",
+            data: stats.timeslots.dayDistribution.map(
+              (d: { sections?: number }) => d.sections || 0
+            ),
+            backgroundColor: "rgba(139, 92, 246, 0.6)",
+            borderColor: "rgba(139, 92, 246, 1)",
+            borderWidth: 1,
+          },
+        ],
+      }
+    : null;
 
   return (
     <div className="space-y-6">
+      {/* Header with Refresh Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Scheduling Analytics</h2>
+          <p className="text-sm text-muted-foreground">
+            Real-time scheduling metrics and statistics
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Completion Rate
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -382,14 +505,17 @@ export function SchedulingDashboardCharts() {
               {stats.progress?.completionRate?.toFixed(1) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.progress?.assigned || 0} of {stats.progress?.total || 0} sections
+              {stats.progress?.assigned || 0} of {stats.progress?.total || 0}{" "}
+              sections
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Room Utilization</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Room Utilization
+            </CardTitle>
             <DoorOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -397,29 +523,32 @@ export function SchedulingDashboardCharts() {
               {stats.rooms?.utilizationRate?.toFixed(1) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.rooms?.usedRooms || 0} of {stats.rooms?.totalRooms || 0} rooms
+              {stats.rooms?.usedRooms || 0} of {stats.rooms?.totalRooms || 0}{" "}
+              rooms
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Instructor Workload</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Instructor Workload
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {stats.workload?.avgUtilization?.toFixed(1) || 0}%
             </div>
-            <p className="text-xs text-muted-foreground">
-              Average utilization
-            </p>
+            <p className="text-xs text-muted-foreground">Average utilization</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Student Enrollments</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Student Enrollments
+            </CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -427,7 +556,8 @@ export function SchedulingDashboardCharts() {
               {stats.enrollments?.active || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.enrollments?.retentionRate?.toFixed(1) || 0}% retention rate
+              {stats.enrollments?.retentionRate?.toFixed(1) || 0}% retention
+              rate
             </p>
           </CardContent>
         </Card>
@@ -470,23 +600,46 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.electives?.slice(0, 10).map((elective: { course_code?: string; course_title?: string; first_choice?: number; second_choice?: number; third_choice?: number; total_requests?: number }, index: number) => (
-                    <div key={elective.course_code} className="flex items-center justify-between rounded-lg border p-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">#{index + 1}</Badge>
-                          <span className="font-semibold">{elective.course_code}</span>
+                  {stats.electives
+                    ?.slice(0, 10)
+                    .map(
+                      (
+                        elective: {
+                          course_code?: string;
+                          course_title?: string;
+                          first_choice?: number;
+                          second_choice?: number;
+                          third_choice?: number;
+                          total_requests?: number;
+                        },
+                        index: number
+                      ) => (
+                        <div
+                          key={elective.course_code}
+                          className="flex items-center justify-between rounded-lg border p-3"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">#{index + 1}</Badge>
+                              <span className="font-semibold">
+                                {elective.course_code}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {elective.course_title}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold">
+                              {elective.total_requests}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              requests
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {elective.course_title}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold">{elective.total_requests}</div>
-                        <p className="text-xs text-muted-foreground">requests</p>
-                      </div>
-                    </div>
-                  ))}
+                      )
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -513,24 +666,24 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Section Status</CardTitle>
-                <CardDescription>
-                  Draft vs Released sections
-                </CardDescription>
+                <CardDescription>Draft vs Released sections</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {stats.progress && (
                   <Doughnut
                     data={{
-                      labels: ['Draft', 'Released'],
-                      datasets: [{
-                        data: [stats.progress.draft, stats.progress.released],
-                        backgroundColor: [
-                          'rgba(245, 158, 11, 0.6)',
-                          'rgba(16, 185, 129, 0.6)'
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                      }]
+                      labels: ["Draft", "Released"],
+                      datasets: [
+                        {
+                          data: [stats.progress.draft, stats.progress.released],
+                          backgroundColor: [
+                            "rgba(245, 158, 11, 0.6)",
+                            "rgba(16, 185, 129, 0.6)",
+                          ],
+                          borderWidth: 2,
+                          borderColor: "#ffffff",
+                        },
+                      ],
                     }}
                     options={doughnutOptions}
                   />
@@ -548,7 +701,9 @@ export function SchedulingDashboardCharts() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Instructors Assigned</span>
+                    <span className="text-sm text-muted-foreground">
+                      Instructors Assigned
+                    </span>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </div>
                   <div className="text-2xl font-bold">
@@ -561,7 +716,9 @@ export function SchedulingDashboardCharts() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Rooms Assigned</span>
+                    <span className="text-sm text-muted-foreground">
+                      Rooms Assigned
+                    </span>
                     <CheckCircle className="h-4 w-4 text-blue-500" />
                   </div>
                   <div className="text-2xl font-bold">
@@ -574,7 +731,9 @@ export function SchedulingDashboardCharts() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Times Set</span>
+                    <span className="text-sm text-muted-foreground">
+                      Times Set
+                    </span>
                     <CheckCircle className="h-4 w-4 text-purple-500" />
                   </div>
                   <div className="text-2xl font-bold">
@@ -587,7 +746,9 @@ export function SchedulingDashboardCharts() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Fully Assigned</span>
+                    <span className="text-sm text-muted-foreground">
+                      Fully Assigned
+                    </span>
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   </div>
                   <div className="text-2xl font-bold">
@@ -614,7 +775,10 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent className="h-[400px]">
                 {facultyAvailabilityData && (
-                  <Doughnut data={facultyAvailabilityData} options={doughnutOptions} />
+                  <Doughnut
+                    data={facultyAvailabilityData}
+                    options={doughnutOptions}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -628,15 +792,21 @@ export function SchedulingDashboardCharts() {
                   <div className="flex items-center justify-between p-4 rounded-lg border">
                     <div>
                       <p className="font-medium">Total Instructors</p>
-                      <p className="text-sm text-muted-foreground">In the system</p>
+                      <p className="text-sm text-muted-foreground">
+                        In the system
+                      </p>
                     </div>
-                    <div className="text-3xl font-bold">{stats.faculty?.totalInstructors || 0}</div>
+                    <div className="text-3xl font-bold">
+                      {stats.faculty?.totalInstructors || 0}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between p-4 rounded-lg border">
                     <div>
                       <p className="font-medium">With Preferences</p>
-                      <p className="text-sm text-muted-foreground">Submitted preferred times</p>
+                      <p className="text-sm text-muted-foreground">
+                        Submitted preferred times
+                      </p>
                     </div>
                     <div className="text-3xl font-bold text-green-600">
                       {stats.faculty?.withPreferences || 0}
@@ -646,7 +816,9 @@ export function SchedulingDashboardCharts() {
                   <div className="flex items-center justify-between p-4 rounded-lg border">
                     <div>
                       <p className="font-medium">With Unavailability</p>
-                      <p className="text-sm text-muted-foreground">Specified unavailable times</p>
+                      <p className="text-sm text-muted-foreground">
+                        Specified unavailable times
+                      </p>
                     </div>
                     <div className="text-3xl font-bold text-red-600">
                       {stats.faculty?.withUnavailability || 0}
@@ -656,7 +828,9 @@ export function SchedulingDashboardCharts() {
                   <div className="flex items-center justify-between p-4 rounded-lg border">
                     <div>
                       <p className="font-medium">Pending</p>
-                      <p className="text-sm text-muted-foreground">No preferences submitted</p>
+                      <p className="text-sm text-muted-foreground">
+                        No preferences submitted
+                      </p>
                     </div>
                     <div className="text-3xl font-bold text-yellow-600">
                       {stats.faculty?.withoutPreferences || 0}
@@ -674,13 +848,14 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Room Type Distribution</CardTitle>
-                <CardDescription>
-                  Lecture vs Lab rooms
-                </CardDescription>
+                <CardDescription>Lecture vs Lab rooms</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {roomUtilizationData && (
-                  <Doughnut data={roomUtilizationData} options={doughnutOptions} />
+                  <Doughnut
+                    data={roomUtilizationData}
+                    options={doughnutOptions}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -688,21 +863,27 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Top Room Utilization</CardTitle>
-                <CardDescription>
-                  Most frequently used rooms
-                </CardDescription>
+                <CardDescription>Most frequently used rooms</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.rooms?.roomUsageDetails?.map((room: { room?: string; sections?: number }, index: number) => (
-                    <div key={room.room} className="flex items-center justify-between rounded-lg border p-3">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">#{index + 1}</Badge>
-                        <span className="font-semibold">{room.room}</span>
+                  {stats.rooms?.roomUsageDetails?.map(
+                    (
+                      room: { room?: string; sections?: number },
+                      index: number
+                    ) => (
+                      <div
+                        key={room.room}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">#{index + 1}</Badge>
+                          <span className="font-semibold">{room.room}</span>
+                        </div>
+                        <Badge>{room.sections} sections</Badge>
                       </div>
-                      <Badge>{room.sections} sections</Badge>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -711,7 +892,9 @@ export function SchedulingDashboardCharts() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Used Rooms</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Used Rooms
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
@@ -722,7 +905,9 @@ export function SchedulingDashboardCharts() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Unused Rooms</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Unused Rooms
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
@@ -733,7 +918,9 @@ export function SchedulingDashboardCharts() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Utilization Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Utilization Rate
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -750,9 +937,7 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Workload Distribution</CardTitle>
-                <CardDescription>
-                  Instructor capacity status
-                </CardDescription>
+                <CardDescription>Instructor capacity status</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {workloadDistributionData && (
@@ -770,28 +955,52 @@ export function SchedulingDashboardCharts() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.workload?.instructors?.slice(0, 10).map((instructor: { id?: string; name?: string; sections?: number; credits?: number; utilizationRate?: number; status?: string }, index: number) => (
-                    <div key={instructor.id} className="flex items-center justify-between rounded-lg border p-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">#{index + 1}</Badge>
-                          <span className="font-semibold">{instructor.name}</span>
+                  {stats.workload?.instructors
+                    ?.slice(0, 10)
+                    .map(
+                      (
+                        instructor: {
+                          id?: string;
+                          name?: string;
+                          sections?: number;
+                          credits?: number;
+                          utilizationRate?: number;
+                          status?: string;
+                        },
+                        index: number
+                      ) => (
+                        <div
+                          key={instructor.id}
+                          className="flex items-center justify-between rounded-lg border p-3"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">#{index + 1}</Badge>
+                              <span className="font-semibold">
+                                {instructor.name}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {instructor.sections} sections •{" "}
+                              {instructor.credits} credits
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              instructor.status === "overloaded"
+                                ? "destructive"
+                                : instructor.status === "near-capacity"
+                                ? "default"
+                                : instructor.status === "balanced"
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {(instructor.utilizationRate || 0).toFixed(0)}%
+                          </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {instructor.sections} sections • {instructor.credits} credits
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          instructor.status === 'overloaded' ? 'destructive' :
-                            instructor.status === 'near-capacity' ? 'default' :
-                              instructor.status === 'balanced' ? 'secondary' : 'outline'
-                        }
-                      >
-                        {(instructor.utilizationRate || 0).toFixed(0)}%
-                      </Badge>
-                    </div>
-                  ))}
+                      )
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -804,9 +1013,7 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Time Slot Distribution</CardTitle>
-                <CardDescription>
-                  Sections by start time
-                </CardDescription>
+                <CardDescription>Sections by start time</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {timeSlotData && (
@@ -818,9 +1025,7 @@ export function SchedulingDashboardCharts() {
             <Card>
               <CardHeader>
                 <CardTitle>Day Distribution</CardTitle>
-                <CardDescription>
-                  Sections scheduled per day
-                </CardDescription>
+                <CardDescription>Sections scheduled per day</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {dayDistributionData && (
@@ -851,6 +1056,5 @@ export function SchedulingDashboardCharts() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-
