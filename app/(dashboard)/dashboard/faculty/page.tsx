@@ -20,6 +20,8 @@ import {
 } from "@/lib/server-auth";
 import { FacultyDashboardClient } from "./faculty-dashboard-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function FacultyDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();

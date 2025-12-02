@@ -8,6 +8,8 @@ import { getAllExams, type Exam } from "@/lib/data/exams";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function ExamsPage() {
   // Check authentication and role
   const user = await getServerUser();

@@ -1,22 +1,30 @@
-import { redirect } from 'next/navigation'
-import { ArrowLeft, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import Link from 'next/link'
-import { FacultyAvailabilityGrid } from '@/components/faculty-availability-grid'
-import { getFacultyProfile, type DayAvailability } from '@/lib/db/faculty-data'
-import { getServerUser } from '@/lib/server-auth'
+import { redirect } from "next/navigation";
+import { ArrowLeft, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
+import { FacultyAvailabilityGrid } from "@/components/faculty-availability-grid";
+import { getFacultyProfile, type DayAvailability } from "@/lib/db/faculty-data";
+import { getServerUser } from "@/lib/server-auth";
+
+export const dynamic = "force-dynamic";
 
 export default async function FacultyAvailabilityPage() {
-  const user = await getServerUser()
+  const user = await getServerUser();
 
-  if (!user || user.role !== 'faculty') {
-    redirect('/dashboard')
+  if (!user || user.role !== "faculty") {
+    redirect("/dashboard");
   }
 
   // Get faculty profile from database
-  const instructor = await getFacultyProfile(user.id)
+  const instructor = await getFacultyProfile(user.id);
 
   if (!instructor) {
     return (
@@ -28,23 +36,24 @@ export default async function FacultyAvailabilityPage() {
               Back to Dashboard
             </Link>
           </Button>
-          
+
           <Alert variant="destructive">
             <AlertTitle>Profile Not Found</AlertTitle>
             <AlertDescription>
-              Your account is not linked to an instructor profile. Please contact the scheduling committee.
+              Your account is not linked to an instructor profile. Please
+              contact the scheduling committee.
             </AlertDescription>
           </Alert>
         </div>
       </div>
-    )
+    );
   }
 
   // Get current availability from instructor record
   const availability = {
     preferred_times: instructor.preferred_times || [],
     unavailable_times: instructor.unavailable_times || [],
-  }
+  };
 
   return (
     <div className="p-8">
@@ -57,7 +66,7 @@ export default async function FacultyAvailabilityPage() {
               Back to Dashboard
             </Link>
           </Button>
-          
+
           <div className="flex items-center gap-3 mb-2">
             <Clock className="h-8 w-8 text-blue-500" />
             <div>
@@ -80,13 +89,19 @@ export default async function FacultyAvailabilityPage() {
           </CardHeader>
           <CardContent className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
             <p>
-              <strong>Preferred Times:</strong> Mark times when you prefer to teach. The scheduling system will try to assign your sections during these times.
+              <strong>Preferred Times:</strong> Mark times when you prefer to
+              teach. The scheduling system will try to assign your sections
+              during these times.
             </p>
             <p>
-              <strong>Unavailable Times:</strong> Mark times when you are absolutely unavailable (meetings, other commitments, etc.). The system will avoid scheduling you during these times.
+              <strong>Unavailable Times:</strong> Mark times when you are
+              absolutely unavailable (meetings, other commitments, etc.). The
+              system will avoid scheduling you during these times.
             </p>
             <p>
-              <strong>Note:</strong> These are preferences, not guarantees. The final schedule depends on multiple constraints including room availability, student schedules, and department requirements.
+              <strong>Note:</strong> These are preferences, not guarantees. The
+              final schedule depends on multiple constraints including room
+              availability, student schedules, and department requirements.
             </p>
           </CardContent>
         </Card>
@@ -100,23 +115,41 @@ export default async function FacultyAvailabilityPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Max Load Per Week</p>
-                <p className="text-2xl font-bold">{instructor.max_load_per_week || 12} sections</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Preferred Times Set</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {Array.isArray(availability?.preferred_times) 
-                    ? availability.preferred_times.reduce((sum: number, d: DayAvailability) => sum + (d.slots?.length || 0), 0)
-                    : 0} slots
+                <p className="text-sm font-medium text-muted-foreground">
+                  Max Load Per Week
+                </p>
+                <p className="text-2xl font-bold">
+                  {instructor.max_load_per_week || 12} sections
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Unavailable Times Set</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Preferred Times Set
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Array.isArray(availability?.preferred_times)
+                    ? availability.preferred_times.reduce(
+                        (sum: number, d: DayAvailability) =>
+                          sum + (d.slots?.length || 0),
+                        0
+                      )
+                    : 0}{" "}
+                  slots
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Unavailable Times Set
+                </p>
                 <p className="text-2xl font-bold text-red-600">
                   {Array.isArray(availability?.unavailable_times)
-                    ? availability.unavailable_times.reduce((sum: number, d: DayAvailability) => sum + (d.slots?.length || 0), 0)
-                    : 0} slots
+                    ? availability.unavailable_times.reduce(
+                        (sum: number, d: DayAvailability) =>
+                          sum + (d.slots?.length || 0),
+                        0
+                      )
+                    : 0}{" "}
+                  slots
                 </p>
               </div>
             </div>
@@ -126,12 +159,19 @@ export default async function FacultyAvailabilityPage() {
         {/* Availability Grid */}
         <FacultyAvailabilityGrid
           instructorId={instructor.id}
-          initialPreferredTimes={Array.isArray(availability?.preferred_times) ? availability.preferred_times : []}
-          initialUnavailableTimes={Array.isArray(availability?.unavailable_times) ? availability.unavailable_times : []}
+          initialPreferredTimes={
+            Array.isArray(availability?.preferred_times)
+              ? availability.preferred_times
+              : []
+          }
+          initialUnavailableTimes={
+            Array.isArray(availability?.unavailable_times)
+              ? availability.unavailable_times
+              : []
+          }
           maxLoadPerWeek={instructor.max_load_per_week || 12}
         />
       </div>
     </div>
   );
 }
-

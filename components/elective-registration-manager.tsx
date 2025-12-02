@@ -126,9 +126,9 @@ export function ElectiveRegistrationManager({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch enrollments and available sections on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
