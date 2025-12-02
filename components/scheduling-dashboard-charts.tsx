@@ -203,6 +203,7 @@ export function SchedulingDashboardCharts({ termId }: Props = {}) {
     setRefreshing(false);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
   }, [termId]);
@@ -600,46 +601,44 @@ export function SchedulingDashboardCharts({ termId }: Props = {}) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.electives
-                    ?.slice(0, 10)
-                    .map(
-                      (
-                        elective: {
-                          course_code?: string;
-                          course_title?: string;
-                          first_choice?: number;
-                          second_choice?: number;
-                          third_choice?: number;
-                          total_requests?: number;
-                        },
-                        index: number
-                      ) => (
-                        <div
-                          key={elective.course_code}
-                          className="flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">#{index + 1}</Badge>
-                              <span className="font-semibold">
-                                {elective.course_code}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {elective.course_title}
-                            </p>
+                  {stats.electives?.slice(0, 10).map(
+                    (
+                      elective: {
+                        course_code?: string;
+                        course_title?: string;
+                        first_choice?: number;
+                        second_choice?: number;
+                        third_choice?: number;
+                        total_requests?: number;
+                      },
+                      index: number
+                    ) => (
+                      <div
+                        key={elective.course_code}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">#{index + 1}</Badge>
+                            <span className="font-semibold">
+                              {elective.course_code}
+                            </span>
                           </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold">
-                              {elective.total_requests}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              requests
-                            </p>
-                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {elective.course_title}
+                          </p>
                         </div>
-                      )
-                    )}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold">
+                            {elective.total_requests}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            requests
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -955,52 +954,50 @@ export function SchedulingDashboardCharts({ termId }: Props = {}) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {stats.workload?.instructors
-                    ?.slice(0, 10)
-                    .map(
-                      (
-                        instructor: {
-                          id?: string;
-                          name?: string;
-                          sections?: number;
-                          credits?: number;
-                          utilizationRate?: number;
-                          status?: string;
-                        },
-                        index: number
-                      ) => (
-                        <div
-                          key={instructor.id}
-                          className="flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">#{index + 1}</Badge>
-                              <span className="font-semibold">
-                                {instructor.name}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {instructor.sections} sections •{" "}
-                              {instructor.credits} credits
-                            </p>
+                  {stats.workload?.instructors?.slice(0, 10).map(
+                    (
+                      instructor: {
+                        id?: string;
+                        name?: string;
+                        sections?: number;
+                        credits?: number;
+                        utilizationRate?: number;
+                        status?: string;
+                      },
+                      index: number
+                    ) => (
+                      <div
+                        key={instructor.id}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">#{index + 1}</Badge>
+                            <span className="font-semibold">
+                              {instructor.name}
+                            </span>
                           </div>
-                          <Badge
-                            variant={
-                              instructor.status === "overloaded"
-                                ? "destructive"
-                                : instructor.status === "near-capacity"
-                                ? "default"
-                                : instructor.status === "balanced"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {(instructor.utilizationRate || 0).toFixed(0)}%
-                          </Badge>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {instructor.sections} sections •{" "}
+                            {instructor.credits} credits
+                          </p>
                         </div>
-                      )
-                    )}
+                        <Badge
+                          variant={
+                            instructor.status === "overloaded"
+                              ? "destructive"
+                              : instructor.status === "near-capacity"
+                              ? "default"
+                              : instructor.status === "balanced"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {(instructor.utilizationRate || 0).toFixed(0)}%
+                        </Badge>
+                      </div>
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>

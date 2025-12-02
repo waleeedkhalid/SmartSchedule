@@ -34,21 +34,26 @@ interface InstructorFormProps {
   isEditing?: boolean;
 }
 
-export function InstructorForm({ instructor, isEditing = false }: InstructorFormProps) {
+export function InstructorForm({
+  instructor,
+  isEditing = false,
+}: InstructorFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: instructor ? {
-      name: instructor.name || "",
-      email: instructor.email || "",
-      max_load_per_week: instructor.max_load_per_week || 12,
-    } : {
-      name: "",
-      email: "",
-      max_load_per_week: 12,
-    },
+    defaultValues: instructor
+      ? {
+          name: instructor.name || "",
+          email: instructor.email || "",
+          max_load_per_week: instructor.max_load_per_week || 12,
+        }
+      : {
+          name: "",
+          email: "",
+          max_load_per_week: 12,
+        },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -56,19 +61,19 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
     try {
       const authHeader = await getAuthHeader();
 
-      // Get id from instructor (could be id or user_id)
-      const instructorId = instructor && ('id' in instructor ? instructor.id : ('user_id' in instructor ? instructor.user_id : undefined));
+      // Use user_id if available, otherwise fall back to id
+      const instructorId = instructor?.user_id ?? instructor?.id;
       const url = isEditing
         ? `/api/v1/instructors/${instructorId}`
-        : '/api/v1/instructors';
+        : "/api/v1/instructors";
 
-      const method = isEditing ? 'PUT' : 'POST';
+      const method = isEditing ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader,
+          "Content-Type": "application/json",
+          Authorization: authHeader,
         },
         body: JSON.stringify({
           name: values.name,
@@ -80,14 +85,22 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Failed to ${isEditing ? 'update' : 'create'} instructor`);
+        throw new Error(
+          data.error ||
+            `Failed to ${isEditing ? "update" : "create"} instructor`
+        );
       }
 
-      toast.success(`Instructor ${isEditing ? 'updated' : 'created'} successfully`);
+      toast.success(
+        `Instructor ${isEditing ? "updated" : "created"} successfully`
+      );
       router.push("/dashboard/instructors");
       router.refresh();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} instructor`;
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditing ? "update" : "create"} instructor`;
       toast.error(errorMessage);
       console.error(error);
     } finally {
@@ -108,7 +121,9 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
 
       <Card>
         <CardHeader>
-          <CardTitle>{isEditing ? 'Edit Instructor' : 'Add New Instructor'}</CardTitle>
+          <CardTitle>
+            {isEditing ? "Edit Instructor" : "Add New Instructor"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -134,7 +149,11 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
                   <FormItem>
                     <FormLabel>Email (Optional)</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john.smith@university.edu" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="john.smith@university.edu"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
                       Contact email for notifications
@@ -164,18 +183,27 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
               {isEditing && (
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Note:</strong> Time preferences and unavailable times can be managed
-                    in the instructor&apos;s detailed view after creation.
+                    <strong>Note:</strong> Time preferences and unavailable
+                    times can be managed in the instructor&apos;s detailed view
+                    after creation.
                   </p>
                 </div>
               )}
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : isEditing ? "Update Instructor" : "Create Instructor"}
+                  {isLoading
+                    ? "Saving..."
+                    : isEditing
+                    ? "Update Instructor"
+                    : "Create Instructor"}
                 </Button>
               </div>
             </form>
@@ -185,4 +213,3 @@ export function InstructorForm({ instructor, isEditing = false }: InstructorForm
     </div>
   );
 }
-

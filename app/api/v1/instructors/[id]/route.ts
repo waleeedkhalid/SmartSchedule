@@ -33,21 +33,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // Try to find by id first, then by user_id
+    let data;
+
+    // First try by primary key (id)
+    const { data: byId } = await supabase
       .from("faculty_profile")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (error) {
-      if (error.code === "PGRST116") {
-        return createErrorResponse(
-          404,
-          ErrorCodes.NOT_FOUND,
-          `Faculty profile with id '${id}' not found`
-        );
-      }
-      throw error;
+    if (byId) {
+      data = byId;
+    } else {
+      // Fall back to user_id
+      const { data: byUserId } = await supabase
+        .from("faculty_profile")
+        .select("*")
+        .eq("user_id", id)
+        .single();
+      data = byUserId;
+    }
+
+    if (!data) {
+      return createErrorResponse(
+        404,
+        ErrorCodes.NOT_FOUND,
+        `Faculty profile with id '${id}' not found`
+      );
     }
 
     return createSuccessResponse(data, 200);
@@ -74,14 +87,26 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const supabase = await createClient();
 
-    // Check if faculty profile exists
-    const { data: existing, error: checkError } = await supabase
+    // Check if faculty profile exists (try id first, then user_id)
+    let existing;
+    const { data: byId } = await supabase
       .from("faculty_profile")
       .select("id, user_id, email")
       .eq("id", id)
       .single();
 
-    if (checkError || !existing) {
+    if (byId) {
+      existing = byId;
+    } else {
+      const { data: byUserId } = await supabase
+        .from("faculty_profile")
+        .select("id, user_id, email")
+        .eq("user_id", id)
+        .single();
+      existing = byUserId;
+    }
+
+    if (!existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
@@ -144,11 +169,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (unavailable_times !== undefined)
       updateData.unavailable_times = unavailable_times;
 
-    // Update faculty profile
+    // Update faculty profile using the actual primary key id
     const { data, error } = await supabase
       .from("faculty_profile")
       .update(updateData)
-      .eq("id", id)
+      .eq("id", existing.id)
       .select()
       .single();
 
@@ -171,14 +196,26 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const supabase = await createClient();
 
-    // Check if faculty profile exists
-    const { data: existing, error: checkError } = await supabase
+    // Check if faculty profile exists (try id first, then user_id)
+    let existing;
+    const { data: byId } = await supabase
       .from("faculty_profile")
       .select("id")
       .eq("id", id)
       .single();
 
-    if (checkError || !existing) {
+    if (byId) {
+      existing = byId;
+    } else {
+      const { data: byUserId } = await supabase
+        .from("faculty_profile")
+        .select("id")
+        .eq("user_id", id)
+        .single();
+      existing = byUserId;
+    }
+
+    if (!existing) {
       return createErrorResponse(
         404,
         ErrorCodes.NOT_FOUND,
@@ -186,11 +223,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check if faculty has sections
+    // Check if faculty has sections (use actual primary key id)
     const { data: sections } = await supabase
       .from("section")
       .select("id")
-      .eq("instructor_id", id)
+      .eq("instructor_id", existing.id)
       .limit(1);
 
     if (sections && sections.length > 0) {
@@ -201,11 +238,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Delete faculty profile
+    // Delete faculty profile using actual primary key id
     const { error } = await supabase
       .from("faculty_profile")
       .delete()
-      .eq("id", id);
+      .eq("id", existing.id);
 
     if (error) {
       throw error;

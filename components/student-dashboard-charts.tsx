@@ -566,10 +566,17 @@ export function StudentDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <Doughnut
-                data={enrollmentData as any}
-                options={doughnutOptions as any}
+                data={
+                  enrollmentData as unknown as Parameters<
+                    typeof Doughnut
+                  >[0]["data"]
+                }
+                options={
+                  doughnutOptions as unknown as Parameters<
+                    typeof Doughnut
+                  >[0]["options"]
+                }
               />
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
@@ -648,11 +655,18 @@ export function StudentDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {weeklyScheduleData && (
                 <Bar
-                  data={weeklyScheduleData as any}
-                  options={chartOptions as any}
+                  data={
+                    weeklyScheduleData as unknown as Parameters<
+                      typeof Bar
+                    >[0]["data"]
+                  }
+                  options={
+                    chartOptions as unknown as Parameters<
+                      typeof Bar
+                    >[0]["options"]
+                  }
                 />
               )}
             </div>
@@ -691,11 +705,18 @@ export function StudentDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {gradeTrendsData && (
                 <Line
-                  data={gradeTrendsData as any}
-                  options={lineOptions as any}
+                  data={
+                    gradeTrendsData as unknown as Parameters<
+                      typeof Line
+                    >[0]["data"]
+                  }
+                  options={
+                    lineOptions as unknown as Parameters<
+                      typeof Line
+                    >[0]["options"]
+                  }
                 />
               )}
             </div>
@@ -736,11 +757,18 @@ export function StudentDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-8 border border-pink-100">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {electivePreferencesData && (
                 <Bar
-                  data={electivePreferencesData as any}
-                  options={horizontalBarOptions as any}
+                  data={
+                    electivePreferencesData as unknown as Parameters<
+                      typeof Bar
+                    >[0]["data"]
+                  }
+                  options={
+                    horizontalBarOptions as unknown as Parameters<
+                      typeof Bar
+                    >[0]["options"]
+                  }
                 />
               )}
             </div>

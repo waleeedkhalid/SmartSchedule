@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,14 +24,25 @@ import { submitOnboarding } from "@/app/actions/onboarding";
 interface OnboardingFormProps {
   userId: string;
   userName: string;
-  userRole: "student" | "faculty" | "scheduling" | "teaching_load" | "registrar";
+  userRole:
+    | "student"
+    | "faculty"
+    | "scheduling"
+    | "teaching_load"
+    | "registrar";
   currentHijriYear: number;
 }
 
-export function OnboardingForm({ userId, userName, userRole, currentHijriYear }: OnboardingFormProps) {
+export function OnboardingForm({
+  userName,
+  userRole,
+  currentHijriYear,
+}: OnboardingFormProps) {
   // Form state
   const [academicLevel, setAcademicLevel] = useState<string>("4");
-  const [enrollmentYear, setEnrollmentYear] = useState<string>(currentHijriYear.toString());
+  const [enrollmentYear, setEnrollmentYear] = useState<string>(
+    currentHijriYear.toString()
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -34,7 +51,10 @@ export function OnboardingForm({ userId, userName, userRole, currentHijriYear }:
   const levelOptions = [4, 5, 6, 7, 8];
 
   // Generate enrollment year options (current year - 10 to current year)
-  const enrollmentYearOptions = Array.from({ length: 11 }, (_, i) => currentHijriYear - 10 + i)
+  const enrollmentYearOptions = Array.from(
+    { length: 11 },
+    (_, i) => currentHijriYear - 10 + i
+  )
     .filter((year) => !isNaN(year) && year > 0 && Number.isInteger(year))
     .reverse();
 
@@ -51,7 +71,8 @@ export function OnboardingForm({ userId, userName, userRole, currentHijriYear }:
       } else {
         const year = parseInt(enrollmentYear, 10);
         if (isNaN(year) || year < 1400 || year > 1500) {
-          newErrors.enrollmentYear = "Please enter a valid Hijri year (1400-1500)";
+          newErrors.enrollmentYear =
+            "Please enter a valid Hijri year (1400-1500)";
         }
       }
     }
@@ -141,13 +162,16 @@ export function OnboardingForm({ userId, userName, userRole, currentHijriYear }:
                 </SelectContent>
               </Select>
               {errors.academicLevel && (
-                <p className="text-sm text-destructive">{errors.academicLevel}</p>
+                <p className="text-sm text-destructive">
+                  {errors.academicLevel}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="enrollmentYear">
-                Enrollment Year (Hijri) <span className="text-destructive">*</span>
+                Enrollment Year (Hijri){" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={enrollmentYear}
@@ -166,7 +190,9 @@ export function OnboardingForm({ userId, userName, userRole, currentHijriYear }:
                 </SelectContent>
               </Select>
               {errors.enrollmentYear && (
-                <p className="text-sm text-destructive">{errors.enrollmentYear}</p>
+                <p className="text-sm text-destructive">
+                  {errors.enrollmentYear}
+                </p>
               )}
             </div>
           </>
@@ -204,4 +230,3 @@ export function OnboardingForm({ userId, userName, userRole, currentHijriYear }:
     </Card>
   );
 }
-

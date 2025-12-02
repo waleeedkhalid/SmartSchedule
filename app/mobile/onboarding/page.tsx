@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { getServerUser, validateOnboardingAndProfile } from "@/lib/server-auth";
 import { OnboardingForm } from "@/app/mobile/components/onboarding-form";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -13,7 +18,10 @@ export default async function OnboardingPage() {
     redirect("/mobile/login");
   }
 
-  const { needsOnboarding } = await validateOnboardingAndProfile(user.id, user.role);
+  const { needsOnboarding } = await validateOnboardingAndProfile(
+    user.id,
+    user.role
+  );
 
   if (!needsOnboarding) {
     redirect("/mobile/schedule");
@@ -59,11 +67,17 @@ export default async function OnboardingPage() {
         <OnboardingForm
           userId={user.id}
           userName={user.name}
-          userRole={user.role as any}
+          userRole={
+            user.role as
+              | "student"
+              | "faculty"
+              | "scheduling"
+              | "teaching_load"
+              | "registrar"
+          }
           currentHijriYear={currentHijriYear}
         />
       </div>
     </div>
   );
 }
-

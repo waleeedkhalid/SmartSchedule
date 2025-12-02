@@ -20,13 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  UserPlus,
-  Trash2,
-  AlertCircle,
-  Loader2,
-  AlertTriangle,
-} from "lucide-react";
+import { UserPlus, Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import {
   Table,
@@ -95,30 +89,6 @@ interface Student {
   student_number: string | null;
 }
 
-interface Section {
-  id: string;
-  course_code: string;
-  section_no: string;
-  capacity: number;
-  instructor_id: string | null;
-  room_code: string | null;
-  state: string;
-  current_enrollment?: number;
-  meeting_pattern?: MeetingPattern;
-  conflict?: ConflictInfo;
-  course?: {
-    code: string;
-    title: string;
-    level: number;
-    credits: number;
-    is_elective: boolean;
-  };
-  instructor?: {
-    id: string;
-    name: string;
-  };
-}
-
 interface Enrollment {
   id: string;
   student_id: string;
@@ -152,6 +122,7 @@ interface EnrollmentData {
 interface SectionData {
   id: string;
   capacity?: number;
+  current_enrollment?: number;
   course_code: string;
   section_no: string;
   state: string;
@@ -289,7 +260,7 @@ export function ManualStudentRegistration() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [, setSectionsLoading] = useState(false);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [isDroppingEnrollment, setIsDroppingEnrollment] = useState<
     string | null
@@ -922,7 +893,7 @@ export function ManualStudentRegistration() {
                 <Badge
                   variant={
                     (selectedSectionData.current_enrollment || 0) >=
-                    selectedSectionData.capacity
+                    (selectedSectionData.capacity || 0)
                       ? "destructive"
                       : "outline"
                   }
@@ -946,7 +917,9 @@ export function ManualStudentRegistration() {
                       <p className="text-amber-700 dark:text-amber-300 mt-1">
                         This section conflicts with{" "}
                         <span className="font-semibold">
-                          {selectedSectionData.conflict.conflictsWith}
+                          {selectedSectionData.conflict.conflictingCourseCode}
+                          {selectedSectionData.conflict.conflictingSectionNo &&
+                            ` - ${selectedSectionData.conflict.conflictingSectionNo}`}
                         </span>{" "}
                         that the student is already enrolled in.
                       </p>

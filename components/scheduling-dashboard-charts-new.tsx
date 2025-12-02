@@ -606,7 +606,6 @@ export function SchedulingDashboardChartsNew({ termId }: Props = {}) {
   const lecturePercent = courseTypeData?.datasets?.[0]?.data?.[0] || 0;
   const labPercent = courseTypeData?.datasets?.[0]?.data?.[1] || 0;
   const completedPercent = capacityData?.datasets?.[0]?.data?.[0] || 0;
-  const pendingPercent = capacityData?.datasets?.[0]?.data?.[1] || 0;
 
   return (
     <div className="space-y-6">
@@ -791,11 +790,18 @@ export function SchedulingDashboardChartsNew({ termId }: Props = {}) {
             </CardHeader>
             <CardContent>
               <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {courseTypeData && (
                   <Pie
-                    data={courseTypeData as any}
-                    options={pieOptions as any}
+                    data={
+                      courseTypeData as unknown as Parameters<
+                        typeof Pie
+                      >[0]["data"]
+                    }
+                    options={
+                      pieOptions as unknown as Parameters<
+                        typeof Pie
+                      >[0]["options"]
+                    }
                   />
                 )}
               </div>
@@ -856,11 +862,18 @@ export function SchedulingDashboardChartsNew({ termId }: Props = {}) {
             </CardHeader>
             <CardContent>
               <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {instructorLoadData && (
                   <Line
-                    data={instructorLoadData as any}
-                    options={lineOptions as any}
+                    data={
+                      instructorLoadData as unknown as Parameters<
+                        typeof Line
+                      >[0]["data"]
+                    }
+                    options={
+                      lineOptions as unknown as Parameters<
+                        typeof Line
+                      >[0]["options"]
+                    }
                   />
                 )}
               </div>
@@ -930,11 +943,18 @@ export function SchedulingDashboardChartsNew({ termId }: Props = {}) {
             </CardHeader>
             <CardContent>
               <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {capacityData && (
                   <Doughnut
-                    data={capacityData as any}
-                    options={doughnutOptions as any}
+                    data={
+                      capacityData as unknown as Parameters<
+                        typeof Doughnut
+                      >[0]["data"]
+                    }
+                    options={
+                      doughnutOptions as unknown as Parameters<
+                        typeof Doughnut
+                      >[0]["options"]
+                    }
                   />
                 )}
               </div>
@@ -1009,11 +1029,18 @@ export function SchedulingDashboardChartsNew({ termId }: Props = {}) {
             </CardHeader>
             <CardContent>
               <div className="h-96 bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-8 border border-pink-100">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {radarData && (
                   <Radar
-                    data={radarData as any}
-                    options={radarOptions as any}
+                    data={
+                      radarData as unknown as Parameters<
+                        typeof Radar
+                      >[0]["data"]
+                    }
+                    options={
+                      radarOptions as unknown as Parameters<
+                        typeof Radar
+                      >[0]["options"]
+                    }
                   />
                 )}
               </div>

@@ -262,7 +262,7 @@ export function TeachingLoadSectionsTable({
                   {section.room && (
                     <div className="text-xs text-muted-foreground">
                       <div className="font-medium">
-                        {section.instructor.name || "Unnamed Instructor"}
+                        {section.room.type || "Room"}
                       </div>
                     </div>
                   )}

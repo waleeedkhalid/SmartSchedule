@@ -273,7 +273,7 @@ async function getUserId(): Promise<string | undefined> {
 
     const {
       data: { session },
-    } = result as { data: { session: any } };
+    } = result as { data: { session: { user?: { id?: string } } | null } };
     return session?.user?.id;
   } catch (error) {
     console.warn("Error getting user ID for cache:", error);
