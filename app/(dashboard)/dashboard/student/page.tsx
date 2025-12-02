@@ -37,6 +37,8 @@ import {
 import { StudentDashboardTabs } from "@/components/student-dashboard-tabs";
 import { CopyableStudentNumber } from "@/components/copyable-student-number";
 
+export const dynamic = "force-dynamic";
+
 export default async function StudentDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();

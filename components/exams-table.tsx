@@ -30,19 +30,30 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string, courseCode: string) {
-    if (!confirm(`Are you sure you want to delete the exam for ${courseCode}?`)) {
+    if (
+      !confirm(`Are you sure you want to delete the exam for ${courseCode}?`)
+    ) {
       return;
     }
 
     setDeletingId(id);
     try {
-      // DEMO MODE: Simulate delete action
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+      const response = await fetch(`/api/v1/exams/${id}`, {
+        method: "DELETE",
+      });
 
-      toast.success(`Exam for ${courseCode} deleted successfully (Demo Mode: Not saved)`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete exam");
+      }
+
+      toast.success(`Exam for ${courseCode} deleted successfully`);
       router.refresh();
     } catch (error) {
-      toast.error("Failed to delete exam (Demo Mode)");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to delete exam";
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setDeletingId(null);
@@ -51,7 +62,8 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
 
   const filteredExams = exams.filter((exam) => {
     const matchesSearch =
-      exam.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false;
+      exam.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+      false;
     const matchesDate = !dateFilter || exam.date === dateFilter;
     return matchesSearch && matchesDate;
   });
@@ -95,11 +107,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
           placeholder="Filter by date"
         />
         {dateFilter && (
-          <Button
-            variant="outline"
-            onClick={() => setDateFilter("")}
-            size="sm"
-          >
+          <Button variant="outline" onClick={() => setDateFilter("")} size="sm">
             Clear Date
           </Button>
         )}
@@ -121,8 +129,13 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
           <TableBody>
             {sortedExams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  {searchTerm || dateFilter ? "No exams match the filters" : "No exams found"}
+                <TableCell
+                  colSpan={7}
+                  className="text-center text-muted-foreground"
+                >
+                  {searchTerm || dateFilter
+                    ? "No exams match the filters"
+                    : "No exams found"}
                 </TableCell>
               </TableRow>
             ) : (
@@ -134,28 +147,39 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                       {exam.course_code}
                     </TableCell>
                     <TableCell>
-                      {exam.date ? new Date(exam.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      }) : 'N/A'}
+                      {exam.date
+                        ? new Date(exam.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
-                      {exam.start_time ? exam.start_time.substring(0, 5) : 'N/A'}
+                      {exam.start_time
+                        ? exam.start_time.substring(0, 5)
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
-                      {exam.duration_minutes ?? 'N/A'} {exam.duration_minutes ? 'min' : ''}
+                      {exam.duration_minutes ?? "N/A"}{" "}
+                      {exam.duration_minutes ? "min" : ""}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {exam.room_codes && exam.room_codes.length > 0 ? (
                           exam.room_codes.map((code) => (
-                            <Badge key={code} variant="outline" className="text-xs">
+                            <Badge
+                              key={code}
+                              variant="outline"
+                              className="text-xs"
+                            >
                               {code}
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-muted-foreground text-xs">No rooms</span>
+                          <span className="text-muted-foreground text-xs">
+                            No rooms
+                          </span>
                         )}
                       </div>
                     </TableCell>
@@ -166,18 +190,17 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                           Conflicts
                         </Badge>
                       ) : (
-                        <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <Badge
+                          variant="default"
+                          className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                        >
                           No Conflicts
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="sm"
-                        >
+                        <Button asChild variant="ghost" size="sm">
                           <Link href={`/dashboard/exams/${exam.id}/edit`}>
                             <Pencil className="h-4 w-4" />
                           </Link>
@@ -185,7 +208,9 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(exam.id, exam.course_code)}
+                          onClick={() =>
+                            handleDelete(exam.id, exam.course_code)
+                          }
                           disabled={deletingId === exam.id}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -206,4 +231,3 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
     </div>
   );
 }
-

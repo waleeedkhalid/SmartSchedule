@@ -20,6 +20,8 @@ import {
 } from "@/lib/server-auth";
 import { RegistrarDashboardClient } from "./registrar-dashboard-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function RegistrarDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();

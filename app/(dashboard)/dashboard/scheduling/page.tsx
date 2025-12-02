@@ -20,6 +20,8 @@ import {
 } from "@/lib/server-auth";
 import { SchedulingDashboardClient } from "./scheduling-dashboard-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function SchedulingDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();

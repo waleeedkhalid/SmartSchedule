@@ -56,26 +56,33 @@ interface ConflictInfo {
   has_conflicts: boolean;
 }
 
-export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormProps) {
+export function ExamForm({
+  exam,
+  courses,
+  rooms,
+  isEditing = false,
+}: ExamFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [conflicts, setConflicts] = useState<ConflictInfo | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: exam ? {
-      course_code: exam.course_code,
-      date: exam.date,
-      start_time: exam.start_time.substring(0, 5), // HH:MM format
-      duration_minutes: exam.duration_minutes,
-      room_codes: exam.room_codes || [],
-    } : {
-      course_code: "",
-      date: "",
-      start_time: "09:00",
-      duration_minutes: 120,
-      room_codes: [],
-    },
+    defaultValues: exam
+      ? {
+          course_code: exam.course_code,
+          date: exam.date,
+          start_time: exam.start_time.substring(0, 5), // HH:MM format
+          duration_minutes: exam.duration_minutes,
+          room_codes: exam.room_codes || [],
+        }
+      : {
+          course_code: "",
+          date: "",
+          start_time: "09:00",
+          duration_minutes: 120,
+          room_codes: [],
+        },
   });
 
   // Check conflicts when exam is loaded (edit mode)
@@ -83,43 +90,73 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
     if (exam?.id) {
       checkConflicts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam?.id]);
 
   async function checkConflicts() {
-    try {
-      // DEMO MODE: Simulate conflict check
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network latency
+    if (!exam?.id) return;
 
-      // Return no conflicts in demo mode
+    try {
+      const response = await fetch(`/api/v1/exams/${exam.id}/conflicts`);
+
+      if (!response.ok) {
+        throw new Error("Failed to check conflicts");
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setConflicts(result.data);
+      }
+    } catch (error) {
+      console.error("Error checking conflicts:", error);
+      // Set empty conflicts on error
       setConflicts({
         room_conflicts: [],
         student_conflicts: [],
         has_conflicts: false,
       });
-    } catch (error) {
-      console.error("Error checking conflicts:", error);
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async function onSubmit(_values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // DEMO MODE: Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+      const url = isEditing ? `/api/v1/exams/${exam?.id}` : "/api/v1/exams";
+      const method = isEditing ? "PUT" : "POST";
 
-      // Simulate conflict check in demo mode
-      setConflicts({
-        room_conflicts: [],
-        student_conflicts: [],
-        has_conflicts: false,
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          course_code: values.course_code,
+          date: values.date,
+          start_time: values.start_time,
+          duration_minutes: values.duration_minutes,
+          room_codes: values.room_codes,
+          exam_type: "final", // Default to final exam type
+        }),
       });
 
-      toast.success(`Exam ${isEditing ? 'updated' : 'created'} successfully (Demo Mode: Not saved)`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || `Failed to ${isEditing ? "update" : "create"} exam`
+        );
+      }
+
+      toast.success(`Exam ${isEditing ? "updated" : "created"} successfully`);
       router.push("/dashboard/exams");
       router.refresh();
     } catch (error) {
-      toast.error(`Failed to ${isEditing ? 'update' : 'create'} exam (Demo Mode)`);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditing ? "update" : "create"} exam`;
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -164,8 +201,12 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
                   Room Conflicts:
                 </h4>
                 {conflicts.room_conflicts.map((conflict, idx) => (
-                  <div key={idx} className="text-sm text-yellow-700 dark:text-yellow-300 ml-4">
-                    • {conflict.course_code} - Rooms: {conflict.conflicting_rooms.join(", ")}
+                  <div
+                    key={idx}
+                    className="text-sm text-yellow-700 dark:text-yellow-300 ml-4"
+                  >
+                    • {conflict.course_code} - Rooms:{" "}
+                    {conflict.conflicting_rooms.join(", ")}
                   </div>
                 ))}
               </div>
@@ -176,7 +217,10 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
                   Student Level Conflicts:
                 </h4>
                 {conflicts.student_conflicts.map((conflict, idx) => (
-                  <div key={idx} className="text-sm text-yellow-700 dark:text-yellow-300 ml-4">
+                  <div
+                    key={idx}
+                    className="text-sm text-yellow-700 dark:text-yellow-300 ml-4"
+                  >
                     • {conflict.course_code} (Level {conflict.level})
                   </div>
                 ))}
@@ -192,7 +236,8 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
             <CardHeader>
               <CardTitle>Exam Details</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Note: All exams are course-level and apply to all sections of the selected course.
+                Note: All exams are course-level and apply to all sections of
+                the selected course.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -259,7 +304,13 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
                     <FormItem>
                       <FormLabel>Duration (minutes)</FormLabel>
                       <FormControl>
-                        <Input type="number" min="30" max="300" step="15" {...field} />
+                        <Input
+                          type="number"
+                          min="30"
+                          max="300"
+                          step="15"
+                          {...field}
+                        />
                       </FormControl>
                       <FormDescription>
                         Typical exam duration: 120 minutes
@@ -291,13 +342,16 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
                             key={room.code}
                             type="button"
                             onClick={() => toggleRoom(room.code)}
-                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${isSelected
+                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                              isSelected
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-background hover:bg-gray-50 dark:hover:bg-gray-800"
-                              }`}
+                            }`}
                           >
                             <div className="font-medium">{room.code}</div>
-                            <div className="text-xs opacity-70">{room.type}</div>
+                            <div className="text-xs opacity-70">
+                              {room.type}
+                            </div>
                           </button>
                         );
                       })}
@@ -311,7 +365,9 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
               />
               {form.watch("room_codes").length > 0 && (
                 <div className="mt-4">
-                  <div className="text-sm font-medium mb-2">Selected Rooms:</div>
+                  <div className="text-sm font-medium mb-2">
+                    Selected Rooms:
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {form.watch("room_codes").map((code) => (
                       <Badge key={code} variant="secondary">
@@ -325,11 +381,19 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : isEditing ? "Update Exam" : "Create Exam"}
+              {isLoading
+                ? "Saving..."
+                : isEditing
+                ? "Update Exam"
+                : "Create Exam"}
             </Button>
           </div>
         </form>
@@ -337,4 +401,3 @@ export function ExamForm({ exam, courses, rooms, isEditing = false }: ExamFormPr
     </div>
   );
 }
-

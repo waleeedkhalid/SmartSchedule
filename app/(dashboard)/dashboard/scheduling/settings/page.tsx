@@ -3,6 +3,8 @@ import { TimeGridConfigForm } from "@/components/time-grid-config-form";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function SchedulingSettingsPage() {
   const user = await getServerUser();
 

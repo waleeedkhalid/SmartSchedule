@@ -203,9 +203,9 @@ export function SchedulingDashboardCharts({ termId }: Props = {}) {
     setRefreshing(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termId]);
 
   if (loading) {

@@ -7,6 +7,8 @@ import {
 import { getTeachingLoadDashboardData } from "@/lib/db/teaching-load-dashboard-data";
 import { TeachingLoadDashboardClient } from "./teaching-load-dashboard-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function TeachingLoadDashboardPage() {
   // Get authenticated user (supports both demo and Supabase)
   const user = await getServerUser();
