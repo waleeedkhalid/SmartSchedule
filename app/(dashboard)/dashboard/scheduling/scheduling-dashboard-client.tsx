@@ -246,7 +246,23 @@ export function SchedulingDashboardClient({
         {/* Schedule Generation Section */}
         {isSystemReady ? (
           <div className="mb-6">
-            <ScheduleGenerator initialStatus={scheduleStatus} />
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Schedule Generator</CardTitle>
+                    <CardDescription>
+                      Loading schedule generation...
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center h-32">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              }
+            >
+              <ScheduleGenerator initialStatus={scheduleStatus} />
+            </ClientOnly>
           </div>
         ) : (
           <Card className="mb-6 border-yellow-200 dark:border-yellow-800">
