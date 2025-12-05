@@ -17,6 +17,11 @@ import {
   ErrorCodes,
 } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateInstructors } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 30 minutes (1800 seconds)
+// Instructor data changes less frequently than sections
+export const revalidate = 1800; // 30 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +39,15 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return createSuccessResponse(data || [], 200);
+    const response = createSuccessResponse(data || [], 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 30 minutes on CDN
+    // stale-while-revalidate: Serve stale content for up to 6 hours while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=1800, stale-while-revalidate=21600"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -114,6 +127,9 @@ export async function POST(request: NextRequest) {
     if (error) {
       throw error;
     }
+
+    // Revalidate instructor-related caches after successful creation
+    revalidateInstructors();
 
     return createSuccessResponse(data, 201);
   } catch (error) {

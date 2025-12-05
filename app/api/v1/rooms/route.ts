@@ -1,18 +1,27 @@
 /**
  * Rooms List Endpoint
- * 
+ *
  * GET /api/v1/rooms - List all rooms
  * POST /api/v1/rooms - Create a new room
- * 
+ *
  * All authenticated users can view rooms.
  * Only scheduling role can create rooms.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
 import { revalidateRooms } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 1 hour (3600 seconds)
+// Room data is relatively static and doesn't change frequently
+export const revalidate = 3600; // 1 hour
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +39,15 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return createSuccessResponse(data || [], 200);
+    const response = createSuccessResponse(data || [], 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 1 hour on CDN
+    // stale-while-revalidate: Serve stale content for up to 24 hours while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=3600, stale-while-revalidate=86400"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -55,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate type
-    if (type !== 'Lecture' && type !== 'Lab') {
+    if (type !== "Lecture" && type !== "Lab") {
       return createErrorResponse(
         400,
         ErrorCodes.VALIDATION_ERROR,
@@ -85,7 +102,7 @@ export async function POST(request: NextRequest) {
       .from("room")
       .insert({
         code,
-        type: type as 'Lecture' | 'Lab',
+        type: type as "Lecture" | "Lab",
         capacity: capacity ? parseInt(capacity) : null,
         created_by: user.id,
       })
@@ -104,4 +121,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

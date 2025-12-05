@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -107,10 +107,28 @@ async function fetchExams(): Promise<ExamsResponse> {
   );
 }
 
+// Helper to get initial date for SSR-safe rendering
+// Using a function that returns undefined initially to avoid hydration mismatch
+function getInitialDate(): Date {
+  // This will be called only on the client after hydration
+  return new Date();
+}
+
 export function StudentExamTimetable() {
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Initialize with a stable value to avoid hydration mismatch
+  // We'll set the actual date after mount
+  const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Set the initial date after hydration to avoid mismatch
+  useEffect(() => {
+    if (!isHydrated) {
+      setCurrentMonth(new Date());
+      setIsHydrated(true);
+    }
+  }, [isHydrated]);
 
   // Use React Query for data fetching with proper caching
   const {
@@ -146,7 +164,7 @@ export function StudentExamTimetable() {
       });
     }
     return map;
-  }, [examsData?.exams]);
+  }, [examsData]);
 
   // Find next upcoming exam
   const nextExam = useMemo(() => {
@@ -158,10 +176,13 @@ export function StudentExamTimetable() {
         return examDate > now;
       }) || null
     );
-  }, [examsData?.exams]);
+  }, [examsData]);
 
   // Get calendar days for current month
   const calendarDays = useMemo(() => {
+    // Return empty array if currentMonth is not yet set (during hydration)
+    if (!currentMonth) return [];
+
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -190,14 +211,17 @@ export function StudentExamTimetable() {
   };
 
   // Navigation handlers
-  const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const goToPreviousMonth = () =>
+    currentMonth && setCurrentMonth(subMonths(currentMonth, 1));
+  const goToNextMonth = () =>
+    currentMonth && setCurrentMonth(addMonths(currentMonth, 1));
   const goToToday = () => {
     setCurrentMonth(new Date());
     setSelectedDate(new Date());
   };
 
-  if (isLoading) {
+  // Show loading state during hydration
+  if (!isHydrated || isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-center space-y-4">
@@ -343,7 +367,9 @@ export function StudentExamTimetable() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <h2 className="text-lg font-semibold min-w-[160px] text-center">
-                  {format(currentMonth, "MMMM yyyy")}
+                  {currentMonth
+                    ? format(currentMonth, "MMMM yyyy")
+                    : "Loading..."}
                 </h2>
                 <Button
                   variant="outline"
@@ -422,9 +448,10 @@ export function StudentExamTimetable() {
                         onClick={() => setSelectedDate(day)}
                         className={cn(
                           "bg-card p-2 min-h-[80px] text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset",
-                          !isSameMonth(day, currentMonth) && "opacity-50",
+                          !isSameMonth(day as Date, currentMonth as Date) &&
+                            "opacity-50",
                           isSelected && "ring-2 ring-primary ring-inset",
-                          isToday(day) && "bg-primary/5"
+                          isToday(day as Date) && "bg-primary/5"
                         )}
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -489,7 +516,9 @@ export function StudentExamTimetable() {
                 {selectedDate && selectedDateExams.length > 0 && (
                   <div className="border-t pt-4">
                     <h3 className="text-sm font-medium mb-3">
-                      {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                      {isHydrated && selectedDate
+                        ? format(selectedDate, "EEEE, MMMM d, yyyy")
+                        : ""}
                     </h3>
                     <div className="space-y-2">
                       {selectedDateExams.map((exam) => (
@@ -497,6 +526,7 @@ export function StudentExamTimetable() {
                           key={exam.id}
                           exam={exam}
                           formatTime={formatTime}
+                          isHydrated={isHydrated}
                         />
                       ))}
                     </div>
@@ -507,7 +537,9 @@ export function StudentExamTimetable() {
                   <div className="border-t pt-4">
                     <p className="text-sm text-muted-foreground text-center py-4">
                       No exams scheduled for{" "}
-                      {format(selectedDate, "MMMM d, yyyy")}
+                      {isHydrated && selectedDate
+                        ? format(selectedDate, "MMMM d, yyyy")
+                        : ""}
                     </p>
                   </div>
                 )}
@@ -522,6 +554,7 @@ export function StudentExamTimetable() {
                       exam={exam}
                       formatTime={formatTime}
                       showDate
+                      isHydrated={isHydrated}
                     />
                   ))
                 ) : (
@@ -549,10 +582,12 @@ function ExamCard({
   exam,
   formatTime,
   showDate = false,
+  isHydrated = false,
 }: {
   exam: ExamData;
   formatTime: (time: string) => string;
   showDate?: boolean;
+  isHydrated?: boolean;
 }) {
   return (
     <div
@@ -589,7 +624,9 @@ function ExamCard({
         {showDate && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            <span>{format(new Date(exam.date), "MMM d, yyyy")}</span>
+            <span>
+              {isHydrated ? format(new Date(exam.date), "MMM d, yyyy") : ""}
+            </span>
           </div>
         )}
         <div className="flex items-center gap-1.5 text-muted-foreground">

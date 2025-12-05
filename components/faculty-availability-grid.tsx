@@ -1,11 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Save, RotateCcw, Info } from "lucide-react";
+import {
+  Save,
+  RotateCcw,
+  Info,
+  Check,
+  X,
+  MousePointerClick,
+  Trash2,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import type { DayAvailability } from "@/lib/db/faculty-data";
 
 interface FacultyAvailabilityGridProps {
@@ -15,12 +30,20 @@ interface FacultyAvailabilityGridProps {
   maxLoadPerWeek?: number;
 }
 
-type SelectionMode = 'preferred' | 'unavailable' | null;
+type SelectionMode = "preferred" | "unavailable" | null;
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00'
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
 ];
 
 export function FacultyAvailabilityGrid({
@@ -28,8 +51,12 @@ export function FacultyAvailabilityGrid({
   initialUnavailableTimes = [],
   maxLoadPerWeek = 12,
 }: FacultyAvailabilityGridProps) {
-  const [preferredTimes, setPreferredTimes] = useState<DayAvailability[]>(initialPreferredTimes);
-  const [unavailableTimes, setUnavailableTimes] = useState<DayAvailability[]>(initialUnavailableTimes);
+  const [preferredTimes, setPreferredTimes] = useState<DayAvailability[]>(
+    initialPreferredTimes
+  );
+  const [unavailableTimes, setUnavailableTimes] = useState<DayAvailability[]>(
+    initialUnavailableTimes
+  );
   const [selectionMode, setSelectionMode] = useState<SelectionMode>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -37,97 +64,157 @@ export function FacultyAvailabilityGrid({
 
   // Check if a time slot is preferred
   const isPreferred = (day: string, time: string): boolean => {
-    const dayData = preferredTimes.find(d => d.day === day);
+    const dayData = preferredTimes.find((d) => d.day === day);
     if (!dayData) return false;
-    
-    return dayData.slots.some(slot => 
-      time >= slot.start && time < slot.end
-    );
+
+    return dayData.slots.some((slot) => time >= slot.start && time < slot.end);
   };
 
   // Check if a time slot is unavailable
   const isUnavailable = (day: string, time: string): boolean => {
-    const dayData = unavailableTimes.find(d => d.day === day);
+    const dayData = unavailableTimes.find((d) => d.day === day);
     if (!dayData) return false;
-    
-    return dayData.slots.some(slot => 
-      time >= slot.start && time < slot.end
-    );
+
+    return dayData.slots.some((slot) => time >= slot.start && time < slot.end);
   };
 
   // Toggle time slot
   const toggleTimeSlot = (day: string, time: string) => {
     if (!selectionMode) return;
-    
+
     setHasChanges(true);
-    
-    if (selectionMode === 'preferred') {
+
+    if (selectionMode === "preferred") {
       // Remove from unavailable if present
-      setUnavailableTimes(prev => 
-        prev.map(d => d.day === day ? {
-          ...d,
-          slots: d.slots.filter(s => !(time >= s.start && time < s.end))
-        } : d).filter(d => d.slots.length > 0)
+      setUnavailableTimes((prev) =>
+        prev
+          .map((d) =>
+            d.day === day
+              ? {
+                  ...d,
+                  slots: d.slots.filter(
+                    (s) => !(time >= s.start && time < s.end)
+                  ),
+                }
+              : d
+          )
+          .filter((d) => d.slots.length > 0)
       );
-      
+
       // Toggle preferred
       if (isPreferred(day, time)) {
         // Remove
-        setPreferredTimes(prev => 
-          prev.map(d => d.day === day ? {
-            ...d,
-            slots: d.slots.filter(s => !(time >= s.start && time < s.end))
-          } : d).filter(d => d.slots.length > 0)
+        setPreferredTimes((prev) =>
+          prev
+            .map((d) =>
+              d.day === day
+                ? {
+                    ...d,
+                    slots: d.slots.filter(
+                      (s) => !(time >= s.start && time < s.end)
+                    ),
+                  }
+                : d
+            )
+            .filter((d) => d.slots.length > 0)
         );
       } else {
         // Add
-        setPreferredTimes(prev => {
-          const existing = prev.find(d => d.day === day);
+        setPreferredTimes((prev) => {
+          const existing = prev.find((d) => d.day === day);
           if (existing) {
-            return prev.map(d => d.day === day ? {
-              ...d,
-              slots: [...d.slots, { start: time, end: getNextHour(time), type: 'preferred' }]
-            } : d);
+            return prev.map((d) =>
+              d.day === day
+                ? {
+                    ...d,
+                    slots: [
+                      ...d.slots,
+                      {
+                        start: time,
+                        end: getNextHour(time),
+                        type: "preferred",
+                      },
+                    ],
+                  }
+                : d
+            );
           } else {
-            return [...prev, {
-              day,
-              slots: [{ start: time, end: getNextHour(time), type: 'preferred' }]
-            }];
+            return [
+              ...prev,
+              {
+                day,
+                slots: [
+                  { start: time, end: getNextHour(time), type: "preferred" },
+                ],
+              },
+            ];
           }
         });
       }
-    } else if (selectionMode === 'unavailable') {
+    } else if (selectionMode === "unavailable") {
       // Remove from preferred if present
-      setPreferredTimes(prev => 
-        prev.map(d => d.day === day ? {
-          ...d,
-          slots: d.slots.filter(s => !(time >= s.start && time < s.end))
-        } : d).filter(d => d.slots.length > 0)
+      setPreferredTimes((prev) =>
+        prev
+          .map((d) =>
+            d.day === day
+              ? {
+                  ...d,
+                  slots: d.slots.filter(
+                    (s) => !(time >= s.start && time < s.end)
+                  ),
+                }
+              : d
+          )
+          .filter((d) => d.slots.length > 0)
       );
-      
+
       // Toggle unavailable
       if (isUnavailable(day, time)) {
         // Remove
-        setUnavailableTimes(prev => 
-          prev.map(d => d.day === day ? {
-            ...d,
-            slots: d.slots.filter(s => !(time >= s.start && time < s.end))
-          } : d).filter(d => d.slots.length > 0)
+        setUnavailableTimes((prev) =>
+          prev
+            .map((d) =>
+              d.day === day
+                ? {
+                    ...d,
+                    slots: d.slots.filter(
+                      (s) => !(time >= s.start && time < s.end)
+                    ),
+                  }
+                : d
+            )
+            .filter((d) => d.slots.length > 0)
         );
       } else {
         // Add
-        setUnavailableTimes(prev => {
-          const existing = prev.find(d => d.day === day);
+        setUnavailableTimes((prev) => {
+          const existing = prev.find((d) => d.day === day);
           if (existing) {
-            return prev.map(d => d.day === day ? {
-              ...d,
-              slots: [...d.slots, { start: time, end: getNextHour(time), type: 'unavailable' }]
-            } : d);
+            return prev.map((d) =>
+              d.day === day
+                ? {
+                    ...d,
+                    slots: [
+                      ...d.slots,
+                      {
+                        start: time,
+                        end: getNextHour(time),
+                        type: "unavailable",
+                      },
+                    ],
+                  }
+                : d
+            );
           } else {
-            return [...prev, {
-              day,
-              slots: [{ start: time, end: getNextHour(time), type: 'unavailable' }]
-            }];
+            return [
+              ...prev,
+              {
+                day,
+                slots: [
+                  { start: time, end: getNextHour(time), type: "unavailable" },
+                ],
+              },
+            ];
           }
         });
       }
@@ -136,9 +223,9 @@ export function FacultyAvailabilityGrid({
 
   // Get next hour
   const getNextHour = (time: string): string => {
-    const [hours] = time.split(':').map(Number);
+    const [hours] = time.split(":").map(Number);
     const nextHour = hours + 1;
-    return `${String(nextHour).padStart(2, '0')}:00`;
+    return `${String(nextHour).padStart(2, "0")}:00`;
   };
 
   // Handle mouse events for dragging
@@ -159,33 +246,35 @@ export function FacultyAvailabilityGrid({
 
   // Add global mouse up listener
   useEffect(() => {
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
   // Save availability to database
   const handleSave = async () => {
     setIsSaving(true);
-    
+
     try {
-      const response = await fetch('/api/v1/faculty/availability', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/v1/faculty/availability", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           preferred_times: preferredTimes,
           unavailable_times: unavailableTimes,
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to save');
+        throw new Error(error.error || "Failed to save");
       }
-      
-      toast.success('Availability preferences saved successfully');
+
+      toast.success("Availability preferences saved successfully");
       setHasChanges(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save preferences');
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save preferences"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -196,7 +285,7 @@ export function FacultyAvailabilityGrid({
     setPreferredTimes(initialPreferredTimes);
     setUnavailableTimes(initialUnavailableTimes);
     setHasChanges(false);
-    toast.info('Availability reset to saved state');
+    toast.info("Availability reset to saved state");
   };
 
   // Clear all selections
@@ -204,7 +293,7 @@ export function FacultyAvailabilityGrid({
     setPreferredTimes([]);
     setUnavailableTimes([]);
     setHasChanges(true);
-    toast.info('All selections cleared');
+    toast.info("All selections cleared");
   };
 
   return (
@@ -213,8 +302,9 @@ export function FacultyAvailabilityGrid({
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Select a mode below, then click or drag on the grid to mark your preferred or unavailable times.
-          Green cells indicate preferred times, red cells indicate unavailable times.
+          Select a mode below, then click or drag on the grid to mark your
+          preferred or unavailable times. Green cells indicate preferred times,
+          red cells indicate unavailable times.
         </AlertDescription>
       </Alert>
 
@@ -222,28 +312,47 @@ export function FacultyAvailabilityGrid({
       <Card>
         <CardHeader>
           <CardTitle>Selection Mode</CardTitle>
-          <CardDescription>Choose whether to mark times as preferred or unavailable</CardDescription>
+          <CardDescription>
+            Choose whether to mark times as preferred or unavailable
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button
-            variant={selectionMode === 'preferred' ? 'default' : 'outline'}
-            onClick={() => setSelectionMode('preferred')}
-            className="bg-green-600 hover:bg-green-700"
+            variant={selectionMode === "preferred" ? "default" : "outline"}
+            onClick={() => setSelectionMode("preferred")}
+            className={cn(
+              "transition-all gap-2",
+              selectionMode === "preferred"
+                ? "bg-green-600 hover:bg-green-700 text-white border-transparent shadow-md"
+                : "text-green-600 border-green-200 hover:border-green-600 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950"
+            )}
           >
+            <Check className="h-4 w-4" />
             Preferred Times
           </Button>
           <Button
-            variant={selectionMode === 'unavailable' ? 'default' : 'outline'}
-            onClick={() => setSelectionMode('unavailable')}
-            className="bg-red-600 hover:bg-red-700"
+            variant={selectionMode === "unavailable" ? "default" : "outline"}
+            onClick={() => setSelectionMode("unavailable")}
+            className={cn(
+              "transition-all gap-2",
+              selectionMode === "unavailable"
+                ? "bg-red-600 hover:bg-red-700 text-white border-transparent shadow-md"
+                : "text-red-600 border-red-200 hover:border-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+            )}
           >
+            <X className="h-4 w-4" />
             Unavailable Times
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => setSelectionMode(null)}
+            className={cn(
+              "gap-2 text-muted-foreground hover:text-foreground",
+              !selectionMode && "bg-muted font-medium text-foreground"
+            )}
           >
-            Clear Selection Mode
+            <MousePointerClick className="h-4 w-4" />
+            View Only
           </Button>
         </CardContent>
       </Card>
@@ -259,36 +368,47 @@ export function FacultyAvailabilityGrid({
         <CardContent>
           <div className="overflow-x-auto">
             <div className="inline-block min-w-full">
-              <div className="grid" style={{
-                gridTemplateColumns: `100px repeat(${DAYS.length}, minmax(80px, 1fr))`
-              }}>
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `100px repeat(${DAYS.length}, minmax(80px, 1fr))`,
+                }}
+              >
                 {/* Header Row */}
                 <div className="p-2 font-semibold border-b border-r"></div>
-                {DAYS.map(day => (
-                  <div key={day} className="p-2 font-semibold text-center border-b">
+                {DAYS.map((day) => (
+                  <div
+                    key={day}
+                    className="p-2 font-semibold text-center border-b"
+                  >
                     {day.slice(0, 3)}
                   </div>
                 ))}
-                
+
                 {/* Time Rows */}
-                {TIME_SLOTS.map(time => (
+                {TIME_SLOTS.map((time) => (
                   <React.Fragment key={time}>
-                    <div key={`${time}-label`} className="p-2 text-sm font-medium border-r">
+                    <div
+                      key={`${time}-label`}
+                      className="p-2 text-sm font-medium border-r"
+                    >
                       {time}
                     </div>
-                    {DAYS.map(day => {
+                    {DAYS.map((day) => {
                       const preferred = isPreferred(day, time);
                       const unavailable = isUnavailable(day, time);
-                      
+
                       return (
                         <div
                           key={`${day}-${time}`}
-                          className={`
-                            p-2 border cursor-pointer transition-colors select-none
-                            ${preferred ? 'bg-green-200 dark:bg-green-900' : ''}
-                            ${unavailable ? 'bg-red-200 dark:bg-red-900' : ''}
-                            ${!preferred && !unavailable ? 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
-                          `}
+                          className={cn(
+                            "p-2 border cursor-pointer transition-colors select-none",
+                            preferred && "bg-green-200 dark:bg-green-900",
+                            unavailable && "bg-red-200 dark:bg-red-900",
+                            !preferred &&
+                              !unavailable &&
+                              "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          )}
                           onMouseDown={() => handleMouseDown(day, time)}
                           onMouseEnter={() => handleMouseEnter(day, time)}
                         />
@@ -309,25 +429,29 @@ export function FacultyAvailabilityGrid({
             <div className="text-2xl font-bold text-green-600">
               {preferredTimes.reduce((sum, d) => sum + d.slots.length, 0)}
             </div>
-            <p className="text-sm text-muted-foreground">Preferred time slots</p>
+            <p className="text-sm text-muted-foreground">
+              Preferred time slots
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-red-600">
               {unavailableTimes.reduce((sum, d) => sum + d.slots.length, 0)}
             </div>
-            <p className="text-sm text-muted-foreground">Unavailable time slots</p>
+            <p className="text-sm text-muted-foreground">
+              Unavailable time slots
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {maxLoadPerWeek}
-            </div>
-            <p className="text-sm text-muted-foreground">Max sections per week</p>
+            <div className="text-2xl font-bold">{maxLoadPerWeek}</div>
+            <p className="text-sm text-muted-foreground">
+              Max sections per week
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -340,9 +464,9 @@ export function FacultyAvailabilityGrid({
           className="flex items-center gap-2"
         >
           <Save className="h-4 w-4" />
-          {isSaving ? 'Saving...' : 'Save Preferences'}
+          {isSaving ? "Saving..." : "Save Preferences"}
         </Button>
-        
+
         <Button
           variant="outline"
           onClick={handleReset}
@@ -352,16 +476,17 @@ export function FacultyAvailabilityGrid({
           <RotateCcw className="h-4 w-4" />
           Reset to Saved
         </Button>
-        
+
         <Button
           variant="destructive"
           onClick={handleClearAll}
           disabled={isSaving}
+          className="flex items-center gap-2"
         >
+          <Trash2 className="h-4 w-4" />
           Clear All
         </Button>
       </div>
     </div>
   );
 }
-

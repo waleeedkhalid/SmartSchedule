@@ -62,6 +62,7 @@ import {
   type StudentFeedback,
   type EnrolledSection,
 } from "@/app/actions/feedback";
+import { useIsClient } from "@/hooks/use-mounted";
 
 interface StudentFeedbackManagerProps {
   userId: string;
@@ -70,6 +71,8 @@ interface StudentFeedbackManagerProps {
 export function StudentFeedbackManager({
   userId: _userId,
 }: StudentFeedbackManagerProps) {
+  const isClient = useIsClient();
+
   // Note: userId passed from parent but auth handled by server actions
   void _userId;
 
@@ -169,15 +172,20 @@ export function StudentFeedbackManager({
     setDeletingId(null);
   };
 
-  // Format date for display
+  // Format date for display - only format on client to avoid hydration mismatch
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    if (!isClient) return "";
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
   };
 
   return (

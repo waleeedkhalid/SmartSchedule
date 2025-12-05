@@ -31,7 +31,6 @@ import {
   Clock,
   FileText,
   Upload,
-  CheckSquare,
   MessageSquare,
 } from "lucide-react";
 
@@ -113,11 +112,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: Upload,
     },
     {
-      title: "Setup Check",
-      href: "/dashboard/setup-check",
-      icon: CheckSquare,
-    },
-    {
       title: "Scheduling Settings",
       href: "/dashboard/scheduling/settings",
       icon: Settings,
@@ -183,7 +177,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/import-export",
       icon: Upload,
     },
-  ]
+  ],
 };
 
 export function MobileNav({ userRole, userName }: MobileNavProps) {
@@ -225,8 +219,13 @@ export function MobileNav({ userRole, userName }: MobileNavProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{userName}</p>
-                  <Badge variant="secondary" className="text-xs capitalize mt-1 bg-brand-blue-100 dark:bg-brand-blue-900 text-brand-blue-700 dark:text-brand-blue-300">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                    {userName}
+                  </p>
+                  <Badge
+                    variant="secondary"
+                    className="text-xs capitalize mt-1 bg-brand-blue-100 dark:bg-brand-blue-900 text-brand-blue-700 dark:text-brand-blue-300"
+                  >
                     {userRole.replace("_", " ")}
                   </Badge>
                 </div>
@@ -282,30 +281,37 @@ export function MobileNav({ userRole, userName }: MobileNavProps) {
                 type="button"
                 onClick={async () => {
                   try {
-                    const token = document.cookie
-                      .split('; ')
-                      .find(row => row.startsWith('auth_token='))
-                      ?.split('=')[1] || 
-                      (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
-                    
-                    await fetch('/api/v1/auth/logout', {
-                      method: 'POST',
+                    const token =
+                      document.cookie
+                        .split("; ")
+                        .find((row) => row.startsWith("auth_token="))
+                        ?.split("=")[1] ||
+                      (typeof window !== "undefined"
+                        ? localStorage.getItem("auth_token")
+                        : null);
+
+                    await fetch("/api/v1/auth/logout", {
+                      method: "POST",
                       headers: {
-                        'Authorization': token ? `Bearer ${token}` : '',
+                        Authorization: token ? `Bearer ${token}` : "",
                       },
                     });
-                    
+
                     // Clear all cookies and localStorage using utility
-                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    const { performClientLogoutCleanup } = await import(
+                      "@/lib/utils/cookie-utils"
+                    );
                     performClientLogoutCleanup();
-                    
-                    window.location.href = '/login';
+
+                    window.location.href = "/login";
                   } catch (error) {
-                    console.error('Logout error:', error);
+                    console.error("Logout error:", error);
                     // Clear all cookies and localStorage even on error
-                    const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+                    const { performClientLogoutCleanup } = await import(
+                      "@/lib/utils/cookie-utils"
+                    );
                     performClientLogoutCleanup();
-                    window.location.href = '/login';
+                    window.location.href = "/login";
                   }
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error dark:text-error hover:bg-error-light dark:hover:bg-error/10 transition-all duration-200"
@@ -320,4 +326,3 @@ export function MobileNav({ userRole, userName }: MobileNavProps) {
     </div>
   );
 }
-

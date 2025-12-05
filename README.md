@@ -7,6 +7,7 @@ A conflict-free teaching and exam scheduling web application for the SWE departm
 **Current Progress: 95% Complete (V1 Scope)** - Production Ready | [See Detailed Analysis](IMPLEMENTATION_ANALYSIS.md)
 
 ### ✅ Completed
+
 - **Modern Brand Identity** - Custom logo, design system, professional color palette
 - **Responsive Landing Page** - Hero, features, role benefits, conversion-optimized
 - **Multi-UI Role System** - 5 distinct dashboards tailored to each user role
@@ -34,6 +35,7 @@ A conflict-free teaching and exam scheduling web application for the SWE departm
 - **Mobile Responsive** - Touch-friendly, works on all devices
 
 ### ⏳ Deferred to V2
+
 - Real-time collaborative editing with Yjs
 - Version history with jsondiffpatch
 - Named releases with restore capability
@@ -64,6 +66,7 @@ npm run db:start
 ```
 
 This starts:
+
 - **API URL**: http://127.0.0.1:54321
 - **Studio** (Database GUI): http://127.0.0.1:54323
 - **Mailpit** (Email testing): http://127.0.0.1:54324
@@ -72,6 +75,7 @@ This starts:
 #### 3. Configure Environment
 
 Create `.env.local`:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
@@ -110,6 +114,7 @@ Visit [http://localhost:3000](http://localhost:3000)
 5. Login and explore!
 
 **Available Roles:**
+
 - `scheduling` - Full access, schedule generation, all management features
 - `teaching_load` - Instructor load management, section assignment editing
 - `faculty` - Personal schedule view, feedback submission
@@ -139,6 +144,7 @@ cp .env.local.example .env.local
 ```
 
 Edit `.env.local` and add your credentials:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
@@ -155,12 +161,14 @@ Go to **SQL Editor** in your Supabase dashboard and execute these files **in ord
 #### 5. Create Your First User
 
 **Via Register Page (Recommended):**
+
 1. Start the dev server: `pnpm dev`
 2. Go to `/register` and create an account
 3. **Select your role** from the dropdown during registration
 4. Your role is automatically assigned - no manual SQL needed!
 
 **Via Supabase Dashboard (Alternative):**
+
 1. Go to **Authentication → Users** → **Add User**
 2. After creation, go to **SQL Editor** and run:
 
@@ -197,6 +205,7 @@ Visit [http://localhost:3000](http://localhost:3000)
 ### Essential Commands
 
 **Database Management:**
+
 ```bash
 pnpm db:start        # Start Supabase
 pnpm db:stop         # Stop Supabase
@@ -207,6 +216,7 @@ pnpm db:types        # Generate TypeScript types
 ```
 
 **Data Seeding:**
+
 ```bash
 pnpm db:seed         # Load sample data
 pnpm db:seed:clear   # Clear & reload data
@@ -214,6 +224,7 @@ pnpm db:seed:external:clear  # Load comprehensive external data
 ```
 
 **Development:**
+
 ```bash
 pnpm dev             # Start Next.js server
 pnpm build           # Build for production
@@ -226,10 +237,9 @@ pnpm lint            # Run linter
 
 After setup, verify everything works:
 
-1. **Check Setup Status**: Login → Dashboard → Setup Check
-2. **View Sample Data**: Dashboard → Courses/Rooms/Instructors
-3. **Test Import/Export**: Dashboard → Import/Export
-4. **Explore Dashboards**: Dashboard → Level Overview / Course Overview
+1. **View Sample Data**: Dashboard → Courses/Rooms/Instructors
+2. **Test Import/Export**: Dashboard → Import/Export
+3. **Explore Dashboards**: Dashboard → Level Overview / Course Overview
 
 **Note**: Each role sees a completely different dashboard and navigation menu tailored to their responsibilities.
 
@@ -240,11 +250,13 @@ After setup, verify everything works:
 ### First Time Setup Workflow
 
 1. **Configure Time Grid** (`/dashboard/settings`)
+
    - Set teaching days (default: Sun-Thu)
    - Set daily hours (default: 8:00-17:00)
    - Configure slot duration, breaks, exam windows
 
 2. **Add Core Data** (in order)
+
    - **Courses** (`/dashboard/courses`) - Your course catalog
    - **Rooms** (`/dashboard/rooms`) - Available classrooms and labs
    - **Instructors** (`/dashboard/instructors`) - Teaching staff
@@ -260,25 +272,31 @@ After setup, verify everything works:
 Navigation is automatically filtered based on your role:
 
 **Scheduling Committee** (Full Access):
-- Dashboard, Setup Check, Courses, Sections, Rooms, Instructors, Student Groups
+
+- Dashboard, Courses, Sections, Rooms, Instructors, Student Groups
 - Import/Export, Notifications, Settings
 
 **Teaching Load Committee**:
-- Dashboard, Setup Check, Courses, Sections, Instructors, Notifications
+
+- Dashboard, Courses, Sections, Instructors, Notifications
 
 **Faculty**:
+
 - Dashboard, My Schedule, Notifications
 
 **Student**:
+
 - Dashboard, My Preferences, Notifications
 
 **Registrar**:
+
 - Dashboard, Courses, Sections, Rooms, Instructors, Student Groups
 - Import/Export, Notifications
 
 ## 🏗 Architecture
 
 ### Tech Stack
+
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript
 - **UI**: shadcn/ui, Radix UI, Tailwind CSS, Lucide Icons
 - **State**: Zustand stores
@@ -287,6 +305,7 @@ Navigation is automatically filtered based on your role:
 - **Notifications**: Sonner (toast)
 
 ### Database Schema
+
 - **13 Tables**: course, section, room, instructor, student_group, exam, rule, schedule_doc, comment, notification, user_roles, time_grid_config, elective_preference
 - **Row Level Security**: Enforced for all tables with 5 role-based policies
 - **Helper Functions**: Conflict detection, statistics, notifications, automatic student group sync
@@ -295,26 +314,32 @@ Navigation is automatically filtered based on your role:
 ### API Endpoints
 
 **Courses**
+
 - `GET/POST /api/courses`
 - `GET/PATCH/DELETE /api/courses/[code]`
 
 **Rooms**
+
 - `GET/POST /api/rooms`
 - `GET/PATCH/DELETE /api/rooms/[code]`
 
 **Instructors**
+
 - `GET/POST /api/instructors`
 - `GET/PATCH/DELETE /api/instructors/[id]`
 
 **Student Groups**
+
 - `GET/POST /api/student-groups`
 - `GET/PATCH/DELETE /api/student-groups/[id]`
 
 **Data Operations**
+
 - `GET /api/data/export?entities=courses,rooms,...`
 - `POST /api/data/import`
 
 **Configuration**
+
 - `PATCH /api/config/time-grid`
 
 ## 📁 Project Structure
@@ -399,16 +424,17 @@ pnpm lint         # Run ESLint
 
 ### V1 - Production Ready (95% Complete)
 
-| Phase | Status | Completion |
-|-------|--------|------------|
-| **Phase 1: Foundation & Setup** | ✅ Complete | 100% |
-| **Phase 2: Data Management** | ✅ Complete | 100% |
-| **Phase 3: Scheduling Engine** | ✅ Complete | 100% |
-| **Phase 4: Collaboration** | ⚠️ Partial | 25% (Notifications ✅, Comments ✅, Yjs/Versioning → V2) |
-| **Phase 5: Dashboards & Portals** | ✅ Complete | 100% |
-| **Phase 6: Testing & Polish** | ⚠️ In Progress | 60% (Seed data ✅, UAT pending) |
+| Phase                             | Status         | Completion                                               |
+| --------------------------------- | -------------- | -------------------------------------------------------- |
+| **Phase 1: Foundation & Setup**   | ✅ Complete    | 100%                                                     |
+| **Phase 2: Data Management**      | ✅ Complete    | 100%                                                     |
+| **Phase 3: Scheduling Engine**    | ✅ Complete    | 100%                                                     |
+| **Phase 4: Collaboration**        | ⚠️ Partial     | 25% (Notifications ✅, Comments ✅, Yjs/Versioning → V2) |
+| **Phase 5: Dashboards & Portals** | ✅ Complete    | 100%                                                     |
+| **Phase 6: Testing & Polish**     | ⚠️ In Progress | 60% (Seed data ✅, UAT pending)                          |
 
 **Phase 1**: ✅ Foundation & Setup (100%)
+
 - 18 database tables with complete RLS policies
 - TypeScript types auto-generated from schema
 - 4 Zustand stores for client state
@@ -416,12 +442,14 @@ pnpm lint         # Run ESLint
 - Brand identity and design system
 
 **Phase 2**: ✅ Data Management (100%)
+
 - Complete CRUD for all 6 core entities
 - JSON Import/Export with validation
 - Time Grid Configuration
 - Seed data system (JSON + CLI)
 
 **Phase 3**: ✅ Core Scheduling Engine (100%)
+
 - ✅ Greedy CSP algorithm with automatic room assignment
 - ✅ Real-time conflict detection (room, instructor, student-level)
 - ✅ One-click schedule generation
@@ -429,6 +457,7 @@ pnpm lint         # Run ESLint
 - ✅ Exam scheduling with conflict detection
 
 **Phase 4**: ⚠️ Collaboration & Versioning (25%)
+
 - ✅ In-app notifications with auto-refresh
 - ✅ Comment/feedback system for all roles
 - ⏳ Yjs real-time collaboration (deferred to V2)
@@ -437,6 +466,7 @@ pnpm lint         # Run ESLint
 - **Note**: Asynchronous collaboration via comments; JSON export/import for manual versioning
 
 **Phase 5**: ✅ Dashboards & Portals (100%)
+
 - ✅ Modern landing page with conversion optimization
 - ✅ 5 role-specific dashboards with unique UIs and animations
 - ✅ Scheduling Committee portal with schedule generation
@@ -448,6 +478,7 @@ pnpm lint         # Run ESLint
 - ✅ Chart.js analytics (Level Overview + Course Overview dashboards)
 
 **Phase 6**: ⚠️ Testing & Polish (60%)
+
 - ✅ Seed data system (enhanced JSON + CLI script)
 - ⏳ User acceptance testing (all 5 roles)
 - ⏳ Performance benchmarking
@@ -455,12 +486,14 @@ pnpm lint         # Run ESLint
 - ⏳ Automated testing suite
 
 ### Next Steps (V1 Completion)
+
 1. User acceptance testing (all roles)
 2. Performance benchmarking (scheduling algorithm)
-3. Demo script and user documentation  
+3. Demo script and user documentation
 4. Production deployment preparation
 
 ### V1 Documentation
+
 - [PRD.md](PRD.md) - Product Requirements Document (updated with V1/V2 scope)
 - [timeline.md](timeline.md) - Development timeline and progress
 - [IMPLEMENTATION_ANALYSIS.md](IMPLEMENTATION_ANALYSIS.md) - Comprehensive analysis report
@@ -471,6 +504,7 @@ pnpm lint         # Run ESLint
 ### Common Issues
 
 **"Connection refused" or "Could not find table"**
+
 ```bash
 # Check if Supabase is running (local)
 pnpm db:status
@@ -483,29 +517,34 @@ pnpm db:reset
 ```
 
 **"Table does not exist"**
+
 - Ensure all migrations ran successfully
 - Check migration order: schema → RLS → helper functions
 - Verify in Studio: http://127.0.0.1:54323 (local) or Supabase Dashboard (remote)
 
 **Can't See the UI?**
+
 1. Check `.env.local` exists with correct Supabase credentials
 2. Ensure all 3 migrations ran successfully
 3. Verify user has a role in `user_roles` table
 4. Check browser console for errors
 
 **Database Errors?**
+
 - Check Supabase project is active (remote) or Docker is running (local)
 - Verify RLS policies are enabled
 - Check user role permissions
 - Review logs: Supabase Dashboard → Logs → Database
 
 **Import Not Working?**
+
 - Ensure JSON format matches expected structure
 - Check user has `scheduling` role
 - Verify all referenced entities exist
 - Check console for validation errors
 
 **Port Already in Use**
+
 ```bash
 # Stop Supabase
 pnpm db:stop
@@ -515,15 +554,18 @@ pnpm db:start
 ```
 
 **Docker Not Running (Local)**
+
 - Start Docker Desktop first
 - Then run: `pnpm db:start`
 
 **Email Verification Issues (Local)**
+
 - Check Mailpit: http://127.0.0.1:54324
 - All emails are captured here (no real emails sent locally)
 - Click confirmation links from Mailpit interface
 
 **Role Not Assigned After Registration**
+
 - Check `user_roles` table in database
 - Verify registration form included role selection
 - For manual assignment, see SQL in Quick Start section
@@ -539,6 +581,7 @@ pnpm db:start
 ## 📚 Documentation
 
 **📖 [Complete Documentation](COMPLETE_DOCUMENTATION.md)** - Comprehensive guide covering all aspects of the project including:
+
 - Quick start guides
 - Architecture and development guides
 - Feature documentation
@@ -558,6 +601,7 @@ pnpm db:start
 ## 🤝 Contributing
 
 This is a department-specific scheduling system. For modifications:
+
 1. Review PRD.md for requirements
 2. Check timeline.md for current progress
 3. Follow existing patterns in codebase

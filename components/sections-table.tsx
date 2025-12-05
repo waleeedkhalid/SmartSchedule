@@ -1,27 +1,58 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { Database } from "@/lib/types/database";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useSectionDialog } from "@/components/sections-client";
 import { getAuthHeader } from "@/lib/utils/client-auth";
+
+// Lazy load heavy table components
+const Table = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.Table),
+  { ssr: false }
+);
+const TableBody = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableBody),
+  { ssr: false }
+);
+const TableCell = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableCell),
+  { ssr: false }
+);
+const TableHead = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHead),
+  { ssr: false }
+);
+const TableHeader = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHeader),
+  { ssr: false }
+);
+const TableRow = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableRow),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
+const HoverCard = dynamic(
+  () => import("@/components/ui/hover-card").then((mod) => mod.HoverCard),
+  { ssr: false }
+);
+const HoverCardContent = dynamic(
+  () =>
+    import("@/components/ui/hover-card").then((mod) => mod.HoverCardContent),
+  { ssr: false }
+);
+const HoverCardTrigger = dynamic(
+  () =>
+    import("@/components/ui/hover-card").then((mod) => mod.HoverCardTrigger),
+  { ssr: false }
+);
 
 type Section = Database["public"]["Tables"]["section"]["Row"] & {
   meeting_pattern: {

@@ -1,6 +1,6 @@
 /**
  * Registrar Student Enrollments API
- * 
+ *
  * GET /api/registrar/student-enrollments - List enrollments with filters
  * POST /api/registrar/student-enrollments - Create enrollment (manual registration)
  * DELETE /api/registrar/student-enrollments - Delete enrollment (drop)
@@ -8,11 +8,16 @@
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
-import { 
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
+import {
   getStudentEnrollments,
   createStudentEnrollment,
-  deleteStudentEnrollment
+  deleteStudentEnrollment,
 } from "@/lib/db/registrar-data";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache/tags";
@@ -36,7 +41,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("student_id");
-    const status = searchParams.get("status") as "registered" | "dropped" | null;
+    const status = searchParams.get("status") as
+      | "registered"
+      | "dropped"
+      | null;
 
     const filters: {
       student_id?: string;
@@ -77,8 +85,8 @@ export async function POST(request: NextRequest) {
     );
 
     // Invalidate caches
-    revalidateTag(CACHE_TAGS.ENROLLMENTS);
-    revalidateTag(CACHE_TAGS.STUDENT_ENROLLMENTS);
+    revalidateTag("default", CACHE_TAGS.ENROLLMENTS);
+    revalidateTag("default", CACHE_TAGS.STUDENT_ENROLLMENTS);
 
     return createSuccessResponse(result, 201);
   } catch (error) {
@@ -90,12 +98,14 @@ export async function POST(request: NextRequest) {
         error.errors
       );
     }
-    
+
     // Handle specific enrollment errors
     if (error instanceof Error) {
-      if (error.message.includes("capacity") || 
-          error.message.includes("already enrolled") ||
-          error.message.includes("not found")) {
+      if (
+        error.message.includes("capacity") ||
+        error.message.includes("already enrolled") ||
+        error.message.includes("not found")
+      ) {
         return createErrorResponse(
           400,
           ErrorCodes.VALIDATION_ERROR,
@@ -103,7 +113,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     return handleApiError(error);
   }
 }
@@ -132,8 +142,8 @@ export async function DELETE(request: NextRequest) {
     await deleteStudentEnrollment(enrollmentId);
 
     // Invalidate caches
-    revalidateTag(CACHE_TAGS.ENROLLMENTS);
-    revalidateTag(CACHE_TAGS.STUDENT_ENROLLMENTS);
+    revalidateTag("default", CACHE_TAGS.ENROLLMENTS);
+    revalidateTag("default", CACHE_TAGS.STUDENT_ENROLLMENTS);
 
     return createSuccessResponse(
       { message: "Enrollment dropped successfully" },
@@ -143,4 +153,3 @@ export async function DELETE(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

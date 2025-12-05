@@ -16,9 +16,48 @@
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
-import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
 import { ClientOnly } from "@/components/client-only";
+
+// Lazy load all heavy components to reduce initial bundle size
+const UpcomingDeadlinesWidget = dynamic(
+  () =>
+    import("@/components/upcoming-deadlines-widget").then((mod) => ({
+      default: mod.UpcomingDeadlinesWidget,
+    })),
+  {
+    loading: () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Upcoming Deadlines</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    ),
+    ssr: false,
+  }
+);
+
+const RoleNotificationsWidget = dynamic(
+  () =>
+    import("@/components/role-notifications-widget").then((mod) => ({
+      default: mod.RoleNotificationsWidget,
+    })),
+  {
+    loading: () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    ),
+    ssr: false,
+  }
+);
 
 // Dynamically import heavy components with loading states
 const RegistrarStats = dynamic(

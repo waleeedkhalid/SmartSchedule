@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Dynamically import heavy chart component to reduce initial bundle size
 // This wrapper is a client component, so ssr: false is allowed
-const SchedulingDashboardChartsNew = dynamic(
-  () => import("@/components/scheduling-dashboard-charts-new").then(mod => ({ default: mod.SchedulingDashboardChartsNew })),
-  { 
+const SchedulingDashboardCharts = dynamic(
+  () =>
+    import("@/components/scheduling-dashboard-charts").then((mod) => ({
+      default: mod.SchedulingDashboardChartsNew,
+    })),
+  {
     ssr: false, // Charts don't need SSR
     loading: () => (
       <Card>
@@ -20,11 +23,10 @@ const SchedulingDashboardChartsNew = dynamic(
           </div>
         </CardContent>
       </Card>
-    )
+    ),
   }
 );
 
 export function SchedulingDashboardChartsWrapper() {
-  return <SchedulingDashboardChartsNew />;
+  return <SchedulingDashboardCharts />;
 }
-

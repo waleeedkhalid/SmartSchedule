@@ -1,14 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Send, Star } from "lucide-react";
+import { Send, Star, Loader2 } from "lucide-react";
 import type { FacultySection } from "@/lib/db/faculty-data";
+
+// Lazy load heavy Card and Select components
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardDescription = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardDescription),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
+const Select = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.Select),
+  { ssr: false }
+);
+const SelectContent = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectContent),
+  { ssr: false }
+);
+const SelectItem = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectItem),
+  { ssr: false }
+);
+const SelectTrigger = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectTrigger),
+  { ssr: false }
+);
+const SelectValue = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectValue),
+  { ssr: false }
+);
 
 interface FacultyFeedbackFormProps {
   sections: FacultySection[];
@@ -22,19 +63,19 @@ export function FacultyFeedbackForm({ sections }: FacultyFeedbackFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedSection) {
       toast.error("Please select a section");
       return;
     }
-    
+
     if (!comment.trim()) {
       toast.error("Please enter your feedback");
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const response = await fetch("/api/v1/faculty/comments", {
         method: "POST",
@@ -55,11 +96,13 @@ export function FacultyFeedbackForm({ sections }: FacultyFeedbackFormProps) {
       setComment("");
       setSelectedSection("");
       setRating(0);
-      
+
       // Refresh the page to show the new comment
       window.location.reload();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit feedback");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit feedback"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -94,7 +137,8 @@ export function FacultyFeedbackForm({ sections }: FacultyFeedbackFormProps) {
                 ) : (
                   sections.map((section) => (
                     <SelectItem key={section.id} value={section.id}>
-                      {section.course_code} - {section.course_title} (Section {section.section_no})
+                      {section.course_code} - {section.course_title} (Section{" "}
+                      {section.section_no})
                     </SelectItem>
                   ))
                 )}
@@ -169,4 +213,3 @@ export function FacultyFeedbackForm({ sections }: FacultyFeedbackFormProps) {
     </Card>
   );
 }
-

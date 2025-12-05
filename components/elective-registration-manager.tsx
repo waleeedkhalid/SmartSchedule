@@ -21,17 +21,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
 import {
   Users,
   Clock,
@@ -41,11 +32,50 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { cachedFetch, CacheTTL, apiCache } from "@/lib/utils/api-cache";
 import { parseMeetingPattern } from "@/lib/types";
+
+// Lazy load heavy UI components for better initial load performance
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
+const CardDescription = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardDescription),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
+const Alert = dynamic(
+  () => import("@/components/ui/alert").then((mod) => mod.Alert),
+  { ssr: false }
+);
+const AlertDescription = dynamic(
+  () => import("@/components/ui/alert").then((mod) => mod.AlertDescription),
+  { ssr: false }
+);
+const Progress = dynamic(
+  () => import("@/components/ui/progress").then((mod) => mod.Progress),
+  { ssr: false }
+);
 
 interface EnrollmentInfo {
   id: string;

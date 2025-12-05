@@ -31,11 +31,77 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { SectionCard } from "@/components/faculty/section-card";
-import { UpcomingDeadlinesWidget } from "@/components/upcoming-deadlines-widget";
-import { RoleNotificationsWidget } from "@/components/role-notifications-widget";
 import { ClientOnly } from "@/components/client-only";
 import type { FacultyProfile, FacultySection } from "@/lib/db/faculty/types";
+
+// Lazy load heavy components to reduce initial bundle size
+const SectionCard = dynamic(
+  () =>
+    import("@/components/faculty/section-card").then((mod) => ({
+      default: mod.SectionCard,
+    })),
+  { ssr: false }
+);
+
+const FacultyScheduleGrid = dynamic(
+  () =>
+    import("@/components/faculty-schedule-grid").then((mod) => ({
+      default: mod.FacultyScheduleGrid,
+    })),
+  {
+    loading: () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Schedule</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    ),
+    ssr: false,
+  }
+);
+
+const UpcomingDeadlinesWidget = dynamic(
+  () =>
+    import("@/components/upcoming-deadlines-widget").then((mod) => ({
+      default: mod.UpcomingDeadlinesWidget,
+    })),
+  {
+    loading: () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Upcoming Deadlines</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    ),
+    ssr: false,
+  }
+);
+
+const RoleNotificationsWidget = dynamic(
+  () =>
+    import("@/components/role-notifications-widget").then((mod) => ({
+      default: mod.RoleNotificationsWidget,
+    })),
+  {
+    loading: () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    ),
+    ssr: false,
+  }
+);
 
 // Dynamically import heavy chart component
 const FacultyDashboardChartsWrapper = dynamic(
@@ -206,6 +272,11 @@ export function FacultyDashboardClient({
             <p className="text-xs text-gray-500 mt-1">Unique courses</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Weekly Schedule Grid */}
+      <div className="mb-8">
+        <FacultyScheduleGrid sections={sections} />
       </div>
 
       {/* My Timetable */}

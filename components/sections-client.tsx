@@ -1,15 +1,47 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SectionForm } from "@/components/section-form";
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import type { Database } from "@/lib/types/database";
+
+// Lazy load heavy dialog components - only loaded when dialog opens
+const Dialog = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.Dialog),
+  { ssr: false }
+);
+const DialogContent = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogContent),
+  { ssr: false }
+);
+const DialogHeader = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogHeader),
+  { ssr: false }
+);
+const DialogTitle = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogTitle),
+  { ssr: false }
+);
+
+// Lazy load form component - heavy with many form fields
+const SectionForm = dynamic(
+  () => import("@/components/section-form").then((mod) => mod.SectionForm),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
+);
 
 type Section = Database["public"]["Tables"]["section"]["Row"] & {
   meeting_pattern: {
@@ -24,12 +56,16 @@ interface SectionDialogContextType {
   openEditDialog: (section: Section) => void;
 }
 
-const SectionDialogContext = createContext<SectionDialogContextType | undefined>(undefined);
+const SectionDialogContext = createContext<
+  SectionDialogContextType | undefined
+>(undefined);
 
 export function useSectionDialog() {
   const context = useContext(SectionDialogContext);
   if (!context) {
-    throw new Error("useSectionDialog must be used within SectionDialogProvider");
+    throw new Error(
+      "useSectionDialog must be used within SectionDialogProvider"
+    );
   }
   return context;
 }
@@ -41,11 +77,11 @@ interface SectionDialogProviderProps {
   rooms: Array<{ code: string; type: string }>;
 }
 
-export function SectionDialogProvider({ 
-  children, 
-  courses, 
-  instructors, 
-  rooms 
+export function SectionDialogProvider({
+  children,
+  courses,
+  instructors,
+  rooms,
 }: SectionDialogProviderProps) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,7 +117,7 @@ export function SectionDialogProvider({
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? 'Edit Section' : 'Add New Section'}
+              {isEditing ? "Edit Section" : "Add New Section"}
             </DialogTitle>
           </DialogHeader>
           <SectionForm
@@ -98,4 +134,3 @@ export function SectionDialogProvider({
     </SectionDialogContext.Provider>
   );
 }
-

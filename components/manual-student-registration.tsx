@@ -40,6 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useIsClient } from "@/hooks/use-mounted";
 
 // Cache for API responses to avoid redundant fetches
 const apiCache = new Map<string, { data: unknown; timestamp: number }>();
@@ -248,10 +249,17 @@ function checkExamConflict(
 }
 
 export function ManualStudentRegistration() {
+  const isClient = useIsClient();
   const [students, setStudents] = useState<Student[]>([]);
   const [allSections, setAllSections] = useState<SectionData[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+
+  // Safe date formatter to prevent hydration mismatch
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString || !isClient) return "";
+    return new Date(dateString).toLocaleDateString();
+  };
 
   const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
@@ -692,7 +700,7 @@ export function ManualStudentRegistration() {
 
   // Handle student number search - if exact match found, auto-select
   useEffect(() => {
-    if (studentSearch.length === 10 && /^\d{10}$/.test(studentSearch)) {
+    if (studentSearch.length === 8 && /^\d{8}$/.test(studentSearch)) {
       const matchedStudent = students.find(
         (s) => s.student_number === studentSearch
       );
@@ -1022,9 +1030,7 @@ export function ManualStudentRegistration() {
                         </TableCell>
                         <TableCell>
                           {enrollment.enrolled_at
-                            ? new Date(
-                                enrollment.enrolled_at
-                              ).toLocaleDateString()
+                            ? formatDate(enrollment.enrolled_at)
                             : "N/A"}
                         </TableCell>
                         <TableCell className="text-right">

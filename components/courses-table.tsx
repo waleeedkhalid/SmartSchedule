@@ -1,24 +1,49 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import { Course } from "@/lib/data/courses";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { isSWESchedulableCourse } from "@/lib/utils/course-utils";
 import { getAuthHeader } from "@/lib/utils/client-auth";
-import { CourseActionDialog, ActionType } from "@/components/course-action-dialog";
+import {
+  CourseActionDialog,
+  ActionType,
+} from "@/components/course-action-dialog";
 import { useCourseDialog } from "@/components/courses-client";
+
+// Lazy load heavy table components
+const Table = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.Table),
+  { ssr: false }
+);
+const TableBody = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableBody),
+  { ssr: false }
+);
+const TableCell = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableCell),
+  { ssr: false }
+);
+const TableHead = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHead),
+  { ssr: false }
+);
+const TableHeader = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHeader),
+  { ssr: false }
+);
+const TableRow = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableRow),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
 
 interface CoursesTableProps {
   courses: Course[];
@@ -53,18 +78,18 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
     setIsLoading(true);
     try {
       const authHeader = await getAuthHeader();
-      
-      if (!authHeader || authHeader.trim() === '' || authHeader === 'Bearer ') {
-        throw new Error('Authentication required. Please log in again.');
+
+      if (!authHeader || authHeader.trim() === "" || authHeader === "Bearer ") {
+        throw new Error("Authentication required. Please log in again.");
       }
-      
+
       // URL encode the course code to handle special characters
       const encodedCourseCode = encodeURIComponent(selectedCourse.code);
       const response = await fetch(`/api/v1/courses/${encodedCourseCode}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json',
+          Authorization: authHeader,
+          "Content-Type": "application/json",
         },
       });
 
@@ -74,25 +99,34 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
         result = await response.json();
       } catch {
         // If response is not JSON, use status text
-        throw new Error(`Failed to delete course: ${response.statusText || `HTTP ${response.status}`}`);
+        throw new Error(
+          `Failed to delete course: ${
+            response.statusText || `HTTP ${response.status}`
+          }`
+        );
       }
 
       if (!response.ok) {
         // Extract error message from API response
-        const errorMessage = result.error || result.message || `Failed to delete course (${response.status})`;
-        
+        const errorMessage =
+          result.error ||
+          result.message ||
+          `Failed to delete course (${response.status})`;
+
         // Handle 404 (course not found) - might have been deleted already
         if (response.status === 404) {
           // Close dialog and refresh page to sync with server state
           setDialogOpen(false);
           setSelectedCourse(null);
-          toast.warning(`Course ${selectedCourse.code} was not found. The page will refresh to sync with the server.`);
+          toast.warning(
+            `Course ${selectedCourse.code} was not found. The page will refresh to sync with the server.`
+          );
           setTimeout(() => {
             router.refresh();
           }, 1000);
           return;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -101,14 +135,18 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
       const deletedCode = selectedCourse.code;
       const sectionsDeleted = result.data?.sectionsDeleted || 0;
       setSelectedCourse(null);
-      
+
       // Show success message with section count if applicable
       if (sectionsDeleted > 0) {
-        toast.success(`Course ${deletedCode} and ${sectionsDeleted} section${sectionsDeleted !== 1 ? 's' : ''} deleted successfully`);
+        toast.success(
+          `Course ${deletedCode} and ${sectionsDeleted} section${
+            sectionsDeleted !== 1 ? "s" : ""
+          } deleted successfully`
+        );
       } else {
         toast.success(`Course ${deletedCode} deleted successfully`);
       }
-      
+
       // Small delay to ensure dialog closes before refresh
       setTimeout(() => {
         // Refresh the page to show updated course list
@@ -116,11 +154,12 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
       }, 100);
     } catch (error) {
       // Error - show message but keep dialog open so user can try again
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Failed to delete course. Please try again.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to delete course. Please try again.";
       toast.error(errorMessage);
-      console.error('Delete course error:', error);
+      console.error("Delete course error:", error);
       // Don't close dialog on error - let user see the error and try again
     } finally {
       setIsLoading(false);
@@ -163,9 +202,9 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
               <TableCell className="font-medium">{course.code}</TableCell>
               <TableCell>{course.title}</TableCell>
               <TableCell>
-                {course.recommended_level !== null 
-                  ? `Level ${course.recommended_level}` 
-                  : 'Elective'}
+                {course.recommended_level !== null
+                  ? `Level ${course.recommended_level}`
+                  : "Elective"}
               </TableCell>
               <TableCell>{course.credits}</TableCell>
               <TableCell>{course.weekly_hours}h</TableCell>
@@ -225,5 +264,4 @@ function CoursesTableComponent({ courses }: CoursesTableProps) {
 }
 
 // Memoize component to prevent unnecessary re-renders when courses array reference changes but content is the same
-export const CoursesTable = memo(CoursesTableComponent)
-
+export const CoursesTable = memo(CoursesTableComponent);

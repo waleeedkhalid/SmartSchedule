@@ -58,3 +58,5 @@ supabase/studio
 .env.local
 .supabase
 el
+
+kill.sh
