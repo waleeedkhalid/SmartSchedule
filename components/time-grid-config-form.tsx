@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,17 +16,33 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { TimeGridConfig } from "@/lib/types/database";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
+// Lazy load heavy Card components
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardDescription = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardDescription),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
 
 const formSchema = z.object({
   teaching_days: z.string(),

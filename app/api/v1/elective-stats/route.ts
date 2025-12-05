@@ -1,8 +1,8 @@
 /**
  * Elective Statistics API Route
- * 
+ *
  * GET /api/v1/elective-stats - Get aggregated elective preference statistics
- * 
+ *
  * Returns statistics about student elective preferences grouped by course.
  * Only accessible by scheduling role.
  */
@@ -11,6 +11,11 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateElectivePreferences } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 10 minutes (600 seconds)
+// Elective stats aggregate data that doesn't need real-time updates
+export const revalidate = 600; // 10 minutes
 
 export interface ElectivePreferenceStat {
   course_code: string;
@@ -33,9 +38,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // Get all elective preferences with course information
-    const { data: preferences, error: prefError } = await supabase
-      .from("elective_preference")
-      .select(`
+    const { data: preferences, error: prefError } = await supabase.from(
+      "elective_preference"
+    ).select(`
         course_code,
         rank,
         course:course!elective_preference_course_code_fkey(
@@ -54,9 +59,11 @@ export async function GET(request: NextRequest) {
 
     preferences?.forEach((pref) => {
       const courseCode = pref.course_code;
-      const course = (pref.course as unknown) as
-        | { code: string; title: string; recommended_level: number | null }
-        | null;
+      const course = pref.course as unknown as {
+        code: string;
+        title: string;
+        recommended_level: number | null;
+      } | null;
 
       if (!course) return;
 
@@ -98,7 +105,7 @@ export async function GET(request: NextRequest) {
     const avgRequestsPerCourse =
       stats.length > 0 ? Number((totalRequests / stats.length).toFixed(1)) : 0;
 
-    return createSuccessResponse(
+    const response = createSuccessResponse(
       {
         stats,
         summary: {
@@ -110,8 +117,15 @@ export async function GET(request: NextRequest) {
       },
       200
     );
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 10 minutes on CDN
+    // stale-while-revalidate: Serve stale content for up to 1 hour while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=600, stale-while-revalidate=3600"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
 }
-

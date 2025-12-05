@@ -87,6 +87,7 @@ The manifest file defines the app's metadata and installation behavior:
 ```
 
 **Key Features:**
+
 - **Standalone display mode**: App runs in its own window without browser UI
 - **App icons**: 192x192 and 512x512 icons for home screen installation
 - **Shortcuts**: Quick access to Schedule and Courses from home screen
@@ -97,11 +98,13 @@ The manifest file defines the app's metadata and installation behavior:
 The service worker enables offline functionality and performance optimization:
 
 **Caching Strategy:**
+
 - **Static Assets**: Cache-first strategy for HTML, CSS, JS
 - **API Requests**: Network-first with cache fallback
 - **Offline Support**: Graceful degradation with offline error messages
 
 **Benefits:**
+
 - Faster load times on subsequent visits
 - Offline access to cached content
 - Reduced server load
@@ -119,12 +122,14 @@ The mobile interface (`/app/mobile/`) includes:
 ### PWA Installation
 
 **On Android:**
+
 1. Open Chrome browser
 2. Navigate to `https://your-domain.com/mobile/schedule`
 3. Tap the "Add to Home Screen" prompt
 4. App installs as a standalone application
 
 **On iOS:**
+
 1. Open Safari browser
 2. Navigate to `https://your-domain.com/mobile/schedule`
 3. Tap the Share button
@@ -132,6 +137,7 @@ The mobile interface (`/app/mobile/`) includes:
 5. App installs as a standalone application
 
 **On Desktop:**
+
 1. Open Chrome/Edge browser
 2. Navigate to `https://your-domain.com/mobile/schedule`
 3. Click the install icon in the address bar
@@ -140,6 +146,7 @@ The mobile interface (`/app/mobile/`) includes:
 ### PWA Connectivity Demonstration
 
 **File Structure:**
+
 ```
 app/mobile/
 ├── lib/
@@ -160,12 +167,14 @@ app/mobile/
 
 **API Client Implementation:**
 The `ApiClient` class (`app/mobile/lib/api/client.ts`) uses the standard Fetch API, which is available in:
+
 - ✅ Web browsers (PWA)
 - ✅ React Native (via polyfill)
 - ✅ Node.js (for SSR)
 - ✅ Native mobile apps (via HTTP libraries)
 
 **Example API Call:**
+
 ```typescript
 // app/mobile/lib/repositories/auth.repository.ts
 async login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -179,6 +188,7 @@ async login(credentials: LoginRequest): Promise<LoginResponse> {
 ```
 
 This same code works identically in:
+
 - PWA (current implementation)
 - React Native (with Fetch polyfill)
 - Android native (with OkHttp/Retrofit)
@@ -197,12 +207,14 @@ The current PWA implementation is **100% compatible** with Android native develo
 #### Step 1: Replace HTTP Client
 
 **Current (PWA):**
+
 ```typescript
 // Uses Fetch API (browser standard)
 const response = await fetch(url, options);
 ```
 
 **Android Native (Kotlin):**
+
 ```kotlin
 // Use OkHttp (standard Android HTTP client)
 val client = OkHttpClient()
@@ -214,6 +226,7 @@ val response = client.newCall(request).execute()
 ```
 
 **Android Native (Java):**
+
 ```java
 // Use OkHttp or Retrofit
 OkHttpClient client = new OkHttpClient();
@@ -227,6 +240,7 @@ Response response = client.newCall(request).execute();
 #### Step 2: Port Repository Layer
 
 **Current (TypeScript):**
+
 ```typescript
 // app/mobile/lib/repositories/auth.repository.ts
 export class AuthRepository {
@@ -237,6 +251,7 @@ export class AuthRepository {
 ```
 
 **Android Native (Kotlin):**
+
 ```kotlin
 // Same structure, different language
 class AuthRepository(private val apiClient: ApiClient) {
@@ -251,6 +266,7 @@ class AuthRepository(private val apiClient: ApiClient) {
 #### Step 3: Port Type Definitions
 
 **Current (TypeScript):**
+
 ```typescript
 // app/mobile/lib/api/types.ts
 export interface LoginRequest {
@@ -260,6 +276,7 @@ export interface LoginRequest {
 ```
 
 **Android Native (Kotlin):**
+
 ```kotlin
 // Direct translation
 data class LoginRequest(
@@ -269,6 +286,7 @@ data class LoginRequest(
 ```
 
 **Android Native (Java):**
+
 ```java
 // Direct translation
 public class LoginRequest {
@@ -281,6 +299,7 @@ public class LoginRequest {
 #### Step 4: Port State Management
 
 **Current (Zustand):**
+
 ```typescript
 // app/mobile/lib/stores/auth.store.ts
 export const useAuthStore = create<AuthState>((set) => ({
@@ -288,17 +307,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (credentials) => {
     const response = await authRepository.login(credentials);
     set({ user: response.user });
-  }
+  },
 }));
 ```
 
 **Android Native (Kotlin - ViewModel):**
+
 ```kotlin
 // Use Android ViewModel + LiveData/StateFlow
 class AuthViewModel : ViewModel() {
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
-    
+
     fun login(credentials: LoginRequest) {
         viewModelScope.launch {
             val response = authRepository.login(credentials)
@@ -317,26 +337,26 @@ class AuthViewModel : ViewModel() {
 class ApiClient(private val baseUrl: String) {
     private var token: String? = null
     private val client = OkHttpClient()
-    
+
     fun setToken(token: String?) {
         this.token = token
         // Store in SharedPreferences for persistence
     }
-    
+
     suspend fun post<T>(url: String, body: Any): T {
         val json = Gson().toJson(body)
         val requestBody = json.toRequestBody("application/json".toMediaType())
-        
+
         val request = Request.Builder()
             .url("$baseUrl$url")
             .post(requestBody)
             .apply {
-                token?.let { 
+                token?.let {
                     addHeader("Authorization", "Bearer $it")
                 }
             }
             .build()
-        
+
         val response = client.newCall(request).execute()
         return Gson().fromJson(response.body?.string(), T::class.java)
     }
@@ -362,7 +382,7 @@ class AuthViewModel : ViewModel() {
     private val repository = AuthRepository(apiClient)
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
-    
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             try {
@@ -383,7 +403,7 @@ class AuthViewModel : ViewModel() {
 @Composable
 fun LoginScreen(viewModel: AuthViewModel) {
     val user by viewModel.user.collectAsState()
-    
+
     Column {
         TextField(value = email, onValueChange = { email = it })
         TextField(value = password, onValueChange = { password = it })
@@ -396,14 +416,14 @@ fun LoginScreen(viewModel: AuthViewModel) {
 
 ### Migration Effort Estimate
 
-| Component | PWA (Current) | Android Native | Reusability |
-|-----------|--------------|----------------|-------------|
-| **API Endpoints** | ✅ Defined | ✅ Same URLs | 100% |
-| **Request/Response Types** | ✅ TypeScript | ✅ Kotlin/Java | 95% (translation) |
-| **Repository Logic** | ✅ TypeScript | ✅ Kotlin/Java | 90% (same structure) |
-| **Business Logic** | ✅ TypeScript | ✅ Kotlin/Java | 100% (same logic) |
-| **UI Components** | ✅ React | ✅ Jetpack Compose | 0% (platform-specific) |
-| **State Management** | ✅ Zustand | ✅ ViewModel/StateFlow | 80% (same patterns) |
+| Component                  | PWA (Current) | Android Native         | Reusability            |
+| -------------------------- | ------------- | ---------------------- | ---------------------- |
+| **API Endpoints**          | ✅ Defined    | ✅ Same URLs           | 100%                   |
+| **Request/Response Types** | ✅ TypeScript | ✅ Kotlin/Java         | 95% (translation)      |
+| **Repository Logic**       | ✅ TypeScript | ✅ Kotlin/Java         | 90% (same structure)   |
+| **Business Logic**         | ✅ TypeScript | ✅ Kotlin/Java         | 100% (same logic)      |
+| **UI Components**          | ✅ React      | ✅ Jetpack Compose     | 0% (platform-specific) |
+| **State Management**       | ✅ Zustand    | ✅ ViewModel/StateFlow | 80% (same patterns)    |
 
 **Total Backend Reusability: ~95%**
 **Total Code Reusability: ~70%** (excluding UI)
@@ -447,6 +467,7 @@ Enrollments:
 ### Request/Response Format
 
 **Standard Request Format:**
+
 ```http
 POST /api/v1/auth/login HTTP/1.1
 Host: your-domain.com
@@ -460,6 +481,7 @@ Authorization: Bearer <token>  # For authenticated requests
 ```
 
 **Standard Response Format:**
+
 ```json
 {
   "data": {
@@ -467,7 +489,7 @@ Authorization: Bearer <token>  # For authenticated requests
     "user": {
       "id": "uuid",
       "email": "user@example.com",
-      "name": "John Doe",
+      "name": "Mohammed Abdullah",
       "role": "student",
       "level": 3
     }
@@ -476,6 +498,7 @@ Authorization: Bearer <token>  # For authenticated requests
 ```
 
 **Error Response Format:**
+
 ```json
 {
   "error": "Invalid email or password",
@@ -489,6 +512,7 @@ Authorization: Bearer <token>  # For authenticated requests
 #### 1. No Platform-Specific Protocols
 
 ✅ **Uses Standard HTTP/HTTPS**
+
 - Works on all platforms (Web, Android, iOS, Desktop)
 - No WebSocket dependencies for basic operations
 - No platform-specific authentication methods
@@ -496,11 +520,13 @@ Authorization: Bearer <token>  # For authenticated requests
 #### 2. Standard Authentication
 
 ✅ **Bearer Token Authentication**
+
 ```http
 Authorization: Bearer <jwt_token>
 ```
 
 This works identically in:
+
 - Web browsers (Fetch API)
 - React Native (Fetch API)
 - Android (OkHttp, Retrofit)
@@ -510,6 +536,7 @@ This works identically in:
 #### 3. Pure JSON Responses
 
 ✅ **No HTML, no XML, no platform-specific formats**
+
 - All responses are JSON
 - Easy to parse in any language
 - Type-safe with TypeScript/Kotlin/Swift
@@ -517,15 +544,17 @@ This works identically in:
 #### 4. Consistent Error Handling
 
 ✅ **Standardized Error Format**
+
 ```typescript
 interface ApiError {
-  error: string;      // Human-readable message
-  code: string;       // Machine-readable code
-  details?: unknown;   // Additional context
+  error: string; // Human-readable message
+  code: string; // Machine-readable code
+  details?: unknown; // Additional context
 }
 ```
 
 This format is:
+
 - Easy to handle in any language
 - Consistent across all endpoints
 - Supports internationalization
@@ -535,6 +564,7 @@ This format is:
 #### Example 1: Login Flow
 
 **PWA (TypeScript):**
+
 ```typescript
 // app/mobile/lib/repositories/auth.repository.ts
 async login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -548,6 +578,7 @@ async login(credentials: LoginRequest): Promise<LoginResponse> {
 ```
 
 **Android (Kotlin) - Same Logic:**
+
 ```kotlin
 suspend fun login(credentials: LoginRequest): LoginResponse {
     val response = apiClient.post<LoginResponse>(
@@ -560,6 +591,7 @@ suspend fun login(credentials: LoginRequest): LoginResponse {
 ```
 
 **iOS (Swift) - Same Logic:**
+
 ```swift
 func login(credentials: LoginRequest) async throws -> LoginResponse {
     let response = try await apiClient.post(
@@ -576,6 +608,7 @@ func login(credentials: LoginRequest) async throws -> LoginResponse {
 #### Example 2: Schedule Fetching
 
 **PWA (TypeScript):**
+
 ```typescript
 // app/mobile/lib/repositories/schedules.repository.ts
 async getMySchedule(semesterId?: string): Promise<StudentSchedule> {
@@ -587,9 +620,10 @@ async getMySchedule(semesterId?: string): Promise<StudentSchedule> {
 ```
 
 **Android (Kotlin) - Same Logic:**
+
 ```kotlin
 suspend fun getMySchedule(semesterId: String? = null): StudentSchedule {
-    val url = semesterId?.let { 
+    val url = semesterId?.let {
         "${API_ENDPOINTS.SCHEDULES_ME}?semester_id=$it"
     } ?: API_ENDPOINTS.SCHEDULES_ME
     return apiClient.get(url)
@@ -605,18 +639,21 @@ All API contracts are defined in TypeScript and can be used as reference for oth
 **File: `app/mobile/lib/api/types.ts`**
 
 This file contains:
+
 - ✅ Request types (LoginRequest, CreateEnrollmentRequest, etc.)
 - ✅ Response types (LoginResponse, StudentSchedule, etc.)
 - ✅ Error types (ApiError)
 - ✅ Domain models (Course, Section, Enrollment, etc.)
 
 **Usage for Android:**
+
 1. Read TypeScript types
 2. Translate to Kotlin/Java data classes
 3. Use same field names and types
 4. API contract is guaranteed to match
 
 **Usage for iOS:**
+
 1. Read TypeScript types
 2. Translate to Swift structs/classes
 3. Use same field names and types
@@ -628,25 +665,25 @@ This file contains:
 
 ### Feature Comparison Matrix
 
-| Feature | PWA (Current) | Android Native | iOS Native | React Native |
-|---------|---------------|----------------|------------|--------------|
-| **API Connectivity** | ✅ Fetch API | ✅ OkHttp/Retrofit | ✅ URLSession | ✅ Fetch API |
-| **Authentication** | ✅ Bearer Token | ✅ Bearer Token | ✅ Bearer Token | ✅ Bearer Token |
-| **Offline Support** | ✅ Service Worker | ✅ Room Database | ✅ Core Data | ✅ AsyncStorage |
-| **State Management** | ✅ Zustand | ✅ ViewModel/StateFlow | ✅ ObservableObject | ✅ Redux/Zustand |
-| **Type Safety** | ✅ TypeScript | ✅ Kotlin | ✅ Swift | ✅ TypeScript |
-| **Repository Pattern** | ✅ Implemented | ✅ Same Structure | ✅ Same Structure | ✅ Same Structure |
-| **Installation** | ✅ Browser Install | ✅ Play Store | ✅ App Store | ✅ Both Stores |
-| **Code Reusability** | ✅ 100% | ✅ 95% Backend | ✅ 95% Backend | ✅ 100% |
+| Feature                | PWA (Current)      | Android Native         | iOS Native          | React Native      |
+| ---------------------- | ------------------ | ---------------------- | ------------------- | ----------------- |
+| **API Connectivity**   | ✅ Fetch API       | ✅ OkHttp/Retrofit     | ✅ URLSession       | ✅ Fetch API      |
+| **Authentication**     | ✅ Bearer Token    | ✅ Bearer Token        | ✅ Bearer Token     | ✅ Bearer Token   |
+| **Offline Support**    | ✅ Service Worker  | ✅ Room Database       | ✅ Core Data        | ✅ AsyncStorage   |
+| **State Management**   | ✅ Zustand         | ✅ ViewModel/StateFlow | ✅ ObservableObject | ✅ Redux/Zustand  |
+| **Type Safety**        | ✅ TypeScript      | ✅ Kotlin              | ✅ Swift            | ✅ TypeScript     |
+| **Repository Pattern** | ✅ Implemented     | ✅ Same Structure      | ✅ Same Structure   | ✅ Same Structure |
+| **Installation**       | ✅ Browser Install | ✅ Play Store          | ✅ App Store        | ✅ Both Stores    |
+| **Code Reusability**   | ✅ 100%            | ✅ 95% Backend         | ✅ 95% Backend      | ✅ 100%           |
 
 ### Performance Comparison
 
-| Metric | PWA | Android Native | iOS Native |
-|--------|-----|----------------|------------|
-| **Initial Load** | ~2-3s | ~1-2s | ~1-2s |
-| **Subsequent Load** | ~0.5s (cached) | ~0.3s | ~0.3s |
-| **Offline Access** | ✅ Cached pages | ✅ Full offline | ✅ Full offline |
-| **Network Usage** | Optimized (SW) | Optimized | Optimized |
+| Metric              | PWA             | Android Native  | iOS Native      |
+| ------------------- | --------------- | --------------- | --------------- |
+| **Initial Load**    | ~2-3s           | ~1-2s           | ~1-2s           |
+| **Subsequent Load** | ~0.5s (cached)  | ~0.3s           | ~0.3s           |
+| **Offline Access**  | ✅ Cached pages | ✅ Full offline | ✅ Full offline |
+| **Network Usage**   | Optimized (SW)  | Optimized       | Optimized       |
 
 ---
 
@@ -655,6 +692,7 @@ This file contains:
 ### PWA Testing
 
 #### 1. Install PWA
+
 ```bash
 # Navigate to mobile interface
 https://your-domain.com/mobile/schedule
@@ -671,6 +709,7 @@ https://your-domain.com/mobile/schedule
 ```
 
 #### 2. Verify Offline Support
+
 ```bash
 # 1. Install PWA
 # 2. Open app
@@ -680,6 +719,7 @@ https://your-domain.com/mobile/schedule
 ```
 
 #### 3. Verify API Connectivity
+
 ```bash
 # Open browser DevTools → Network tab
 # Navigate through app
@@ -692,18 +732,20 @@ https://your-domain.com/mobile/schedule
 #### Test 1: Cross-Platform API Calls
 
 **PWA (Browser Console):**
+
 ```javascript
-fetch('https://your-domain.com/api/v1/courses', {
+fetch("https://your-domain.com/api/v1/courses", {
   headers: {
-    'Authorization': 'Bearer <token>',
-    'Content-Type': 'application/json'
-  }
+    Authorization: "Bearer <token>",
+    "Content-Type": "application/json",
+  },
 })
-.then(r => r.json())
-.then(console.log);
+  .then((r) => r.json())
+  .then(console.log);
 ```
 
 **Android (Kotlin):**
+
 ```kotlin
 val request = Request.Builder()
     .url("https://your-domain.com/api/v1/courses")
@@ -717,14 +759,16 @@ val response = client.newCall(request).execute()
 #### Test 2: Authentication Flow
 
 **PWA:**
+
 ```typescript
 const response = await authRepository.login({
   email: "user@example.com",
-  password: "password"
+  password: "password",
 });
 ```
 
 **Android:**
+
 ```kotlin
 val response = authRepository.login(LoginRequest(
     email = "user@example.com",
@@ -804,4 +848,3 @@ See `public/manifest.json` for PWA configuration.
 **Document Version:** 1.0  
 **Last Updated:** 2024  
 **Author:** SmartSchedule Development Team
-

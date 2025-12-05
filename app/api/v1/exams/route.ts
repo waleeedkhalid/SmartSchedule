@@ -17,6 +17,11 @@ import {
   ErrorCodes,
 } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateExams } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 15 minutes (900 seconds)
+// Exam data changes during exam scheduling periods
+export const revalidate = 900; // 15 minutes
 
 // Valid exam types
 const VALID_EXAM_TYPES = ["mid1", "mid2", "final"] as const;
@@ -56,7 +61,15 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return createSuccessResponse(data || [], 200);
+    const response = createSuccessResponse(data || [], 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 15 minutes on CDN
+    // stale-while-revalidate: Serve stale content for up to 2 hours while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=900, stale-while-revalidate=7200"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -187,7 +200,39 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
+    // Revalidate exam-related caches after successful creation
+    revalidateExams();
+
     return createSuccessResponse(data, 201);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Authenticate and check role (only scheduling can delete all exams)
+    const user = await authenticateRequest(request);
+    requireRole(user, ["scheduling"]);
+
+    const supabase = await createClient();
+
+    // Delete all exam rows (use a benign filter to satisfy Supabase requirement)
+    const { error } = await supabase
+      .from("exam")
+      .delete()
+      .gt("created_at", "0001-01-01");
+
+    if (error) {
+      throw error;
+    }
+
+    await revalidateExams();
+
+    return createSuccessResponse(
+      { message: "All exams deleted successfully" },
+      200
+    );
   } catch (error) {
     return handleApiError(error);
   }

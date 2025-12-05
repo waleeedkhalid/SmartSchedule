@@ -1,14 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MessageSquare, CheckCircle, Clock, Edit2, Trash2, X, Save } from "lucide-react";
+import {
+  MessageSquare,
+  CheckCircle,
+  Clock,
+  Edit2,
+  Trash2,
+  X,
+  Save,
+} from "lucide-react";
 import { format } from "date-fns";
+import { useIsClient } from "@/hooks/use-mounted";
 
 export interface Comment {
   id: string;
@@ -34,23 +56,47 @@ interface ScheduleCommentListProps {
   onCommentUpdated?: () => void;
 }
 
-type FilterType = 'all' | 'resolved' | 'unresolved' | 'general' | 'section-specific';
+type FilterType =
+  | "all"
+  | "resolved"
+  | "unresolved"
+  | "general"
+  | "section-specific";
 
-export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleCommentListProps) {
-  const [filter, setFilter] = useState<FilterType>('all');
+export function ScheduleCommentList({
+  comments,
+  onCommentUpdated,
+}: ScheduleCommentListProps) {
+  const isClient = useIsClient();
+  const [filter, setFilter] = useState<FilterType>("all");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
+    null
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Helper to safely format dates only on client
+  const formatDate = (
+    dateStr: string | null | undefined,
+    formatStr: string = "PPp"
+  ): string => {
+    if (!isClient || !dateStr) return "";
+    try {
+      return format(new Date(dateStr), formatStr);
+    } catch {
+      return "";
+    }
+  };
+
   // Filter comments
-  const filteredComments = comments.filter(comment => {
-    if (filter === 'all') return true;
-    if (filter === 'resolved') return comment.is_resolved;
-    if (filter === 'unresolved') return !comment.is_resolved;
-    if (filter === 'general') return comment.section_id === null;
-    if (filter === 'section-specific') return comment.section_id !== null;
+  const filteredComments = comments.filter((comment) => {
+    if (filter === "all") return true;
+    if (filter === "resolved") return comment.is_resolved;
+    if (filter === "unresolved") return !comment.is_resolved;
+    if (filter === "general") return comment.section_id === null;
+    if (filter === "section-specific") return comment.section_id !== null;
     return true;
   });
 
@@ -77,17 +123,17 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
 
     try {
       const response = await fetch(`/api/schedule-comments/${commentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ comment_text: editText.trim() }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update comment');
+        throw new Error(error.error || "Failed to update comment");
       }
 
-      toast.success('Comment updated successfully');
+      toast.success("Comment updated successfully");
       setEditingCommentId(null);
       setEditText("");
 
@@ -95,8 +141,10 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
         onCommentUpdated();
       }
     } catch (error) {
-      console.error('Error updating comment:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update comment');
+      console.error("Error updating comment:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update comment"
+      );
     } finally {
       setIsEditing(false);
     }
@@ -108,23 +156,25 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
 
     try {
       const response = await fetch(`/api/schedule-comments/${commentId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete comment');
+        throw new Error(error.error || "Failed to delete comment");
       }
 
-      toast.success('Comment deleted successfully');
+      toast.success("Comment deleted successfully");
       setDeletingCommentId(null);
 
       if (onCommentUpdated) {
         onCommentUpdated();
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to delete comment');
+      console.error("Error deleting comment:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete comment"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -155,38 +205,39 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={filter === 'all' ? 'default' : 'outline'}
-              onClick={() => setFilter('all')}
+              variant={filter === "all" ? "default" : "outline"}
+              onClick={() => setFilter("all")}
             >
               All ({comments.length})
             </Button>
             <Button
               size="sm"
-              variant={filter === 'unresolved' ? 'default' : 'outline'}
-              onClick={() => setFilter('unresolved')}
+              variant={filter === "unresolved" ? "default" : "outline"}
+              onClick={() => setFilter("unresolved")}
             >
-              Unresolved ({comments.filter(c => !c.is_resolved).length})
+              Unresolved ({comments.filter((c) => !c.is_resolved).length})
             </Button>
             <Button
               size="sm"
-              variant={filter === 'resolved' ? 'default' : 'outline'}
-              onClick={() => setFilter('resolved')}
+              variant={filter === "resolved" ? "default" : "outline"}
+              onClick={() => setFilter("resolved")}
             >
-              Resolved ({comments.filter(c => c.is_resolved).length})
+              Resolved ({comments.filter((c) => c.is_resolved).length})
             </Button>
             <Button
               size="sm"
-              variant={filter === 'general' ? 'default' : 'outline'}
-              onClick={() => setFilter('general')}
+              variant={filter === "general" ? "default" : "outline"}
+              onClick={() => setFilter("general")}
             >
-              General ({comments.filter(c => c.section_id === null).length})
+              General ({comments.filter((c) => c.section_id === null).length})
             </Button>
             <Button
               size="sm"
-              variant={filter === 'section-specific' ? 'default' : 'outline'}
-              onClick={() => setFilter('section-specific')}
+              variant={filter === "section-specific" ? "default" : "outline"}
+              onClick={() => setFilter("section-specific")}
             >
-              Section-Specific ({comments.filter(c => c.section_id !== null).length})
+              Section-Specific (
+              {comments.filter((c) => c.section_id !== null).length})
             </Button>
           </div>
         </CardContent>
@@ -202,22 +253,32 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
       ) : (
         <div className="space-y-4">
           {filteredComments.map((comment) => (
-            <Card key={comment.id} className={comment.is_resolved ? "opacity-75" : ""}>
+            <Card
+              key={comment.id}
+              className={comment.is_resolved ? "opacity-75" : ""}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     {comment.section ? (
                       <div>
                         <CardTitle className="text-lg">
-                          {comment.section.course_code} - Section {comment.section.section_no}
+                          {comment.section.course_code} - Section{" "}
+                          {comment.section.section_no}
                         </CardTitle>
-                        <CardDescription>{comment.section.course_title}</CardDescription>
+                        <CardDescription>
+                          {comment.section.course_title}
+                        </CardDescription>
                       </div>
                     ) : (
-                      <CardTitle className="text-lg">General Schedule Feedback</CardTitle>
+                      <CardTitle className="text-lg">
+                        General Schedule Feedback
+                      </CardTitle>
                     )}
                     <div className="flex flex-wrap gap-2 pt-1">
-                      <Badge variant={comment.is_resolved ? "secondary" : "default"}>
+                      <Badge
+                        variant={comment.is_resolved ? "secondary" : "default"}
+                      >
                         {comment.is_resolved ? (
                           <>
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -288,21 +349,20 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm whitespace-pre-wrap">{comment.comment_text}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {comment.comment_text}
+                  </p>
                 )}
 
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <div>
-                    Submitted {format(new Date(comment.created_at), 'PPp')}
-                  </div>
+                  <div>Submitted {formatDate(comment.created_at, "PPp")}</div>
                   {comment.updated_at !== comment.created_at && (
-                    <div>
-                      Updated {format(new Date(comment.updated_at), 'PPp')}
-                    </div>
+                    <div>Updated {formatDate(comment.updated_at, "PPp")}</div>
                   )}
                   {comment.is_resolved && comment.resolver && (
                     <div className="text-green-600 dark:text-green-400">
-                      Resolved by {comment.resolver.name} on {format(new Date(comment.resolved_at!), 'PP')}
+                      Resolved by {comment.resolver.name} on{" "}
+                      {formatDate(comment.resolved_at, "PP")}
                     </div>
                   )}
                 </div>
@@ -313,12 +373,16 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deletingCommentId} onOpenChange={(open) => !open && setDeletingCommentId(null)}>
+      <Dialog
+        open={!!deletingCommentId}
+        onOpenChange={(open) => !open && setDeletingCommentId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Comment?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. The comment will be permanently deleted.
+              This action cannot be undone. The comment will be permanently
+              deleted.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -331,7 +395,9 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deletingCommentId && deleteComment(deletingCommentId)}
+              onClick={() =>
+                deletingCommentId && deleteComment(deletingCommentId)
+              }
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
@@ -342,4 +408,3 @@ export function ScheduleCommentList({ comments, onCommentUpdated }: ScheduleComm
     </div>
   );
 }
-

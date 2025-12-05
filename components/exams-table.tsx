@@ -1,22 +1,48 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Exam } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { useIsClient } from "@/hooks/use-mounted";
+
+// Lazy load heavy table components
+const Table = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.Table),
+  { ssr: false }
+);
+const TableBody = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableBody),
+  { ssr: false }
+);
+const TableCell = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableCell),
+  { ssr: false }
+);
+const TableHead = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHead),
+  { ssr: false }
+);
+const TableHeader = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHeader),
+  { ssr: false }
+);
+const TableRow = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableRow),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
+const Input = dynamic(
+  () => import("@/components/ui/input").then((mod) => mod.Input),
+  { ssr: false }
+);
 
 interface ExamsTableProps {
   exams: Exam[];
@@ -25,9 +51,24 @@ interface ExamsTableProps {
 
 export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
   const router = useRouter();
+  const isClient = useIsClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Helper to safely format dates only on client
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!isClient || !dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  };
 
   async function handleDelete(id: string, courseCode: string) {
     if (
@@ -146,15 +187,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                     <TableCell className="font-medium">
                       {exam.course_code}
                     </TableCell>
-                    <TableCell>
-                      {exam.date
-                        ? new Date(exam.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "N/A"}
-                    </TableCell>
+                    <TableCell>{formatDate(exam.date) || "N/A"}</TableCell>
                     <TableCell>
                       {exam.start_time
                         ? exam.start_time.substring(0, 5)

@@ -1,17 +1,27 @@
 /**
  * Schedules Endpoint
- * 
+ *
  * GET /api/v1/schedules?term_id=xxx - List schedules for a term
  * POST /api/v1/schedules - Create schedule (add section to term)
- * 
+ *
  * All authenticated users can view schedules.
  * Only scheduling role can create schedules.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateSchedules } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 5 minutes (300 seconds)
+// Schedule data needs relatively fresh data but can tolerate short cache
+export const revalidate = 300; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +42,8 @@ export async function GET(request: NextRequest) {
     // Uses idx_schedule_term_id index for filtering by term_id
     const { data, error } = await supabase
       .from("schedule")
-      .select(`
+      .select(
+        `
         *,
         term:term_id (
           id,
@@ -47,7 +58,8 @@ export async function GET(request: NextRequest) {
             title
           )
         )
-      `)
+      `
+      )
       .eq("term_id", termId)
       .order("created_at", { ascending: false });
 
@@ -55,7 +67,15 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return createSuccessResponse(data || [], 200);
+    const response = createSuccessResponse(data || [], 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 5 minutes on CDN
+    // stale-while-revalidate: Serve stale content for up to 1 hour while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=3600"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -133,7 +153,8 @@ export async function POST(request: NextRequest) {
         term_id,
         section_id,
       })
-      .select(`
+      .select(
+        `
         *,
         term:term_id (
           id,
@@ -148,16 +169,19 @@ export async function POST(request: NextRequest) {
             title
           )
         )
-      `)
+      `
+      )
       .single();
 
     if (error) {
       throw error;
     }
 
+    // Revalidate schedule-related caches after successful creation
+    revalidateSchedules();
+
     return createSuccessResponse(data, 201);
   } catch (error) {
     return handleApiError(error);
   }
 }
-

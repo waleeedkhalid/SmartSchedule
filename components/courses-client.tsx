@@ -1,22 +1,56 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { CourseForm } from "@/components/course-form";
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Course } from "@/lib/data/courses";
+
+// Lazy load heavy dialog components - only loaded when dialog opens
+const Dialog = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.Dialog),
+  { ssr: false }
+);
+const DialogContent = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogContent),
+  { ssr: false }
+);
+const DialogHeader = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogHeader),
+  { ssr: false }
+);
+const DialogTitle = dynamic(
+  () => import("@/components/ui/dialog").then((mod) => mod.DialogTitle),
+  { ssr: false }
+);
+
+// Lazy load form component - heavy with form fields
+const CourseForm = dynamic(
+  () => import("@/components/course-form").then((mod) => mod.CourseForm),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
+);
 
 interface CourseDialogContextType {
   openCreateDialog: () => void;
   openEditDialog: (course: Course) => void;
 }
 
-const CourseDialogContext = createContext<CourseDialogContextType | undefined>(undefined);
+const CourseDialogContext = createContext<CourseDialogContextType | undefined>(
+  undefined
+);
 
 export function useCourseDialog() {
   const context = useContext(CourseDialogContext);
@@ -65,7 +99,7 @@ export function CourseDialogProvider({ children }: CourseDialogProviderProps) {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? 'Edit Course' : 'Add New Course'}
+              {isEditing ? "Edit Course" : "Add New Course"}
             </DialogTitle>
           </DialogHeader>
           <CourseForm
@@ -79,4 +113,3 @@ export function CourseDialogProvider({ children }: CourseDialogProviderProps) {
     </CourseDialogContext.Provider>
   );
 }
-

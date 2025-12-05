@@ -38,26 +38,55 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { createClient } from "@/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { GraduationCap, CheckCircle } from "lucide-react";
+import { GraduationCap, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/lib/types/database";
+
+// Lazy load heavy Card and Select components
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardDescription = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardDescription),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
+const Select = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.Select),
+  { ssr: false }
+);
+const SelectContent = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectContent),
+  { ssr: false }
+);
+const SelectItem = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectItem),
+  { ssr: false }
+);
+const SelectTrigger = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectTrigger),
+  { ssr: false }
+);
+const SelectValue = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectValue),
+  { ssr: false }
+);
 
 type StudentProfileInsert =
   Database["public"]["Tables"]["student_profile"]["Insert"];
@@ -263,8 +292,10 @@ export function OnboardingForm({
 
     console.log("Form validated, starting submission...");
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Add timeout safeguard - if submission takes more than 30 seconds, reset button
+    // Add timeout safeguard - if submission takes more than 60 seconds, reset button
+    // Increased from 30s to 60s to handle slow connections
     const timeoutId: NodeJS.Timeout = setTimeout(() => {
       console.warn(
         "Onboarding submission taking too long, resetting button state"
@@ -276,7 +307,7 @@ export function OnboardingForm({
       toast.error(
         "Submission is taking longer than expected. Please try again."
       );
-    }, 30000);
+    }, 60000);
 
     // Create Supabase client for this operation
     let supabase;
@@ -361,6 +392,7 @@ export function OnboardingForm({
             }`;
           }
 
+          clearTimeout(timeoutId);
           setSubmitError(errMsg);
           toast.error(errMsg);
           setIsSubmitting(false);
@@ -382,6 +414,7 @@ export function OnboardingForm({
           if (authError) {
             console.error("Error getting auth user:", authError);
             const errMsg = `Failed to get user information: ${authError.message}. Please try again.`;
+            clearTimeout(timeoutId);
             setSubmitError(errMsg);
             toast.error(errMsg);
             setIsSubmitting(false);
@@ -394,6 +427,7 @@ export function OnboardingForm({
             );
             const errMsg =
               "Failed to get user email. Please try again or contact support.";
+            clearTimeout(timeoutId);
             setSubmitError(errMsg);
             toast.error(errMsg);
             setIsSubmitting(false);
@@ -447,6 +481,7 @@ export function OnboardingForm({
               const errMsg = `Failed to update faculty profile: ${
                 updateError.message || "Unknown error"
               }`;
+              clearTimeout(timeoutId);
               setSubmitError(errMsg);
               toast.error(errMsg);
               setIsSubmitting(false);
@@ -519,6 +554,7 @@ export function OnboardingForm({
                   const errMsg = `Failed to update faculty profile: ${
                     updateError.message || "Unknown error"
                   }`;
+                  clearTimeout(timeoutId);
                   setSubmitError(errMsg);
                   toast.error(errMsg);
                   setIsSubmitting(false);
@@ -532,6 +568,7 @@ export function OnboardingForm({
                 // Other error - show message
                 const errorMsg = profileError.message || "Unknown error";
                 console.error("Failed to create faculty profile:", errorMsg);
+                clearTimeout(timeoutId);
                 setSubmitError(`Failed to create faculty profile: ${errorMsg}`);
                 toast.error(`Failed to create faculty profile: ${errorMsg}`);
                 setIsSubmitting(false);
@@ -549,6 +586,7 @@ export function OnboardingForm({
           const errMsg = `Unexpected error: ${
             authErr instanceof Error ? authErr.message : "Unknown error"
           }`;
+          clearTimeout(timeoutId);
           setSubmitError(errMsg);
           toast.error(errMsg);
           setIsSubmitting(false);
@@ -614,6 +652,7 @@ export function OnboardingForm({
                 const errMsg = `Failed to create committee profile: ${
                   profileError.message || "Unknown error"
                 }`;
+                clearTimeout(timeoutId);
                 setSubmitError(errMsg);
                 toast.error(errMsg);
                 setIsSubmitting(false);
@@ -644,6 +683,7 @@ export function OnboardingForm({
                 errMsg = "Invalid user ID. Please log out and log back in.";
               }
 
+              clearTimeout(timeoutId);
               setSubmitError(errMsg);
               toast.error(errMsg);
               setIsSubmitting(false);
@@ -734,6 +774,7 @@ export function OnboardingForm({
       } else {
         console.error("Profile was not created, cannot complete onboarding");
         const errMsg = "Failed to create profile. Please try again.";
+        clearTimeout(timeoutId);
         setSubmitError(errMsg);
         toast.error(errMsg);
         setIsSubmitting(false);
@@ -982,7 +1023,7 @@ export function OnboardingForm({
           {/* Submit Button */}
           <div className="flex justify-end pt-6 border-t">
             <Button
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -992,18 +1033,8 @@ export function OnboardingForm({
                   return;
                 }
 
-                try {
-                  await handleSubmit(e);
-                } catch (error) {
-                  // Fallback error handler in case handleSubmit's try-catch misses something
-                  console.error("Unhandled error in handleSubmit:", error);
-                  toast.error(
-                    `Failed to submit: ${
-                      error instanceof Error ? error.message : "Unknown error"
-                    }`
-                  );
-                  setIsSubmitting(false);
-                }
+                // Call handleSubmit directly - it handles its own errors
+                handleSubmit(e);
               }}
               disabled={isSubmitting}
               className="min-w-[160px]"

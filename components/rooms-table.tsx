@@ -1,20 +1,39 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Room } from "@/lib/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getAuthHeader } from "@/lib/utils/client-auth";
+
+// Lazy load heavy table components
+const Table = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.Table),
+  { ssr: false }
+);
+const TableBody = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableBody),
+  { ssr: false }
+);
+const TableCell = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableCell),
+  { ssr: false }
+);
+const TableHead = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHead),
+  { ssr: false }
+);
+const TableHeader = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHeader),
+  { ssr: false }
+);
+const TableRow = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableRow),
+  { ssr: false }
+);
 
 interface RoomsTableProps {
   rooms: Room[];
@@ -32,22 +51,23 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
       const authHeader = await getAuthHeader();
 
       const response = await fetch(`/api/v1/rooms/${code}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': authHeader,
+          Authorization: authHeader,
         },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete room');
+        throw new Error(data.error || "Failed to delete room");
       }
 
       toast.success(`Room ${code} deleted successfully`);
       router.refresh();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete room';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to delete room";
       toast.error(errorMessage);
       console.error(error);
     }
@@ -77,20 +97,17 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
               <TableCell className="font-medium">{room.code}</TableCell>
               <TableCell>
                 <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${room.type === 'Lab'
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    room.type === "Lab"
                       ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
                       : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                    }`}
+                  }`}
                 >
                   {room.type}
                 </span>
               </TableCell>
               <TableCell className="text-right space-x-2">
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                >
+                <Button asChild variant="ghost" size="sm">
                   <Link href={`/dashboard/rooms/${room.code}/edit`}>
                     <Edit className="h-4 w-4" />
                   </Link>
@@ -110,4 +127,3 @@ export function RoomsTable({ rooms }: RoomsTableProps) {
     </div>
   );
 }
-

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { getAllExams, type Exam } from "@/lib/data/exams";
 import { getServerUser } from "@/lib/server-auth";
 import { createClient } from "@/supabase/server";
+import { DeleteAllExamsButton } from "@/components/delete-all-exams-button";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +127,7 @@ export default async function ExamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Exams</h1>
           <p className="text-muted-foreground mt-2">
@@ -138,12 +139,15 @@ export default async function ExamsPage() {
             {currentSemester.code})
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/exams/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Exam
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <DeleteAllExamsButton />
+          <Button asChild>
+            <Link href="/dashboard/exams/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Exam
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && (

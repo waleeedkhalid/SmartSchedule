@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
+import dynamic from "next/dynamic";
 import {
   Card,
   CardContent,
@@ -10,34 +11,51 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Calendar, TrendingUp } from "lucide-react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from "chart.js";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { BookOpen, Calendar, TrendingUp, Loader2 } from "lucide-react";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+// Lazy load Chart.js and react-chartjs-2 to reduce initial bundle size
+// Chart.js is a heavy library (~200KB) that should only load when charts are visible
+const Bar = dynamic(
+  () =>
+    import("react-chartjs-2").then((mod) => {
+      // Register Chart.js components when the module loads
+      import("chart.js").then((ChartJS) => {
+        ChartJS.Chart.register(
+          ChartJS.CategoryScale,
+          ChartJS.LinearScale,
+          ChartJS.BarElement,
+          ChartJS.LineElement,
+          ChartJS.PointElement,
+          ChartJS.ArcElement,
+          ChartJS.Title,
+          ChartJS.Tooltip,
+          ChartJS.Legend,
+          ChartJS.Filler
+        );
+      });
+      return mod.Bar;
+    }),
+  { ssr: false, loading: () => <ChartLoadingPlaceholder /> }
 );
+
+const Doughnut = dynamic(
+  () => import("react-chartjs-2").then((mod) => mod.Doughnut),
+  { ssr: false, loading: () => <ChartLoadingPlaceholder /> }
+);
+
+const Line = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
+  ssr: false,
+  loading: () => <ChartLoadingPlaceholder />,
+});
+
+// Loading placeholder for charts
+function ChartLoadingPlaceholder() {
+  return (
+    <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 interface ChartData {
   labels?: string[];
@@ -567,16 +585,8 @@ export function StudentDashboardCharts() {
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
               <Doughnut
-                data={
-                  enrollmentData as unknown as Parameters<
-                    typeof Doughnut
-                  >[0]["data"]
-                }
-                options={
-                  doughnutOptions as unknown as Parameters<
-                    typeof Doughnut
-                  >[0]["options"]
-                }
+                data={enrollmentData as any}
+                options={doughnutOptions as any}
               />
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
@@ -657,16 +667,8 @@ export function StudentDashboardCharts() {
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
               {weeklyScheduleData && (
                 <Bar
-                  data={
-                    weeklyScheduleData as unknown as Parameters<
-                      typeof Bar
-                    >[0]["data"]
-                  }
-                  options={
-                    chartOptions as unknown as Parameters<
-                      typeof Bar
-                    >[0]["options"]
-                  }
+                  data={weeklyScheduleData as any}
+                  options={chartOptions as any}
                 />
               )}
             </div>
@@ -707,16 +709,8 @@ export function StudentDashboardCharts() {
             <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
               {gradeTrendsData && (
                 <Line
-                  data={
-                    gradeTrendsData as unknown as Parameters<
-                      typeof Line
-                    >[0]["data"]
-                  }
-                  options={
-                    lineOptions as unknown as Parameters<
-                      typeof Line
-                    >[0]["options"]
-                  }
+                  data={gradeTrendsData as any}
+                  options={lineOptions as any}
                 />
               )}
             </div>
@@ -759,16 +753,8 @@ export function StudentDashboardCharts() {
             <div className="h-96 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-8 border border-pink-100">
               {electivePreferencesData && (
                 <Bar
-                  data={
-                    electivePreferencesData as unknown as Parameters<
-                      typeof Bar
-                    >[0]["data"]
-                  }
-                  options={
-                    horizontalBarOptions as unknown as Parameters<
-                      typeof Bar
-                    >[0]["options"]
-                  }
+                  data={electivePreferencesData as any}
+                  options={horizontalBarOptions as any}
                 />
               )}
             </div>

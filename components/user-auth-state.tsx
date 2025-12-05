@@ -109,13 +109,7 @@ export default function UserAuthState() {
 
   return (
     <div className="flex items-center gap-4">
-      {loading ? (
-        // Show loading state while checking authentication
-        <div className="flex items-center gap-2">
-          <Icons.spinner className="h-4 w-4 animate-spin text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Loading...</span>
-        </div>
-      ) : user ? (
+      {user ? (
         <DropdownMenu>
           <DropdownMenuTrigger disabled={isPending}>
             <Avatar className="relative">

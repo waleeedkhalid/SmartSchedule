@@ -22,7 +22,6 @@ import {
   Clock,
   FileText,
   Upload,
-  CheckSquare,
   MessageSquare,
 } from "lucide-react";
 
@@ -107,11 +106,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: Upload,
     },
     {
-      title: "Setup Check",
-      href: "/dashboard/setup-check",
-      icon: CheckSquare,
-    },
-    {
       title: "Scheduling Settings",
       href: "/dashboard/scheduling/settings",
       icon: Settings,
@@ -137,7 +131,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Rooms",
       href: "/dashboard/rooms",
       icon: MapPin,
-    }
+    },
   ],
   faculty: [
     {
@@ -182,7 +176,7 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/import-export",
       icon: Upload,
     },
-  ]
+  ],
 };
 
 export function Sidebar({ userRole, userName }: SidebarProps) {
@@ -203,7 +197,9 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
         <Link href="/dashboard" className="flex items-center group">
           <Logo size="md" />
         </Link>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">V1 SWE Department</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+          V1 SWE Department
+        </p>
       </div>
 
       <Separator className="bg-slate-200 dark:bg-slate-800" />
@@ -217,9 +213,14 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{userName}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+              {userName}
+            </p>
             <div className="flex items-center gap-1">
-              <Badge variant="secondary" className="text-xs capitalize bg-brand-blue-100 dark:bg-brand-blue-900 text-brand-blue-700 dark:text-brand-blue-300">
+              <Badge
+                variant="secondary"
+                className="text-xs capitalize bg-brand-blue-100 dark:bg-brand-blue-900 text-brand-blue-700 dark:text-brand-blue-300"
+              >
                 {userRole.replace("_", " ")}
               </Badge>
             </div>
@@ -249,7 +250,9 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
                 <Icon
                   className={cn(
                     "h-5 w-5 flex-shrink-0",
-                    isActive ? "text-brand-blue-600 dark:text-brand-blue-500" : ""
+                    isActive
+                      ? "text-brand-blue-600 dark:text-brand-blue-500"
+                      : ""
                   )}
                 />
                 <span className="flex-1">{item.title}</span>
@@ -279,30 +282,37 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
           type="button"
           onClick={async () => {
             try {
-              const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('auth_token='))
-                ?.split('=')[1] || 
-                (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
-              
-              await fetch('/api/v1/auth/logout', {
-                method: 'POST',
+              const token =
+                document.cookie
+                  .split("; ")
+                  .find((row) => row.startsWith("auth_token="))
+                  ?.split("=")[1] ||
+                (typeof window !== "undefined"
+                  ? localStorage.getItem("auth_token")
+                  : null);
+
+              await fetch("/api/v1/auth/logout", {
+                method: "POST",
                 headers: {
-                  'Authorization': token ? `Bearer ${token}` : '',
+                  Authorization: token ? `Bearer ${token}` : "",
                 },
               });
-              
+
               // Clear all cookies and localStorage using utility
-              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              const { performClientLogoutCleanup } = await import(
+                "@/lib/utils/cookie-utils"
+              );
               performClientLogoutCleanup();
-              
-              window.location.href = '/login';
+
+              window.location.href = "/login";
             } catch (error) {
-              console.error('Logout error:', error);
+              console.error("Logout error:", error);
               // Clear all cookies and localStorage even on error
-              const { performClientLogoutCleanup } = await import('@/lib/utils/cookie-utils');
+              const { performClientLogoutCleanup } = await import(
+                "@/lib/utils/cookie-utils"
+              );
               performClientLogoutCleanup();
-              window.location.href = '/login';
+              window.location.href = "/login";
             }
           }}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-200"
@@ -314,4 +324,3 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
     </div>
   );
 }
-

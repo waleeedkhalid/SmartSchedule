@@ -1,17 +1,27 @@
 /**
  * Academic Terms Endpoint
- * 
+ *
  * GET /api/v1/academic-terms - List all academic terms
  * POST /api/v1/academic-terms - Create a new academic term
- * 
+ *
  * All authenticated users can view terms.
  * Only scheduling role can create terms.
  */
 
 import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
-import { createSuccessResponse, handleApiError, createErrorResponse, ErrorCodes } from "@/lib/api/error-handler";
+import {
+  createSuccessResponse,
+  handleApiError,
+  createErrorResponse,
+  ErrorCodes,
+} from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { revalidateAcademicTerms } from "@/lib/cache/revalidation";
+
+// OPTIMIZATION: Cache API route responses for 1 hour (3600 seconds)
+// Academic terms rarely change and are safe to cache longer
+export const revalidate = 3600; // 1 hour
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,10 +49,22 @@ export async function GET(request: NextRequest) {
 
     // If currentOnly is true, return only the most recent active term
     if (currentOnly && data && data.length > 0) {
-      return createSuccessResponse([data[0]], 200);
+      const response = createSuccessResponse([data[0]], 200);
+      // OPTIMIZATION: Add cache headers for current term queries
+      response.headers.set(
+        "Cache-Control",
+        "public, s-maxage=3600, stale-while-revalidate=86400"
+      );
+      return response;
     }
 
-    return createSuccessResponse(data || [], 200);
+    const response = createSuccessResponse(data || [], 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=3600, stale-while-revalidate=86400"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -104,4 +126,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

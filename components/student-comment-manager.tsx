@@ -1,18 +1,18 @@
 /**
  * Student Comment Manager Component
- * 
+ *
  * Purpose: Dual-layer comment system for schedule feedback
- * 
+ *
  * Comment Types:
  * 1. General Feedback: Overall schedule concerns (section_id = null)
  * 2. Section-Specific: Feedback on particular classes (section_id set)
- * 
+ *
  * Features:
  * - Tabbed interface (General / Section Comments)
  * - Create, edit, delete comments (before resolution)
  * - View resolved comments with resolver info
  * - Real-time feedback status
- * 
+ *
  * Permissions:
  * - Students can edit/delete own unresolved comments
  * - Once resolved by staff, comments become read-only
@@ -21,24 +21,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  MessageSquare, 
-  Send, 
-  Edit2, 
-  Trash2, 
+import {
+  MessageSquare,
+  Send,
+  Edit2,
+  Trash2,
   CheckCircle,
   AlertCircle,
-  X
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 import { cachedFetch, CacheTTL, apiCache } from "@/lib/utils/api-cache";
+import { useIsClient } from "@/hooks/use-mounted";
 
 interface Comment {
   id: string;
@@ -61,6 +68,7 @@ interface Comment {
 
 export function StudentCommentManager() {
   const [comments, setComments] = useState<Comment[]>([]);
+  const isClient = useIsClient();
   const [loading, setLoading] = useState(true);
   const [newCommentText, setNewCommentText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -81,18 +89,18 @@ export function StudentCommentManager() {
       const authHeader = await getAuthHeader();
       // Cache comments for 5 minutes
       const data = await cachedFetch<{ comments: Comment[] }>(
-        '/api/student/comments',
+        "/api/student/comments",
         {
           headers: authHeader ? { Authorization: authHeader } : {},
         },
         undefined,
         CacheTTL.MEDIUM
       );
-      
+
       setComments(data.comments || []);
     } catch (error) {
-      console.error('Error fetching comments:', error);
-      toast.error('Failed to load comments');
+      console.error("Error fetching comments:", error);
+      toast.error("Failed to load comments");
     } finally {
       setLoading(false);
     }
@@ -103,20 +111,20 @@ export function StudentCommentManager() {
    */
   async function handleCreateComment() {
     if (!newCommentText.trim()) {
-      toast.error('Please enter a comment');
+      toast.error("Please enter a comment");
       return;
     }
 
     if (newCommentText.length > 2000) {
-      toast.error('Comment is too long (max 2000 characters)');
+      toast.error("Comment is too long (max 2000 characters)");
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/student/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/student/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           comment_text: newCommentText,
           section_id: null, // General comment
@@ -124,18 +132,18 @@ export function StudentCommentManager() {
       });
 
       if (res.ok) {
-        toast.success('Comment submitted');
-        setNewCommentText('');
+        toast.success("Comment submitted");
+        setNewCommentText("");
         // Invalidate cache after creating comment
-        apiCache.invalidatePattern('/api/student/comments');
+        apiCache.invalidatePattern("/api/student/comments");
         fetchComments(); // Refresh list
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Failed to submit comment');
+        toast.error(data.error || "Failed to submit comment");
       }
     } catch (error) {
-      console.error('Error creating comment:', error);
-      toast.error('Failed to submit comment');
+      console.error("Error creating comment:", error);
+      toast.error("Failed to submit comment");
     } finally {
       setSubmitting(false);
     }
@@ -146,15 +154,15 @@ export function StudentCommentManager() {
    */
   async function handleUpdateComment(commentId: string) {
     if (!editText.trim()) {
-      toast.error('Comment cannot be empty');
+      toast.error("Comment cannot be empty");
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/student/comments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/student/comments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           comment_id: commentId,
           comment_text: editText,
@@ -162,19 +170,19 @@ export function StudentCommentManager() {
       });
 
       if (res.ok) {
-        toast.success('Comment updated');
+        toast.success("Comment updated");
         setEditingId(null);
-        setEditText('');
+        setEditText("");
         // Invalidate cache after updating comment
-        apiCache.invalidatePattern('/api/student/comments');
+        apiCache.invalidatePattern("/api/student/comments");
         fetchComments();
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Failed to update comment');
+        toast.error(data.error || "Failed to update comment");
       }
     } catch (error) {
-      console.error('Error updating comment:', error);
-      toast.error('Failed to update comment');
+      console.error("Error updating comment:", error);
+      toast.error("Failed to update comment");
     } finally {
       setSubmitting(false);
     }
@@ -184,28 +192,28 @@ export function StudentCommentManager() {
    * Delete a comment
    */
   async function handleDeleteComment(commentId: string) {
-    if (!confirm('Are you sure you want to delete this comment?')) {
+    if (!confirm("Are you sure you want to delete this comment?")) {
       return;
     }
 
     setSubmitting(true);
     try {
       const res = await fetch(`/api/student/comments?id=${commentId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (res.ok) {
-        toast.success('Comment deleted');
+        toast.success("Comment deleted");
         // Invalidate cache after deleting comment
-        apiCache.invalidatePattern('/api/student/comments');
+        apiCache.invalidatePattern("/api/student/comments");
         fetchComments();
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Failed to delete comment');
+        toast.error(data.error || "Failed to delete comment");
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast.error('Failed to delete comment');
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
     } finally {
       setSubmitting(false);
     }
@@ -224,26 +232,31 @@ export function StudentCommentManager() {
    */
   function cancelEdit() {
     setEditingId(null);
-    setEditText('');
+    setEditText("");
   }
 
   /**
-   * Format date for display
+   * Format date for display - only format on client to avoid hydration mismatch
    */
   function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    if (!isClient) return "";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
   }
 
   // Separate general and section-specific comments
-  const generalComments = comments.filter(c => c.section_id === null);
-  const sectionComments = comments.filter(c => c.section_id !== null);
+  const generalComments = comments.filter((c) => c.section_id === null);
+  const sectionComments = comments.filter((c) => c.section_id !== null);
 
   if (loading) {
     return (
@@ -289,7 +302,8 @@ export function StudentCommentManager() {
             <CardHeader>
               <CardTitle className="text-base">Post General Feedback</CardTitle>
               <CardDescription>
-                Share overall thoughts about your schedule (course load, time distribution, etc.)
+                Share overall thoughts about your schedule (course load, time
+                distribution, etc.)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -325,23 +339,34 @@ export function StudentCommentManager() {
                 </CardContent>
               </Card>
             ) : (
-              generalComments.map(comment => (
-                <Card key={comment.id} className={comment.is_resolved ? 'bg-gray-50' : ''}>
+              generalComments.map((comment) => (
+                <Card
+                  key={comment.id}
+                  className={comment.is_resolved ? "bg-gray-50" : ""}
+                >
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant={comment.is_resolved ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={
+                            comment.is_resolved ? "default" : "secondary"
+                          }
+                        >
                           {comment.is_resolved ? (
-                            <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" /> Resolved
+                            </>
                           ) : (
-                            <><AlertCircle className="h-3 w-3 mr-1" /> Pending</>
+                            <>
+                              <AlertCircle className="h-3 w-3 mr-1" /> Pending
+                            </>
                           )}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(comment.created_at)}
                         </span>
                       </div>
-                      
+
                       {!comment.is_resolved && editingId !== comment.id && (
                         <div className="flex gap-2">
                           <Button
@@ -389,13 +414,16 @@ export function StudentCommentManager() {
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm whitespace-pre-wrap">{comment.comment_text}</p>
-                        
+                        <p className="text-sm whitespace-pre-wrap">
+                          {comment.comment_text}
+                        </p>
+
                         {comment.is_resolved && comment.resolver && (
                           <Alert className="mt-3">
                             <CheckCircle className="h-4 w-4" />
                             <AlertDescription className="text-xs">
-                              Resolved by {comment.resolver.name} on {formatDate(comment.resolved_at!)}
+                              Resolved by {comment.resolver.name} on{" "}
+                              {formatDate(comment.resolved_at!)}
                             </AlertDescription>
                           </Alert>
                         )}
@@ -413,8 +441,9 @@ export function StudentCommentManager() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Section-specific comments allow you to provide feedback on individual classes.
-              This feature will be fully functional once you&apos;re enrolled in sections.
+              Section-specific comments allow you to provide feedback on
+              individual classes. This feature will be fully functional once
+              you&apos;re enrolled in sections.
             </AlertDescription>
           </Alert>
 
@@ -427,17 +456,22 @@ export function StudentCommentManager() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {sectionComments.map(comment => (
+              {sectionComments.map((comment) => (
                 <Card key={comment.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold">
-                            {comment.section?.course_code} {comment.section?.section_no}
+                            {comment.section?.course_code}{" "}
+                            {comment.section?.section_no}
                           </span>
-                          <Badge variant={comment.is_resolved ? 'default' : 'secondary'}>
-                            {comment.is_resolved ? 'Resolved' : 'Pending'}
+                          <Badge
+                            variant={
+                              comment.is_resolved ? "default" : "secondary"
+                            }
+                          >
+                            {comment.is_resolved ? "Resolved" : "Pending"}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -459,4 +493,3 @@ export function StudentCommentManager() {
     </div>
   );
 }
-

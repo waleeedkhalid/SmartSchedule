@@ -64,9 +64,13 @@ export const getTeachingLoadDashboardData = cache(
       // Get instructors count
       supabase
         .from("faculty_profile")
-        .select("id", { count: "exact", head: true }),
+        .select("id", { count: "exact", head: true })
+        .eq("department", "SWE"),
       // Get sections count
-      supabase.from("section").select("*", { count: "exact", head: true }),
+      supabase
+        .from("section")
+        .select("*", { count: "exact", head: true })
+        .like("course_code", "SWE%"),
       // Get courses count
       supabase.from("course").select("*", { count: "exact", head: true }),
       // Get current active term
@@ -81,6 +85,7 @@ export const getTeachingLoadDashboardData = cache(
       supabase
         .from("faculty_profile")
         .select("id, user_id, name, email")
+        .eq("department", "SWE")
         .order("name", { ascending: true }),
       // Get rooms list for table
       supabase
@@ -103,12 +108,17 @@ export const getTeachingLoadDashboardData = cache(
     }
 
     // Build sections query with related data
-    let sectionsQuery = supabase.from("section").select(`
+    let sectionsQuery = supabase
+      .from("section")
+      .select(
+        `
       *,
       course:course!section_course_code_fkey(code, title, credits),
       instructor:faculty_profile!section_instructor_id_fkey(id, user_id, name, email),
       room:room!section_room_code_fkey(code, type)
-    `);
+    `
+      )
+      .like("course_code", "SWE%");
 
     if (currentTermResult.data && sectionIds && sectionIds.length > 0) {
       sectionsQuery = sectionsQuery.in("id", sectionIds);

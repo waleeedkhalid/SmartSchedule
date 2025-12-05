@@ -23,6 +23,10 @@ import {
   revalidateSchedules,
 } from "@/lib/cache/revalidation";
 
+// OPTIMIZATION: Cache API route responses for 5 minutes (300 seconds)
+// Sections data changes more frequently than courses due to scheduling updates
+export const revalidate = 300; // 5 minutes
+
 // Type for section query result with relations
 type SectionWithRelations = Database["public"]["Tables"]["section"]["Row"] & {
   course: {
@@ -192,7 +196,15 @@ export async function GET(request: NextRequest) {
         : null,
     }));
 
-    return createSuccessResponse(sections, 200);
+    const response = createSuccessResponse(sections, 200);
+    // OPTIMIZATION: Add cache headers for browser/CDN caching
+    // s-maxage: Cache for 5 minutes on CDN
+    // stale-while-revalidate: Serve stale content for up to 1 hour while revalidating
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=3600"
+    );
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
@@ -383,6 +395,85 @@ export async function POST(request: NextRequest) {
     }
 
     return createSuccessResponse(section, 201);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Authenticate and check role
+    const user = await authenticateRequest(request);
+    requireRole(user, ["scheduling", "teaching_load"]);
+
+    const supabase = await createClient();
+
+    // Get all section ids
+    const { data: sections, error: fetchError } = await supabase
+      .from("section")
+      .select("id");
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    const sectionIds = (sections || []).map((s) => s.id).filter(Boolean);
+
+    if (sectionIds.length === 0) {
+      return createSuccessResponse(
+        { message: "No sections to delete", deleted: 0 },
+        200
+      );
+    }
+
+    // Prevent deletion if enrollments exist
+    const { count: enrollmentCount, error: enrollmentsError } = await supabase
+      .from("student_enrollment")
+      .select("id", { count: "exact", head: true })
+      .in("section_id", sectionIds);
+
+    if (enrollmentsError) {
+      throw enrollmentsError;
+    }
+
+    if ((enrollmentCount || 0) > 0) {
+      return createErrorResponse(
+        409,
+        ErrorCodes.VALIDATION_ERROR,
+        "Cannot delete sections because enrollments exist. Remove enrollments first."
+      );
+    }
+
+    // Delete schedule rows first to avoid foreign key issues
+    const { error: scheduleError } = await supabase
+      .from("schedule")
+      .delete()
+      .in("section_id", sectionIds);
+
+    if (scheduleError) {
+      throw scheduleError;
+    }
+
+    // Delete sections
+    const { error: deleteError } = await supabase
+      .from("section")
+      .delete()
+      .in("id", sectionIds);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    revalidateSections();
+    revalidateSchedules();
+
+    return createSuccessResponse(
+      {
+        message: "All sections deleted successfully",
+        deleted: sectionIds.length,
+      },
+      200
+    );
   } catch (error) {
     return handleApiError(error);
   }

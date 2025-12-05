@@ -1,27 +1,62 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { Database } from "@/lib/types/database";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Edit, Save, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeader } from "@/lib/utils/client-auth";
+
+// Lazy load heavy table and select components
+const Table = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.Table),
+  { ssr: false }
+);
+const TableBody = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableBody),
+  { ssr: false }
+);
+const TableCell = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableCell),
+  { ssr: false }
+);
+const TableHead = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHead),
+  { ssr: false }
+);
+const TableHeader = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableHeader),
+  { ssr: false }
+);
+const TableRow = dynamic(
+  () => import("@/components/ui/table").then((mod) => mod.TableRow),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
+const Select = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.Select),
+  { ssr: false }
+);
+const SelectContent = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectContent),
+  { ssr: false }
+);
+const SelectItem = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectItem),
+  { ssr: false }
+);
+const SelectTrigger = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectTrigger),
+  { ssr: false }
+);
+const SelectValue = dynamic(
+  () => import("@/components/ui/select").then((mod) => mod.SelectValue),
+  { ssr: false }
+);
 
 type Section = Database["public"]["Tables"]["section"]["Row"] & {
   course?: { code: string; title: string; credits: number } | null;

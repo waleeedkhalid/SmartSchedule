@@ -1,8 +1,8 @@
 /**
  * Authentication Logout Endpoint
- * 
+ *
  * POST /api/v1/auth/logout
- * 
+ *
  * Invalidates the user's session and clears authentication cookies.
  * This endpoint works identically for all clients - they just need to
  * send the Authorization header with their token.
@@ -49,27 +49,44 @@ export async function POST(request: NextRequest) {
     // Clear all authentication cookies (custom and Supabase)
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
-    
+
     // Get all cookies to find Supabase cookies
     const cookiesToClear: string[] = [...AUTH_COOKIE_NAMES];
-    
+
     // Also find any cookies that match Supabase patterns
-    allCookies.forEach(cookie => {
-      if ((cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) && 
-          !cookiesToClear.includes(cookie.name)) {
+    allCookies.forEach((cookie) => {
+      if (
+        (cookie.name.startsWith("sb-") || cookie.name.includes("supabase")) &&
+        !cookiesToClear.includes(cookie.name)
+      ) {
         cookiesToClear.push(cookie.name);
       }
     });
-    
+
+    // NEW AUTH: Also delete the application session cookie
+    if (!cookiesToClear.includes("session")) {
+      cookiesToClear.push("session");
+    }
+
+    // NEW AUTH: Delete session using the session module if enabled
+    if (process.env.USE_NEW_AUTH === "true") {
+      try {
+        const { deleteSession } = await import("@/lib/session");
+        await deleteSession();
+      } catch {
+        // If deleteSession fails, we still continue with manual cleanup
+      }
+    }
+
     // Clear each cookie by deleting and setting to empty with maxAge: 0
-    cookiesToClear.forEach(cookieName => {
+    cookiesToClear.forEach((cookieName) => {
       cookieStore.delete(cookieName);
-      cookieStore.set(cookieName, '', {
+      cookieStore.set(cookieName, "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 0,
-        path: '/',
+        path: "/",
       });
     });
 
@@ -81,16 +98,16 @@ export async function POST(request: NextRequest) {
 
     // Create response with cleared cookies using createSuccessResponse
     const nextResponse = createSuccessResponse(response, 200);
-    
+
     // Clear all cookies in response headers (ensures browser removes them)
-    cookiesToClear.forEach(cookieName => {
+    cookiesToClear.forEach((cookieName) => {
       nextResponse.cookies.delete(cookieName);
-      nextResponse.cookies.set(cookieName, '', {
+      nextResponse.cookies.set(cookieName, "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 0,
-        path: '/',
+        path: "/",
       });
     });
 
@@ -99,4 +116,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,15 +16,35 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Exam } from "@/lib/types";
 import { Course } from "@/lib/data/courses";
 import { Room } from "@/lib/data/rooms";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+
+// Lazy load heavy UI components
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => mod.Badge),
+  { ssr: false }
+);
 
 const formSchema = z.object({
   course_code: z.string().min(1, "Course is required"),

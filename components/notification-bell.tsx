@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useRecentNotifications, useUnreadNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/use-notifications'
 import { format } from 'date-fns'
+import { useIsClient } from '@/hooks/use-mounted'
 
 interface Notification {
 	id: string
@@ -122,6 +123,7 @@ function getNotificationLink(type: string): string | null {
 export function NotificationBell() {
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
+	const isClient = useIsClient()
 
 	const { data: recentNotifications = [], isLoading } = useRecentNotifications()
 	const { data: unreadNotifications = [] } = useUnreadNotifications()
@@ -129,6 +131,16 @@ export function NotificationBell() {
 	const markAllAsRead = useMarkAllAsRead()
 
 	const unreadCount = unreadNotifications.length
+
+	// Helper to safely format dates only on client
+	const formatDate = (dateStr: string | null | undefined): string => {
+		if (!isClient || !dateStr) return ''
+		try {
+			return format(new Date(dateStr), 'MMM d, h:mm a')
+		} catch {
+			return ''
+		}
+	}
 
 	function handleNotificationClick(notification: Notification) {
 		if (!notification.read_at) {
@@ -233,16 +245,7 @@ export function NotificationBell() {
 												{getNotificationDescription(notification.type, notification.payload)}
 											</p>
 											<p className="text-xs text-muted-foreground mt-1">
-												{notification.created_at
-													? (() => {
-														try {
-															return format(new Date(notification.created_at), 'MMM d, h:mm a')
-														} catch {
-															return 'Just now'
-														}
-													})()
-													: 'Just now'
-												}
+												{formatDate(notification.created_at)}
 											</p>
 										</div>
 									</DropdownMenuItem>

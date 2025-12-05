@@ -3,10 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useSectionDialog } from "@/components/sections-client";
+import { DeleteAllSectionsButton } from "@/components/delete-all-sections-button";
 
 export function SectionsHeader() {
   const { openCreateDialog } = useSectionDialog();
-  
+
   return (
     <div className="flex items-center justify-between mb-8">
       <div>
@@ -17,11 +18,13 @@ export function SectionsHeader() {
           Manage course sections with meeting patterns
         </p>
       </div>
-      <Button onClick={openCreateDialog}>
-        <Plus className="mr-2 h-4 w-4" />
-        Add Section
-      </Button>
+      <div className="flex items-center gap-2">
+        <DeleteAllSectionsButton />
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Section
+        </Button>
+      </div>
     </div>
   );
 }
-

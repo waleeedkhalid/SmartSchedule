@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,7 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Room } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -23,9 +23,27 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getAuthHeader } from "@/lib/utils/client-auth";
 
+// Lazy load heavy Card components
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.Card),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardContent),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardHeader),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () => import("@/components/ui/card").then((mod) => mod.CardTitle),
+  { ssr: false }
+);
+
 const formSchema = z.object({
   code: z.string().min(1).max(20),
-  type: z.enum(['Lecture', 'Lab']),
+  type: z.enum(["Lecture", "Lab"]),
 });
 
 interface RoomFormProps {
@@ -39,13 +57,15 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: room ? {
-      code: room.code,
-      type: room.type,
-    } : {
-      code: "",
-      type: 'Lecture',
-    },
+    defaultValues: room
+      ? {
+          code: room.code,
+          type: room.type,
+        }
+      : {
+          code: "",
+          type: "Lecture",
+        },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -53,17 +73,15 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
     try {
       const authHeader = await getAuthHeader();
 
-      const url = isEditing
-        ? `/api/v1/rooms/${room?.code}`
-        : '/api/v1/rooms';
+      const url = isEditing ? `/api/v1/rooms/${room?.code}` : "/api/v1/rooms";
 
-      const method = isEditing ? 'PUT' : 'POST';
+      const method = isEditing ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader,
+          "Content-Type": "application/json",
+          Authorization: authHeader,
         },
         body: JSON.stringify(values),
       });
@@ -71,14 +89,19 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Failed to ${isEditing ? 'update' : 'create'} room`);
+        throw new Error(
+          data.error || `Failed to ${isEditing ? "update" : "create"} room`
+        );
       }
 
-      toast.success(`Room ${isEditing ? 'updated' : 'created'} successfully`);
+      toast.success(`Room ${isEditing ? "updated" : "created"} successfully`);
       router.push("/dashboard/rooms");
       router.refresh();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} room`;
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditing ? "update" : "create"} room`;
       toast.error(errorMessage);
       console.error(error);
     } finally {
@@ -99,7 +122,7 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{isEditing ? 'Edit Room' : 'Add New Room'}</CardTitle>
+          <CardTitle>{isEditing ? "Edit Room" : "Add New Room"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -111,7 +134,11 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
                   <FormItem>
                     <FormLabel>Room Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="A101" {...field} disabled={isEditing} />
+                      <Input
+                        placeholder="A101"
+                        {...field}
+                        disabled={isEditing}
+                      />
                     </FormControl>
                     <FormDescription>
                       Unique identifier for the room (e.g., A101, LAB-B204)
@@ -145,11 +172,19 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
               />
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : isEditing ? "Update Room" : "Create Room"}
+                  {isLoading
+                    ? "Saving..."
+                    : isEditing
+                    ? "Update Room"
+                    : "Create Room"}
                 </Button>
               </div>
             </form>
@@ -159,4 +194,3 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
     </div>
   );
 }
-

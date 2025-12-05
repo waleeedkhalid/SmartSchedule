@@ -5,24 +5,27 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { ErrorBoundary } from "react-error-boundary";
 
+// Initialize Chart.js with all required elements before any charts render
+import "@/lib/chartjs-setup";
+
 interface Props {
   children: React.ReactNode;
 }
 
 /**
  * Client Providers - Root-level providers for React Query and Auth
- * 
+ *
  * This component MUST be placed in the root layout (app/layout.tsx) to ensure:
  * - Single instance of QueryClient (prevents cache loss on navigation)
  * - Single instance of AuthContext (prevents nested provider issues)
  * - Consistent state across all pages and components
- * 
+ *
  * Architecture:
  * - Creates the client boundary for React Query and Auth Context
  * - Only the component tree below this boundary becomes client-side
  * - This is the standard pattern for Next.js App Router with React Query
  * - Wrapped in ErrorBoundary to prevent _rsc loops from uncaught errors
- * 
+ *
  * Production React Query Config:
  * - retry: 1 - Don't retry immediately on error (fails fast)
  * - staleTime: 60 * 1000 - Data remains fresh for 1 minute
@@ -58,8 +61,8 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
           💥 Application Initialization Failed
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-4">
-          A critical error occurred during the initial setup. This is often due to 
-          missing configuration or environment variables.
+          A critical error occurred during the initial setup. This is often due
+          to missing configuration or environment variables.
         </p>
         <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm text-left overflow-auto mb-4">
           {error.message}

@@ -1,39 +1,76 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, Users, TrendingUp, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  RadialLinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Bar, Doughnut, Line, Radar } from 'react-chartjs-2';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  BookOpen,
+  Users,
+  TrendingUp,
+  Clock,
+  Calendar,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  RadialLinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+// Lazy load Chart.js and react-chartjs-2 to reduce initial bundle size
+// Chart.js is a heavy library (~200KB) that should only load when charts are visible
+const Bar = dynamic(
+  () =>
+    import("react-chartjs-2").then((mod) => {
+      // Register Chart.js components when the module loads
+      import("chart.js").then((ChartJS) => {
+        ChartJS.Chart.register(
+          ChartJS.CategoryScale,
+          ChartJS.LinearScale,
+          ChartJS.BarElement,
+          ChartJS.LineElement,
+          ChartJS.PointElement,
+          ChartJS.ArcElement,
+          ChartJS.RadialLinearScale,
+          ChartJS.Title,
+          ChartJS.Tooltip,
+          ChartJS.Legend,
+          ChartJS.Filler
+        );
+      });
+      return mod.Bar;
+    }),
+  { ssr: false, loading: () => <ChartLoadingPlaceholder /> }
 );
+
+const Doughnut = dynamic(
+  () => import("react-chartjs-2").then((mod) => mod.Doughnut),
+  { ssr: false, loading: () => <ChartLoadingPlaceholder /> }
+);
+
+const Line = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
+  ssr: false,
+  loading: () => <ChartLoadingPlaceholder />,
+});
+
+const Radar = dynamic(
+  () => import("react-chartjs-2").then((mod) => mod.Radar),
+  { ssr: false, loading: () => <ChartLoadingPlaceholder /> }
+);
+
+// Loading placeholder for charts
+function ChartLoadingPlaceholder() {
+  return (
+    <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 interface FacultyStatsResponse {
   stats: {
@@ -74,184 +111,160 @@ interface FacultyStatsResponse {
   }[];
 }
 
+/**
+ * Fetch faculty stats from API
+ * Separated from component for use with React Query
+ */
+async function fetchFacultyStats(): Promise<FacultyStatsResponse> {
+  const response = await fetch("/api/v1/faculty/stats");
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Please log in to view your dashboard");
+    }
+    if (response.status === 403) {
+      throw new Error("Access denied. This page is for faculty members only.");
+    }
+    throw new Error("Failed to load faculty statistics");
+  }
+
+  return response.json();
+}
+
 export function FacultyDashboardCharts() {
   const [isMounted, setIsMounted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [teachingLoadData, setTeachingLoadData] = useState<{
-    labels: string[];
-    datasets: {
-      label: string;
-      data: number[];
-      backgroundColor: string[];
-      borderColor: string[];
-      borderWidth: number;
-      borderRadius: number;
-    }[];
-  } | null>(null);
-  const [enrollmentData, setEnrollmentData] = useState<{
-    labels: string[];
-    datasets: {
-      data: number[];
-      backgroundColor: string[];
-      borderColor: string;
-      borderWidth: number;
-      hoverOffset: number;
-    }[];
-  } | null>(null);
-  const [weeklyScheduleData, setWeeklyScheduleData] = useState<{
-    labels: string[];
-    datasets: {
-      label: string;
-      data: number[];
-      borderColor: string;
-      backgroundColor: string;
-      borderWidth: number;
-      fill: boolean;
-      tension: number;
-      pointBackgroundColor: string;
-      pointBorderColor: string;
-      pointBorderWidth: number;
-      pointRadius: number;
-      pointHoverRadius: number;
-    }[];
-  } | null>(null);
-  const [studentPerformanceData, setStudentPerformanceData] = useState<{
-    labels: string[];
-    datasets: {
-      label: string;
-      data: number[];
-      backgroundColor: string;
-      borderColor: string;
-      borderWidth: number;
-      pointBackgroundColor: string;
-      pointBorderColor: string;
-      pointBorderWidth: number;
-      pointRadius: number;
-      pointHoverRadius: number;
-    }[];
-  } | null>(null);
+
+  // Use React Query for data fetching with automatic caching
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["faculty-stats"],
+    queryFn: fetchFacultyStats,
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: true,
+    enabled: isMounted, // Only fetch when mounted
+  });
+
+  // Process chart data using useMemo for performance
+  const chartData = useMemo(() => {
+    if (!data) return null;
+
+    const courseCodes = data.teachingLoad.map((t) => t.course_code);
+    const colors = [
+      "rgba(59, 130, 246, 0.8)",
+      "rgba(139, 92, 246, 0.8)",
+      "rgba(236, 72, 153, 0.8)",
+      "rgba(34, 197, 94, 0.8)",
+      "rgba(251, 146, 60, 0.8)",
+      "rgba(20, 184, 166, 0.8)",
+    ];
+    const borderColors = [
+      "rgb(59, 130, 246)",
+      "rgb(139, 92, 246)",
+      "rgb(236, 72, 153)",
+      "rgb(34, 197, 94)",
+      "rgb(251, 146, 60)",
+      "rgb(20, 184, 166)",
+    ];
+
+    // Teaching load by course (Bar)
+    const teachingLoadData = {
+      labels: courseCodes,
+      datasets: [
+        {
+          label: "Sections",
+          data: data.teachingLoad.map((t) => t.sections),
+          backgroundColor: colors.slice(0, courseCodes.length),
+          borderColor: borderColors.slice(0, courseCodes.length),
+          borderWidth: 2,
+          borderRadius: 8,
+        },
+      ],
+    };
+
+    // Enrollment status (Doughnut)
+    const enrollmentData = {
+      labels: ["Enrolled", "Available"],
+      datasets: [
+        {
+          data: [data.enrollment.enrolled, data.enrollment.available],
+          backgroundColor: [
+            "rgba(34, 197, 94, 0.85)",
+            "rgba(226, 232, 240, 0.85)",
+          ],
+          borderColor: "#ffffff",
+          borderWidth: 3,
+          hoverOffset: 8,
+        },
+      ],
+    };
+
+    // Weekly schedule (Line)
+    const weeklyScheduleData = {
+      labels: data.weeklySchedule.map((w) => w.day),
+      datasets: [
+        {
+          label: "Teaching Hours",
+          data: data.weeklySchedule.map((w) => w.hours),
+          borderColor: "rgb(147, 51, 234)",
+          backgroundColor: "rgba(147, 51, 234, 0.15)",
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: "rgb(147, 51, 234)",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 3,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        },
+      ],
+    };
+
+    // Student performance (Radar) - using consistent values based on course codes
+    const performanceLabels =
+      courseCodes.length > 0 ? [...courseCodes, "Overall"] : ["No Sections"];
+    // Generate stable performance values based on course code hash
+    const performanceData =
+      courseCodes.length > 0
+        ? [
+            ...courseCodes.map((code) => {
+              // Simple hash to generate a stable value between 75-95
+              const hash = code
+                .split("")
+                .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              return 75 + (hash % 20);
+            }),
+            80,
+          ]
+        : [0];
+
+    const studentPerformanceData = {
+      labels: performanceLabels,
+      datasets: [
+        {
+          label: "Average Performance",
+          data: performanceData,
+          backgroundColor: "rgba(59, 130, 246, 0.25)",
+          borderColor: "rgb(59, 130, 246)",
+          borderWidth: 3,
+          pointBackgroundColor: "rgb(59, 130, 246)",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 3,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        },
+      ],
+    };
+
+    return {
+      teachingLoadData,
+      enrollmentData,
+      weeklyScheduleData,
+      studentPerformanceData,
+    };
+  }, [data]);
 
   useEffect(() => {
     setIsMounted(true);
-
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response = await fetch('/api/v1/faculty/stats');
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            setError('Please log in to view your dashboard');
-            return;
-          }
-          if (response.status === 403) {
-            setError('Access denied. This page is for faculty members only.');
-            return;
-          }
-          throw new Error('Failed to load faculty statistics');
-        }
-
-        const data: FacultyStatsResponse = await response.json();
-
-        // Teaching load by course (Bar)
-        const courseCodes = data.teachingLoad.map(t => t.course_code);
-        const colors = [
-          'rgba(59, 130, 246, 0.8)',
-          'rgba(139, 92, 246, 0.8)',
-          'rgba(236, 72, 153, 0.8)',
-          'rgba(34, 197, 94, 0.8)',
-          'rgba(251, 146, 60, 0.8)',
-          'rgba(20, 184, 166, 0.8)',
-        ];
-        const borderColors = [
-          'rgb(59, 130, 246)',
-          'rgb(139, 92, 246)',
-          'rgb(236, 72, 153)',
-          'rgb(34, 197, 94)',
-          'rgb(251, 146, 60)',
-          'rgb(20, 184, 166)',
-        ];
-
-        setTeachingLoadData({
-          labels: courseCodes,
-          datasets: [{
-            label: 'Sections',
-            data: data.teachingLoad.map(t => t.sections),
-            backgroundColor: colors.slice(0, courseCodes.length),
-            borderColor: borderColors.slice(0, courseCodes.length),
-            borderWidth: 2,
-            borderRadius: 8,
-          }],
-        });
-
-        // Enrollment status (Doughnut)
-        setEnrollmentData({
-          labels: ['Enrolled', 'Available'],
-          datasets: [{
-            data: [data.enrollment.enrolled, data.enrollment.available],
-            backgroundColor: [
-              'rgba(34, 197, 94, 0.85)',
-              'rgba(226, 232, 240, 0.85)',
-            ],
-            borderColor: '#ffffff',
-            borderWidth: 3,
-            hoverOffset: 8,
-          }],
-        });
-
-        // Weekly schedule (Line)
-        setWeeklyScheduleData({
-          labels: data.weeklySchedule.map(w => w.day),
-          datasets: [{
-            label: 'Teaching Hours',
-            data: data.weeklySchedule.map(w => w.hours),
-            borderColor: 'rgb(147, 51, 234)',
-            backgroundColor: 'rgba(147, 51, 234, 0.15)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: 'rgb(147, 51, 234)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 3,
-            pointRadius: 6,
-            pointHoverRadius: 8,
-          }],
-        });
-
-        // Student performance (Radar) - simulated based on sections
-        const performanceLabels = courseCodes.length > 0
-          ? [...courseCodes, 'Overall']
-          : ['No Sections'];
-        const performanceData = courseCodes.length > 0
-          ? [...courseCodes.map(() => 75 + Math.floor(Math.random() * 20)), 80]
-          : [0];
-
-        setStudentPerformanceData({
-          labels: performanceLabels,
-          datasets: [{
-            label: 'Average Performance',
-            data: performanceData,
-            backgroundColor: 'rgba(59, 130, 246, 0.25)',
-            borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 3,
-            pointBackgroundColor: 'rgb(59, 130, 246)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 3,
-            pointRadius: 6,
-            pointHoverRadius: 8,
-          }],
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
   }, []);
 
   const chartOptions = {
@@ -259,19 +272,19 @@ export function FacultyDashboardCharts() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
         labels: {
           padding: 20,
-          font: { size: 13, weight: 'bold' as const },
+          font: { size: 13, weight: "bold" as const },
           usePointStyle: true,
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: "rgba(255, 255, 255, 0.1)",
         borderWidth: 1,
       },
     },
@@ -279,11 +292,11 @@ export function FacultyDashboardCharts() {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.06)',
+          color: "rgba(0, 0, 0, 0.06)",
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: 'normal' as const },
+          font: { size: 13, weight: "normal" as const },
           padding: 8,
           stepSize: 1,
           callback: function (value: string | number) {
@@ -291,7 +304,7 @@ export function FacultyDashboardCharts() {
               return value;
             }
             return null;
-          }
+          },
         },
         border: { display: false },
       },
@@ -301,7 +314,7 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: 'bold' as const },
+          font: { size: 13, weight: "bold" as const },
           padding: 8,
         },
         border: { display: false },
@@ -314,28 +327,30 @@ export function FacultyDashboardCharts() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom' as const,
+        position: "bottom" as const,
         labels: {
           padding: 20,
-          font: { size: 14, weight: 'bold' as const },
+          font: { size: 14, weight: "bold" as const },
           usePointStyle: true,
-          pointStyle: 'circle',
+          pointStyle: "circle",
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: function (context: any) {
-            return (context.label || '') + ': ' + (context.parsed || 0) + ' students';
-          }
-        }
+            return (
+              (context.label || "") + ": " + (context.parsed || 0) + " students"
+            );
+          },
+        },
       },
     },
-    cutout: '65%',
+    cutout: "65%",
   };
 
   const lineOptions = {
@@ -344,16 +359,16 @@ export function FacultyDashboardCharts() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: function (context: any) {
-            return (context.parsed?.y || 0) + ' hours';
-          }
-        }
+            return (context.parsed?.y || 0) + " hours";
+          },
+        },
       },
     },
     scales: {
@@ -361,15 +376,15 @@ export function FacultyDashboardCharts() {
         beginAtZero: true,
         max: 6,
         grid: {
-          color: 'rgba(0, 0, 0, 0.06)',
+          color: "rgba(0, 0, 0, 0.06)",
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: 'normal' as const },
+          font: { size: 13, weight: "normal" as const },
           padding: 8,
           callback: function (value: string | number) {
-            return value + 'h';
-          }
+            return value + "h";
+          },
         },
         border: { display: false },
       },
@@ -379,7 +394,7 @@ export function FacultyDashboardCharts() {
           drawBorder: false,
         },
         ticks: {
-          font: { size: 13, weight: 'bold' as const },
+          font: { size: 13, weight: "bold" as const },
           padding: 8,
         },
         border: { display: false },
@@ -393,16 +408,16 @@ export function FacultyDashboardCharts() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
         padding: 16,
-        titleFont: { size: 15, weight: 'bold' as const },
+        titleFont: { size: 15, weight: "bold" as const },
         bodyFont: { size: 14 },
         callbacks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: function (context: any) {
-            return 'Avg: ' + (context.parsed?.r || 0) + '%';
-          }
-        }
+            return "Avg: " + (context.parsed?.r || 0) + "%";
+          },
+        },
       },
     },
     scales: {
@@ -412,19 +427,23 @@ export function FacultyDashboardCharts() {
         ticks: {
           stepSize: 20,
           font: { size: 12 },
-          backdropColor: 'transparent',
+          backdropColor: "transparent",
         },
         pointLabels: {
-          font: { size: 13, weight: 'bold' as const },
+          font: { size: 13, weight: "bold" as const },
         },
-        grid: { color: 'rgba(0, 0, 0, 0.08)' },
-        angleLines: { color: 'rgba(0, 0, 0, 0.08)' },
+        grid: { color: "rgba(0, 0, 0, 0.08)" },
+        angleLines: { color: "rgba(0, 0, 0, 0.08)" },
       },
     },
   };
 
   if (!isMounted) {
-    return <div className="text-center py-8 text-muted-foreground">Loading charts...</div>;
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Loading charts...
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -433,7 +452,9 @@ export function FacultyDashboardCharts() {
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center gap-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-sm text-muted-foreground">Loading faculty analytics...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading faculty analytics...
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -446,12 +467,20 @@ export function FacultyDashboardCharts() {
         <CardContent className="py-8">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
             <AlertCircle className="h-8 w-8 text-yellow-500" />
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <p className="text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : "An error occurred"}
+            </p>
           </div>
         </CardContent>
       </Card>
     );
   }
+
+  // Extract chart data for rendering
+  const teachingLoadData = chartData?.teachingLoadData || null;
+  const enrollmentData = chartData?.enrollmentData || null;
+  const weeklyScheduleData = chartData?.weeklyScheduleData || null;
+  const studentPerformanceData = chartData?.studentPerformanceData || null;
 
   if (!teachingLoadData) {
     return (
@@ -459,7 +488,9 @@ export function FacultyDashboardCharts() {
         <CardContent className="py-8">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
             <BookOpen className="h-8 w-8 text-gray-400" />
-            <p className="text-sm text-muted-foreground">No sections assigned yet</p>
+            <p className="text-sm text-muted-foreground">
+              No sections assigned yet
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -496,9 +527,14 @@ export function FacultyDashboardCharts() {
             </div>
             <div className="grid grid-cols-4 gap-4 mt-6">
               {teachingLoadData.labels.map((code: string, idx: number) => (
-                <div key={code} className="text-center p-4 bg-gray-50 rounded-lg border">
+                <div
+                  key={code}
+                  className="text-center p-4 bg-gray-50 rounded-lg border"
+                >
                   <p className="text-sm font-semibold text-gray-700">{code}</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-2">{teachingLoadData.datasets[0].data[idx]}</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-2">
+                    {teachingLoadData.datasets[0].data[idx]}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">sections</p>
                 </div>
               ))}
@@ -521,33 +557,56 @@ export function FacultyDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
-              {enrollmentData && <Doughnut data={enrollmentData} options={doughnutOptions} />}
+              {enrollmentData && (
+                <Doughnut data={enrollmentData} options={doughnutOptions} />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
               <div className="p-6 bg-green-50 rounded-lg border border-green-100">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-green-900">Current Enrollment</h4>
+                  <h4 className="font-semibold text-green-900">
+                    Current Enrollment
+                  </h4>
                   <Users className="h-5 w-5 text-green-600" />
                 </div>
-                <p className="text-4xl font-bold text-green-600 mb-2">{enrolled}</p>
+                <p className="text-4xl font-bold text-green-600 mb-2">
+                  {enrolled}
+                </p>
                 <p className="text-sm text-gray-700">
-                  <span className="font-semibold">{Math.round((enrolled / (enrolled + available)) * 100)}%</span> capacity utilization
+                  <span className="font-semibold">
+                    {Math.round((enrolled / (enrolled + available)) * 100)}%
+                  </span>{" "}
+                  capacity utilization
                 </p>
                 <div className="w-full h-3 bg-green-200 rounded-full mt-4">
-                  <div className="h-full bg-green-600 rounded-full" style={{ width: `${(enrolled / (enrolled + available)) * 100}%` }}></div>
+                  <div
+                    className="h-full bg-green-600 rounded-full"
+                    style={{
+                      width: `${(enrolled / (enrolled + available)) * 100}%`,
+                    }}
+                  ></div>
                 </div>
               </div>
               <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-gray-900">Available Seats</h4>
+                  <h4 className="font-semibold text-gray-900">
+                    Available Seats
+                  </h4>
                   <Calendar className="h-5 w-5 text-gray-600" />
                 </div>
-                <p className="text-4xl font-bold text-gray-600 mb-2">{available}</p>
+                <p className="text-4xl font-bold text-gray-600 mb-2">
+                  {available}
+                </p>
                 <p className="text-sm text-gray-700">
                   Room for additional students across sections
                 </p>
                 <div className="w-full h-3 bg-gray-200 rounded-full mt-4">
-                  <div className="h-full bg-gray-400 rounded-full" style={{ width: `${(available / (enrolled + available)) * 100}%` }}></div>
+                  <div
+                    className="h-full bg-gray-400 rounded-full"
+                    style={{
+                      width: `${(available / (enrolled + available)) * 100}%`,
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -569,14 +628,23 @@ export function FacultyDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-8 border border-purple-100">
-              {weeklyScheduleData && <Line data={weeklyScheduleData} options={lineOptions} />}
+              {weeklyScheduleData && (
+                <Line data={weeklyScheduleData} options={lineOptions} />
+              )}
             </div>
             <div className="grid grid-cols-5 gap-4 mt-6">
               {weeklyScheduleData?.labels.map((day: string, idx: number) => (
-                <div key={day} className="text-center p-4 bg-gray-50 rounded-lg border">
+                <div
+                  key={day}
+                  className="text-center p-4 bg-gray-50 rounded-lg border"
+                >
                   <p className="text-sm font-semibold text-gray-700">{day}</p>
-                  <p className="text-2xl font-bold text-purple-600 mt-2">{weeklyScheduleData.datasets[0].data[idx]}h</p>
-                  <p className="text-xs text-muted-foreground mt-1">teaching hours</p>
+                  <p className="text-2xl font-bold text-purple-600 mt-2">
+                    {weeklyScheduleData.datasets[0].data[idx]}h
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    teaching hours
+                  </p>
                 </div>
               ))}
             </div>
@@ -598,16 +666,29 @@ export function FacultyDashboardCharts() {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-8 border border-orange-100">
-              {studentPerformanceData && <Radar data={studentPerformanceData} options={radarOptions} />}
+              {studentPerformanceData && (
+                <Radar data={studentPerformanceData} options={radarOptions} />
+              )}
             </div>
             <div className="grid grid-cols-5 gap-4 mt-8">
-              {studentPerformanceData?.labels.map((course: string, idx: number) => (
-                <div key={course} className="text-center p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-semibold text-gray-700">{course}</p>
-                  <p className="text-2xl font-bold text-orange-600 mt-2">{studentPerformanceData.datasets[0].data[idx]}%</p>
-                  <Badge variant="outline" className="mt-2">B+</Badge>
-                </div>
-              ))}
+              {studentPerformanceData?.labels.map(
+                (course: string, idx: number) => (
+                  <div
+                    key={course}
+                    className="text-center p-4 bg-gray-50 rounded-lg border"
+                  >
+                    <p className="text-sm font-semibold text-gray-700">
+                      {course}
+                    </p>
+                    <p className="text-2xl font-bold text-orange-600 mt-2">
+                      {studentPerformanceData.datasets[0].data[idx]}%
+                    </p>
+                    <Badge variant="outline" className="mt-2">
+                      B+
+                    </Badge>
+                  </div>
+                )
+              )}
             </div>
           </CardContent>
         </Card>
@@ -615,4 +696,3 @@ export function FacultyDashboardCharts() {
     </Tabs>
   );
 }
-
