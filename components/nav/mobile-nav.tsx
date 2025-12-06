@@ -59,11 +59,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       href: "/dashboard/preferences",
       icon: Heart,
     },
-    {
-      title: "Notifications",
-      href: "/dashboard/notifications",
-      icon: Bell,
-    },
   ],
   scheduling: [
     {
@@ -149,11 +144,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       title: "Feedback",
       href: "/dashboard/faculty/feedback",
       icon: MessageSquare,
-    },
-    {
-      title: "Notifications",
-      href: "/dashboard/notifications",
-      icon: Bell,
     },
   ],
   registrar: [

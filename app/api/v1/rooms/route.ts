@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     requireRole(user, ["scheduling"]);
 
     const body = await request.json();
-    const { code, type, capacity } = body;
+    const { code, type } = body;
 
     // Validate required fields
     if (!code || !type) {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return createErrorResponse(
         409,
-        ErrorCodes.VALIDATION_ERROR,
+        ErrorCodes.CONFLICT,
         `Room with code '${code}' already exists`
       );
     }
@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
       .insert({
         code,
         type: type as "Lecture" | "Lab",
-        capacity: capacity ? parseInt(capacity) : null,
         created_by: user.id,
       })
       .select()

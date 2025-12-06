@@ -110,7 +110,12 @@ export const getAllRooms = cache(async (): Promise<Room[]> => {
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
 
-  return (data || []) as Room[];
+  const rooms = (data || []) as Room[];
+
+  // Natural sort by code
+  return rooms.sort((a, b) =>
+    a.code.localeCompare(b.code, undefined, { numeric: true })
+  );
 });
 
 /**
@@ -132,7 +137,12 @@ export const getAllRoomsList = cache(async (): Promise<Room[]> => {
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
 
-  return (data || []) as Room[];
+  const rooms = (data || []) as Room[];
+
+  // Natural sort by code
+  return rooms.sort((a, b) =>
+    a.code.localeCompare(b.code, undefined, { numeric: true })
+  );
 });
 
 /**

@@ -13,6 +13,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/supabase/server";
+import { getActiveTerm } from "@/lib/db/term";
 import type { CreditStats, RegistrationStatus } from "./types";
 
 export interface StudentDashboardData {
@@ -54,6 +55,31 @@ export const getStudentDashboardData = cache(
   async (userId: string): Promise<StudentDashboardData> => {
     const supabase = await createClient();
 
+    const activeTerm = await getActiveTerm();
+
+    if (!activeTerm) {
+      return {
+        creditStats: {
+          total: 0,
+          required_credits: 0,
+          elective_credits: 0,
+          completed_credits: 0,
+        },
+        enrollmentCount: 0,
+        upcomingExamsCount: 0,
+        totalExamsCount: 0,
+        studentLevel: null,
+        studentNumber: null,
+        deadlines: [],
+        notifications: [],
+        registrationStatus: {
+          is_open: false,
+          semester: null,
+          message: "No active semester found.",
+        },
+      };
+    }
+
     // Execute all queries in parallel with a single client
     const [
       profileResult,
@@ -61,7 +87,6 @@ export const getStudentDashboardData = cache(
       examsResult,
       deadlinesResult,
       notificationsResult,
-      registrationResult,
     ] = await Promise.all([
       // 1. Student profile (level + number) - single query
       supabase
@@ -70,31 +95,37 @@ export const getStudentDashboardData = cache(
         .eq("user_id", userId)
         .single(),
 
-      // 2. Enrollments with course data for credit stats
+      // 2. Enrollments with course data for credit stats - Filter by Active Term
       supabase
         .from("student_enrollment")
         .select(
           `
           id,
-          section:section!student_enrollment_section_id_fkey(
+          section:section!student_enrollment_section_id_fkey!inner(
             course_code,
-            course:course!section_course_code_fkey(credits, is_elective)
+            course:course!section_course_code_fkey(credits, is_elective),
+            schedule:schedule!schedule_section_id_fkey!inner(term_id)
           )
         `
         )
         .eq("student_id", userId)
-        .eq("status", "registered"),
+        .eq("status", "registered")
+        .eq("section.schedule.term_id", activeTerm.id),
 
-      // 3. Exams for enrolled courses - get course codes first, then exams
+      // 3. Exams for enrolled courses - Filter by Active Term
       supabase
         .from("student_enrollment")
         .select(
           `
-          section:section!student_enrollment_section_id_fkey(course_code)
+          section:section!student_enrollment_section_id_fkey!inner(
+            course_code,
+            schedule:schedule!schedule_section_id_fkey!inner(term_id)
+          )
         `
         )
         .eq("student_id", userId)
-        .eq("status", "registered"),
+        .eq("status", "registered")
+        .eq("section.schedule.term_id", activeTerm.id),
 
       // 4. Upcoming deadlines
       supabase.rpc("get_upcoming_deadlines_for_role", {
@@ -109,15 +140,6 @@ export const getStudentDashboardData = cache(
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
-
-      // 6. Registration status - get active term
-      supabase
-        .from("academic_term")
-        .select("code, name, status")
-        .in("status", ["draft", "released"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single(),
     ]);
 
     // Process profile data
@@ -183,9 +205,7 @@ export const getStudentDashboardData = cache(
       message: "No active semester found.",
     };
 
-    if (registrationResult.data) {
-      const activeTerm = registrationResult.data;
-
+    if (activeTerm) {
       // Check for registration event
       const { data: registrationEvent } = await supabase
         .from("semester_timeline")

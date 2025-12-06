@@ -13,6 +13,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/supabase/server";
+import { getActiveTerm } from "@/lib/db/term";
 import type {
   FacultyProfile,
   FacultySection,
@@ -94,10 +95,36 @@ export const getFacultyDashboardData = cache(
       department: profileData.department,
     };
 
+    const activeTerm = await getActiveTerm();
+
+    if (!activeTerm) {
+      // Still fetch notifications/deadlines but no sections
+      const [deadlinesResult, notificationsResult] = await Promise.all([
+        supabase.rpc("get_upcoming_deadlines_for_role", {
+          role_name: "faculty",
+          days_ahead: 30,
+        }),
+        supabase
+          .from("notification")
+          .select("id, user_id, type, payload, read_at, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      return {
+        profile,
+        sections: [],
+        uniqueCoursesCount: 0,
+        deadlines: deadlinesResult.data || [],
+        notifications: notificationsResult.data || [],
+      };
+    }
+
     // Execute remaining queries in parallel
     const [sectionsResult, deadlinesResult, notificationsResult] =
       await Promise.all([
-        // Get sections assigned to this faculty member
+        // Get sections assigned to this faculty member - Filter by Active Term
         supabase
           .from("section")
           .select(
@@ -111,10 +138,12 @@ export const getFacultyDashboardData = cache(
             group_level,
             state,
             activity,
-            course:course!section_course_code_fkey(title, credits)
+            course:course!section_course_code_fkey(title, credits),
+            schedule:schedule!schedule_section_id_fkey!inner(term_id)
           `
           )
           .eq("instructor_id", profileData.id)
+          .eq("schedule.term_id", activeTerm.id)
           .order("course_code", { ascending: true })
           .order("section_no", { ascending: true }),
 
@@ -171,8 +200,8 @@ export const getFacultyDashboardData = cache(
         state: string;
         activity: string | null;
         course:
-          | { title: string; credits: number }
-          | { title: string; credits: number }[];
+        | { title: string; credits: number }
+        | { title: string; credits: number }[];
       }) => {
         const courseData = Array.isArray(section.course)
           ? section.course[0]

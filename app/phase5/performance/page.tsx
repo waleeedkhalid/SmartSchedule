@@ -33,26 +33,26 @@ const ALL_COURSES = [
   { code: 'CS103', name: 'Discrete Mathematics', level: 1, type: 'required', credits: 3, instructor: 'Dr. Mohammed', description: 'Mathematical foundations for CS' },
   { code: 'CS104', name: 'Digital Logic Design', level: 1, type: 'elective', credits: 3, instructor: 'Dr. Sarah', description: 'Digital circuits and logic gates' },
   { code: 'CS105', name: 'Web Development Basics', level: 1, type: 'elective', credits: 2, instructor: 'Dr. Omar', description: 'HTML, CSS, and JavaScript fundamentals' },
-  
+
   { code: 'CS201', name: 'Object-Oriented Programming', level: 2, type: 'required', credits: 3, instructor: 'Dr. Ahmed', description: 'OOP principles with Java' },
   { code: 'CS202', name: 'Database Systems', level: 2, type: 'required', credits: 3, instructor: 'Dr. Fatima', description: 'Database design and SQL' },
   { code: 'CS203', name: 'Computer Architecture', level: 2, type: 'required', credits: 3, instructor: 'Dr. Mohammed', description: 'CPU design and assembly language' },
   { code: 'CS204', name: 'Mobile App Development', level: 2, type: 'elective', credits: 3, instructor: 'Dr. Sarah', description: 'iOS and Android development' },
   { code: 'CS205', name: 'Game Development', level: 2, type: 'elective', credits: 2, instructor: 'Dr. Omar', description: 'Unity and game design patterns' },
-  
+
   { code: 'CS301', name: 'Software Engineering', level: 3, type: 'required', credits: 3, instructor: 'Dr. Ahmed', description: 'Software development lifecycle and best practices' },
   { code: 'CS302', name: 'Computer Networks', level: 3, type: 'required', credits: 3, instructor: 'Dr. Fatima', description: 'Network protocols and architecture' },
   { code: 'CS303', name: 'Operating Systems', level: 3, type: 'required', credits: 3, instructor: 'Dr. Mohammed', description: 'OS concepts and implementation' },
   { code: 'CS304', name: 'Machine Learning', level: 3, type: 'elective', credits: 3, instructor: 'Dr. Sarah', description: 'ML algorithms and applications' },
   { code: 'CS305', name: 'Cloud Computing', level: 3, type: 'elective', credits: 3, instructor: 'Dr. Omar', description: 'AWS, Azure, and cloud architecture' },
   { code: 'CS306', name: 'Cybersecurity', level: 3, type: 'elective', credits: 3, instructor: 'Dr. Ahmed', description: 'Security principles and practices' },
-  
+
   { code: 'CS401', name: 'Algorithm Design', level: 4, type: 'required', credits: 3, instructor: 'Dr. Fatima', description: 'Advanced algorithms and complexity' },
   { code: 'CS402', name: 'Artificial Intelligence', level: 4, type: 'required', credits: 3, instructor: 'Dr. Mohammed', description: 'AI techniques and neural networks' },
   { code: 'CS403', name: 'Computer Vision', level: 4, type: 'elective', credits: 3, instructor: 'Dr. Sarah', description: 'Image processing and recognition' },
   { code: 'CS404', name: 'Natural Language Processing', level: 4, type: 'elective', credits: 3, instructor: 'Dr. Omar', description: 'Text analysis and language models' },
   { code: 'CS405', name: 'Blockchain Technology', level: 4, type: 'elective', credits: 2, instructor: 'Dr. Ahmed', description: 'Cryptocurrency and distributed ledgers' },
-  
+
   { code: 'CS501', name: 'Senior Project I', level: 5, type: 'required', credits: 3, instructor: 'Dr. Fatima', description: 'Capstone project development' },
   { code: 'CS502', name: 'Senior Project II', level: 5, type: 'required', credits: 3, instructor: 'Dr. Mohammed', description: 'Capstone project completion' },
   { code: 'CS503', name: 'Advanced Topics in AI', level: 5, type: 'elective', credits: 3, instructor: 'Dr. Sarah', description: 'Cutting-edge AI research' },
@@ -72,7 +72,8 @@ export default function PerformancePage() {
       setIsSearching(true);
       const timer = setTimeout(() => {
         setIsSearching(false);
-        setQueryTime(Math.floor(Math.random() * 20) + 30);
+        // Fixed demo value - no need for random simulation
+        setQueryTime(35);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -81,14 +82,14 @@ export default function PerformancePage() {
   // Filtered results using useMemo
   const filteredResults = useMemo(() => {
     return ALL_COURSES.filter(course => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesLevel = level === 'all' || course.level === parseInt(level);
       const matchesType = courseType === 'all' || course.type === courseType;
-      
+
       return matchesSearch && matchesLevel && matchesType;
     });
   }, [searchTerm, level, courseType]);
@@ -108,7 +109,7 @@ export default function PerformancePage() {
   return (
     <div className="container mx-auto p-8 space-y-6">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -143,12 +144,12 @@ export default function PerformancePage() {
         <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
           <CardContent className="pt-6">
             <div className="grid md:grid-cols-4 gap-4">
-              <motion.div 
+              <motion.div
                 className="text-center p-3 rounded-lg hover:bg-blue-100 transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
                 <p className="text-sm text-muted-foreground">Last Query Time</p>
-                <motion.p 
+                <motion.p
                   key={queryTime}
                   initial={{ scale: 1.2, color: '#2563eb' }}
                   animate={{ scale: 1, color: '#2563eb' }}
@@ -157,26 +158,26 @@ export default function PerformancePage() {
                   {queryTime}ms
                 </motion.p>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="text-center p-3 rounded-lg hover:bg-green-100 transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
                 <p className="text-sm text-muted-foreground">Cache Hit Rate</p>
                 <p className="text-2xl font-bold text-green-600">87%</p>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="text-center p-3 rounded-lg hover:bg-purple-100 transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
                 <p className="text-sm text-muted-foreground">DB Indexes</p>
                 <p className="text-2xl font-bold text-purple-600">24</p>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="text-center p-3 rounded-lg hover:bg-orange-100 transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
                 <p className="text-sm text-muted-foreground">Results</p>
-                <motion.p 
+                <motion.p
                   key={filteredResults.length}
                   initial={{ scale: 1.2 }}
                   animate={{ scale: 1 }}
@@ -271,8 +272,8 @@ export default function PerformancePage() {
               </div>
 
               <div className="flex items-end">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-all"
                   onClick={handleClearFilters}
                   disabled={!searchTerm && level === 'all' && courseType === 'all'}
@@ -324,7 +325,7 @@ export default function PerformancePage() {
                           <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700">
                             Level {course.level}
                           </Badge>
-                          <Badge 
+                          <Badge
                             variant={course.type === 'required' ? 'default' : 'secondary'}
                             className={course.type === 'required' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-orange-100 text-orange-800 border-orange-200'}
                           >
@@ -382,7 +383,7 @@ export default function PerformancePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid md:grid-cols-2 gap-6">
-              <motion.div 
+              <motion.div
                 className="space-y-3"
                 whileHover={{ scale: 1.02 }}
               >
@@ -411,7 +412,7 @@ export default function PerformancePage() {
                   </li>
                 </ul>
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="space-y-3"
                 whileHover={{ scale: 1.02 }}
               >

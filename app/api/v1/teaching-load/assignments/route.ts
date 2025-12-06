@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
         updated_at
       `
       )
-      .eq("instructor_id", "is not", null);
+      .not("instructor_id", "is", null);
 
     // Apply filters
     if (instructor_id) {

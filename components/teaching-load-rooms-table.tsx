@@ -72,7 +72,7 @@ type Section = Database["public"]["Tables"]["section"]["Row"] & {
 
 interface TeachingLoadRoomsTableProps {
   sections: Section[];
-  rooms: Array<{ code: string; type: string; capacity?: number | null }>;
+  rooms: Array<{ code: string; type: string }>;
 }
 
 export function TeachingLoadRoomsTable({
@@ -155,10 +155,10 @@ export function TeachingLoadRoomsTable({
         prev.map((section) =>
           section.id === sectionId
             ? {
-                ...section,
-                room_code: selectedRoomCode,
-                room: result.data?.room || null,
-              }
+              ...section,
+              room_code: selectedRoomCode,
+              room: result.data?.room || null,
+            }
             : section
         )
       );
@@ -286,8 +286,8 @@ export function TeachingLoadRoomsTable({
                         section.activity === "lab"
                           ? "default"
                           : section.activity === "tutorial"
-                          ? "secondary"
-                          : "outline"
+                            ? "secondary"
+                            : "outline"
                       }
                     >
                       {section.activity.charAt(0).toUpperCase() +
@@ -332,7 +332,6 @@ export function TeachingLoadRoomsTable({
                         {filteredRooms.map((room) => (
                           <SelectItem key={room.code} value={room.code}>
                             {room.code} ({room.type})
-                            {room.capacity && ` - ${room.capacity} seats`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -372,11 +371,10 @@ export function TeachingLoadRoomsTable({
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      section.state === "released"
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${section.state === "released"
                         ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                         : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                    }`}
+                      }`}
                   >
                     {section.state}
                   </span>

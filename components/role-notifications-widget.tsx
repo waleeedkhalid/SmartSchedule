@@ -206,9 +206,8 @@ export function RoleNotificationsWidget({
         </CardTitle>
         <CardDescription>
           {unreadNotifications.length > 0
-            ? `${unreadNotifications.length} unread notification${
-                unreadNotifications.length !== 1 ? "s" : ""
-              }`
+            ? `${unreadNotifications.length} unread notification${unreadNotifications.length !== 1 ? "s" : ""
+            }`
             : "Stay updated with important announcements"}
         </CardDescription>
       </CardHeader>
@@ -239,7 +238,7 @@ export function RoleNotificationsWidget({
                     className={cn(
                       "border rounded-lg p-3 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950 dark:hover:border-indigo-700 transition-colors",
                       isUnread &&
-                        "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                      "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -278,13 +277,6 @@ export function RoleNotificationsWidget({
                 );
               })}
 
-            {notifications.length > 5 && (
-              <Button variant="ghost" className="w-full" asChild>
-                <Link href="/dashboard/notifications">
-                  View all {notifications.length} notifications
-                </Link>
-              </Button>
-            )}
           </div>
         )}
       </CardContent>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,19 @@ export function TimelineManagement({
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
 	const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null)
 	const [activeTab, setActiveTab] = useState('all')
+	const [successDialog, setSuccessDialog] = useState<{
+		open: boolean
+		title: string
+		message: string
+	}>({
+		open: false,
+		title: '',
+		message: '',
+	})
+	const [isCheckingDeadlines, setIsCheckingDeadlines] = useState(false)
 	const queryClient = useQueryClient()
+	const router = useRouter()
+	const searchParams = useSearchParams()
 
 	// OPTIMIZATION: Use React Query for all data fetching with proper caching
 	// This reduces unnecessary API calls and provides automatic caching
@@ -156,6 +169,21 @@ export function TimelineManagement({
 		gcTime: 5 * 60 * 1000,
 		refetchOnWindowFocus: false,
 	})
+
+	// Effect to handle deep linking to specific events
+	useEffect(() => {
+		const eventId = searchParams.get('eventId')
+		if (eventId && events.length > 0) {
+			const event = events.find(e => e.id === eventId)
+			if (event) {
+				setEditingEvent(event)
+				// Clean up URL without refreshing
+				const newParams = new URLSearchParams(searchParams.toString())
+				newParams.delete('eventId')
+				router.replace(`/dashboard/timeline?${newParams.toString()}`, { scroll: false })
+			}
+		}
+	}, [searchParams, events, router])
 
 	const isLoading = isLoadingEvents || isLoadingOverdue
 
@@ -305,6 +333,7 @@ export function TimelineManagement({
 	}
 
 	async function handleCheckDeadlines() {
+		setIsCheckingDeadlines(true)
 		try {
 			const authHeader = await getAuthHeader()
 			const response = await fetch('/api/timeline/check-deadlines', {
@@ -318,12 +347,15 @@ export function TimelineManagement({
 				const result = await response.json()
 				// API returns { success: true, data: {...} }
 				const data = result.data || result
-				alert(
-					`Deadline check completed!\n\n` +
-					`Notifications sent: ${data.notifications_sent || 0}\n` +
-					`Total recipients: ${data.total_recipients || 0}`
-				)
+
+				setSuccessDialog({
+					open: true,
+					title: 'Deadline Check Complete',
+					message: `Checked ${data.events_checked || 0} active events.\n\nNotifications sent: ${data.notifications_sent || 0}\nTotal recipients: ${data.total_recipients || 0}`
+				})
+
 				invalidateTimelineQueries()
+				queryClient.invalidateQueries({ queryKey: ['notifications'] })
 			} else {
 				const result = await response.json()
 				alert(result.error || 'Failed to check deadlines')
@@ -331,6 +363,8 @@ export function TimelineManagement({
 		} catch (error) {
 			console.error('Error checking deadlines:', error)
 			alert('Failed to check deadlines. Please try again.')
+		} finally {
+			setIsCheckingDeadlines(false)
 		}
 	}
 
@@ -369,9 +403,17 @@ export function TimelineManagement({
 							))}
 						</SelectContent>
 					</Select>
-					<Button onClick={handleCheckDeadlines} variant="outline">
-						<Bell className="h-4 w-4 mr-2" />
-						Check Deadlines
+					<Button
+						onClick={handleCheckDeadlines}
+						variant="outline"
+						disabled={isCheckingDeadlines}
+					>
+						{isCheckingDeadlines ? (
+							<RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+						) : (
+							<Bell className="h-4 w-4 mr-2" />
+						)}
+						Notify
 					</Button>
 					<Button onClick={() => setShowCreateDialog(true)}>
 						<Plus className="h-4 w-4 mr-2" />
@@ -596,7 +638,26 @@ export function TimelineManagement({
 					)}
 				</DialogContent>
 			</Dialog>
+
+			{/* Success Dialog */}
+			<Dialog
+				open={successDialog.open}
+				onOpenChange={(open) => setSuccessDialog(prev => ({ ...prev, open }))}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{successDialog.title}</DialogTitle>
+						<DialogDescription className="whitespace-pre-line">
+							{successDialog.message}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="flex justify-end">
+						<Button onClick={() => setSuccessDialog(prev => ({ ...prev, open: false }))}>
+							Close
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }
-

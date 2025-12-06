@@ -41,7 +41,7 @@ interface UserRoleData {
  * @param request - The incoming HTTP request
  * @returns The JWT token or null if not found
  */
-function extractBearerToken(request: NextRequest): string | null {
+export function extractAuthToken(request: NextRequest): string | null {
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     return authHeader.substring(7);
@@ -161,7 +161,7 @@ export async function getAuthenticatedUser(
   request: NextRequest
 ): Promise<AuthenticatedUser> {
   // Step 1: Extract token and validate with Supabase
-  const token = extractBearerToken(request);
+  const token = extractAuthToken(request);
   const { user, supabase } = await fetchSupabaseUser(token);
 
   // Step 2: Fetch user role (required for all users)

@@ -39,20 +39,20 @@ export const getRoomsPaginated = cache(async (
   page: number = 1,
   pageSize: number = 20,
   searchTerm: string = '',
-  sortBy: 'code' | 'type' | 'capacity' = 'code',
+  sortBy: 'code' | 'type' = 'code',
   sortOrder: 'asc' | 'desc' = 'asc'
 ): Promise<RoomsPaginatedResult> => {
   const supabase = await createClient();
-  
+
   // Calculate pagination range
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  
+
   // Build query - select only required columns for table display
   let query = supabase
     .from("room")
-    .select("code, type, capacity", { count: 'exact' });
-  
+    .select("code, type", { count: 'exact' });
+
   // Apply search filter (searches in code)
   // Security: Escape special characters to prevent filter injection
   if (searchTerm) {
@@ -65,26 +65,26 @@ export const getRoomsPaginated = cache(async (
       .replace(/%/g, '\\%')    // Escape percent signs (ILIKE wildcard)
       .replace(/_/g, '\\_')    // Escape underscores (ILIKE wildcard)
       .replace(/,/g, '');       // Remove commas (PostgREST OR syntax separator)
-    
+
     // Use ILIKE filter with properly escaped value
     query = query.ilike('code', `%${escapedSearch}%`);
   }
-  
+
   // Apply sorting
   // Note: Database indexes should be created for these columns (see migration file)
   query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-  
+
   // Apply pagination
   const { data, error, count } = await query.range(from, to);
-  
+
   if (error) {
     console.error("Error fetching rooms:", error);
     throw new Error(`Failed to fetch rooms: ${error.message}`);
   }
-  
+
   const totalCount = count ?? 0;
   const totalPages = Math.ceil(totalCount / pageSize);
-  
+
   return {
     rooms: (data as Room[]) || [],
     totalCount,

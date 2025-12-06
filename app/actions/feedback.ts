@@ -114,14 +114,14 @@ export async function getStudentFeedback(): Promise<{
           updated_at: comment.updated_at,
           section: sectionData
             ? {
-                id: sectionData.id,
-                course_code: sectionData.course_code,
-                section_no: sectionData.section_no,
-                activity: sectionData.activity,
-                course_title: Array.isArray(sectionData.course)
-                  ? sectionData.course[0]?.title
-                  : sectionData.course?.title,
-              }
+              id: sectionData.id,
+              course_code: sectionData.course_code,
+              section_no: sectionData.section_no,
+              activity: sectionData.activity,
+              course_title: Array.isArray(sectionData.course)
+                ? sectionData.course[0]?.title
+                : sectionData.course?.title,
+            }
             : null,
         };
       }
@@ -257,7 +257,8 @@ export async function submitFeedback(data: {
       }
     }
 
-    // If section_id provided, verify it exists
+    // If section_id provided, verify it exists and get associated schedule_id
+    let scheduleId = null;
     if (data.section_id) {
       const { data: section, error: sectionError } = await supabase
         .from("section")
@@ -268,6 +269,17 @@ export async function submitFeedback(data: {
       if (sectionError || !section) {
         return { success: false, error: "Section not found" };
       }
+
+      // Look up schedule_id for this section
+      const { data: schedule } = await supabase
+        .from("schedule")
+        .select("id")
+        .eq("section_id", data.section_id)
+        .single();
+
+      if (schedule) {
+        scheduleId = schedule.id;
+      }
     }
 
     // Insert feedback
@@ -276,7 +288,7 @@ export async function submitFeedback(data: {
       .insert({
         author_id: user.id,
         section_id: data.section_id || null,
-        schedule_id: null,
+        schedule_id: scheduleId,
         comment_text: data.comment_text.trim(),
         rating: data.rating || null,
         is_resolved: false,
@@ -327,17 +339,17 @@ export async function submitFeedback(data: {
       updated_at: newComment.updated_at,
       section: sectionData
         ? {
-            id: sectionData.id,
-            course_code: sectionData.course_code,
-            section_no: sectionData.section_no,
-            activity: sectionData.activity,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            course_title: Array.isArray((sectionData as any).course)
-              ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (sectionData as any).course[0]?.title
-              : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (sectionData as any).course?.title,
-          }
+          id: sectionData.id,
+          course_code: sectionData.course_code,
+          section_no: sectionData.section_no,
+          activity: sectionData.activity,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          course_title: Array.isArray((sectionData as any).course)
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (sectionData as any).course[0]?.title
+            : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (sectionData as any).course?.title,
+        }
         : null,
     };
 

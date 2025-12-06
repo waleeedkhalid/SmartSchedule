@@ -89,7 +89,7 @@ export async function submitOnboarding(prevState: OnboardingState, formData: For
                 .from("committee_profile")
                 .upsert({
                     user_id: userId,
-                    role: userRole,
+                    committee_role: userRole,
                     department: "Software Engineering",
                 }, { onConflict: 'user_id' })
                 .select()
