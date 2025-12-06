@@ -112,6 +112,7 @@ export function handleApiError(error: unknown): NextResponse<ApiError> {
 export const ErrorCodes = {
   AUTH_REQUIRED: "AUTH_REQUIRED",
   AUTH_INVALID: "AUTH_INVALID",
+  SESSION_EXPIRED: "SESSION_EXPIRED",
   FORBIDDEN: "FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
   VALIDATION_ERROR: "VALIDATION_ERROR",
