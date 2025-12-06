@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/supabase/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
+import { getActiveTerm } from "@/lib/db/term";
 
 /**
  * GET /api/v1/teaching-load/stats
@@ -17,6 +18,20 @@ export async function GET(request: NextRequest) {
     requireRole(user, ["teaching_load", "scheduling"]);
 
     const supabase = await createClient();
+
+    const activeTerm = await getActiveTerm();
+
+    if (!activeTerm) {
+      return createSuccessResponse({
+        instructors: [],
+        totalInstructors: 0,
+        overloaded: 0,
+        nearCapacity: 0,
+        balanced: 0,
+        underutilized: 0,
+        avgUtilization: 0,
+      });
+    }
 
     // Get all faculty profiles with their sections
     const { data: facultyProfiles, error: facultyError } = await supabase
@@ -35,7 +50,7 @@ export async function GET(request: NextRequest) {
       throw facultyError;
     }
 
-    // Get all sections with instructor assignments
+    // Get all sections with instructor assignments - Filter by Active Term
     const { data: sections, error: sectionsError } = await supabase
       .from("section")
       .select(
@@ -43,10 +58,12 @@ export async function GET(request: NextRequest) {
         id,
         instructor_id,
         course_code,
-        course:course!section_course_code_fkey(weekly_hours)
+        course:course!section_course_code_fkey(weekly_hours),
+        schedule:schedule!schedule_section_id_fkey!inner(term_id)
       `
       )
-      .like("course_code", "SWE%");
+      .like("course_code", "SWE%")
+      .eq("schedule.term_id", activeTerm.id);
 
     if (sectionsError) {
       throw sectionsError;
@@ -108,9 +125,9 @@ export async function GET(request: NextRequest) {
     const avgUtilization =
       totalInstructors > 0
         ? Math.round(
-            instructors.reduce((sum, i) => sum + i.utilization_percent, 0) /
-              totalInstructors
-          )
+          instructors.reduce((sum, i) => sum + i.utilization_percent, 0) /
+          totalInstructors
+        )
         : 0;
 
     return createSuccessResponse({

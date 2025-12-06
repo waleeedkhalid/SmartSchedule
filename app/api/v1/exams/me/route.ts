@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
         `
         id,
         course_code,
+        exam_type,
         date,
         start_time,
         duration_minutes,
@@ -164,19 +165,20 @@ export async function GET(request: NextRequest) {
     interface ExamWithCourse {
       id: string;
       course_code: string;
+      exam_type: string;
       date: string;
       start_time: string;
       duration_minutes: number;
       room_codes: string[] | null;
       course?:
-        | {
-            code: string;
-            title: string;
-          }
-        | Array<{
-            code: string;
-            title: string;
-          }>;
+      | {
+        code: string;
+        title: string;
+      }
+      | Array<{
+        code: string;
+        title: string;
+      }>;
     }
     const examData = (exams as ExamWithCourse[]).map((exam) => {
       const courseCode = exam.course_code;
@@ -195,14 +197,15 @@ export async function GET(request: NextRequest) {
         .getHours()
         .toString()
         .padStart(2, "0")}:${endDate
-        .getMinutes()
-        .toString()
-        .padStart(2, "0")}:00`;
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}:00`;
 
       return {
         id: exam.id,
         course_code: courseCode,
         course_title: course?.title || "",
+        exam_type: exam.exam_type || "unknown",
         section_no: sectionNos.length > 0 ? sectionNos.join(", ") : null,
         date: exam.date,
         start_time: exam.start_time,

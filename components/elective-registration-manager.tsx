@@ -20,7 +20,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import {
@@ -155,18 +155,17 @@ export function ElectiveRegistrationManager({
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch enrollments and available sections on mount
+  // Fetch enrollments and available sections on mount or when userId changes
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
   /**
    * Fetch all data: enrollments, available sections, and credit stats
    * Uses real API endpoints for CRUD operations
    * Only fetches data if registration is open
    */
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -194,7 +193,7 @@ export function ElectiveRegistrationManager({
         setCreditStats(null);
         setErrorMessage(
           regData.data?.message ||
-            "Registration is currently closed. Please check the academic timeline for registration dates."
+          "Registration is currently closed. Please check the academic timeline for registration dates."
         );
         setLoading(false);
         return; // Exit early - don't fetch any data
@@ -328,7 +327,7 @@ export function ElectiveRegistrationManager({
     } finally {
       setLoading(false);
     }
-  }
+  }, [userId]);
 
   /**
    * Enroll in an elective section
@@ -350,8 +349,7 @@ export function ElectiveRegistrationManager({
     // Pre-check: Credit limit (client-side for immediate feedback)
     if (creditStats && creditStats.total + section.course_credits > 20) {
       toast.error(
-        `Cannot enroll: Would exceed 20-credit limit (current: ${
-          creditStats.total
+        `Cannot enroll: Would exceed 20-credit limit (current: ${creditStats.total
         }, new: ${creditStats.total + section.course_credits})`
       );
       return;
@@ -452,8 +450,8 @@ export function ElectiveRegistrationManager({
     creditPercentage >= 100
       ? "text-red-600"
       : creditPercentage >= 90
-      ? "text-yellow-600"
-      : "text-green-600";
+        ? "text-yellow-600"
+        : "text-green-600";
 
   // Show loading state
   if (loading) {
@@ -625,7 +623,7 @@ export function ElectiveRegistrationManager({
               <p className="text-sm">
                 {errorMessage ||
                   "No sections have been released for registration yet. " +
-                    "Please check back later or contact your department for more information."}
+                  "Please check back later or contact your department for more information."}
               </p>
             </div>
           ) : (
@@ -639,13 +637,12 @@ export function ElectiveRegistrationManager({
                 return (
                   <div
                     key={section.section_id}
-                    className={`p-4 border rounded-lg ${
-                      isEnrolled
+                    className={`p-4 border rounded-lg ${isEnrolled
                         ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
                         : section.is_locked
-                        ? "bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-700 opacity-75"
-                        : "hover:shadow-md"
-                    } transition-all`}
+                          ? "bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-700 opacity-75"
+                          : "hover:shadow-md"
+                      } transition-all`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -756,11 +753,10 @@ export function ElectiveRegistrationManager({
                       <div className="flex flex-col items-end gap-2">
                         <div className="text-right">
                           <p
-                            className={`text-xs font-medium ${
-                              section.available_seats <= 5
+                            className={`text-xs font-medium ${section.available_seats <= 5
                                 ? "text-orange-600"
                                 : ""
-                            }`}
+                              }`}
                           >
                             {section.available_seats} seats left
                           </p>
@@ -784,16 +780,16 @@ export function ElectiveRegistrationManager({
                               section.is_locked
                                 ? section.lock_reasons.join("; ")
                                 : section.is_full
-                                ? "Section is full"
-                                : actionLoading === section.section_id
-                                ? "Loading..."
-                                : creditStats &&
-                                  creditStats.total + section.course_credits >
-                                    20
-                                ? "Would exceed 20-credit limit"
-                                : section.is_enrolled_in_course
-                                ? "Already enrolled in another section of this course"
-                                : "Click to register"
+                                  ? "Section is full"
+                                  : actionLoading === section.section_id
+                                    ? "Loading..."
+                                    : creditStats &&
+                                      creditStats.total + section.course_credits >
+                                      20
+                                      ? "Would exceed 20-credit limit"
+                                      : section.is_enrolled_in_course
+                                        ? "Already enrolled in another section of this course"
+                                        : "Click to register"
                             }
                           >
                             {section.is_locked ? "Locked" : "Register"}

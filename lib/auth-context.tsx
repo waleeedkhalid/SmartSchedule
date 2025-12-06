@@ -41,6 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Ref to track mounting state and prevent double-invocation in Strict Mode
   const mountedRef = useRef(false);
 
+  // Ref to track user ID for comparison in callbacks without stale closures
+  const userIdRef = useRef<string | undefined>(undefined);
+
   // 1. Centralized logic to fetch role based on user ID
   // CACHED: Prevents duplicate requests for the same user ID
   const fetchUserRole = useCallback(async (userId: string, signal?: AbortSignal) => {
@@ -155,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (newSession?.user) {
         // Only fetch role if the user changed or we don't have it cached
         const userId = newSession.user.id;
-        if (userId !== user?.id || !cachedRoleRef.current.has(userId)) {
+        if (userId !== userIdRef.current || !cachedRoleRef.current.has(userId)) {
           await fetchUserRole(userId, controller.signal);
         } else {
           // Use cached value
@@ -187,7 +190,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       controller.abort();
       subscription.unsubscribe();
     };
-  }, [supabase, router, pathname, user?.id, fetchUserRole]);
+  }, [supabase, router, pathname, fetchUserRole]);
+
+  // Sync userIdRef when user changes
+  useEffect(() => {
+    userIdRef.current = user?.id;
+  }, [user?.id]);
 
   const signOut = useCallback(async () => {
     try {

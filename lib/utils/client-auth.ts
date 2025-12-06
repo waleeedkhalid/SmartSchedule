@@ -1,33 +1,34 @@
 /**
  * Client-Side Authentication Utilities
- * 
+ *
  * Helper functions for getting authentication tokens in client components.
  * Follows DRY principle by centralizing token extraction logic.
- * 
+ *
  * OPTIMIZATION: Caches session tokens to reduce auth requests
  */
 
-import { createClient } from '@/supabase/client';
+import { createClient } from "@/supabase/client";
 
 // Cache for session tokens (valid for 5 minutes)
-let sessionTokenCache: { token: string | null; timestamp: number } | null = null;
+let sessionTokenCache: { token: string | null; timestamp: number } | null =
+  null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Gets the authentication token from Supabase session
  * Returns null if no token is found
- * 
+ *
  * OPTIMIZATION: Uses in-memory cache to avoid repeated getSession() calls
  * SAFETY: Includes timeout protection to prevent hanging
  */
 export async function getAuthToken(): Promise<string | null> {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
 
   // Check cache first
   const now = Date.now();
-  if (sessionTokenCache && (now - sessionTokenCache.timestamp) < CACHE_DURATION) {
+  if (sessionTokenCache && now - sessionTokenCache.timestamp < CACHE_DURATION) {
     return sessionTokenCache.token;
   }
 
@@ -36,8 +37,8 @@ export async function getAuthToken(): Promise<string | null> {
     const supabase = createClient();
 
     // Create timeout promise
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), 3000) // 3 second timeout
+    const timeoutPromise = new Promise<null>(
+      (resolve) => setTimeout(() => resolve(null), 3000) // 3 second timeout
     );
 
     // Race between getSession and timeout
@@ -46,12 +47,17 @@ export async function getAuthToken(): Promise<string | null> {
 
     // If timeout occurred, result will be null
     if (result === null) {
-      console.warn('Supabase getSession timed out, falling back to localStorage');
+      console.warn(
+        "Supabase getSession timed out, falling back to localStorage"
+      );
       sessionTokenCache = null;
-      return localStorage.getItem('auth_token');
+      return localStorage.getItem("auth_token");
     }
 
-    const { data: { session }, error } = result;
+    const {
+      data: { session },
+      error,
+    } = result;
 
     if (!error && session?.access_token) {
       // Cache the token
@@ -66,22 +72,26 @@ export async function getAuthToken(): Promise<string | null> {
     }
   } catch (error) {
     // If Supabase client fails, clear cache and log warning
-    console.warn('Error fetching Supabase session:', error);
+    console.warn("Error fetching Supabase session:", error);
     sessionTokenCache = null;
   }
 
   // Fallback to localStorage (for legacy support)
-  return localStorage.getItem('auth_token');
+  return localStorage.getItem("auth_token");
 }
 
 /**
  * Gets the Authorization header value for API requests
  * Returns "Bearer {token}" or empty string if no token
- * 
+ *
  * Note: This is now async because it needs to fetch the session from Supabase
+ * IMPORTANT: This waits for Supabase to initialize
  */
 export async function getAuthHeader(): Promise<string> {
   const token = await getAuthToken();
-  return token ? `Bearer ${token}` : '';
+  if (!token) {
+    console.warn("[Auth] No token found - user may not be authenticated");
+    return "";
+  }
+  return `Bearer ${token}`;
 }
-

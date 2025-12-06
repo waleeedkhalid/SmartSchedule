@@ -31,6 +31,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { ClientOnly } from "@/components/client-only";
 import type { FacultyProfile, FacultySection } from "@/lib/db/faculty/types";
 
@@ -164,22 +166,24 @@ export function FacultyDashboardClient({
   initialDeadlines,
   initialNotifications,
 }: FacultyDashboardClientProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!profile) {
+      router.push("/onboarding");
+    }
+  }, [profile, router]);
+
   if (!profile) {
     return (
       <Card className="border-yellow-200 dark:border-yellow-800">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-            <AlertCircle className="h-5 w-5" />
-            Profile Not Found
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-gray-600 dark:text-gray-400">
-          <p>Your faculty profile is not set up.</p>
-          <p className="mt-2">
-            Please complete onboarding to set up your profile. If you have
-            already completed onboarding, please contact the scheduling
-            committee with your email: <strong>{userEmail || "N/A"}</strong>
-          </p>
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-yellow-600 dark:text-yellow-400" />
+            <p className="text-sm text-muted-foreground">
+              Redirecting to onboarding...
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -329,12 +333,6 @@ export function FacultyDashboardClient({
                 Update Availability
               </Link>
             </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/notifications">
-                <AlertCircle className="mr-2 h-4 w-4" />
-                View Notifications
-              </Link>
-            </Button>
           </CardContent>
         </Card>
 
@@ -359,7 +357,7 @@ export function FacultyDashboardClient({
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
                   {Array.isArray(profile.preferred_times) &&
-                  profile.preferred_times.length > 0
+                    profile.preferred_times.length > 0
                     ? "Configured"
                     : "Not set"}
                 </p>
@@ -370,7 +368,7 @@ export function FacultyDashboardClient({
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
                   {Array.isArray(profile.unavailable_times) &&
-                  profile.unavailable_times.length > 0
+                    profile.unavailable_times.length > 0
                     ? "Configured"
                     : "Not set"}
                 </p>

@@ -19,6 +19,7 @@ export interface SchedulingStats {
   sectionsCount: number;
   roomsCount: number;
   instructorsCount: number;
+  studentsCount: number;
   draftSectionsCount: number;
   releasedSectionsCount: number;
   assignedSectionsCount: number;
@@ -39,6 +40,7 @@ export interface ScheduleStatus {
 export interface SchedulingDashboardData {
   stats: SchedulingStats;
   scheduleStatus: ScheduleStatus;
+  activeTermId: string | null;
   deadlines: Array<{
     id: string;
     title: string;
@@ -66,9 +68,54 @@ export interface SchedulingDashboardData {
  * Fetch all scheduling dashboard data in a single optimized call
  * Uses a single Supabase client and parallel queries
  */
+import { getActiveTerm } from "@/lib/db/term";
+
+// ... (keep existing imports)
+
+// ...
+
 export const getSchedulingDashboardData = cache(
   async (userId: string): Promise<SchedulingDashboardData> => {
     const supabase = await createClient();
+
+    const activeTerm = await getActiveTerm();
+
+    if (!activeTerm) {
+      // Still fetch notifications/deadlines but zero stats
+      const [deadlinesResult, notificationsResult] = await Promise.all([
+        supabase.rpc("get_upcoming_deadlines_for_role", {
+          role_name: "scheduling",
+          days_ahead: 30,
+        }),
+        supabase
+          .from("notification")
+          .select("id, user_id, type, payload, read_at, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      return {
+        stats: {
+          coursesCount: 0,
+          sectionsCount: 0,
+          roomsCount: 0,
+          instructorsCount: 0,
+          studentsCount: 0,
+          draftSectionsCount: 0,
+          releasedSectionsCount: 0,
+          assignedSectionsCount: 0,
+          unassignedSectionsCount: 0,
+        },
+        scheduleStatus: {
+          draft: { total: 0, assigned: 0, unassigned: 0 },
+          released: { total: 0 },
+        },
+        activeTermId: null,
+        deadlines: deadlinesResult.data || [],
+        notifications: notificationsResult.data || [],
+      };
+    }
 
     // Execute all queries in parallel with a single client
     const [
@@ -76,14 +123,18 @@ export const getSchedulingDashboardData = cache(
       sectionsResult,
       roomsResult,
       instructorsResult,
+      studentsResult,
       deadlinesResult,
       notificationsResult,
     ] = await Promise.all([
       // 1. Courses count
       supabase.from("course").select("*", { count: "exact", head: true }),
 
-      // 2. Sections with state and assignment info
-      supabase.from("section").select("state, room_code, meeting_pattern"),
+      // 2. Sections with state and assignment info - Filter by Active Term
+      supabase
+        .from("section")
+        .select("state, room_code, meeting_pattern, schedule!inner(term_id)")
+        .eq("schedule.term_id", activeTerm.id),
 
       // 3. Rooms count
       supabase.from("room").select("*", { count: "exact", head: true }),
@@ -93,13 +144,18 @@ export const getSchedulingDashboardData = cache(
         .from("faculty_profile")
         .select("*", { count: "exact", head: true }),
 
-      // 5. Upcoming deadlines for scheduling role
+      // 5. Students count
+      supabase
+        .from("student_profile")
+        .select("*", { count: "exact", head: true }),
+
+      // 6. Upcoming deadlines for scheduling role
       supabase.rpc("get_upcoming_deadlines_for_role", {
         role_name: "scheduling",
         days_ahead: 30,
       }),
 
-      // 6. Recent notifications
+      // 7. Recent notifications
       supabase
         .from("notification")
         .select("id, user_id, type, payload, read_at, created_at")
@@ -112,6 +168,7 @@ export const getSchedulingDashboardData = cache(
     const coursesCount = coursesResult.count || 0;
     const roomsCount = roomsResult.count || 0;
     const instructorsCount = instructorsResult.count || 0;
+    const studentsCount = studentsResult.count || 0;
 
     // Process sections data
     const sectionsData = sectionsResult.data || [];
@@ -140,6 +197,7 @@ export const getSchedulingDashboardData = cache(
       sectionsCount,
       roomsCount,
       instructorsCount,
+      studentsCount,
       draftSectionsCount: draftSections.length,
       releasedSectionsCount: releasedSections.length,
       assignedSectionsCount: assignedSections.length,
@@ -160,6 +218,7 @@ export const getSchedulingDashboardData = cache(
     return {
       stats,
       scheduleStatus,
+      activeTermId: activeTerm.id,
       deadlines: deadlinesResult.data || [],
       notifications: notificationsResult.data || [],
     };

@@ -59,13 +59,13 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: room
       ? {
-          code: room.code,
-          type: room.type,
-        }
+        code: room.code,
+        type: room.type,
+      }
       : {
-          code: "",
-          type: "Lecture",
-        },
+        code: "",
+        type: "Lecture",
+      },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -89,6 +89,15 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle conflict error specifically
+        if (response.status === 409) {
+          form.setError("code", {
+            type: "manual",
+            message: data.error || "Room with this code already exists",
+          });
+          return; // Stop execution, don't throw
+        }
+
         throw new Error(
           data.error || `Failed to ${isEditing ? "update" : "create"} room`
         );
@@ -183,8 +192,8 @@ export function RoomForm({ room, isEditing = false }: RoomFormProps) {
                   {isLoading
                     ? "Saving..."
                     : isEditing
-                    ? "Update Room"
-                    : "Create Room"}
+                      ? "Update Room"
+                      : "Create Room"}
                 </Button>
               </div>
             </form>

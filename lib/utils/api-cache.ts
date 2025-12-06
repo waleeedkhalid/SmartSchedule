@@ -62,7 +62,9 @@ class APICache {
       return memoryEntry.data as T;
     }
 
-    // Check localStorage
+    // Check localStorage only on client
+    if (typeof window === "undefined") return null;
+
     try {
       const stored = localStorage.getItem(key);
       if (stored) {
@@ -97,7 +99,9 @@ class APICache {
     // Store in memory cache
     this.memoryCache.set(key, entry);
 
-    // Store in localStorage
+    // Store in localStorage only on client
+    if (typeof window === "undefined") return;
+
     try {
       localStorage.setItem(key, JSON.stringify(entry));
     } catch (error) {
@@ -126,7 +130,9 @@ class APICache {
     // Remove from memory
     this.memoryCache.delete(key);
 
-    // Remove from localStorage
+    // Remove from localStorage only on client
+    if (typeof window === "undefined") return;
+
     try {
       localStorage.removeItem(key);
     } catch (error) {
@@ -145,7 +151,9 @@ class APICache {
       }
     }
 
-    // Clear localStorage
+    // Clear localStorage only on client
+    if (typeof window === "undefined") return;
+
     try {
       const keys = Object.keys(localStorage);
       keys.forEach((key) => {
@@ -165,7 +173,9 @@ class APICache {
     // Clear memory cache
     this.memoryCache.clear();
 
-    // Clear localStorage
+    // Clear localStorage only on client
+    if (typeof window === "undefined") return;
+
     try {
       const keys = Object.keys(localStorage);
       keys.forEach((key) => {
@@ -182,6 +192,9 @@ class APICache {
    * Clear expired entries to free up space
    */
   private clearOldEntries(): void {
+    // Skip on server
+    if (typeof window === "undefined") return;
+
     const keysToRemove: string[] = [];
 
     try {
@@ -226,7 +239,9 @@ class APICache {
       }
     }
 
-    // Clear from localStorage
+    // Clear from localStorage only on client
+    if (typeof window === "undefined") return;
+
     try {
       const keys = Object.keys(localStorage);
       keys.forEach((key) => {
@@ -237,6 +252,68 @@ class APICache {
     } catch (error) {
       console.warn("Error invalidating cache pattern:", error);
     }
+  }
+
+  private inflightRequests: Map<string, Promise<unknown>> = new Map();
+
+  /**
+   * Fetch data with caching and inflight deduplication
+   */
+  async fetch<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    userId?: string,
+    ttl?: number
+  ): Promise<T> {
+    // Only cache GET requests
+    if (options.method && options.method !== "GET") {
+      const response = await fetch(endpoint, options);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`
+        );
+      }
+      return response.json() as Promise<T>;
+    }
+
+    const key = this.getCacheKey(endpoint, userId);
+
+    // 1. Check cache first
+    const cached = this.get<T>(endpoint, userId);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // 2. Check inflight requests
+    if (this.inflightRequests.has(key)) {
+      return this.inflightRequests.get(key) as Promise<T>;
+    }
+
+    // 3. Make new request
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(endpoint, options);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `HTTP error! status: ${response.status}`
+          );
+        }
+        const data = (await response.json()) as T;
+
+        // Cache the successful response
+        this.set(endpoint, data, userId, ttl);
+
+        return data;
+      } finally {
+        // Remove from inflight requests regardless of success/failure
+        this.inflightRequests.delete(key);
+      }
+    })();
+
+    this.inflightRequests.set(key, fetchPromise);
+    return fetchPromise as Promise<T>;
   }
 }
 
@@ -281,6 +358,8 @@ async function getUserId(): Promise<string | undefined> {
   }
 }
 
+
+
 /**
  * Cached fetch wrapper
  * Automatically caches GET requests and returns cached data when available
@@ -291,42 +370,8 @@ export async function cachedFetch<T>(
   userId?: string,
   ttl?: number
 ): Promise<T> {
-  // Only cache GET requests
-  if (options.method && options.method !== "GET") {
-    const response = await fetch(endpoint, options);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error || `HTTP error! status: ${response.status}`
-      );
-    }
-    return response.json() as Promise<T>;
-  }
-
-  // Get user ID if not provided
   const finalUserId = userId || (await getUserId());
-
-  // Check cache first
-  const cached = apiCache.get<T>(endpoint, finalUserId);
-  if (cached !== null) {
-    return cached;
-  }
-
-  // Fetch from API
-  const response = await fetch(endpoint, options);
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `HTTP error! status: ${response.status}`
-    );
-  }
-
-  const data = (await response.json()) as T;
-
-  // Cache the response
-  apiCache.set(endpoint, data, finalUserId, ttl);
-
-  return data;
+  return apiCache.fetch<T>(endpoint, options, finalUserId, ttl);
 }
 
 /**

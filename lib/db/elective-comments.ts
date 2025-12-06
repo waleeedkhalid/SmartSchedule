@@ -3,7 +3,17 @@ import { createClient } from "@/supabase/server";
 export interface ElectiveCommentStat {
   course_code: string;
   total_comments: number;
-  unresolved_comments: number;
+}
+
+export interface ElectiveComment {
+  id: string;
+  student_id: string;
+  course_code: string;
+  comment: string;
+  created_at: string;
+  course: {
+    title: string;
+  } | null;
 }
 
 /**
@@ -16,7 +26,7 @@ export async function getElectiveCommentStats(): Promise<ElectiveCommentStat[]> 
   // Get all elective comments
   const { data: comments, error: commentError } = await supabase
     .from("elective_comment")
-    .select("course_code, is_resolved");
+    .select("course_code");
 
   if (commentError) {
     throw new Error(`Failed to fetch elective comments: ${commentError.message}`);
@@ -32,21 +42,44 @@ export async function getElectiveCommentStats(): Promise<ElectiveCommentStat[]> 
       statsMap.set(courseCode, {
         course_code: courseCode,
         total_comments: 0,
-        unresolved_comments: 0,
       });
     }
 
     const stat = statsMap.get(courseCode)!;
     stat.total_comments++;
-
-    if (!comment.is_resolved) {
-      stat.unresolved_comments++;
-    }
   });
 
   // Convert map to array and sort by course_code
   return Array.from(statsMap.values()).sort((a, b) =>
     a.course_code.localeCompare(b.course_code)
   );
+}
+
+/**
+ * Get all elective comments with course details
+ */
+export async function getElectiveComments(): Promise<ElectiveComment[]> {
+  const supabase = await createClient();
+
+  const { data: comments, error } = await supabase
+    .from("elective_comment")
+    .select(`
+      id,
+      student_id,
+      course_code,
+      comment,
+      created_at,
+      course:course_code(title)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch elective comments: ${error.message}`);
+  }
+
+  return (comments || []).map((c) => ({
+    ...c,
+    course: Array.isArray(c.course) ? c.course[0] : c.course,
+  }));
 }
 

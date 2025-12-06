@@ -90,26 +90,24 @@ export function SectionForm({
     },
   });
 
-  // Watch form values for conflict checking
-  const watchedValues = form.watch();
+  // Watch only specific fields needed for conflict checking to prevent excessive re-renders
+  const [roomCode, instructorId, meetingDays, meetingStart, meetingDuration] = form.watch([
+    "room_code",
+    "instructor_id",
+    "meeting_days",
+    "meeting_start",
+    "meeting_duration",
+  ]);
 
   // Debounced conflict checking
   useEffect(() => {
     const checkConflicts = async () => {
-      const {
-        room_code,
-        instructor_id,
-        meeting_days,
-        meeting_start,
-        meeting_duration,
-      } = watchedValues;
-
       // Only check if we have minimum required data
       if (
-        !meeting_days ||
-        meeting_days.length === 0 ||
-        !meeting_start ||
-        !meeting_duration
+        !meetingDays ||
+        meetingDays.length === 0 ||
+        !meetingStart ||
+        !meetingDuration
       ) {
         setConflicts(null);
         return;
@@ -153,15 +151,15 @@ export function SectionForm({
         }
 
         // Convert meeting_start to 24-hour format if needed (e.g., "08:00 AM" -> "08:00")
-        let meetingStart = watchedValues.meeting_start;
-        if (meetingStart.includes("AM") || meetingStart.includes("PM")) {
+        let formattedMeetingStart = meetingStart;
+        if (formattedMeetingStart.includes("AM") || formattedMeetingStart.includes("PM")) {
           // Parse 12-hour format
-          const [time, period] = meetingStart.split(" ");
+          const [time, period] = formattedMeetingStart.split(" ");
           const [hours, minutes] = time.split(":");
           let hour24 = parseInt(hours);
           if (period === "PM" && hour24 !== 12) hour24 += 12;
           if (period === "AM" && hour24 === 12) hour24 = 0;
-          meetingStart = `${String(hour24).padStart(2, "0")}:${minutes}`;
+          formattedMeetingStart = `${String(hour24).padStart(2, "0")}:${minutes}`;
         }
 
         // Call the conflict check API
@@ -172,11 +170,11 @@ export function SectionForm({
             "Authorization": authHeader,
           },
           body: JSON.stringify({
-            room_code: room_code || null,
-            instructor_id: instructor_id || null,
-            meeting_days: meeting_days,
-            meeting_start: meetingStart,
-            meeting_duration: meeting_duration,
+            room_code: roomCode || null,
+            instructor_id: instructorId || null,
+            meeting_days: meetingDays,
+            meeting_start: formattedMeetingStart,
+            meeting_duration: meetingDuration,
             term_id: termId, // Optional - API will use active term if not provided
             exclude_section_id: section?.id, // Exclude current section when editing
           }),
@@ -203,13 +201,12 @@ export function SectionForm({
     // Debounce the conflict check
     const timeoutId = setTimeout(checkConflicts, 500);
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    watchedValues.room_code,
-    watchedValues.instructor_id,
-    watchedValues.meeting_days,
-    watchedValues.meeting_start,
-    watchedValues.meeting_duration,
+    roomCode,
+    instructorId,
+    meetingDays,
+    meetingStart,
+    meetingDuration,
     section?.id,
   ]);
 

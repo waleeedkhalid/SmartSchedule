@@ -28,24 +28,6 @@ const MIN_SECTION_SIZE = 15;
 const MAX_SECTION_SIZE = 50;
 const MAX_ROOMS = 64;
 
-// Time slots available for scheduling (Sunday-Thursday)
-const TEACHING_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
-const TIME_SLOTS = [
-  { start: "08:00", duration: 50 },
-  { start: "09:00", duration: 50 },
-  { start: "10:00", duration: 50 },
-  { start: "11:00", duration: 50 },
-  { start: "12:00", duration: 50 },
-  { start: "13:00", duration: 50 },
-  { start: "14:00", duration: 50 },
-  { start: "15:00", duration: 50 },
-  { start: "16:00", duration: 50 },
-];
-
-// Exam configuration
-const EXAM_DAYS = ["Saturday"];
-const EXAM_TIMES = ["09:00", "12:00", "15:00"];
-
 interface Course {
   code: string;
   title: string;
@@ -72,6 +54,7 @@ interface SectionToCreate {
     duration: number;
   };
   room_code: string;
+  instructor_id?: string;
   state: string;
   created_by: string;
 }
@@ -111,6 +94,13 @@ interface ExamSlot {
   room: string;
 }
 
+interface Faculty {
+  id: string;
+  name: string;
+  max_load_per_week: number;
+  unavailable_times: any;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await authenticateRequest(request);
@@ -130,7 +120,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const warnings: string[] = [];
 
-    // Verify term exists
+    // Verify term exists and get start date
     const { data: term, error: termError } = await supabase
       .from("academic_term")
       .select("id, code, name, start_date, end_date")
@@ -145,42 +135,101 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!term.start_date) {
+      return createErrorResponse(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        "Academic term must have a start date"
+      );
+    }
+
+    // Get scheduling configuration
+    const { data: configData, error: configError } = await supabase
+      .from("time_grid_config")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (configError || !configData) {
+      return createErrorResponse(
+        404,
+        ErrorCodes.NOT_FOUND,
+        "Scheduling configuration not found"
+      );
+    }
+
+    // Parse configuration
+    const teachingDays = configData.teaching_days || ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+    const slotDuration = configData.slot_duration_minutes || 50;
+
+    // Generate time slots based on config
+    const timeSlots: { start: string; duration: number }[] = [];
+    const [startHour, startMinute] = (configData.daily_start_time || "08:00").split(":").map(Number);
+    const [endHour, endMinute] = (configData.daily_end_time || "17:00").split(":").map(Number);
+
+    let currentHour = startHour;
+    let currentMinute = startMinute;
+
+    while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+      // Format time string HH:MM
+      const timeStr = `${String(currentHour).padStart(2, "0")}:${String(currentMinute).padStart(2, "0")}`;
+
+      // Add slot if it fits before end time
+      const endTimeInMinutes = endHour * 60 + endMinute;
+      const slotEndInMinutes = currentHour * 60 + currentMinute + slotDuration;
+
+      if (slotEndInMinutes <= endTimeInMinutes) {
+        timeSlots.push({ start: timeStr, duration: slotDuration });
+      }
+
+      // Move to next slot (assuming slots are contiguous for now, or add break logic if needed)
+      // For simplicity, we'll just add duration + 10 mins break if not specified
+      const nextTimeInMinutes = slotEndInMinutes + 10;
+      currentHour = Math.floor(nextTimeInMinutes / 60);
+      currentMinute = nextTimeInMinutes % 60;
+    }
+
     // =====================================================
     // STEP 1: Get SWE Courses (levels 4-8)
     // =====================================================
-    const { data: courses, error: coursesError } = await supabase
+    const { data: coursesData, error: coursesError } = await supabase
       .from("course")
-      .select("code, title, level, credits, weekly_hours, is_elective")
-      .gte("level", 4)
-      .lte("level", 8)
+      .select("code, title, recommended_level, credits, weekly_hours, is_elective")
+      .gte("recommended_level", 4)
+      .lte("recommended_level", 8)
       .eq("is_elective", false);
 
     if (coursesError) throw coursesError;
 
+    const courses: Course[] = (coursesData || []).map((c) => ({
+      code: c.code,
+      title: c.title,
+      level: c.recommended_level || 0,
+      credits: c.credits,
+      weekly_hours: c.weekly_hours,
+      is_elective: c.is_elective,
+    }));
+
     // Filter to only SWE courses
     const sweCourses = (courses || []).filter(
       (c: Course) =>
-        c.code.startsWith("SWE") ||
-        c.code.startsWith("CSC") ||
-        c.code.startsWith("MATH") ||
-        c.code.startsWith("PHYS") ||
-        c.code.startsWith("CEN") ||
-        c.code.startsWith("IS") ||
-        c.code.startsWith("IC")
+        c.code.startsWith("SWE")
     ) as Course[];
 
     // =====================================================
     // STEP 2: Get SWE Students by Level
     // =====================================================
+    // FIX: Use student_profile instead of user_roles for level
     const { data: students, error: studentsError } = await supabase
-      .from("user_roles")
-      .select("level")
-      .eq("role", "student")
-      .not("level", "is", null)
+      .from("student_profile")
+      .select("user_id, level")
       .gte("level", 4)
       .lte("level", 8);
 
     if (studentsError) throw studentsError;
+
+    // Store students by level for enrollment
+    const studentsByLevelMap = new Map<number, string[]>(); // level -> studentIds
 
     // Count students by level
     const studentsByLevel: StudentByLevel[] = [];
@@ -190,6 +239,11 @@ export async function POST(request: NextRequest) {
       const level = student.level;
       if (level >= 4 && level <= 8) {
         levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
+        // Also store student ID for enrollment
+        if (!studentsByLevelMap.has(level)) {
+          studentsByLevelMap.set(level, []);
+        }
+        studentsByLevelMap.get(level)!.push(student.user_id);
       }
     }
 
@@ -234,13 +288,40 @@ export async function POST(request: NextRequest) {
       .eq("state", "draft");
 
     // =====================================================
-    // STEP 4 & 5: Assign Rooms and Time Slots
+    // STEP 3.5: Get Faculty for Assignment
+    // =====================================================
+    const { data: facultyData, error: facultyError } = await supabase
+      .from("faculty_profile")
+      .select("id, name, max_load_per_week, unavailable_times");
+
+    if (facultyError) throw facultyError;
+
+    const facultyList: Faculty[] = (facultyData || []).map((f) => ({
+      id: f.id,
+      name: f.name || "Unknown Faculty",
+      max_load_per_week: f.max_load_per_week || 12, // Default 12 hours max load
+      unavailable_times: f.unavailable_times,
+    }));
+
+    // Track instructor load and schedule
+    const instructorLoad = new Map<string, number>(); // instructorId -> current load (hours)
+    const instructorSchedule = new Map<string, Set<string>>(); // instructorId -> Set("day-time")
+
+    // Initialize load
+    for (const f of facultyList) {
+      instructorLoad.set(f.id, 0);
+      instructorSchedule.set(f.id, new Set());
+    }
+
+    // =====================================================
+    // STEP 4 & 5: Assign Rooms, Time Slots, and Instructors
     // =====================================================
 
     // Get available rooms (1-64)
+    // FIX: Remove capacity from selection as it doesn't exist
     const { data: rooms, error: roomsError } = await supabase
       .from("room")
-      .select("code, type, capacity")
+      .select("code, type")
       .order("code");
 
     if (roomsError) throw roomsError;
@@ -254,7 +335,7 @@ export async function POST(request: NextRequest) {
         roomsToCreate.push({
           code: `R${String(i).padStart(3, "0")}`,
           type: i <= 48 ? "Lecture" : "Lab",
-          capacity: i <= 48 ? 50 : 30,
+          // capacity removed from insert
           created_by: user.id,
         });
       }
@@ -334,11 +415,11 @@ export async function POST(request: NextRequest) {
           let assigned = false;
           let attempts = 0;
           const maxAttempts =
-            TEACHING_DAYS.length * TIME_SLOTS.length * availableRooms.length;
+            teachingDays.length * timeSlots.length * availableRooms.length;
 
           while (!assigned && attempts < maxAttempts) {
-            const day = TEACHING_DAYS[currentDayIndex % TEACHING_DAYS.length];
-            const timeSlot = TIME_SLOTS[currentTimeIndex % TIME_SLOTS.length];
+            const day = teachingDays[currentDayIndex % teachingDays.length];
+            const timeSlot = timeSlots[currentTimeIndex % timeSlots.length];
             const room =
               availableRooms[currentRoomIndex % availableRooms.length];
 
@@ -349,9 +430,39 @@ export async function POST(request: NextRequest) {
             const levelOccupied = occupiedSlots.get(levelKey);
             const roomOccupied = roomSchedule.has(roomKey);
 
-            // Can assign if room is free and level doesn't have another class at this time
-            // (students can't be in two places at once)
-            if (!roomOccupied && (!levelOccupied || !levelOccupied.has(room))) {
+            // STRICT CONFLICT CHECK:
+            // 1. Room must be free.
+            // 2. Level must be completely free (no other class for this level at this time).
+            if (!roomOccupied && !levelOccupied) {
+
+              // Find an instructor
+              let assignedInstructorId: string | undefined;
+
+              // Sort faculty by current load (ascending) to balance load
+              const sortedFaculty = [...facultyList].sort((a, b) => {
+                return (instructorLoad.get(a.id) || 0) - (instructorLoad.get(b.id) || 0);
+              });
+
+              for (const faculty of sortedFaculty) {
+                const currentLoad = instructorLoad.get(faculty.id) || 0;
+
+                // Check if faculty has capacity
+                if (currentLoad + course.weekly_hours <= faculty.max_load_per_week) {
+                  // Check if faculty is free at this time
+                  const facultySchedule = instructorSchedule.get(faculty.id)!;
+                  const timeKey = `${day}-${timeSlot.start}`;
+
+                  if (!facultySchedule.has(timeKey)) {
+                    assignedInstructorId = faculty.id;
+
+                    // Update faculty load and schedule
+                    instructorLoad.set(faculty.id, currentLoad + course.weekly_hours);
+                    facultySchedule.add(timeKey);
+                    break;
+                  }
+                }
+              }
+
               // Assign this slot
               const meetingPattern = {
                 days: [day],
@@ -367,9 +478,14 @@ export async function POST(request: NextRequest) {
                 activity: "lecture",
                 meeting_pattern: meetingPattern,
                 room_code: room,
+                instructor_id: assignedInstructorId,
                 state: "draft",
                 created_by: user.id,
               });
+
+              if (!assignedInstructorId) {
+                warnings.push(`No instructor available for ${course.code} section ${sectionNum}`);
+              }
 
               // Mark as occupied
               if (!occupiedSlots.has(levelKey)) {
@@ -391,7 +507,7 @@ export async function POST(request: NextRequest) {
             if (currentRoomIndex >= availableRooms.length) {
               currentRoomIndex = 0;
               currentTimeIndex++;
-              if (currentTimeIndex >= TIME_SLOTS.length) {
+              if (currentTimeIndex >= timeSlots.length) {
                 currentTimeIndex = 0;
                 currentDayIndex++;
               }
@@ -442,33 +558,100 @@ export async function POST(request: NextRequest) {
     }
 
     // =====================================================
+    // STEP 5.5: Enroll Students by Level
+    // =====================================================
+    let totalEnrollments = 0;
+
+    // Group inserted sections by level and course
+    const sectionsByLevelAndCourse = new Map<string, ScheduledSection[]>();
+    for (const section of insertedSections) {
+      const key = `${section.group_level}-${section.course_code}`;
+      if (!sectionsByLevelAndCourse.has(key)) {
+        sectionsByLevelAndCourse.set(key, []);
+      }
+      sectionsByLevelAndCourse.get(key)!.push(section);
+    }
+
+    // For each level, enroll students in courses for their level
+    for (const [level, studentIds] of studentsByLevelMap) {
+      // Get all courses for this level
+      const levelCourses = sweCourses.filter(c => c.level === level);
+
+      for (const course of levelCourses) {
+        const key = `${level}-${course.code}`;
+        const courseSections = sectionsByLevelAndCourse.get(key) || [];
+
+        if (courseSections.length === 0) continue;
+
+        // Distribute students across sections
+        const studentsPerSection = Math.ceil(studentIds.length / courseSections.length);
+        const enrollmentsToInsert: Array<{
+          student_id: string;
+          section_id: string;
+          status: string;
+        }> = [];
+
+        studentIds.forEach((studentId, idx) => {
+          const sectionIdx = Math.floor(idx / studentsPerSection) % courseSections.length;
+          const section = courseSections[sectionIdx];
+
+          enrollmentsToInsert.push({
+            student_id: studentId,
+            section_id: section.id,
+            status: "registered",
+          });
+        });
+
+        if (enrollmentsToInsert.length > 0) {
+          // Delete existing enrollments for these students in sections of this course
+          const sectionIds = courseSections.map(s => s.id);
+          await supabase
+            .from("student_enrollment")
+            .delete()
+            .in("student_id", studentIds)
+            .in("section_id", sectionIds);
+
+          // Insert new enrollments
+          const { error: enrollError } = await supabase
+            .from("student_enrollment")
+            .insert(enrollmentsToInsert);
+
+          if (enrollError) {
+            warnings.push(`Error enrolling students in ${course.code}: ${enrollError.message}`);
+          } else {
+            totalEnrollments += enrollmentsToInsert.length;
+          }
+        }
+      }
+    }
+
+    // =====================================================
     // STEP 6: Schedule Exams (Mid1, Mid2, Final)
     // =====================================================
 
     // Delete existing exams for these courses
     await supabase.from("exam").delete().in("course_code", courseCodes);
 
-    // Generate exam dates
-    const examDates: string[] = [];
-    const today = new Date();
+    // Generate exam dates based on term start date
+    const termStartDate = new Date(term.start_date);
 
     // Mid1: Week 6-7
-    const mid1Start = new Date(today);
+    const mid1Start = new Date(termStartDate);
     mid1Start.setDate(mid1Start.getDate() + 42); // 6 weeks
 
     // Mid2: Week 11-12
-    const mid2Start = new Date(today);
+    const mid2Start = new Date(termStartDate);
     mid2Start.setDate(mid2Start.getDate() + 77); // 11 weeks
 
     // Final: Week 16-17
-    const finalStart = new Date(today);
+    const finalStart = new Date(termStartDate);
     finalStart.setDate(finalStart.getDate() + 112); // 16 weeks
 
     // Get Saturday dates for each exam period
     function getNextSaturday(from: Date): Date {
       const date = new Date(from);
       const day = date.getDay();
-      const diff = 6 - day;
+      const diff = 6 - day; // 6 is Saturday
       date.setDate(date.getDate() + diff);
       return date;
     }
@@ -486,6 +669,13 @@ export async function POST(request: NextRequest) {
       getNextSaturday(new Date(finalStart.getTime() + 7 * 24 * 60 * 60 * 1000)),
     ];
 
+    // Get exam times from config
+    const examTimes = [
+      configData.exam_start_time || "09:00",
+      "12:00", // Default middle slot
+      configData.exam_end_time || "15:00"
+    ];
+
     // Track exam slots to avoid conflicts
     const examSlotOccupied = new Map<string, Map<string, Set<number>>>(); // date -> time -> Set of levels
 
@@ -497,7 +687,7 @@ export async function POST(request: NextRequest) {
       for (const date of dates) {
         const dateStr = date.toISOString().split("T")[0];
 
-        for (const time of EXAM_TIMES) {
+        for (const time of examTimes) {
           const key = `${dateStr}-${time}`;
 
           if (!examSlotOccupied.has(dateStr)) {
@@ -549,7 +739,7 @@ export async function POST(request: NextRequest) {
       if (mid1Slot) {
         examsToInsert.push({
           course_code: course.code,
-          exam_type: "midterm1",
+          exam_type: "mid1",
           date: mid1Slot.date,
           start_time: mid1Slot.time,
           duration_minutes: 90,
@@ -566,7 +756,7 @@ export async function POST(request: NextRequest) {
       if (mid2Slot) {
         examsToInsert.push({
           course_code: course.code,
-          exam_type: "midterm2",
+          exam_type: "mid2",
           date: mid2Slot.date,
           start_time: mid2Slot.time,
           duration_minutes: 90,
@@ -614,9 +804,7 @@ export async function POST(request: NextRequest) {
       {
         success,
         message: success
-          ? `Successfully generated schedule: ${totalSections} sections, ${
-              examsScheduled.mid1 + examsScheduled.mid2 + examsScheduled.final
-            } exams`
+          ? `Successfully generated schedule: ${totalSections} sections, ${examsScheduled.mid1 + examsScheduled.mid2 + examsScheduled.final} exams, ${totalEnrollments} enrollments`
           : `Partial schedule generated with ${warnings.length} warnings`,
         stats: {
           students_by_level: studentsByLevel,
@@ -626,6 +814,7 @@ export async function POST(request: NextRequest) {
           time_slots_assigned: timeSlotsAssigned,
           exams_scheduled: examsScheduled,
           conflicts_avoided: conflictsAvoided,
+          total_enrollments: totalEnrollments,
         },
         warnings,
       },

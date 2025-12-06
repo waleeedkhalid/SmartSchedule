@@ -78,13 +78,32 @@ export function ScheduleGenerator({ initialStatus }: ScheduleGeneratorProps) {
     setGenerationStep("Initializing...");
 
     try {
+      // Add small delay to ensure Supabase client is fully initialized
+      // This fixes timing issues where auth token may not be ready immediately
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const authHeader = await getAuthHeader();
 
       if (!authHeader || authHeader.trim() === "" || authHeader === "Bearer ") {
-        toast.error("Please log in to generate schedules");
+        console.error("[ScheduleGenerator] Authentication failed:", {
+          authHeader,
+          authHeaderType: typeof authHeader,
+          authHeaderTrimmed: authHeader?.trim(),
+        });
+        toast.error(
+          "Authentication failed. Please log in again to generate schedules."
+        );
+
+        // Clear any cached tokens to force re-authentication
+        try {
+          localStorage.removeItem("auth_token");
+        } catch (e) {
+          console.warn("Failed to clear auth_token from localStorage");
+        }
+
         setTimeout(() => {
           window.location.href = "/login";
-        }, 2000);
+        }, 1500);
         return;
       }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,30 +91,22 @@ export function ExamForm({
     resolver: zodResolver(formSchema),
     defaultValues: exam
       ? {
-          course_code: exam.course_code,
-          date: exam.date,
-          start_time: exam.start_time.substring(0, 5), // HH:MM format
-          duration_minutes: exam.duration_minutes,
-          room_codes: exam.room_codes || [],
-        }
+        course_code: exam.course_code,
+        date: exam.date,
+        start_time: exam.start_time.substring(0, 5), // HH:MM format
+        duration_minutes: exam.duration_minutes,
+        room_codes: exam.room_codes || [],
+      }
       : {
-          course_code: "",
-          date: "",
-          start_time: "09:00",
-          duration_minutes: 120,
-          room_codes: [],
-        },
+        course_code: "",
+        date: "",
+        start_time: "09:00",
+        duration_minutes: 120,
+        room_codes: [],
+      },
   });
 
-  // Check conflicts when exam is loaded (edit mode)
-  useEffect(() => {
-    if (exam?.id) {
-      checkConflicts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exam?.id]);
-
-  async function checkConflicts() {
+  const checkConflicts = useCallback(async () => {
     if (!exam?.id) return;
 
     try {
@@ -138,7 +130,14 @@ export function ExamForm({
         has_conflicts: false,
       });
     }
-  }
+  }, [exam?.id]);
+
+  // Check conflicts when exam is loaded (edit mode)
+  useEffect(() => {
+    if (exam?.id) {
+      checkConflicts();
+    }
+  }, [exam?.id, checkConflicts]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -363,11 +362,10 @@ export function ExamForm({
                             key={room.code}
                             type="button"
                             onClick={() => toggleRoom(room.code)}
-                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                              isSelected
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background hover:bg-gray-50 dark:hover:bg-gray-800"
-                            }`}
+                            className={`px-3 py-2 text-sm rounded-md border transition-colors ${isSelected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background hover:bg-gray-50 dark:hover:bg-gray-800"
+                              }`}
                           >
                             <div className="font-medium">{room.code}</div>
                             <div className="text-xs opacity-70">
@@ -413,8 +411,8 @@ export function ExamForm({
               {isLoading
                 ? "Saving..."
                 : isEditing
-                ? "Update Exam"
-                : "Create Exam"}
+                  ? "Update Exam"
+                  : "Create Exam"}
             </Button>
           </div>
         </form>

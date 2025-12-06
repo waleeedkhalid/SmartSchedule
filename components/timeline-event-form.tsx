@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,9 +79,10 @@ export function TimelineEventForm({
       : "",
     target_roles: event?.target_roles || [],
     // Default values for hidden fields
+    // Initialize empty to prevent SSR/client date mismatch, set in useEffect after mount
     start_date: event?.start_date
       ? new Date(event.start_date).toISOString().slice(0, 16)
-      : new Date().toISOString().slice(0, 16), // Default to now if new
+      : "",
     description: event?.description || "",
     category: event?.category || "administrative",
     priority: event?.priority || "medium",
@@ -90,6 +91,17 @@ export function TimelineEventForm({
     is_deadline: event?.is_deadline ?? true,
     notification_days_before: event?.notification_days_before || [7, 3, 1],
   });
+
+  // Set default start_date after mount to prevent SSR/client date mismatch
+  useEffect(() => {
+    if (!event?.start_date && !formData.start_date) {
+      setFormData((prev) => ({
+        ...prev,
+        start_date: new Date().toISOString().slice(0, 16),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleChange(field: string, value: unknown) {
     setFormData((prev) => {

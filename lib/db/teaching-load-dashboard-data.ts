@@ -6,6 +6,7 @@
 import { cache } from "react";
 import { createClient } from "@/supabase/server";
 import { extractJoinedRelation } from "@/lib/utils";
+import { getActiveTerm } from "@/lib/db/term";
 import type { Database } from "@/lib/types/database";
 
 // Types for normalized section data
@@ -32,7 +33,6 @@ export interface InstructorForTable {
 export interface RoomForTable {
   code: string;
   type: string;
-  capacity: number | null;
 }
 
 export interface TeachingLoadDashboardData {
@@ -48,16 +48,30 @@ export interface TeachingLoadDashboardData {
  * Fetches all data needed for the teaching load dashboard in parallel
  * Cached at the request level to prevent duplicate fetches
  */
+
+
 export const getTeachingLoadDashboardData = cache(
   async (): Promise<TeachingLoadDashboardData> => {
     const supabase = await createClient();
+
+    const activeTerm = await getActiveTerm();
+
+    if (!activeTerm) {
+      return {
+        instructorsCount: 0,
+        sectionsCount: 0,
+        coursesCount: 0,
+        normalizedSections: [],
+        instructorsList: [],
+        roomsList: [],
+      };
+    }
 
     // Fetch all counts and lists in parallel
     const [
       instructorsResult,
       sectionsCountResult,
       coursesCountResult,
-      currentTermResult,
       instructorsListResult,
       roomsListResult,
     ] = await Promise.all([
@@ -66,21 +80,14 @@ export const getTeachingLoadDashboardData = cache(
         .from("faculty_profile")
         .select("id", { count: "exact", head: true })
         .eq("department", "SWE"),
-      // Get sections count
+      // Get sections count - Filter by Active Term
       supabase
         .from("section")
-        .select("*", { count: "exact", head: true })
-        .like("course_code", "SWE%"),
+        .select("id, schedule!inner(term_id)", { count: "exact", head: true })
+        .like("course_code", "SWE%")
+        .eq("schedule.term_id", activeTerm.id),
       // Get courses count
       supabase.from("course").select("*", { count: "exact", head: true }),
-      // Get current active term
-      supabase
-        .from("academic_term")
-        .select("id")
-        .in("status", ["draft", "released"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single(),
       // Get instructors list for table
       supabase
         .from("faculty_profile")
@@ -90,43 +97,25 @@ export const getTeachingLoadDashboardData = cache(
       // Get rooms list for table
       supabase
         .from("room")
-        .select("code, type, capacity")
+        .select("code, type")
         .order("code", { ascending: true }),
     ]);
 
-    // Get section IDs for current term
-    let sectionIds: string[] | null = null;
-    if (currentTermResult.data) {
-      const { data: scheduleSections } = await supabase
-        .from("schedule")
-        .select("section_id")
-        .eq("term_id", currentTermResult.data.id);
-
-      sectionIds = (scheduleSections || []).map(
-        (s: { section_id: string }) => s.section_id
-      );
-    }
-
-    // Build sections query with related data
-    let sectionsQuery = supabase
+    // Build sections query with related data - Filter by Active Term
+    const { data: sections } = await supabase
       .from("section")
       .select(
         `
       *,
       course:course!section_course_code_fkey(code, title, credits),
       instructor:faculty_profile!section_instructor_id_fkey(id, user_id, name, email),
-      room:room!section_room_code_fkey(code, type)
+      room:room!section_room_code_fkey(code, type),
+      schedule:schedule!schedule_section_id_fkey!inner(term_id)
     `
       )
-      .like("course_code", "SWE%");
-
-    if (currentTermResult.data && sectionIds && sectionIds.length > 0) {
-      sectionsQuery = sectionsQuery.in("id", sectionIds);
-    }
-
-    const { data: sections } = await sectionsQuery.order("course_code", {
-      ascending: true,
-    });
+      .like("course_code", "SWE%")
+      .eq("schedule.term_id", activeTerm.id)
+      .order("course_code", { ascending: true });
 
     // Normalize sections data - Supabase joins can return arrays
     const normalizedSections: NormalizedSection[] = (sections || []).map(
@@ -152,7 +141,6 @@ export const getTeachingLoadDashboardData = cache(
     const roomsList: RoomForTable[] = (roomsListResult.data || []).map((r) => ({
       code: r.code,
       type: r.type,
-      capacity: r.capacity,
     }));
 
     return {

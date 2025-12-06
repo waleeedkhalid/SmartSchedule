@@ -223,19 +223,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check if faculty has sections (use actual primary key id)
-    const { data: sections } = await supabase
+    // Unassign sections from this instructor before deletion
+    const { error: unassignError } = await supabase
       .from("section")
-      .select("id")
-      .eq("instructor_id", existing.id)
-      .limit(1);
+      .update({ instructor_id: null })
+      .eq("instructor_id", existing.id);
 
-    if (sections && sections.length > 0) {
-      return createErrorResponse(
-        409,
-        ErrorCodes.VALIDATION_ERROR,
-        `Cannot delete faculty profile because they have sections assigned. Remove sections first.`
-      );
+    if (unassignError) {
+      throw unassignError;
     }
 
     // Delete faculty profile using actual primary key id

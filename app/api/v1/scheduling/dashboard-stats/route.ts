@@ -18,6 +18,7 @@ import { NextRequest } from "next/server";
 import { authenticateRequest, requireRole } from "@/lib/api/auth-utils";
 import { createSuccessResponse, handleApiError } from "@/lib/api/error-handler";
 import { createClient } from "@/supabase/server";
+import { getActiveTerm } from "@/lib/db/term";
 
 interface MeetingTime {
   day: string;
@@ -84,16 +85,10 @@ export async function GET(request: NextRequest) {
 
     // If no term_id provided, get current active term
     if (!termId) {
-      const { data: currentTerm } = await supabase
-        .from("academic_term")
-        .select("id")
-        .in("status", ["draft", "released"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+      const activeTerm = await getActiveTerm();
 
-      if (currentTerm) {
-        termId = currentTerm.id;
+      if (activeTerm) {
+        termId = activeTerm.id;
       }
     }
 
@@ -162,8 +157,9 @@ export async function GET(request: NextRequest) {
     const { data: facultyProfiles, error: facultyError } = await supabase
       .from("faculty_profile")
       .select(
-        "id, user_id, name, max_load_per_week, preferred_times, unavailable_times"
-      );
+        "id, user_id, name, max_load_per_week, preferred_times, unavailable_times, department"
+      )
+      .eq("department", "SWE");
 
     if (facultyError) {
       throw facultyError;
@@ -280,7 +276,7 @@ export async function GET(request: NextRequest) {
     const avgRoomUtilization =
       roomUsageDetails.length > 0
         ? roomUsageDetails.reduce((sum, r) => sum + r.utilization, 0) /
-          roomUsageDetails.length
+        roomUsageDetails.length
         : 0;
 
     const roomStats = {
@@ -365,7 +361,7 @@ export async function GET(request: NextRequest) {
     const avgUtilization =
       instructorWorkloads.length > 0
         ? instructorWorkloads.reduce((sum, i) => sum + i.utilization, 0) /
-          instructorWorkloads.length
+        instructorWorkloads.length
         : 0;
 
     const workload = {

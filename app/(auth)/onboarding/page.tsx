@@ -46,41 +46,77 @@ async function OnboardingContent() {
     redirect("/login");
   }
 
-  // Reverse Check: If they ARE onboarded (metadata is true), kick them to dashboard
-  if (user.user_metadata?.onboarding_completed === true) {
-    redirect("/dashboard");
-  }
-
-  // SYNC CHECK: If metadata says false, but DB says true -> Fix metadata and redirect
-  // This fixes the infinite loop for existing users who have profiles but missing metadata
-  // Note: We check DB status first, then redirect outside try-catch to avoid catching NEXT_REDIRECT
+  // 2. Robust Onboarding Check
+  // We must verify BOTH the flag and the actual profile existence to prevent infinite loops
   let shouldRedirectToDashboard = false;
-  let syncError: Error | null = null;
 
   const { data: userRole, error: fetchError } = await supabase
     .from("user_roles")
-    .select("onboarding_completed")
+    .select("onboarding_completed, role")
     .eq("user_id", user.id)
     .single();
 
   if (fetchError) {
-    // If no user_role record exists, user needs onboarding - this is expected
     if (fetchError.code !== "PGRST116") {
-      // PGRST116 = no rows returned
       console.warn("Error fetching user role:", fetchError.message);
     }
   } else if (userRole?.onboarding_completed === true) {
-    // User is already onboarded in DB, sync metadata and redirect
-    try {
-      await supabase.auth.updateUser({
-        data: { onboarding_completed: true },
-      });
-    } catch (error) {
-      syncError = error as Error;
-      console.warn("Error syncing onboarding metadata:", syncError.message);
+    // Flag says completed, but we MUST verify profile exists
+    // This prevents the "Dashboard -> Onboarding -> Dashboard" loop
+    let profileExists = false;
+    const role = userRole.role;
+
+    if (role === "student") {
+      const { data } = await supabase
+        .from("student_profile")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      profileExists = !!data;
+    } else if (role === "faculty") {
+      const { data } = await supabase
+        .from("faculty_profile")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      profileExists = !!data;
+    } else if (["scheduling", "teaching_load", "registrar"].includes(role)) {
+      const { data } = await supabase
+        .from("committee_profile")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      profileExists = !!data;
     }
-    // Redirect even if metadata sync fails - DB is source of truth
-    shouldRedirectToDashboard = true;
+
+    if (profileExists) {
+      // legitimate completion - sync metadata and redirect
+      if (user.user_metadata?.onboarding_completed !== true) {
+        await supabase.auth.updateUser({
+          data: { onboarding_completed: true },
+        });
+      }
+      shouldRedirectToDashboard = true;
+    } else {
+      // DATA INCONSISTENCY DETECTED
+      // Flag is true, but profile is missing.
+      // We must RESET the flag so the user can onboard again.
+      console.warn(
+        `Inconsistency detected for user ${user.id}: onboarding_completed=true but ${role}_profile missing. Resetting flag.`
+      );
+
+      await supabase
+        .from("user_roles")
+        .update({ onboarding_completed: false })
+        .eq("user_id", user.id);
+
+      await supabase.auth.updateUser({
+        data: { onboarding_completed: false },
+      });
+
+      // Do NOT redirect - let them fall through to the form
+      shouldRedirectToDashboard = false;
+    }
   }
 
   // Perform redirect outside try-catch to avoid catching NEXT_REDIRECT error
@@ -102,11 +138,11 @@ async function OnboardingContent() {
       userName={serverUser.name}
       userRole={
         serverUser.role as
-          | "student"
-          | "faculty"
-          | "scheduling"
-          | "teaching_load"
-          | "registrar"
+        | "student"
+        | "faculty"
+        | "scheduling"
+        | "teaching_load"
+        | "registrar"
       }
     />
   );

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/mobile/lib/stores/auth.store";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BookOpen, Calendar, Settings, LogOut, Play } from "lucide-react";
+import { BookOpen, Calendar, Settings, LogOut, Play, Users } from "lucide-react";
 
 export default function SchedulerPage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAuth, logout } = useAuthStore();
+  const [studentCount, setStudentCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,6 +40,25 @@ export default function SchedulerPage() {
       return;
     }
   }, [isAuthenticated, user, router]);
+
+  // Fetch student count
+  useEffect(() => {
+    const fetchStudentCount = async () => {
+      try {
+        const response = await fetch("/api/v1/scheduling/dashboard-stats");
+        if (response.ok) {
+          const data = await response.json();
+          setStudentCount(data.enrollments?.active || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch student count:", error);
+      }
+    };
+
+    if (isAuthenticated && user?.role === "scheduling") {
+      fetchStudentCount();
+    }
+  }, [isAuthenticated, user]);
 
   const handleLogout = async () => {
     await logout();
@@ -105,6 +125,24 @@ export default function SchedulerPage() {
                 Elective Stats
               </CardTitle>
               <CardDescription>View elective demand</CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-orange-500" />
+                Students
+              </CardTitle>
+              <CardDescription>
+                {studentCount !== null ? (
+                  <span className="text-2xl font-bold text-foreground">
+                    {studentCount}
+                  </span>
+                ) : (
+                  <span>Loading...</span>
+                )}
+              </CardDescription>
             </CardHeader>
           </Card>
 

@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       // Get all instructors for auto-assignment
       supabase
         .from("faculty_profile")
-        .select("id, name, email, max_load_per_week, unavailable_times"),
+        .select("id, name, email, max_load_per_week, unavailable_times, department"),
       // Get all student enrollments for exam scheduling
       supabase
         .from("student_enrollment")
@@ -194,22 +194,28 @@ export async function POST(request: NextRequest) {
       name: string;
       email: string | null;
       max_load_per_week: number | null;
+      department: string | null;
       unavailable_times: Array<{
         day: string;
         slots: Array<{ start: string; end: string; type: string }>;
       }> | null;
     }
 
-    const instructorsForAssignment: InstructorForAssignment[] = (
-      rawInstructors as RawInstructor[]
-    ).map((inst) => ({
-      id: inst.id,
-      name: inst.name,
-      email: inst.email,
-      max_load_per_week: inst.max_load_per_week,
-      unavailable_times: inst.unavailable_times,
-      current_load: instructorSectionCounts.get(inst.id) || 0,
-    }));
+    // Filter instructors to ONLY include Software Engineering department
+    const sweInstructors = (rawInstructors as RawInstructor[]).filter(
+      (inst) => inst.department === "Software Engineering"
+    );
+
+    const instructorsForAssignment: InstructorForAssignment[] = sweInstructors.map(
+      (inst) => ({
+        id: inst.id,
+        name: inst.name,
+        email: inst.email,
+        max_load_per_week: inst.max_load_per_week,
+        unavailable_times: inst.unavailable_times,
+        current_load: instructorSectionCounts.get(inst.id) || 0,
+      })
+    );
 
     // Process enrollments for exam scheduling
     const enrollments = (enrollmentsResult.data || []) as Array<{
@@ -282,9 +288,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all draft sections (including newly created ones) for scheduling
+    // FILTER: Only include SWE sections for scheduling
     const draftSections = [
-      ...allSections.filter((s: { state: string }) => s.state === "draft"),
-      ...createdSections,
+      ...allSections.filter(
+        (s: { state: string; course_code: string }) =>
+          s.state === "draft" && s.course_code.startsWith("SWE")
+      ),
+      ...createdSections, // createdSections are already filtered to be SWE
     ] as SectionForScheduling[];
 
     // Use time grid config from database - MUST follow scheduling settings
@@ -456,15 +466,15 @@ export async function POST(request: NextRequest) {
         meeting_pattern:
           hasPattern && pattern
             ? {
-                days: pattern.days || [],
-                start: pattern.start || "",
-                duration: pattern.duration || 0,
-              }
+              days: pattern.days || [],
+              start: pattern.start || "",
+              duration: pattern.duration || 0,
+            }
             : {
-                days: [],
-                start: "",
-                duration: 0,
-              },
+              days: [],
+              start: "",
+              duration: 0,
+            },
       };
     });
 
@@ -630,6 +640,9 @@ export async function POST(request: NextRequest) {
 
     const examVariables: ExamVariable[] = [];
     for (const courseCode of scheduledCourses) {
+      // FILTER: Only schedule exams for SWE courses
+      if (!courseCode.startsWith("SWE")) continue;
+
       const courseSections = courseSectionMap.get(courseCode) || [];
       const course = courses.find(
         (c: { code: string }) => c.code === courseCode
@@ -762,6 +775,7 @@ export async function POST(request: NextRequest) {
             duration_minutes: assignment.duration_minutes,
             room_codes: [assignment.room],
             created_by: user.id,
+            exam_type: "final",
           });
         }
 
@@ -817,12 +831,12 @@ export async function POST(request: NextRequest) {
     const cspStats =
       "stats" in result && "backtracks" in result.stats
         ? {
-            backtracks: result.stats.backtracks,
-            softConstraintCost:
-              "softConstraintCost" in result.stats
-                ? result.stats.softConstraintCost
-                : undefined,
-          }
+          backtracks: result.stats.backtracks,
+          softConstraintCost:
+            "softConstraintCost" in result.stats
+              ? result.stats.softConstraintCost
+              : undefined,
+        }
         : undefined;
 
     // Build comprehensive message

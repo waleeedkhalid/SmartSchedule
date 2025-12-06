@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ClientProviders } from "@/components/client-providers";
+import { Chatbot } from "@/components/chatbot";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -48,6 +49,7 @@ export default function RootLayout({
         <ClientProviders>
           {children}
           <Toaster position="top-center" duration={3000} />
+          <Chatbot />
         </ClientProviders>
       </body>
     </html>

@@ -241,12 +241,38 @@ export function SchedulingDashboardClient({
               <div className="text-2xl font-bold">{stats.instructorsCount}</div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Students</CardTitle>
+              <Users className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.studentsCount}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Schedule Generation Section */}
         {isSystemReady ? (
           <div className="mb-6">
-            <ScheduleGenerator initialStatus={scheduleStatus} />
+            <ClientOnly
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Schedule Generator</CardTitle>
+                    <CardDescription>
+                      Loading schedule generation...
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center h-32">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              }
+            >
+              <ScheduleGenerator initialStatus={scheduleStatus} />
+            </ClientOnly>
           </div>
         ) : (
           <Card className="mb-6 border-yellow-200 dark:border-yellow-800">
