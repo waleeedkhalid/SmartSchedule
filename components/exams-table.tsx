@@ -159,6 +159,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Course Code</TableHead>
+              <TableHead>Exam Type</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Duration</TableHead>
@@ -171,7 +172,7 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
             {sortedExams.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center text-muted-foreground"
                 >
                   {searchTerm || dateFilter
@@ -186,6 +187,20 @@ export function ExamsTable({ exams, conflicts = {} }: ExamsTableProps) {
                   <TableRow key={exam.id}>
                     <TableCell className="font-medium">
                       {exam.course_code}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          exam.exam_type === "final"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            : exam.exam_type === "mid2"
+                              ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                        }
+                      >
+                        {exam.exam_type?.toUpperCase() || "N/A"}
+                      </Badge>
                     </TableCell>
                     <TableCell>{formatDate(exam.date) || "N/A"}</TableCell>
                     <TableCell>

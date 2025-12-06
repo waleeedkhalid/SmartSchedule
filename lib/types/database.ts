@@ -235,6 +235,7 @@ export type Database = {
           created_by: string | null;
           date: string;
           duration_minutes: number;
+          exam_type: string;
           id: string;
           room_codes: string[];
           start_time: string;
@@ -246,6 +247,7 @@ export type Database = {
           created_by?: string | null;
           date: string;
           duration_minutes: number;
+          exam_type: string;
           id?: string;
           room_codes?: string[];
           start_time: string;
@@ -257,6 +259,7 @@ export type Database = {
           created_by?: string | null;
           date?: string;
           duration_minutes?: number;
+          exam_type?: string;
           id?: string;
           room_codes?: string[];
           start_time?: string;

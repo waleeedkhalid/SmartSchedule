@@ -11,24 +11,12 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { Database } from "@/lib/types/database";
-
-// Lazy load heavy dialog components - only loaded when dialog opens
-const Dialog = dynamic(
-  () => import("@/components/ui/dialog").then((mod) => mod.Dialog),
-  { ssr: false }
-);
-const DialogContent = dynamic(
-  () => import("@/components/ui/dialog").then((mod) => mod.DialogContent),
-  { ssr: false }
-);
-const DialogHeader = dynamic(
-  () => import("@/components/ui/dialog").then((mod) => mod.DialogHeader),
-  { ssr: false }
-);
-const DialogTitle = dynamic(
-  () => import("@/components/ui/dialog").then((mod) => mod.DialogTitle),
-  { ssr: false }
-);
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Lazy load form component - heavy with many form fields
 const SectionForm = dynamic(

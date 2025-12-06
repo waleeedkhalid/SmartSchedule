@@ -19,6 +19,7 @@ export interface SchedulingStats {
   sectionsCount: number;
   roomsCount: number;
   instructorsCount: number;
+  studentsCount: number;
   draftSectionsCount: number;
   releasedSectionsCount: number;
   assignedSectionsCount: number;
@@ -100,6 +101,7 @@ export const getSchedulingDashboardData = cache(
           sectionsCount: 0,
           roomsCount: 0,
           instructorsCount: 0,
+          studentsCount: 0,
           draftSectionsCount: 0,
           releasedSectionsCount: 0,
           assignedSectionsCount: 0,
@@ -121,6 +123,7 @@ export const getSchedulingDashboardData = cache(
       sectionsResult,
       roomsResult,
       instructorsResult,
+      studentsResult,
       deadlinesResult,
       notificationsResult,
     ] = await Promise.all([
@@ -141,13 +144,18 @@ export const getSchedulingDashboardData = cache(
         .from("faculty_profile")
         .select("*", { count: "exact", head: true }),
 
-      // 5. Upcoming deadlines for scheduling role
+      // 5. Students count
+      supabase
+        .from("student_profile")
+        .select("*", { count: "exact", head: true }),
+
+      // 6. Upcoming deadlines for scheduling role
       supabase.rpc("get_upcoming_deadlines_for_role", {
         role_name: "scheduling",
         days_ahead: 30,
       }),
 
-      // 6. Recent notifications
+      // 7. Recent notifications
       supabase
         .from("notification")
         .select("id, user_id, type, payload, read_at, created_at")
@@ -160,6 +168,7 @@ export const getSchedulingDashboardData = cache(
     const coursesCount = coursesResult.count || 0;
     const roomsCount = roomsResult.count || 0;
     const instructorsCount = instructorsResult.count || 0;
+    const studentsCount = studentsResult.count || 0;
 
     // Process sections data
     const sectionsData = sectionsResult.data || [];
@@ -188,6 +197,7 @@ export const getSchedulingDashboardData = cache(
       sectionsCount,
       roomsCount,
       instructorsCount,
+      studentsCount,
       draftSectionsCount: draftSections.length,
       releasedSectionsCount: releasedSections.length,
       assignedSectionsCount: assignedSections.length,

@@ -58,6 +58,7 @@ interface ExamData {
   id: string;
   course_code: string;
   course_title: string;
+  exam_type: string;
   section_no: string | null;
   date: string;
   start_time: string;
@@ -449,7 +450,7 @@ export function StudentExamTimetable() {
                         className={cn(
                           "bg-card p-2 min-h-[80px] text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset",
                           !isSameMonth(day as Date, currentMonth as Date) &&
-                            "opacity-50",
+                          "opacity-50",
                           isSelected && "ring-2 ring-primary ring-inset",
                           isToday(day as Date) && "bg-primary/5"
                         )}
@@ -602,6 +603,18 @@ function ExamCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-semibold text-sm">{exam.course_code}</span>
+            <Badge
+              variant="outline"
+              className={
+                exam.exam_type === "final"
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-xs px-1.5 py-0"
+                  : exam.exam_type === "mid2"
+                    ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs px-1.5 py-0"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs px-1.5 py-0"
+              }
+            >
+              {exam.exam_type?.toUpperCase() || "N/A"}
+            </Badge>
             {exam.section_no && (
               <Badge variant="secondary" className="text-xs px-1.5 py-0">
                 Sec {exam.section_no}

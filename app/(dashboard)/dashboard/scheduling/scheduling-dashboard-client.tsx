@@ -241,6 +241,16 @@ export function SchedulingDashboardClient({
               <div className="text-2xl font-bold">{stats.instructorsCount}</div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Students</CardTitle>
+              <Users className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.studentsCount}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Schedule Generation Section */}

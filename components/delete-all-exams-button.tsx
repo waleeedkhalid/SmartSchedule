@@ -5,20 +5,25 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function DeleteAllExamsButton() {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
   const handleDeleteAll = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete all exams? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
+    setIsOpen(false);
     setIsDeleting(true);
     try {
       const response = await fetch("/api/v1/exams", {
@@ -46,18 +51,39 @@ export function DeleteAllExamsButton() {
   };
 
   return (
-    <Button
-      variant="destructive"
-      size="sm"
-      onClick={handleDeleteAll}
-      disabled={isDeleting}
-    >
-      {isDeleting ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Trash2 className="mr-2 h-4 w-4" />
-      )}
-      Delete All Exams
-    </Button>
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-2 h-4 w-4" />
+          )}
+          Delete All Exams
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete All Exams?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete all
+            exams from the system.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteAll}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete All
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
